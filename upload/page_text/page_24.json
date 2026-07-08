@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "USER &  \nPRIVILEGES  \nElevating User Experience  \n\nKey Features  \nUser Role  \nCreation & List  \nLogin Creation  \nUser Activation  \n/ Deactivation  \nUser Login  \nRecord",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539679,
+  "id": "20260709034117c45e8fb5004a4edf",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709034117c45e8fb5004a4edf",
+  "usage": {
+    "completion_tokens": 41,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 44
+    },
+    "total_tokens": 1980
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "FINANCE  \nMANAGEMENT  \nFinancial Clarity, School Success!  \n\n• Jv  ( Journal Vouchers)  \n• CRV ( Cash Receipt Vouchers)  \n• CPV ( Cash Payment Vouchers)  \n• BRV ( Bank Receipt Vouchers)  \n• BPV ( Bank Payment Vouchers)  \n• PV  ( Purchase Vouchers)  \n• SV  ( Sales Vouchers)  \n\n• Trial Balance  \n• Profit & Loss Statement /  \n  Income Statement  \n• Balance Sheets  \n• Cash Flows  \n• Statement of Changes  \n  in Equity  \n• Expense Report  \n• Day Book  \n\nKey  \nFeatures  \n\nVOUCHERS  \nPOSTING  \n\nFINANCIAL  \nREPORTS  \n\nCHART OF  \nACCOUNTS  \n\n• COA according to  \n  requirement of clients  \n• Ledgers  \n• Sub Ledgers  \n• Range Ledgers  \n• COA Tree",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539550,
+  "id": "202607090338596bc887cd28cf45b0",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202607090338596bc887cd28cf45b0",
+  "usage": {
+    "completion_tokens": 180,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 45
+    },
+    "total_tokens": 2119
+  }
+}

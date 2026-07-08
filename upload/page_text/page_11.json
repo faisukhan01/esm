@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "COMPLAINT\nMANAGEMENT\nComplete record of Complaint Management\n\nKey\nFeatures\n\nParents can\ntrack their\ncomplaint\nstatus\n\nEasy\nAccessibility\n\nTwo-way\ncommunication\nchat box",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539521,
+  "id": "202607090338396393311b93044a65",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "202607090338396393311b93044a65",
+  "usage": {
+    "completion_tokens": 43,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1888,
+    "prompt_tokens_details": {
+      "cached_tokens": 5
+    },
+    "total_tokens": 1931
+  }
+}

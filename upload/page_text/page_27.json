@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "OUR\nVALUED\nCLIENTS\nGET IN TOUCH\nHead Office: 160 Ahmad Block, Garden Town,\nLahore.\nKarachi Office: 214, 2nd floor, Rim Jhim Mall,\nGulshan-e-Iqbal, Karachi.\nSales Office: 30-A/3, Johar Town, Lahore.\n021-37295432\n042-35442760 | 0320-8687068\nesmsoftwares.cyberasol.com\ninfo@cyberasol.com",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539707,
+  "id": "20260709034144cc650283c79c4178",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709034144cc650283c79c4178",
+  "usage": {
+    "completion_tokens": 118,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1888,
+    "prompt_tokens_details": {
+      "cached_tokens": 44
+    },
+    "total_tokens": 2006
+  }
+}

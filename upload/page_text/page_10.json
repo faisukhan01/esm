@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "ACADEMICS\nElevating User Experience\n\n01\nComplete record\nof the student’s\nacademic history\n\n02\nDossier\nSetting\n\n03\nPromote/Transfer\n/Pass Out\nStudent\n\n04\nCourse Content\nand Plan\n\n05\nLesson\nPlan\n\n06\nDiary /\nHome Work\n\n07\nNotification on\nParents Mobile\nApp\n\n08\nAcademics\nCalendar\n\n09\nClass wise\nActivity\n\n10\nTeacher\nTime Table\n\nKey Features",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539517,
+  "id": "20260709033834619bc28509cb4d91",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709033834619bc28509cb4d91",
+  "usage": {
+    "completion_tokens": 103,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 2042
+  }
+}

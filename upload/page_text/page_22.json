@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "INSTITUTE\nBRANDING\nEmpower, Engage, Excel\nKey Features\nBranding\nTypes\nBranding\nDetail\nBranding\nDetail Integrate\nwith Parents\nMobile App",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539663,
+  "id": "2026070903410175f3161da1f64c02",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026070903410175f3161da1f64c02",
+  "usage": {
+    "completion_tokens": 42,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1888,
+    "prompt_tokens_details": {
+      "cached_tokens": 45
+    },
+    "total_tokens": 1930
+  }
+}

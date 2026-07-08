@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "CONFIGURATION\nBespoke solutions with eSM\n\nKey Features\n\nBank\nAccount\nDetails\n\nShift, City,\nRegion, Location\nDetails\n\nCampus Settings\n(i.e Principal Name,\nSocial Media Links)\n\nSession Details\n(Activation\nDeactivation)\n\nClass Details\n(Activation\nDeactivation)\n\nSection Details\n(Activation\nDeactivation)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539526,
+  "id": "2026070903384441b16023c1994b71",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026070903384441b16023c1994b71",
+  "usage": {
+    "completion_tokens": 73,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 2012
+  }
+}

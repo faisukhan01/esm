@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "STUDENT\nCONSULTANCY\nTransforming Education, Together\n1 Colleges &\nUniversity Details\nColleges & University\nProgram Details 2\n3 Colleges & University\nFee & Admission Details\nColleges & University\nProgram duration 4",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539655,
+  "id": "20260709034053d1dfbd7863a84704",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709034053d1dfbd7863a84704",
+  "usage": {
+    "completion_tokens": 54,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 45
+    },
+    "total_tokens": 1993
+  }
+}

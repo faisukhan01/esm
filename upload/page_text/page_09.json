@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "SMS\nPORTAL\nNavigating SMS, Your Way\n\nKey Features\n\n1\nBranded Name\nwith Masking SMS\nIt can be utilized for marketing\npurpose beside this, you can send\nany type of SMS through our system.\n(i.e. Promotional messages, results\nannouncement, any kind of function\ninformation etc.)\n\n2\nMessage Alerts\nThe second most interested\nfeature is the message alerts. Our\nevery module this feature has\nbeen integrated. i.e\n\n• Auto Generated Inquiry SMS\n• Auto Generated admissions SMS\n• Auto Generated struck off SMS\n• Auto Generated short leave SMS\n• Auto Generated Absents SMS\n• Auto Generated fee deposit SMS\n• Auto Generated fee cancelation SMS\n• Auto Generated check in/out SMS of staff\n• Send SMS to staff\n• Send SMS to Students\n• Send SMS to visitors\n• Send SMS to parents\n• Book Issuance",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539511,
+  "id": "2026070903382747fa46326a1940d5",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026070903382747fa46326a1940d5",
+  "usage": {
+    "completion_tokens": 188,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 44
+    },
+    "total_tokens": 2127
+  }
+}

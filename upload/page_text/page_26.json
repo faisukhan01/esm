@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "ABOUT  \nCYBER ADVANCE SOLUTION  \n\nSMART TRADING POS  \nPURCHASE & SALE MANAGEMENT  \n\nFOOD APP  \n\ne-PUBLICATION  \nPUBLICATION MANAGEMENT  \n\ne-HRM  \nHUMAN RESOURCE  \nMANAGEMENT  \n\ne-COMMERCE  \n\nBIO-METRIC  \nATTENDANCE  \n\neSM  \nELECTRONIC SCHOOL  \nMANAGEMENT SYSTEM  \n\nINTELLIGENT SOLUTIONS  \nFOR A BETTER  \nINSTITUTION  \n\nOUR SERVICES  \n▷ Web Development  \n▷ ERP (Customized)  \n▷ E-Commerce Solution  \n▷ Graphic Designing  \n▷ Digital Marketing  \n▷ Branded SMS  \n▷ Mobile Application Development  \n\nGET IN  \nTOUCH  \nwww.cyberasol.com  \n\nHead Office: 160 Ahmad Block, Garden Town, Lahore. ☎ 042-35442760 | 0320-8687068  \nKarachi Office: 214, 2nd floor, Rim Jhim Mall, Gulshan-e-Iqbal, Karachi. ☎ 021-37295432 | 0309-2226845",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539697,
+  "id": "2026070903413362a8320deed447f5",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "2026070903413362a8320deed447f5",
+  "usage": {
+    "completion_tokens": 235,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 9
+    },
+    "total_tokens": 2174
+  }
+}

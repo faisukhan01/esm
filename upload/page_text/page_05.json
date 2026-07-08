@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "ADMISSION\nMANAGEMENT\nBespoke solutions with eSM\nKey Features\nAdmission\nForm (Entry)\nDaily/Monthly\n/Yearly Admissions\ncomparison report\nStudents Cards\nArea wise\nadmission\ncomparison\nSibling Record\nUp-to-date\nadmissions report\nClass wise\nadmission\ncomparison report\nBirth Certificate,\nCharacter Certificate,\nLeaving Certificate, Warning\nLetters & Hope Certificate\nValue added\nfeature of SMS",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539486,
+  "id": "20260709033802d316b26e4d814b94",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709033802d316b26e4d814b94",
+  "usage": {
+    "completion_tokens": 95,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 4
+    },
+    "total_tokens": 2034
+  }
+}

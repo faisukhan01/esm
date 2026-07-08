@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "LIBRARY\nMANAGEMENT\nComplete record of accomplishment of the Library\n\nKey\nFeatures\n\n1\nVendor Details\n\n2\nCost of books\n\n3\nBooks Details\n\n4\nReturn Record\n\n5\nBook issuance to\nStudents & Employees\n\n6\nComplete record of\nissuance of the book\n\n7\nWhen and who\npurchased it\n\n8\nBooks\nBarcode\n\n9\nRecord of lost\nbooks",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1783539639,
+  "id": "20260709034036da36f5b1cae0404e",
+  "model": "glm-4.6v",
+  "object": "chat.completion",
+  "request_id": "20260709034036da36f5b1cae0404e",
+  "usage": {
+    "completion_tokens": 88,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1939,
+    "prompt_tokens_details": {
+      "cached_tokens": 45
+    },
+    "total_tokens": 2027
+  }
+}
