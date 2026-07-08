@@ -189,3 +189,32 @@ Stage Summary:
 - Full provisioning chain verified: Super Admin → Institute Admin → Branch Manager → Teacher, each auto-creating logins that work immediately.
 - Login page redesigned: premium, 3D (Three.js particle field + wireframe geometry), dark glassmorphism, minimal content.
 - All functionalities working: institute/branch/teacher/student creation, attendance marking, result posting, fee payment, SMS, diary, complaints — all persist and display real data.
+
+---
+Task ID: LOGIN-REDESIGN
+Agent: Main (Z.ai Code)
+Task: Redesign login page with premium 3D design AND role selector (user feedback: "sign in page is too much worse and don't have option to select role")
+
+Work Log:
+- Rebuilt login page with premium role selector grid (6 roles: Super Admin, Institute, Branch, Teacher, Student, Parent)
+- Each role pill has its own icon + gradient color (amber/emerald/teal/violet/cyan/rose)
+- Selecting a role: changes the card accent bar color, logo icon/color, button gradient, and info section
+- Super Admin role pre-fills demo credentials (owner@esm-platform.com / esm123) and shows "Demo credentials (pre-filled)" box
+- Other roles clear the form and show an info note explaining how their account is created (e.g. Teacher: "Your login is created by your Branch Manager")
+- Sign in button text changes per role: "Sign in as [Role]"
+- Kept the 3D Three.js background (wireframe icosahedron + particles + mouse parallax)
+- Glassmorphism card with animated accent bar (layoutId for smooth color transitions)
+- Framer Motion animations: role pills hover/lift, info section cross-fades on role change, logo spring-in
+
+Verification (agent-browser):
+- Login page renders with all 6 role pills visible
+- Clicking "Teacher" → button changes to "Sign in as Teacher", info note shows "login is created by your Branch Manager"
+- Clicking "Super Admin" → pre-fills credentials, shows demo box
+- Sign in as Super Admin → successfully enters portal showing real data (Greenwood Academy from earlier test)
+- VLM rated design 8/10: "premium and modern, sleek card with 3D background, intuitive role selector"
+- Lint passes clean
+
+Stage Summary:
+- Login page now has BOTH premium 3D design AND a role selector with all 6 roles
+- Role selector dynamically changes accent colors, button text, and shows relevant info per role
+- Super Admin credentials pre-fill for instant demo access; other roles show how to get an account
