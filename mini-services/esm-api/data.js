@@ -255,6 +255,70 @@ const timetable = ['Mon','Tue','Wed','Thu','Fri'].map(day => ({
   ],
 }));
 
+// ============================================================
+// MULTI-TENANT PLATFORM DATA
+// Role hierarchy: super-admin → institute-admin → branch-manager → teacher → student/parent
+// ============================================================
+
+export const institutes = [
+  { id: 'INST-001', name: 'Austin International School', short: 'AIS', city: 'Austin, TX', country: 'USA', plan: 'Enterprise', status: 'Active', adminName: 'Dr. Sarah Mitchell', adminEmail: 'admin@austinintl.edu', branches: 3, students: 642, staff: 48, revenue: 284000, createdAt: '2024-01-15', color: 'emerald', domain: 'austinintl.edu' },
+  { id: 'INST-002', name: 'Lahore Grammar School', short: 'LGS', city: 'Lahore', country: 'Pakistan', plan: 'Premium', status: 'Active', adminName: 'Prof. Asif Khan', adminEmail: 'admin@lgs.edu.pk', branches: 5, students: 1240, staff: 96, revenue: 412000, createdAt: '2023-08-22', color: 'amber', domain: 'lgs.edu.pk' },
+  { id: 'INST-003', name: 'Boston Science Academy', short: 'BSA', city: 'Boston, MA', country: 'USA', plan: 'Premium', status: 'Active', adminName: 'Dr. Emily Carter', adminEmail: 'admin@bsa.edu', branches: 2, students: 384, staff: 32, revenue: 198000, createdAt: '2024-03-10', color: 'violet', domain: 'bsa.edu' },
+  { id: 'INST-004', name: 'Seattle Modern College', short: 'SMC', city: 'Seattle, WA', country: 'USA', plan: 'Starter', status: 'Trial', adminName: 'Mr. David Osei', adminEmail: 'admin@smc.edu', branches: 1, students: 142, staff: 14, revenue: 0, createdAt: '2025-01-08', color: 'cyan', domain: 'smc.edu' },
+];
+
+export const branches = [
+  { id: 'BR-001', instituteId: 'INST-001', name: 'Austin Main Campus', city: 'Austin', manager: 'James Carter', managerEmail: 'manager.austin@austinintl.edu', students: 280, teachers: 22, status: 'Active' },
+  { id: 'BR-002', instituteId: 'INST-001', name: 'Round Rock Branch', city: 'Round Rock', manager: 'Lisa Chen', managerEmail: 'manager.roundrock@austinintl.edu', students: 184, teachers: 14, status: 'Active' },
+  { id: 'BR-003', instituteId: 'INST-001', name: 'Cedar Park Branch', city: 'Cedar Park', manager: 'Robert Kim', managerEmail: 'manager.cedarpark@austinintl.edu', students: 178, teachers: 12, status: 'Active' },
+  { id: 'BR-004', instituteId: 'INST-002', name: 'Gulberg Campus', city: 'Lahore', manager: 'Ayesha Ahmed', managerEmail: 'manager.gulberg@lgs.edu.pk', students: 320, teachers: 26, status: 'Active' },
+  { id: 'BR-005', instituteId: 'INST-002', name: 'Johar Town Campus', city: 'Lahore', manager: 'Bilal Hassan', managerEmail: 'manager.johar@lgs.edu.pk', students: 286, teachers: 22, status: 'Active' },
+  { id: 'BR-006', instituteId: 'INST-002', name: 'DHA Campus', city: 'Lahore', manager: 'Fatima Ali', managerEmail: 'manager.dha@lgs.edu.pk', students: 312, teachers: 24, status: 'Active' },
+  { id: 'BR-007', instituteId: 'INST-002', name: 'Model Town Campus', city: 'Lahore', manager: 'Usman Malik', managerEmail: 'manager.model@lgs.edu.pk', students: 168, teachers: 14, status: 'Active' },
+  { id: 'BR-008', instituteId: 'INST-002', name: 'Bahria Town Campus', city: 'Lahore', manager: 'Zainab Raza', managerEmail: 'manager.bahria@lgs.edu.pk', students: 154, teachers: 10, status: 'Active' },
+  { id: 'BR-009', instituteId: 'INST-003', name: 'Boston Main Campus', city: 'Boston', manager: 'Michael Brown', managerEmail: 'manager.boston@bsa.edu', students: 246, teachers: 20, status: 'Active' },
+  { id: 'BR-010', instituteId: 'INST-003', name: 'Cambridge Branch', city: 'Cambridge', manager: 'Jennifer Lee', managerEmail: 'manager.cambridge@bsa.edu', students: 138, teachers: 12, status: 'Active' },
+  { id: 'BR-011', instituteId: 'INST-004', name: 'Seattle Downtown Campus', city: 'Seattle', manager: 'Daniel Foster', managerEmail: 'manager.seattle@smc.edu', students: 142, teachers: 14, status: 'Active' },
+];
+
+// Role hierarchy login table — password is "esm123" for every demo account
+export const platformUsers = [
+  // Super Admin — the platform owner (YOU)
+  { id: 'U-SUPER', name: 'Platform Owner', email: 'owner@esm-platform.com', password: 'esm123', role: 'super-admin', status: 'Active', title: 'Chief Executive Officer' },
+
+  // Institute Admins (one per institute)
+  { id: 'U-IA-001', name: 'Dr. Sarah Mitchell', email: 'admin@austinintl.edu', password: 'esm123', role: 'institute-admin', instituteId: 'INST-001', status: 'Active', title: 'Institute Administrator' },
+  { id: 'U-IA-002', name: 'Prof. Asif Khan', email: 'admin@lgs.edu.pk', password: 'esm123', role: 'institute-admin', instituteId: 'INST-002', status: 'Active', title: 'Institute Administrator' },
+  { id: 'U-IA-003', name: 'Dr. Emily Carter', email: 'admin@bsa.edu', password: 'esm123', role: 'institute-admin', instituteId: 'INST-003', status: 'Active', title: 'Institute Administrator' },
+  { id: 'U-IA-004', name: 'Mr. David Osei', email: 'admin@smc.edu', password: 'esm123', role: 'institute-admin', instituteId: 'INST-004', status: 'Active', title: 'Institute Administrator' },
+
+  // Branch Managers (one per branch)
+  { id: 'U-BM-001', name: 'James Carter', email: 'manager.austin@austinintl.edu', password: 'esm123', role: 'branch-manager', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Branch Manager' },
+  { id: 'U-BM-002', name: 'Lisa Chen', email: 'manager.roundrock@austinintl.edu', password: 'esm123', role: 'branch-manager', instituteId: 'INST-001', branchId: 'BR-002', status: 'Active', title: 'Branch Manager' },
+  { id: 'U-BM-003', name: 'Ayesha Ahmed', email: 'manager.gulberg@lgs.edu.pk', password: 'esm123', role: 'branch-manager', instituteId: 'INST-002', branchId: 'BR-004', status: 'Active', title: 'Branch Manager' },
+  { id: 'U-BM-004', name: 'Michael Brown', email: 'manager.boston@bsa.edu', password: 'esm123', role: 'branch-manager', instituteId: 'INST-003', branchId: 'BR-009', status: 'Active', title: 'Branch Manager' },
+
+  // Teachers (scoped to a branch)
+  { id: 'U-T-001', name: 'Ms. Olivia Davis', email: 'teacher.davis@austinintl.edu', password: 'esm123', role: 'teacher', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Senior Teacher', subjects: ['Mathematics','Physics'], classes: ['Grade 8','Grade 9'] },
+  { id: 'U-T-002', name: 'Mr. Ethan Lee', email: 'teacher.lee@austinintl.edu', password: 'esm123', role: 'teacher', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Teacher', subjects: ['English','History'], classes: ['Grade 7','Grade 8'] },
+  { id: 'U-T-003', name: 'Ms. Sophia Garcia', email: 'teacher.garcia@lgs.edu.pk', password: 'esm123', role: 'teacher', instituteId: 'INST-002', branchId: 'BR-004', status: 'Active', title: 'Senior Teacher', subjects: ['Chemistry','Biology'], classes: ['Grade 10','Grade 11'] },
+
+  // Students / Parents (scoped to a branch + a class)
+  { id: 'U-ST-001', name: 'Aiden Carter', email: 'aiden.carter@student.austinintl.edu', password: 'esm123', role: 'student', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Student', class: 'Grade 8', section: 'A', rollNo: '1001', guardian: 'James Carter' },
+  { id: 'U-ST-002', name: 'Sofia Reyes', email: 'sofia.reyes@student.austinintl.edu', password: 'esm123', role: 'student', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Student', class: 'Grade 9', section: 'B', rollNo: '1002', guardian: 'Maria Reyes' },
+  { id: 'U-PA-001', name: 'Maria Reyes', email: 'parent.reyes@austinintl.edu', password: 'esm123', role: 'parent', instituteId: 'INST-001', branchId: 'BR-001', status: 'Active', title: 'Parent', ward: 'Sofia Reyes', wardId: 'U-ST-002' },
+];
+
+// Demo credential hints grouped by role — surfaced on the login screen
+export const demoAccounts = [
+  { role: 'super-admin', label: 'Super Admin (Platform Owner)', email: 'owner@esm-platform.com', password: 'esm123', desc: 'Manages all institutions, plans & platform revenue' },
+  { role: 'institute-admin', label: 'Institute Admin', email: 'admin@austinintl.edu', password: 'esm123', desc: 'Runs one institute, manages branches & staff' },
+  { role: 'branch-manager', label: 'Branch Manager', email: 'manager.austin@austinintl.edu', password: 'esm123', desc: 'Runs one branch, manages teachers & students' },
+  { role: 'teacher', label: 'Teacher', email: 'teacher.davis@austinintl.edu', password: 'esm123', desc: 'Takes attendance, posts results & homework' },
+  { role: 'student', label: 'Student', email: 'aiden.carter@student.austinintl.edu', password: 'esm123', desc: 'Views results, attendance, fees & timetable' },
+  { role: 'parent', label: 'Parent', email: 'parent.reyes@austinintl.edu', password: 'esm123', desc: 'Tracks ward progress & pays fees' },
+];
+
 export const data = {
   students,
   attendanceSeries,
@@ -274,6 +338,9 @@ export const data = {
   classes,
   sections,
   subjects,
+  institutes,
+  branches,
+  platformUsers,
 };
 
 export const stats = {

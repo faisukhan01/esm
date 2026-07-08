@@ -1,10 +1,32 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type View = 'landing' | 'login' | 'dashboard';
+export type View = 'landing' | 'login' | 'portal';
 
-type AuthUser = {
-  id: string; name: string; email: string; role: string; campus: string;
+export type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student' | 'parent';
+
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  roleLabel: string;
+  title: string;
+  status: string;
+  instituteId?: string | null;
+  instituteName?: string | null;
+  instituteShort?: string | null;
+  branchId?: string | null;
+  branchName?: string | null;
+  campus: string;
+  subjects?: string[];
+  classes?: string[];
+  class?: string;
+  section?: string;
+  rollNo?: string;
+  guardian?: string;
+  ward?: string;
+  wardId?: string;
 } | null;
 
 type AppState = {
@@ -27,7 +49,7 @@ export const useApp = create<AppState>()(
       token: null,
       activeModule: 'dashboard',
       setView: (v) => set({ view: v }),
-      setUser: (u) => set({ user: u }),
+      setUser: (u) => set({ user: u, activeModule: 'dashboard' }),
       setToken: (t) => set({ token: t }),
       setActiveModule: (m) => set({ activeModule: m }),
       logout: () => set({ view: 'landing', user: null, token: null, activeModule: 'dashboard' }),

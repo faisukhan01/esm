@@ -36,9 +36,10 @@ export type Student = {
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: { id: string; name: string; email: string; role: string; campus: string } }>(
+    request<{ token: string; user: any }>(
       'auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }
     ),
+  demoAccounts: () => request<any[]>('auth/demo-accounts'),
   stats: () => request<Stats>('stats'),
   students: (q?: string) => request<{ total: number; students: Student[] }>(q ? `students?q=${encodeURIComponent(q)}` : 'students'),
   attendanceSeries: () => request<{ date: string; present: number; absent: number; late: number; rate: number }[]>('attendance/series'),
@@ -57,4 +58,28 @@ export const api = {
   inquiries: () => request<any[]>('inquiries'),
   complaints: () => request<any[]>('complaints'),
   timetable: () => request<any[]>('academics/timetable'),
+  // multi-tenant platform APIs
+  platformOverview: () => request<any>('platform/overview'),
+  institutes: () => request<any[]>('institutes'),
+  institute: (id: string) => request<any>(`institutes/${id}`),
+  createInstitute: (body: any) => request<any>('institutes', { method: 'POST', body: JSON.stringify(body) }),
+  updateInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  branches: (instituteId?: string) => request<any[]>(instituteId ? `branches?instituteId=${instituteId}` : 'branches'),
+  createBranch: (body: any) => request<any>('branches', { method: 'POST', body: JSON.stringify(body) }),
+  platformUsers: (params?: { role?: string; branchId?: string; instituteId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.role) q.set('role', params.role);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    const qs = q.toString();
+    return request<any[]>(qs ? `platform/users?${qs}` : 'platform/users');
+  },
+  createPlatformUser: (body: any) => request<any>('platform/users', { method: 'POST', body: JSON.stringify(body) }),
+  scopedStats: (instituteId?: string, branchId?: string) => {
+    const q = new URLSearchParams();
+    if (instituteId) q.set('instituteId', instituteId);
+    if (branchId) q.set('branchId', branchId);
+    const qs = q.toString();
+    return request<any>(qs ? `scoped/stats?${qs}` : 'scoped/stats');
+  },
 };
