@@ -1,24 +1,51 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  CalendarCheck, GraduationCap, CreditCard, ClipboardList, TrendingUp,
-  CheckCircle2, Clock, XCircle, BookOpen, Award, Heart, MessageCircleWarning,
-} from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarCheck, GraduationCap, CreditCard, ClipboardList, CheckCircle2, XCircle, Clock, BookOpen, Award, Heart, MessageCircleWarning, Inbox } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const fmtMoney = (n: number) => '$' + n.toLocaleString('en-US');
 
 export function ParentPortal({ activeModule, user }: { activeModule: string; user: any }) {
-  if (activeModule === 'ward-attendance') return <WardAttendance />;
-  if (activeModule === 'ward-results') return <WardResults />;
-  if (activeModule === 'ward-fees') return <WardFees />;
-  if (activeModule === 'ward-diary') return <WardDiary />;
-  if (activeModule === 'complaints') return <ParentComplaints />;
-  return <ParentOverview user={user} />;
+  const [ward, setWard] = useState<any>(null);
+  const [attendance, setAttendance] = useState<any>(null);
+  const [results, setResults] = useState<any>(null);
+  const [fees, setFees] = useState<any[]>([]);
+  const [diary, setDiary] = useState<any[]>([]);
+  const [complaints, setComplaints] = useState<any[]>([]);
+
+  const refresh = () => {
+    // Find ward user
+    if (user?.wardId) {
+      api.platformUsers().then(all => {
+        const w = all.find(u => u.id === user.wardId);
+        setWard(w || null);
+        if (w) {
+          api.getAttendance({ studentId: w.id }).then(setAttendance).catch(() => {});
+          api.getResults({ studentId: w.id }).then(setResults).catch(() => {});
+          api.getFees({ studentId: w.id }).then(setFees).catch(() => {});
+          if (w.branchId) api.getDiary({ branchId: w.branchId }).then(setDiary).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+    if (user?.id) api.getComplaints({ parentId: user.id }).then(setComplaints).catch(() => {});
+  };
+  useEffect(() => { refresh(); }, [user?.id, user?.wardId]);
+
+  if (activeModule === 'ward-attendance') return <WardAttendance ward={ward} attendance={attendance} />;
+  if (activeModule === 'ward-results') return <WardResults ward={ward} results={results} />;
+  if (activeModule === 'ward-fees') return <WardFees ward={ward} fees={fees} user={user} />;
+  if (activeModule === 'ward-diary') return <WardDiary diary={diary} />;
+  if (activeModule === 'complaints') return <ParentComplaints user={user} complaints={complaints} onSaved={refresh} />;
+  return <ParentOverview user={user} ward={ward} attendance={attendance} results={results} fees={fees} />;
 }
 
 function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
@@ -30,13 +57,24 @@ function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: s
   );
 }
 
-function ParentOverview({ user }: any) {
-  const attendanceData = Array.from({length: 14}).map((_,i) => ({ date: `D${i+1}`, rate: 88 + ((i*7)%12) }));
+function EmptyState({ icon: Icon, title, desc, action }: any) {
+  return (
+    <Card className="p-10 text-center">
+      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+      {action && <div className="mt-5">{action}</div>}
+    </Card>
+  );
+}
+
+function ParentOverview({ user, ward, attendance, results, fees }: any) {
+  const feePaid = fees.filter(f => f.status === 'Paid').reduce((a:number, f:any) => a + f.amount, 0);
   const cards = [
-    { label: "Ward's Attendance", value: '94%', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
-    { label: "Ward's GPA", value: '3.76', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-    { label: 'Fee Balance', value: '$0', icon: CreditCard, color: 'from-amber-500 to-yellow-600' },
-    { label: 'Class Rank', value: '#4', icon: Award, color: 'from-rose-500 to-pink-600' },
+    { label: "Ward's Attendance", value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
+    { label: 'Avg Score', value: results?.avgPercentage != null ? results.avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+    { label: 'Fees Paid', value: fmtMoney(feePaid), icon: CreditCard, color: 'from-amber-500 to-yellow-600' },
+    { label: 'Results', value: results?.total ?? 0, icon: Award, color: 'from-rose-500 to-pink-600' },
   ];
   return (
     <div className="space-y-6">
@@ -45,11 +83,9 @@ function ParentOverview({ user }: any) {
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
         <div className="relative">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
-            <Heart className="h-3 w-3 text-amber-300" /> Parent · {user?.instituteName}
-          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Heart className="h-3 w-3 text-amber-300" /> Parent · {user?.instituteName}</div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]} 👋</h1>
-          <p className="text-rose-50/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{user?.ward}</strong>. They're doing great — ranked #4 in class!</p>
+          <p className="text-rose-50/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{ward?.name || user?.ward || '—'}</strong>{ward ? ` · ${ward.class} ${ward.section}` : ''}.</p>
         </div>
       </motion.div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -64,159 +100,224 @@ function ParentOverview({ user }: any) {
           </motion.div>
         ))}
       </div>
-      <div className="grid lg:grid-cols-2 gap-4">
+      {!ward ? (
+        <EmptyState icon={Heart} title="Ward not linked yet" desc="Your account isn't linked to a student yet. Please contact your school's Branch Manager." />
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <h3 className="font-bold text-base mb-3">Ward's Recent Attendance</h3>
+            {!attendance || attendance.total === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">No attendance records yet.</div>
+            ) : (
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></div>
+                <div><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></div>
+                <div><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></div>
+              </div>
+            )}
+          </Card>
+          <Card className="p-5">
+            <h3 className="font-bold text-base mb-3">Ward's Recent Results</h3>
+            {!results || results.total === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground">No results posted yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {results.entries.slice(0, 5).map((r:any) => (
+                  <div key={r.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/40">
+                    <div><div className="font-medium text-sm">{r.subject}</div><div className="text-[11px] text-muted-foreground">{r.exam}</div></div>
+                    <Badge variant="outline" className="font-bold">{r.marks}/{r.totalMarks} · {r.grade}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WardAttendance({ ward, attendance }: any) {
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="Ward's Attendance" subtitle={ward ? `${ward.name} · ${ward.class} ${ward.section}` : 'Tracking your ward'} />
+      {!attendance || attendance.total === 0 ? (
+        <EmptyState icon={CalendarCheck} title="No attendance records yet" desc="Your ward's teachers haven't marked any attendance yet." />
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-3">
+            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+            <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+            <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+            <Card className="p-4 text-center bg-emerald-500/10"><CalendarCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold text-emerald-600">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+          </div>
+          <Card className="p-4">
+            {attendance.entries.map((e:any) => (
+              <div key={e.id} className="flex items-center justify-between p-2 border-b border-border/40 last:border-0">
+                <div className="text-sm">{e.date}</div>
+                <Badge variant="outline" className={e.status === 'Present' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{e.status}</Badge>
+              </div>
+            ))}
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
+
+function WardResults({ ward, results }: any) {
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="Ward's Results" subtitle={ward ? `${ward.name} · ${ward.class} ${ward.section}` : 'Your ward'} />
+      {!results || results.total === 0 ? (
+        <EmptyState icon={GraduationCap} title="No results posted yet" desc="Your ward's teachers haven't posted any results yet." />
+      ) : (
         <Card className="p-5">
-          <h3 className="font-bold text-base mb-4">Ward's Attendance — 14 days</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={attendanceData} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
-              <defs><linearGradient id="gPA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.5} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis domain={[80,100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-              <Area type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={2.5} fill="url(#gPA)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card className="p-5">
-          <h3 className="font-bold text-base mb-4">Recent Results</h3>
-          <div className="space-y-2">
-            {[
-              { subject: 'Mathematics', marks: 92, grade: 'A+', color: 'emerald' },
-              { subject: 'English', marks: 88, grade: 'A', color: 'teal' },
-              { subject: 'Physics', marks: 84, grade: 'A', color: 'cyan' },
-              { subject: 'Computer Science', marks: 95, grade: 'A+', color: 'violet' },
-            ].map(r => (
-              <div key={r.subject} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                <div className={`h-9 w-9 rounded-lg bg-${r.color}-500/15 grid place-items-center`}><BookOpen className={`h-4 w-4 text-${r.color}-600`} /></div>
-                <div className="flex-1"><div className="font-medium text-sm">{r.subject}</div><div className="text-[11px] text-muted-foreground">{r.marks}/100</div></div>
-                <Badge variant="outline" className={`font-bold text-${r.color}-600 bg-${r.color}-500/10 border-${r.color}-500/20`}>{r.grade}</Badge>
+          <div className="space-y-3">
+            {results.entries.map((r:any) => (
+              <div key={r.id} className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${r.percentage}%` }} /></div>
+                  <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
+                </div>
+                <Badge variant="outline" className="font-bold">{r.grade}</Badge>
               </div>
             ))}
           </div>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
 
-function WardAttendance() {
-  return (
-    <div className="space-y-6">
-      <ModuleHeader title="Ward's Attendance" subtitle="Track your ward's presence" />
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">26</div><div className="text-xs text-muted-foreground">Present</div></Card>
-        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">2</div><div className="text-xs text-muted-foreground">Absent</div></Card>
-        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">2</div><div className="text-xs text-muted-foreground">Late</div></Card>
-      </div>
-      <Card className="p-5"><h3 className="font-bold text-base mb-3">Monthly Trend</h3>
-        <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={Array.from({length:30}).map((_,i)=>({date:`D${i+1}`,rate:85+((i*11)%15)}))} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
-            <defs><linearGradient id="gWAtt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.5} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient></defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis domain={[70,100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-            <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-            <Area type="monotone" dataKey="rate" stroke="#10b981" strokeWidth={2.5} fill="url(#gWAtt)" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </Card>
-    </div>
-  );
-}
+function WardFees({ ward, fees, user }: any) {
+  const totalPaid = fees.filter(f => f.status === 'Paid').reduce((a:number, f:any) => a + f.amount, 0);
+  const [amount, setAmount] = useState(1200);
+  const [paying, setPaying] = useState(false);
 
-function WardResults() {
-  return (
-    <div className="space-y-6">
-      <ModuleHeader title="Ward's Results" subtitle="All test & exam results" />
-      <Card className="p-5">
-        <div className="space-y-3">
-          {[
-            { subject: 'Mathematics', marks: 92, grade: 'A+', color: 'emerald' },
-            { subject: 'English', marks: 88, grade: 'A', color: 'teal' },
-            { subject: 'Physics', marks: 84, grade: 'A', color: 'cyan' },
-            { subject: 'Chemistry', marks: 79, grade: 'B', color: 'amber' },
-            { subject: 'Computer Science', marks: 95, grade: 'A+', color: 'violet' },
-          ].map(r => (
-            <div key={r.subject} className="flex items-center gap-3">
-              <div className={`h-9 w-9 rounded-lg bg-${r.color}-500/15 grid place-items-center shrink-0`}><BookOpen className={`h-4 w-4 text-${r.color}-600`} /></div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject}</span><span className="font-bold text-sm">{r.marks}/100</span></div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden"><div className={`h-full bg-${r.color}-500`} style={{ width: `${r.marks}%` }} /></div>
-              </div>
-              <Badge variant="outline" className={`font-bold text-${r.color}-600 bg-${r.color}-500/10 border-${r.color}-500/20`}>{r.grade}</Badge>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
+  const pay = async () => {
+    setPaying(true);
+    try {
+      await api.payFee({ studentId: ward?.id, instituteId: user.instituteId, branchId: user.branchId || ward?.branchId, amount, type: 'Tuition', method: 'Online' });
+      toast({ title: 'Payment successful!', description: `${fmtMoney(amount)} paid` });
+    } catch (e: any) { toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }); }
+    finally { setPaying(false); }
+  };
 
-function WardFees() {
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Pay Fees" subtitle="View balance & pay online" actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"><CreditCard className="h-4 w-4 mr-1.5" /> Pay Now</Button>} />
+      <ModuleHeader title="Pay Fees" subtitle={ward ? `For ${ward.name}` : 'Fee management'} />
       <Card className="p-5 bg-gradient-to-br from-amber-600 to-yellow-700 text-white">
         <div className="flex items-center justify-between">
-          <div><div className="text-xs text-amber-50/80">Outstanding Balance</div><div className="text-3xl font-extrabold font-display mt-1">$0.00</div><div className="text-xs text-amber-50/80 mt-1">All dues cleared ✓</div></div>
-          <CheckCircle2 className="h-12 w-12 text-white" />
+          <div><div className="text-xs text-amber-50/80">Total Paid</div><div className="text-3xl font-extrabold font-display mt-1">{fmtMoney(totalPaid)}</div><div className="text-xs text-amber-50/80 mt-1">{fees.length} transactions</div></div>
+          <CreditCard className="h-12 w-12 text-white" />
         </div>
       </Card>
       <Card className="p-5">
-        <h3 className="font-bold text-base mb-4">Payment History</h3>
-        {[['INV-2024-09','2024-09-05',1200],['INV-2024-08','2024-08-05',1200],['INV-2024-07','2024-07-05',1200]].map(([inv,date,amt]:any) => (
-          <div key={inv} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 mb-2">
-            <div><div className="font-mono text-sm">{inv}</div><div className="text-[11px] text-muted-foreground">{date}</div></div>
-            <div className="text-right"><div className="font-bold text-sm">{fmtMoney(amt)}</div><Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/20">Paid</Badge></div>
-          </div>
-        ))}
+        <h3 className="font-bold text-base mb-3">Make a Payment</h3>
+        <div className="flex gap-2">
+          <Input type="number" value={amount} onChange={e => setAmount(parseInt(e.target.value) || 0)} className="flex-1" />
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={paying} onClick={pay}>{paying ? 'Processing…' : 'Pay Now'}</Button>
+        </div>
       </Card>
+      {fees.length === 0 ? (
+        <EmptyState icon={CreditCard} title="No transactions yet" desc="Fee payments will appear here once recorded." />
+      ) : (
+        <Card className="p-4">
+          {fees.map((f:any) => (
+            <div key={f.id} className="flex items-center justify-between p-3 border-b border-border/40 last:border-0">
+              <div><div className="font-mono text-sm">{f.id}</div><div className="text-[11px] text-muted-foreground">{f.date} · {f.type}</div></div>
+              <div className="text-right"><div className="font-bold text-sm">{fmtMoney(f.amount)}</div><Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/20">{f.status}</Badge></div>
+            </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }
 
-function WardDiary() {
+function WardDiary({ diary }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Ward's Diary" subtitle="Homework & assignments from teachers" />
-      <div className="space-y-3">
-        {[
-          { subject: 'Mathematics', title: 'Chapter 5 — Quadratic Equations', due: 'Tomorrow', urgent: true },
-          { subject: 'Physics', title: 'Lab Report — Pendulum', due: '3 days', urgent: false },
-          { subject: 'English', title: 'Essay — Climate Change', due: '5 days', urgent: false },
-        ].map((d, i) => (
-          <Card key={i} className="p-4">
-            <div className="flex items-start justify-between mb-2">
-              <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject}</div></div>
-              <Badge variant="outline" className={d.urgent ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{d.due}</Badge>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {diary.length === 0 ? (
+        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Your ward's teachers haven't posted any homework yet." />
+      ) : (
+        <div className="space-y-3">
+          {diary.map((d:any) => (
+            <Card key={d.id} className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.date}</div></div>
+                <Badge variant="outline" className={d.due ? 'text-amber-600 bg-amber-500/10 border-amber-500/20' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+              </div>
+              {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function ParentComplaints() {
+function ParentComplaints({ user, complaints, onSaved }: any) {
+  const [form, setForm] = useState({ subject: '', type: 'General', priority: 'Medium' });
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  const submit = async () => {
+    if (!form.subject) { toast({ title: 'Subject required', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      await api.createComplaint({ parentId: user.id, studentId: user.wardId, instituteId: user.instituteId, branchId: user.branchId, ...form });
+      toast({ title: 'Complaint submitted!', description: 'The school will respond shortly.' });
+      setForm({ subject: '', type: 'General', priority: 'Medium' });
+      setShowForm(false);
+      onSaved();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Complaints" subtitle="Raise concerns & track resolution" actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"><MessageCircleWarning className="h-4 w-4 mr-1.5" /> New Complaint</Button>} />
-      <div className="space-y-3">
-        {[
-          { subject: 'Late bus arrival', status: 'In Progress', date: '2 days ago', reply: 'Forwarded to transport dept. Bus driver notified.' },
-          { subject: 'Request for extra math classes', status: 'Resolved', date: '1 week ago', reply: 'Extra classes scheduled every Saturday 10-11 AM.' },
-        ].map((c, i) => (
-          <Card key={i} className="p-4">
-            <div className="flex items-start justify-between mb-2">
-              <div className="font-medium text-sm">{c.subject}</div>
-              <Badge variant="outline" className={c.status === 'Resolved' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{c.status}</Badge>
+      <ModuleHeader title="Complaints" subtitle="Raise concerns & track resolution"
+        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(v => !v)}><MessageCircleWarning className="h-4 w-4 mr-1.5" /> New Complaint</Button>} />
+      {showForm && (
+        <Card className="p-5">
+          <div className="space-y-3">
+            <div><Label className="text-xs">Subject *</Label><Input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="Describe your concern" className="mt-1" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Type</Label>
+                <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
+                  <option>General</option><option>Fee Dispute</option><option>Transport Issue</option><option>Academic Concern</option><option>Facilities</option>
+                </select>
+              </div>
+              <div><Label className="text-xs">Priority</Label>
+                <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
+                  <option>Low</option><option>Medium</option><option>High</option>
+                </select>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-2">{c.date}</p>
-            <div className="rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">{c.reply}</div>
-          </Card>
-        ))}
-      </div>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={submit}>{saving ? 'Submitting…' : 'Submit Complaint'}</Button>
+          </div>
+        </Card>
+      )}
+      {complaints.length === 0 ? (
+        <EmptyState icon={MessageCircleWarning} title="No complaints yet" desc="Raise a concern and the school will respond. Your complaints will appear here." />
+      ) : (
+        <div className="space-y-3">
+          {complaints.map((c:any) => (
+            <Card key={c.id} className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div className="font-medium text-sm">{c.subject}</div>
+                <Badge variant="outline" className={c.status === 'Resolved' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : c.status === 'Open' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{c.status}</Badge>
+              </div>
+              <div className="text-[11px] text-muted-foreground">{c.type} · {c.priority} priority · {c.date}</div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

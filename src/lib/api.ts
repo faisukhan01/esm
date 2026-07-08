@@ -1,5 +1,4 @@
 // eSM API client — talks to the Express backend via the gateway.
-// The gateway requires the target port in the ?XTransformPort query param.
 const API_PORT = 3001;
 
 function apiUrl(path: string) {
@@ -19,46 +18,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export type Stats = {
-  totalStudents: number; totalStaff: number; attendanceToday: number;
-  feeCollected: number; feePending: number; feeOverdue: number;
-  activeInquiries: number; openComplaints: number; booksIssued: number;
-  libraryBooks: number; vehicles: number; routes: number; eventsUpcoming: number;
-  avgGPA: number; enrollmentTrend: string; revenueTrend: string;
-};
-
-export type Student = {
-  id: string; name: string; rollNo: string; class: string; section: string;
-  gender: string; guardian: string; phone: string; email: string; city: string;
-  feeStatus: string; feeAmount: number; feePaid: number; gpa: number;
-  attendance: number; enrolledOn: string; status: string; avatarColor: string;
-};
-
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: any }>(
-      'auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }
-    ),
-  demoAccounts: () => request<any[]>('auth/demo-accounts'),
-  stats: () => request<Stats>('stats'),
-  students: (q?: string) => request<{ total: number; students: Student[] }>(q ? `students?q=${encodeURIComponent(q)}` : 'students'),
-  attendanceSeries: () => request<{ date: string; present: number; absent: number; late: number; rate: number }[]>('attendance/series'),
-  feeMonthly: () => request<{ month: string; collected: number; pending: number; overdue: number }[]>('fees/monthly'),
-  feeDefaulters: () => request<Student[]>('fees/defaulters'),
-  resultsSubjects: () => request<{ subject: string; avgScore: number; highest: number; lowest: number; passRate: number; students: number }[]>('results/subjects'),
-  resultsCards: () => request<{ id: string; studentId: string; studentName: string; class: string; exam: string; totalMarks: number; obtained: number; percentage: number; grade: string; rank: number }[]>('results/cards'),
-  smsLog: () => request<any[]>('sms/log'),
-  smsSend: (text: string, recipients: number, type: string) =>
-    request('sms/send', { method: 'POST', body: JSON.stringify({ text, recipients, type }) }),
-  staff: () => request<any[]>('staff'),
-  library: () => request<any[]>('library/books'),
-  routes: () => request<any[]>('transport/routes'),
-  events: () => request<any[]>('events'),
-  finance: () => request<any[]>('finance/transactions'),
-  inquiries: () => request<any[]>('inquiries'),
-  complaints: () => request<any[]>('complaints'),
-  timetable: () => request<any[]>('academics/timetable'),
-  // multi-tenant platform APIs
+    request<{ token: string; user: any }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  // platform
   platformOverview: () => request<any>('platform/overview'),
   institutes: () => request<any[]>('institutes'),
   institute: (id: string) => request<any>(`institutes/${id}`),
@@ -82,4 +45,74 @@ export const api = {
     const qs = q.toString();
     return request<any>(qs ? `scoped/stats?${qs}` : 'scoped/stats');
   },
+  // attendance
+  getAttendance: (params?: { studentId?: string; branchId?: string; teacherId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.studentId) q.set('studentId', params.studentId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    return request<any>(q.toString() ? `attendance?${q.toString()}` : 'attendance');
+  },
+  markAttendance: (body: any) => request<any>('attendance', { method: 'POST', body: JSON.stringify(body) }),
+  // results
+  getResults: (params?: { studentId?: string; branchId?: string; teacherId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.studentId) q.set('studentId', params.studentId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    return request<any>(q.toString() ? `results?${q.toString()}` : 'results');
+  },
+  postResults: (body: any) => request<any>('results', { method: 'POST', body: JSON.stringify(body) }),
+  // fees
+  getFees: (params?: { studentId?: string; branchId?: string; instituteId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.studentId) q.set('studentId', params.studentId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    return request<any[]>(q.toString() ? `fees?${q.toString()}` : 'fees');
+  },
+  payFee: (body: any) => request<any>('fees', { method: 'POST', body: JSON.stringify(body) }),
+  // sms
+  getSms: (params?: { senderId?: string; instituteId?: string; branchId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.senderId) q.set('senderId', params.senderId);
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    return request<any[]>(q.toString() ? `sms?${q.toString()}` : 'sms');
+  },
+  sendSms: (body: any) => request<any>('sms/send', { method: 'POST', body: JSON.stringify(body) }),
+  // diary
+  getDiary: (params?: { teacherId?: string; branchId?: string; class?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.class) q.set('class', params.class);
+    return request<any[]>(q.toString() ? `diary?${q.toString()}` : 'diary');
+  },
+  postDiary: (body: any) => request<any>('diary', { method: 'POST', body: JSON.stringify(body) }),
+  // complaints
+  getComplaints: (params?: { parentId?: string; instituteId?: string; branchId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.parentId) q.set('parentId', params.parentId);
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    return request<any[]>(q.toString() ? `complaints?${q.toString()}` : 'complaints');
+  },
+  createComplaint: (body: any) => request<any>('complaints', { method: 'POST', body: JSON.stringify(body) }),
+  // events
+  getEvents: (params?: { instituteId?: string; branchId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    return request<any[]>(q.toString() ? `events?${q.toString()}` : 'events');
+  },
+  createEvent: (body: any) => request<any>('events', { method: 'POST', body: JSON.stringify(body) }),
+  // library
+  getBooks: (branchId?: string) => request<any[]>(branchId ? `library/books?branchId=${branchId}` : 'library/books'),
+  addBook: (body: any) => request<any>('library/books', { method: 'POST', body: JSON.stringify(body) }),
+  // transport
+  getRoutes: (branchId?: string) => request<any[]>(branchId ? `transport/routes?branchId=${branchId}` : 'transport/routes'),
+  addRoute: (body: any) => request<any>('transport/routes', { method: 'POST', body: JSON.stringify(body) }),
+  // reference
+  reference: () => request<{ classes: string[]; sections: string[]; subjects: string[] }>('reference'),
 };
