@@ -218,3 +218,39 @@ Stage Summary:
 - Login page now has BOTH premium 3D design AND a role selector with all 6 roles
 - Role selector dynamically changes accent colors, button text, and shows relevant info per role
 - Super Admin credentials pre-fill for instant demo access; other roles show how to get an account
+
+---
+Task ID: LOGIN-V4
+Agent: Main (Z.ai Code)
+Task: Redesign 3D background to be educational (not techy) + fix card color/contrast (user feedback: "3D animation is too worse for educational platform" + "card color is not good")
+
+Work Log:
+- LoginScene (Three.js) COMPLETELY rewritten — removed techy wireframe icosahedron:
+  - Added 7 floating 3D books (box geometry: cover + cream pages + colored spine accent) in academic colors (emerald, gold, brown, cream, amber, teal)
+  - Added a central graduation cap (mortarboard: flat square top + truncated cone base + gold button + hanging gold tassel)
+  - Replaced aggressive particle starfield with soft golden "knowledge particles" (350 warm dust-mote particles, additive blending, slow drift)
+  - Added central soft glow sphere (warm gold radial light)
+  - Warm academic lighting (amber key + emerald fill + gold point light)
+  - Gentle floating motion (books bob + slow rotate, cap slow spins + bobs, particles drift)
+  - Mouse parallax kept but gentler
+- Login card redesigned — dark glassmorphism replaced with clean WHITE card:
+  - White background with ring-1 ring-black/5 for subtle depth
+  - Dark slate text (slate-900 headings, slate-500/600 body) for strong contrast
+  - Input fields: slate-50 background, slate-200 borders, emerald focus ring
+  - Role selector pills: active = role gradient (white text), inactive = slate-50 bg with slate text
+  - Info boxes: amber-50 for demo creds, emerald-50 for role notes
+  - Top accent bar (1.5px gradient) shifts color with selected role
+  - Footer: "Secured by eSM" with shield icon
+- Kept: role selector with all 6 roles, per-role accent colors, animated transitions, demo credential pre-fill for Super Admin
+
+Verification (agent-browser + VLM):
+- VLM rated 7/10: "white card with strong contrast, highly readable, clean layout, intuitive role selection"
+- Background now shows floating books + graduation cap (educational, not techy)
+- Role switching verified: Teacher role → button "Sign in as Teacher", info note "login is created by your Branch Manager"
+- Super Admin sign-in verified: enters portal showing real data
+- Lint passes clean
+
+Stage Summary:
+- 3D background is now educational (floating books + graduation cap + warm particles) instead of techy wireframe
+- Login card is clean white with strong text contrast and emerald/amber accents
+- Role selector retained with all 6 roles and dynamic color theming
