@@ -62,16 +62,16 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-950 py-8">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-[#0a1530] to-slate-950 py-8">
       {/* 3D educational background */}
       <div className="absolute inset-0">
         <LoginScene className="w-full h-full" />
       </div>
       {/* warm gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-amber-950/10 to-emerald-950/70" />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-[#0a1530]/10 to-slate-950/70" />
 
       {/* back button */}
-      <button onClick={() => setView('landing')} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-emerald-100/70 hover:text-white transition">
+      <button onClick={() => setView('landing')} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-blue-100/70 hover:text-white transition">
         <ArrowLeft className="h-4 w-4" /> Home
       </button>
 
@@ -206,7 +206,7 @@ export function LoginPage() {
         </div>
 
         {/* below-card text */}
-        <p className="text-center text-emerald-100/50 text-xs mt-5">
+        <p className="text-center text-blue-100/50 text-xs mt-5">
           Don't have an account? Contact your administrator.
         </p>
       </motion.div>

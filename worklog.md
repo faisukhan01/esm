@@ -254,3 +254,28 @@ Stage Summary:
 - 3D background is now educational (floating books + graduation cap + warm particles) instead of techy wireframe
 - Login card is clean white with strong text contrast and emerald/amber accents
 - Role selector retained with all 6 roles and dynamic color theming
+
+---
+Task ID: LOGIN-V5
+Agent: Main (Z.ai Code)
+Task: Fix green background + blocky book animation (user: "green bg and animated books are worse")
+
+Work Log:
+- Background: changed from emerald-950 gradient to deep midnight navy (slate-950 → #0a1530 → slate-950). Academic, prestigious, Ivy League feel. Updated overlay and text colors (blue-100 instead of emerald-100).
+- LoginScene (Three.js) COMPLETELY rewritten — removed 7 blocky box books:
+  - Replaced with ONE elegant open book (central piece): curved pages using PlaneGeometry with vertex displacement (not flat boxes), cream parchment material, subtle gold text-line accents, rounded spine cylinder. Positioned left of center.
+  - Refined graduation cap (right of center): flat mortarboard + truncated cone base + gold button + curved tube tassel (CatmullRom curve, not blocky) + gold knot. Better proportions and materials.
+  - Replaced 350 aggressive particles with 6 elegant floating light orbs (spheres with soft glow halos, slow vertical drift, subtle pulse). Colors: gold, soft blue, cream, mint.
+  - Added 150 very fine dust particles (subtle, additive blending, low opacity).
+  - Slower, more graceful animation (book gentle float + subtle rotation, cap counter-float, orbs drift).
+  - Refined lighting: cool blue ambient + warm gold key + blue rim + gold point light for depth.
+
+Verification (agent-browser + VLM):
+- VLM rated 8/10: "deep navy background (not green), sophisticated and professional. 3D elements (book, cap) elegant and premium with soft shadows, not blocky. Orange accents pop against dark bg."
+- Sign-in as Super Admin verified working
+- Lint passes clean
+
+Stage Summary:
+- Background is now deep midnight navy (not green)
+- 3D books replaced with one elegant curved open book + refined graduation cap + floating light orbs
+- Overall rated 8/10 — premium, academic, elegant
