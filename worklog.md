@@ -279,3 +279,34 @@ Stage Summary:
 - Background is now deep midnight navy (not green)
 - 3D books replaced with one elegant curved open book + refined graduation cap + floating light orbs
 - Overall rated 8/10 — premium, academic, elegant
+
+---
+Task ID: 3D-REBUILD
+Agent: Main (Z.ai Code)
+Task: Completely rebuild both 3D scenes — remove abstract faceted icosahedron (hero) and clunky book/cap (login). Make clean, meaningful, premium.
+
+Work Log:
+- HeroScene (landing): REMOVED the faceted low-poly icosahedron with wireframe + 9 random orbiting polyhedra (octahedrons, tetrahedrons, torus, cones) which looked abstract and meaningless.
+  - REPLACED with a single elegant graduation cap (mortarboard): smooth flat board + smooth truncated cone base + gold button + curved tube tassel (CatmullRom spline, not blocky) + gold knot + 8 fringe strands.
+  - Added soft golden glow aura (2 nested backside spheres) behind the cap.
+  - 220 golden/mint knowledge particles drifting gently upward (additive blending, wrap-around).
+  - 3 floating accent orbs with halos (gold, blue, cream).
+  - Slow elegant rotation + gentle float + mouse parallax.
+  - Materials: smooth MeshStandardMaterial with proper roughness/metalness, no flatShading.
+- LoginScene: REMOVED the clunky open book + graduation cap objects (user found them "worse").
+  - REPLACED with a calm, flowing field of 280 golden/blue particles drifting upward with gentle horizontal sway.
+  - 4 soft glowing orbs (gold, blue, gold, mint) with double halos, floating gently.
+  - Central soft radial glow sphere (navy, low opacity) for depth.
+  - No geometry/objects at all — just elegant light and motion.
+  - Minimal, atmospheric, premium.
+
+Verification (agent-browser + VLM):
+- Landing hero: VLM confirms "graduation cap clearly recognizable as education-related, elegant and premium, avoids cheapness/clutter"
+- Login page: VLM rated 9/10 — "clean and minimal, elegant particles and soft glowing orbs, white card highly readable, atmospheric depth enhances modern aesthetic"
+- Sign-in as Super Admin verified working
+- Lint passes clean
+
+Stage Summary:
+- Landing hero: single elegant graduation cap (recognizable education symbol) + golden particles + glow aura — no abstract geometry
+- Login: pure particle/light field with floating orbs — no clunky objects
+- Both scenes now clean, meaningful, and premium
