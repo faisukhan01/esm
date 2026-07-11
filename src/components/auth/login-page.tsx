@@ -5,22 +5,85 @@ import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import {
-  User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield, AtSign,
+  User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield,
   Crown, Building2, Users, BookOpen, Heart, Sparkles, GraduationCap, ArrowLeft,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+// ==================== Waving Person Illustration (from uploaded design) ====================
+function WavingPerson() {
+  return (
+    <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full max-w-[280px] mx-auto">
+      {/* Legs */}
+      <rect x="175" y="210" width="14" height="70" rx="6" fill="#064e3b" />
+      <rect x="210" y="210" width="14" height="70" rx="6" fill="#064e3b" />
+      {/* Shoes */}
+      <ellipse cx="182" cy="282" rx="12" ry="6" fill="#064e3b" />
+      <ellipse cx="217" cy="282" rx="12" ry="6" fill="#064e3b" />
+      {/* Body / Shirt */}
+      <path d="M168 100 C165 120 162 150 164 210 L235 210 C237 150 234 120 231 100 Z" fill="#10b981" />
+      {/* Left arm */}
+      <path d="M168 110 C145 100 130 80 135 55 L140 50" fill="#10b981" stroke="#0d9668" strokeWidth="1" />
+      <ellipse cx="138" cy="48" rx="7" ry="6" fill="#fde68a" transform="rotate(-20, 138, 48)" />
+      {/* Right arm waving */}
+      <path d="M231 110 C255 95 265 70 258 48" fill="#10b981" stroke="#0d9668" strokeWidth="1">
+        <animateTransform attributeName="transform" type="rotate" values="0 231 110;8 231 110;0 231 110;-8 231 110;0 231 110" dur="1.5s" repeatCount="indefinite" />
+      </path>
+      <ellipse cx="260" cy="46" rx="7" ry="6" fill="#fde68a" transform="rotate(15, 260, 46)">
+        <animateTransform attributeName="transform" type="rotate" values="15 260 46;22 260 46;15 260 46;8 260 46;15 260 46" dur="1.5s" repeatCount="indefinite" />
+      </ellipse>
+      {/* Neck */}
+      <rect x="192" y="72" width="16" height="22" rx="7" fill="#fde68a" />
+      {/* Head */}
+      <ellipse cx="200" cy="50" rx="26" ry="30" fill="#fde68a" />
+      {/* Hair */}
+      <path d="M174 42 C174 22 187 15 200 15 C213 15 226 22 226 42 C226 37 223 25 200 25 C177 25 174 37 174 42 Z" fill="#92400e" />
+      <path d="M172 42 C170 38 173 32 178 28" stroke="#92400e" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <path d="M228 42 C230 38 227 32 222 28" stroke="#92400e" strokeWidth="5" strokeLinecap="round" fill="none" />
+      {/* Eyes - happy squint */}
+      <path d="M186 48 Q190 44 194 48" stroke="#064e3b" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M206 48 Q210 44 214 48" stroke="#064e3b" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {/* Big smile */}
+      <path d="M188 58 Q200 70 212 58" stroke="#c0785c" strokeWidth="2" fill="#e17055" opacity="0.5" strokeLinecap="round" />
+      {/* Blush */}
+      <ellipse cx="183" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
+      <ellipse cx="217" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
+      {/* Sparkles */}
+      <g>
+        <path d="M130 30 L133 20 L136 30 L146 33 L136 36 L133 46 L130 36 L120 33 Z" fill="#fcd34d" opacity="0.6">
+          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" />
+        </path>
+        <path d="M260 80 L262 74 L264 80 L270 82 L264 84 L262 90 L260 84 L254 82 Z" fill="#d1fae5" opacity="0.5">
+          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" />
+        </path>
+        <path d="M155 100 L157 95 L159 100 L164 102 L159 104 L157 109 L155 104 L150 102 Z" fill="#fcd34d" opacity="0.4">
+          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.8s" repeatCount="indefinite" />
+        </path>
+      </g>
+      {/* Floating hearts */}
+      <g opacity="0.5">
+        <path d="M110 60 C110 55 115 50 120 55 C125 50 130 55 130 60 C130 68 120 75 120 75 C120 75 110 68 110 60 Z" fill="#fd79a8">
+          <animateTransform attributeName="transform" type="translate" values="0,0;-5,-10;0,0" dur="3s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite" />
+        </path>
+        <path d="M270 35 C270 31 274 27 278 31 C282 27 286 31 286 35 C286 41 278 47 278 47 C278 47 270 41 270 35 Z" fill="#fd79a8">
+          <animateTransform attributeName="transform" type="translate" values="0,0;5,-8;0,0" dur="3.5s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.5s" repeatCount="indefinite" />
+        </path>
+      </g>
+    </svg>
+  );
+}
+
 // ==================== Floating Input ====================
-function FloatingInput({
-  id, type, placeholder, icon, value, onChange, error, success, togglePassword, showPassword, autoComplete,
-}: any) {
+function FloatingInput({ id, type, placeholder, icon, value, onChange, success, togglePassword, showPassword, autoComplete }: any) {
   return (
     <div className="login-input-wrapper">
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10">{icon}</div>
       <input
         id={id} type={type} value={value} onChange={onChange} autoComplete={autoComplete}
         className={`login-input w-full h-12 pl-11 ${togglePassword ? 'pr-11' : 'pr-4'} rounded-xl border bg-white text-gray-800 text-sm outline-none transition-all ${
-          error ? 'border-red-400' : success ? 'border-green-400' : 'border-gray-200 focus:border-amber-500'
+          success ? 'border-green-400' : 'border-gray-200 focus:border-amber-500'
         }`}
         placeholder=" "
       />
@@ -30,7 +93,6 @@ function FloatingInput({
           {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       )}
-      {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
     </div>
   );
 }
@@ -38,18 +100,13 @@ function FloatingInput({
 // ==================== Particle Background ====================
 function ParticleBackground() {
   const particles = useMemo(() => Array.from({ length: 25 }).map((_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    delay: Math.random() * 15,
-    duration: 12 + Math.random() * 10,
-    drift: (Math.random() - 0.5) * 60,
+    id: i, left: Math.random() * 100, delay: Math.random() * 15,
+    duration: 12 + Math.random() * 10, drift: (Math.random() - 0.5) * 60,
   })), []);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       {particles.map(p => (
-        <div key={p.id} className="particle" style={{
-          left: `${p.left}%`, '--delay': `${p.delay}s`, '--duration': `${p.duration}s`, '--drift': `${p.drift}px`,
-        } as React.CSSProperties} />
+        <div key={p.id} className="particle" style={{ left: `${p.left}%`, '--delay': `${p.delay}s`, '--duration': `${p.duration}s`, '--drift': `${p.drift}px` } as React.CSSProperties} />
       ))}
     </div>
   );
@@ -67,37 +124,38 @@ function FloatingShapes() {
   );
 }
 
-// ==================== Cover Panel (left side) ====================
+// ==================== Cover Panel (left side — warm emerald gradient, not blue) ====================
 function CoverPanel() {
   return (
     <div className="cover-gradient relative flex flex-col items-center justify-center px-6 py-8 md:p-12 min-h-[200px] md:min-h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
       <FloatingShapes />
-      <div className="glow-circle absolute w-48 h-48 rounded-full bg-white/5 -top-10 -left-10" />
-      <div className="glow-circle absolute w-36 h-36 rounded-full bg-white/5 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
+      <div className="glow-circle absolute w-48 h-48 rounded-full bg-amber-300/10 -top-10 -left-10" />
+      <div className="glow-circle absolute w-36 h-36 rounded-full bg-amber-300/10 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
 
       <div className="relative z-10 text-center">
-        {/* Logo icon */}
+        {/* Waving cartoon illustration */}
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ delay: 0.3, type: 'spring', stiffness: 200, damping: 15 }}
-          className="inline-flex h-16 w-16 rounded-2xl bg-white/15 backdrop-blur items-center justify-center mb-5 border border-white/20"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, type: 'spring', stiffness: 150, damping: 12 }}
+          className="mb-2 fade-in-slide"
+          style={{ '--delay': '0.2s' } as React.CSSProperties}
         >
-          <GraduationCap className="h-8 w-8 text-amber-300" />
+          <WavingPerson />
         </motion.div>
 
         <motion.h2
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
+          transition={{ delay: 0.5, duration: 0.6 }}
           className="text-2xl md:text-3xl font-bold text-white mb-2"
         >
-          Welcome to eSM
+          Welcome to ESM
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
+          transition={{ delay: 0.7, duration: 0.6 }}
           className="text-white/70 text-sm md:text-base max-w-[240px] mx-auto"
         >
           Electronic School Management — one platform for your entire institution.
@@ -107,8 +165,8 @@ function CoverPanel() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className="mt-8 space-y-2.5 text-left max-w-[220px] mx-auto"
+          transition={{ delay: 0.9, duration: 0.6 }}
+          className="mt-6 space-y-2.5 text-left max-w-[220px] mx-auto"
         >
           {[
             { icon: Shield, text: 'Role-based secure access' },
@@ -131,13 +189,13 @@ function CoverPanel() {
 // ==================== Role Definitions ====================
 type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student' | 'parent';
 
-const ROLES: { id: Role; label: string; icon: any; demo?: { email: string; password: string }; note: string }[] = [
-  { id: 'super-admin', label: 'Super Admin', icon: Crown, demo: { email: 'owner@esm-platform.com', password: 'esm123' }, note: 'Owns the platform. Provisions institutions.' },
-  { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin.' },
-  { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin.' },
+const ROLES: { id: Role; label: string; icon: any; note: string }[] = [
+  { id: 'super-admin', label: 'Super Admin', icon: Crown, note: 'Owns the platform. Provisions institutions and manages everything.' },
+  { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin when institute is provisioned.' },
+  { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin when branch is added.' },
   { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Login created by Branch Manager.' },
   { id: 'student', label: 'Student', icon: User, note: 'Login created by Branch Manager.' },
-  { id: 'parent', label: 'Parent', icon: Heart, note: 'Login created by Branch Manager.' },
+  { id: 'parent', label: 'Parent', icon: Heart, note: 'Login created by Branch Manager and linked to your ward.' },
 ];
 
 // ==================== Login Form with Role Selector ====================
@@ -145,8 +203,8 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const setUser = useApp(s => s.setUser);
   const setToken = useApp(s => s.setToken);
   const [role, setRole] = useState<Role>('super-admin');
-  const [email, setEmail] = useState('owner@esm-platform.com');
-  const [password, setPassword] = useState('esm123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -155,16 +213,14 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
   const pickRole = (r: Role) => {
     setRole(r);
-    const def = ROLES.find(x => x.id === r)!;
-    if (def.demo) { setEmail(def.demo.email); setPassword(def.demo.password); }
-    else { setEmail(''); setPassword(''); }
+    setEmail('');
+    setPassword('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast({ title: 'Email and password required', variant: 'destructive' }); return; }
 
-    // Ripple effect
     const btn = buttonRef.current;
     if (btn) {
       const rect = btn.getBoundingClientRect();
@@ -185,7 +241,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
       setView('portal');
     } catch (err: any) {
-      const msg = err.message.includes('401') ? 'Invalid email or password' : err.message;
+      const msg = err.message.includes('401') ? 'Invalid email or password' : err.message.includes('429') ? 'Too many failed attempts. Account locked.' : err.message;
       toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -205,12 +261,10 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
           const isActive = role === r.id;
           return (
             <button
-              key={r.id}
-              type="button"
-              onClick={() => pickRole(r.id)}
+              key={r.id} type="button" onClick={() => pickRole(r.id)}
               className={`role-pill flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
                 isActive
-                  ? 'bg-gradient-to-br from-amber-500 to-amber-600 border-transparent shadow-md text-white'
+                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 border-transparent shadow-md text-white'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
               }`}
             >
@@ -229,7 +283,6 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
             success={email && /\S+@\S+\.\S+/.test(email)} autoComplete="email"
           />
         </div>
-
         <div className="slide-up slide-up-delay-3">
           <FloatingInput
             id="login-password" type={showPassword ? 'text' : 'password'} placeholder="Password" icon={<Lock size={18} />}
@@ -244,7 +297,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
             <input type="checkbox" className="custom-checkbox w-4 h-4 rounded" />
             <span className="text-sm text-gray-500">Remember me</span>
           </label>
-          <button type="button" className="text-sm text-amber-600 hover:text-amber-700 font-medium transition-colors">
+          <button type="button" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
             Forgot password?
           </button>
         </div>
@@ -255,29 +308,16 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
             whileTap={{ scale: 0.98 }}
             className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
           >
-            {isLoading ? (
-              <div className="spinner" />
-            ) : (
-              <>Sign in as {activeRole.label} <ArrowRight size={18} /></>
-            )}
+            {isLoading ? <div className="spinner" /> : <>Sign in as {activeRole.label} <ArrowRight size={18} /></>}
           </motion.button>
         </div>
       </form>
 
-      {/* Role-specific info */}
+      {/* Role-specific info (no demo credentials shown) */}
       <div className="slide-up slide-up-delay-5 mt-4">
-        {activeRole.demo ? (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center">
-            <div className="flex items-center justify-center gap-1.5 text-amber-700 text-xs font-medium mb-1">
-              <Sparkles className="h-3 w-3" /> Demo credentials (pre-filled)
-            </div>
-            <div className="text-amber-800/70 text-[11px] font-mono">{activeRole.demo.email} · {activeRole.demo.password}</div>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
-            <p className="text-emerald-800 text-[11px]">{activeRole.note}</p>
-          </div>
-        )}
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
+          <p className="text-emerald-800 text-[11px]">{activeRole.note}</p>
+        </div>
       </div>
     </div>
   );
@@ -289,12 +329,9 @@ export function LoginPage() {
   return (
     <div className="login-bg flex items-center justify-center min-h-screen p-3 sm:p-4 md:p-6 relative">
       <ParticleBackground />
-
-      {/* Back button */}
       <button onClick={() => setView('landing')} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-white/70 hover:text-white transition">
         <ArrowLeft className="h-4 w-4" /> Home
       </button>
-
       <motion.div
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
@@ -302,12 +339,8 @@ export function LoginPage() {
         className="relative z-10 w-full max-w-[900px]"
       >
         <div className="flex flex-col md:flex-row rounded-2xl shadow-2xl shadow-black/30 overflow-hidden bg-white" style={{ minHeight: '560px' }}>
-          <div className="w-full md:w-[45%]">
-            <CoverPanel />
-          </div>
-          <div className="w-full md:w-[55%]">
-            <LoginForm setView={setView} />
-          </div>
+          <div className="w-full md:w-[45%]"><CoverPanel /></div>
+          <div className="w-full md:w-[55%]"><LoginForm setView={setView} /></div>
         </div>
       </motion.div>
     </div>

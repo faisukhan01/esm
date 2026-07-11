@@ -20,12 +20,12 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "eSM — Electronic School Management System",
+  title: "ESM — Electronic School Management System",
   description: "Pakistan's No. 1 School Management System. 22 integrated modules: admissions, attendance, fees, results, academics, HR, library, transport, finance & more. Trusted by 10,000+ institutions across 5 countries.",
-  keywords: ["school management system", "eSM", "education software", "student information system", "school ERP", "admissions", "attendance", "fee management"],
+  keywords: ["school management system", "ESM", "education software", "student information system", "school ERP", "admissions", "attendance", "fee management"],
   authors: [{ name: "Cyber Advance Solutions" }],
   openGraph: {
-    title: "eSM — Electronic School Management System",
+    title: "ESM — Electronic School Management System",
     description: "The complete school management platform. 22 modules, 1M+ students, 10K+ institutions.",
     type: "website",
   },

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import crypto from 'crypto';
 import {
   institutes, branches, platformUsers,
   attendanceRecords, resultRecords, feeTransactions, smsRecords,
@@ -22,6 +23,76 @@ const ROLE_LABELS = {
   'parent': 'Parent',
 };
 
+// ===================== SECURITY: Session & Rate Limiting =====================
+// Active sessions: token → { userId, role, issuedAt, expiresAt }
+const activeSessions = new Map();
+const SESSION_TTL = 8 * 60 * 60 * 1000; // 8 hours
+
+// Rate limiting for login attempts: email → { count, lastAttempt, lockedUntil }
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+// Clean expired sessions every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of activeSessions.entries()) {
+    if (now > session.expiresAt) activeSessions.delete(token);
+  }
+}, 10 * 60 * 1000);
+
+function generateSecureToken(user) {
+  const raw = `${user.id}:${user.role}:${Date.now()}:${crypto.randomBytes(24).toString('hex')}`;
+  return 'esm-' + Buffer.from(raw).toString('base64');
+}
+
+function createSession(user) {
+  const token = generateSecureToken(user);
+  activeSessions.set(token, {
+    userId: user.id,
+    role: user.role,
+    issuedAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL,
+  });
+  return token;
+}
+
+// Auth middleware — validates token for protected routes
+function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const token = authHeader.substring(7);
+  const session = activeSessions.get(token);
+  if (!session) {
+    return res.status(401).json({ error: 'Invalid or expired session' });
+  }
+  if (Date.now() > session.expiresAt) {
+    activeSessions.delete(token);
+    return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+  }
+  const user = platformUsers.find(u => u.id === session.userId);
+  if (!user || user.status !== 'Active') {
+    activeSessions.delete(token);
+    return res.status(401).json({ error: 'Account no longer active' });
+  }
+  req.user = user;
+  req.token = token;
+  next();
+}
+
+// Role-based access control middleware
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
+
 function buildUserProfile(u) {
   const inst = institutes.find(i => i.id === u.instituteId);
   const br = branches.find(b => b.id === u.branchId);
@@ -32,7 +103,7 @@ function buildUserProfile(u) {
     instituteId: u.instituteId || null,
     instituteName: inst?.name || null, instituteShort: inst?.short || null,
     branchId: u.branchId || null, branchName: br?.name || null,
-    campus: br ? br.name : (inst ? inst.name : 'eSM Platform'),
+    campus: br ? br.name : (inst ? inst.name : 'ESM Platform'),
     ...(u.subjects ? { subjects: u.subjects } : {}),
     ...(u.classes ? { classes: u.classes } : {}),
     ...(u.class ? { class: u.class, section: u.section, rollNo: u.rollNo, guardian: u.guardian } : {}),
@@ -40,18 +111,64 @@ function buildUserProfile(u) {
   };
 }
 
-// ===================== AUTH =====================
+// ===================== AUTH (secure login with rate limiting) =====================
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-  const u = platformUsers.find(p => p.email.toLowerCase() === String(email).toLowerCase() && p.password === password);
-  if (!u) return res.status(401).json({ error: 'Invalid email or password' });
+
+  const emailKey = String(email).toLowerCase();
+
+  // Check rate limiting
+  const attempts = loginAttempts.get(emailKey);
+  if (attempts && attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
+    const remaining = Math.ceil((attempts.lockedUntil - Date.now()) / 60000);
+    return res.status(429).json({ error: `Too many failed attempts. Account locked for ${remaining} minute(s).` });
+  }
+
+  const u = platformUsers.find(p => p.email.toLowerCase() === emailKey && p.password === password);
+  if (!u) {
+    // Track failed attempt
+    const current = loginAttempts.get(emailKey) || { count: 0, lastAttempt: 0, lockedUntil: 0 };
+    current.count += 1;
+    current.lastAttempt = Date.now();
+    if (current.count >= MAX_LOGIN_ATTEMPTS) {
+      current.lockedUntil = Date.now() + LOCKOUT_DURATION;
+      current.count = 0;
+      loginAttempts.set(emailKey, current);
+      return res.status(429).json({ error: 'Too many failed attempts. Account locked for 15 minutes.' });
+    }
+    loginAttempts.set(emailKey, current);
+    const remaining = MAX_LOGIN_ATTEMPTS - current.count;
+    return res.status(401).json({ error: `Invalid email or password. ${remaining} attempt(s) remaining.` });
+  }
+
   if (u.status !== 'Active') return res.status(403).json({ error: 'Account is ' + u.status });
-  res.json({ token: 'esm-jwt-' + Buffer.from(u.id + ':' + u.role).toString('base64'), user: buildUserProfile(u) });
+
+  // Clear failed attempts on success
+  loginAttempts.delete(emailKey);
+
+  // Create secure session
+  const token = createSession(u);
+  res.json({ token, user: buildUserProfile(u) });
+});
+
+// Logout — invalidate session
+app.post('/api/auth/logout', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    activeSessions.delete(token);
+  }
+  res.json({ success: true });
+});
+
+// Verify token (for frontend to check if session is still valid)
+app.get('/api/auth/verify', requireAuth, (req, res) => {
+  res.json({ valid: true, user: buildUserProfile(req.user) });
 });
 
 // ===================== SUPER ADMIN: PLATFORM OVERVIEW =====================
-app.get('/api/platform/overview', (req, res) => {
+app.get('/api/platform/overview', requireAuth, requireRole('super-admin'), (req, res) => {
   const totalStudents = platformUsers.filter(u => u.role === 'student').length;
   const totalStaff = platformUsers.filter(u => u.role === 'teacher' || u.role === 'branch-manager' || u.role === 'institute-admin').length;
   res.json({
@@ -67,7 +184,7 @@ app.get('/api/platform/overview', (req, res) => {
 });
 
 // ===================== INSTITUTES (Super Admin CRUD) =====================
-app.get('/api/institutes', (req, res) => res.json(institutes));
+app.get('/api/institutes', requireAuth, requireRole('super-admin', 'institute-admin'), (req, res) => res.json(institutes));
 
 app.get('/api/institutes/:id', (req, res) => {
   const inst = institutes.find(i => i.id === req.params.id);
@@ -79,7 +196,7 @@ app.get('/api/institutes/:id', (req, res) => {
   });
 });
 
-app.post('/api/institutes', (req, res) => {
+app.post('/api/institutes', requireAuth, requireRole('super-admin'), (req, res) => {
   const { name, city, country, plan, adminName, adminEmail } = req.body || {};
   if (!name || !adminEmail) return res.status(400).json({ error: 'Institute name and admin email are required' });
   if (platformUsers.find(u => u.email.toLowerCase() === adminEmail.toLowerCase())) {
@@ -106,7 +223,7 @@ app.post('/api/institutes', (req, res) => {
   res.status(201).json({ institute: newInst, adminLogin: { id: adminId, email: adminEmail, password: 'esm123', role: 'institute-admin' } });
 });
 
-app.patch('/api/institutes/:id', (req, res) => {
+app.patch('/api/institutes/:id', requireAuth, requireRole('super-admin'), (req, res) => {
   const inst = institutes.find(i => i.id === req.params.id);
   if (!inst) return res.status(404).json({ error: 'Not found' });
   Object.assign(inst, req.body || {});
@@ -114,14 +231,14 @@ app.patch('/api/institutes/:id', (req, res) => {
 });
 
 // ===================== BRANCHES (Institute Admin CRUD) =====================
-app.get('/api/branches', (req, res) => {
+app.get('/api/branches', requireAuth, requireRole('super-admin', 'institute-admin', 'branch-manager'), (req, res) => {
   const { instituteId } = req.query;
   let list = branches;
   if (instituteId) list = list.filter(b => b.instituteId === instituteId);
   res.json(list);
 });
 
-app.post('/api/branches', (req, res) => {
+app.post('/api/branches', requireAuth, requireRole('institute-admin', 'super-admin'), (req, res) => {
   const { instituteId, name, city, managerName, managerEmail } = req.body || {};
   if (!instituteId || !name || !managerEmail) return res.status(400).json({ error: 'Institute, branch name and manager email are required' });
   if (platformUsers.find(u => u.email.toLowerCase() === managerEmail.toLowerCase())) {
@@ -145,7 +262,7 @@ app.post('/api/branches', (req, res) => {
 });
 
 // ===================== PLATFORM USERS (Branch Manager adds teachers/students) =====================
-app.get('/api/platform/users', (req, res) => {
+app.get('/api/platform/users', requireAuth, (req, res) => {
   const { role, branchId, instituteId } = req.query;
   let list = platformUsers.filter(u => u.role !== 'super-admin');
   if (role) list = list.filter(u => u.role === role);
@@ -154,7 +271,7 @@ app.get('/api/platform/users', (req, res) => {
   res.json(list.map(buildUserProfile));
 });
 
-app.post('/api/platform/users', (req, res) => {
+app.post('/api/platform/users', requireAuth, requireRole('branch-manager', 'institute-admin', 'super-admin'), (req, res) => {
   const { name, email, role, instituteId, branchId, class: cls, section, subjects, classes: teacherClasses, guardian, ward, wardId } = req.body || {};
   if (!name || !email || !role) return res.status(400).json({ error: 'Name, email and role are required' });
   if (platformUsers.find(u => u.email.toLowerCase() === email.toLowerCase())) {

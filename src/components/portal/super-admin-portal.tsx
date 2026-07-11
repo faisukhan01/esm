@@ -103,7 +103,7 @@ function PlatformOverview({ overview, institutes, branches, onAddInstitute, user
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome back, {user?.name?.split(' ')[0] || 'Owner'} 👑</h1>
             <p className="text-amber-50/80 text-sm mt-1.5 max-w-lg">
-              You own the eSM platform. {overview?.institutes ? `${overview.institutes} institutions are onboarded.` : 'Provision your first institute to get started.'}
+              You own the ESM platform. {overview?.institutes ? `${overview.institutes} institutions are onboarded.` : 'Provision your first institute to get started.'}
             </p>
           </div>
           <Button className="bg-white text-amber-800 hover:bg-amber-50" size="sm" onClick={onAddInstitute}>
@@ -240,7 +240,7 @@ function InstitutesManager({ institutes, onRefresh, showAdd, setShowAdd }: any) 
                     <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono">{lastCreated.adminLogin.email}</span></div>
                     <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">esm123</span></div>
                     <div className="flex items-center justify-between"><span className="text-muted-foreground">Role</span><span className="font-medium">Institute Admin</span></div>
-                    <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">Share these credentials with the institute. They sign in at the same portal — eSM detects their role and shows the Institute Admin portal.</div>
+                    <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">Share these credentials with the institute. They sign in at the same portal — ESM detects their role and shows the Institute Admin portal.</div>
                   </div>
                   <div className="flex gap-2 mt-5">
                     <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={() => { setShowAdd(false); setLastCreated(null); }}>Done</Button>

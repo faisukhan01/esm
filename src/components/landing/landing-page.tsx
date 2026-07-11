@@ -8,7 +8,7 @@ import {
   GraduationCap, ArrowRight, Sparkles, ShieldCheck, Users, Building2,
   CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
   Smartphone, Mail, ArrowUpRight, PlayCircle, MessageCircleWarning,
-  Lock, Layers, Globe, Rocket, Heart,
+  Lock, Layers, Globe, Rocket, Heart, Crown, CreditCard, CalendarCheck, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +44,7 @@ const TECH_STACK = [
 export function LandingPage() {
   const setView = useApp(s => s.setView);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeGroup, setActiveGroup] = useState<string>('All');
+  const [activeGroup, setActiveGroup] = useState<string>(MODULE_GROUPS[0] || 'Overview');
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -53,9 +53,7 @@ export function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const filteredModules = activeGroup === 'All'
-    ? MODULES
-    : MODULES.filter(m => m.group === activeGroup);
+  const filteredModules = MODULES.filter(m => m.group === activeGroup);
 
   return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} activeGroup={activeGroup} setActiveGroup={setActiveGroup} scrolled={scrolled} filteredModules={filteredModules} />;
 }
@@ -130,9 +128,12 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
             <Button size="lg" className="bg-white text-slate-900 hover:bg-white/90 shadow-xl" onClick={() => setView('login')}>
               Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
-            <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+            <button
+              onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 transition-all duration-300"
+            >
               Explore Modules
-            </Button>
+            </button>
           </div>
 
           {/* Current slide caption */}
@@ -171,7 +172,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               </div>
             </div>
             <div className="leading-tight">
-              <div className={`font-display font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>eSM</div>
+              <div className={`font-display font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
               <div className={`text-[10px] -mt-0.5 hidden sm:block ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
             </div>
           </a>
@@ -266,13 +267,13 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               <span className="emerald-text">in one place</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Filter by category to explore what eSM can do.
+              Filter by category to explore what ESM can do.
             </p>
           </div>
 
           {/* group filter */}
           <div className="flex flex-wrap justify-center gap-2 mb-10">
-            {['All', ...MODULE_GROUPS].map(g => (
+            {MODULE_GROUPS.map(g => (
               <button
                 key={g}
                 onClick={() => setActiveGroup(g)}
@@ -359,96 +360,211 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               </div>
             </div>
 
-            {/* Phone mockup */}
+            {/* Realistic Phone App Preview */}
             <div className="relative flex justify-center">
+              {/* Floating notification card */}
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="relative w-[280px] h-[560px] rounded-[2.5rem] border-[8px] border-slate-900 dark:border-slate-800 bg-slate-900 dark:bg-slate-950 shadow-2xl overflow-hidden"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute -left-2 sm:-left-6 top-24 z-20 glass rounded-2xl border border-white/40 shadow-2xl px-4 py-3 hidden sm:block w-[200px]"
               >
-                <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 dark:bg-slate-950 flex justify-center items-end pb-1">
-                  <div className="h-1.5 w-16 rounded-full bg-slate-700" />
-                </div>
-                <div className="absolute inset-0 pt-7 bg-gradient-to-b from-emerald-600 to-emerald-900">
-                  <div className="px-4 py-3 text-white">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] opacity-80">Good morning,</div>
-                        <div className="font-bold text-sm">Parent Portal</div>
-                      </div>
-                      <Bell className="h-4 w-4" />
-                    </div>
+                <div className="flex items-start gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500 grid place-items-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-white" />
                   </div>
-                  <div className="mx-3 mt-2 rounded-2xl bg-white p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-semibold text-slate-500">ATTENDANCE</span>
-                      <span className="text-[10px] text-emerald-600 font-bold">Live</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div className="h-full w-[94%] bg-gradient-to-r from-emerald-500 to-emerald-600" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <div className="rounded-xl bg-emerald-50 p-2.5">
-                        <div className="text-[9px] text-slate-500">Fees</div>
-                        <div className="text-sm font-bold text-emerald-700">Paid</div>
-                      </div>
-                      <div className="rounded-xl bg-amber-50 p-2.5">
-                        <div className="text-[9px] text-slate-500">GPA</div>
-                        <div className="text-sm font-bold text-amber-700">3.8</div>
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 p-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-6 w-6 rounded-full bg-emerald-500 grid place-items-center"><Bell className="h-3 w-3 text-white" /></div>
-                        <div className="text-[10px] text-slate-700 font-medium">PTM scheduled Sat 10:00 AM</div>
-                      </div>
-                    </div>
-                    <div className="rounded-xl bg-violet-50 p-2.5">
-                      <div className="text-[9px] text-slate-500">RECENT RESULT</div>
-                      <div className="text-sm font-bold text-violet-700">Math Monthly · A grade</div>
-                    </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-700">Attendance marked</div>
+                    <div className="text-[10px] text-slate-500">Your child is present today</div>
                   </div>
                 </div>
               </motion.div>
+
+              {/* Phone frame */}
               <motion.div
-                animate={{ y: [0, -12, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="absolute -left-2 top-20 glass rounded-xl border border-border/60 shadow-lg px-3 py-2 hidden sm:block"
+                initial={{ opacity: 0, y: 30, rotateZ: -2 }}
+                whileInView={{ opacity: 1, y: 0, rotateZ: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+                className="relative w-[300px] h-[620px] rounded-[3rem] bg-slate-900 p-3 shadow-2xl"
               >
-                <div className="text-[10px] text-muted-foreground">Push notification</div>
-                <div className="text-xs font-bold">Aiden was marked present</div>
+                {/* Side buttons */}
+                <div className="absolute -left-1 top-32 w-1 h-12 rounded-l bg-slate-800" />
+                <div className="absolute -left-1 top-48 w-1 h-16 rounded-l bg-slate-800" />
+                <div className="absolute -right-1 top-40 w-1 h-20 rounded-r bg-slate-800" />
+
+                {/* Screen */}
+                <div className="relative w-full h-full rounded-[2.3rem] overflow-hidden bg-slate-50">
+                  {/* Notch */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-900 rounded-b-2xl z-30" />
+
+                  {/* Status bar */}
+                  <div className="flex items-center justify-between px-6 pt-2 pb-1 text-[10px] font-semibold text-slate-700 z-20 relative">
+                    <span>9:41</span>
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-0.5">
+                        <div className="w-1 h-1.5 rounded-sm bg-slate-700" />
+                        <div className="w-1 h-2 rounded-sm bg-slate-700" />
+                        <div className="w-1 h-2.5 rounded-sm bg-slate-700" />
+                      </div>
+                      <div className="w-4 h-2 rounded-sm border border-slate-700" />
+                    </div>
+                  </div>
+
+                  {/* App content — scrollable feel */}
+                  <div className="px-3 pt-1 pb-4 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center">
+                          <GraduationCap className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-slate-400">Welcome,</div>
+                          <div className="text-xs font-bold text-slate-800">Sarah Johnson</div>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <Bell className="h-5 w-5 text-slate-400" />
+                        <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 border border-white" />
+                      </div>
+                    </div>
+
+                    {/* Hero card — attendance */}
+                    <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-3 text-white shadow-lg">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] uppercase tracking-wider opacity-80">Today's Attendance</span>
+                        <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">Live</span>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-2xl font-extrabold">94%</div>
+                          <div className="text-[9px] opacity-80">Present this month</div>
+                        </div>
+                        <div className="flex gap-0.5 items-end">
+                          {[40, 55, 35, 60, 45, 70, 50].map((h, i) => (
+                            <div key={i} className="w-1 rounded-full bg-white/40" style={{ height: `${h * 0.3}px` }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick stats grid */}
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div className="h-5 w-5 rounded-md bg-amber-100 grid place-items-center"><Zap className="h-2.5 w-2.5 text-amber-600" /></div>
+                          <span className="text-[9px] text-slate-400 uppercase">GPA</span>
+                        </div>
+                        <div className="text-lg font-bold text-slate-800">3.8</div>
+                        <div className="text-[8px] text-emerald-600">▲ 0.2 this term</div>
+                      </div>
+                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div className="h-5 w-5 rounded-md bg-emerald-100 grid place-items-center"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" /></div>
+                          <span className="text-[9px] text-slate-400 uppercase">Fees</span>
+                        </div>
+                        <div className="text-lg font-bold text-slate-800">Paid</div>
+                        <div className="text-[8px] text-slate-400">Next: Jan 5</div>
+                      </div>
+                    </div>
+
+                    {/* Recent result card */}
+                    <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100 mt-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">Recent Result</span>
+                        <span className="text-[9px] text-emerald-600 font-medium">View all</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-6 w-6 rounded bg-violet-100 grid place-items-center"><BookOpen className="h-3 w-3 text-violet-600" /></div>
+                            <div>
+                              <div className="text-[10px] font-semibold text-slate-700">Mathematics</div>
+                              <div className="text-[8px] text-slate-400">Monthly Test</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-emerald-600">92/100</div>
+                            <div className="text-[8px] text-slate-400">Grade A+</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-6 w-6 rounded bg-cyan-100 grid place-items-center"><BookOpen className="h-3 w-3 text-cyan-600" /></div>
+                            <div>
+                              <div className="text-[10px] font-semibold text-slate-700">Physics</div>
+                              <div className="text-[8px] text-slate-400">Weekly Test</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-emerald-600">88/100</div>
+                            <div className="text-[8px] text-slate-400">Grade A</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notification card */}
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 mt-3 flex items-start gap-2">
+                      <div className="h-6 w-6 rounded-full bg-amber-400 grid place-items-center shrink-0"><Bell className="h-3 w-3 text-white" /></div>
+                      <div>
+                        <div className="text-[10px] font-semibold text-slate-700">PTM Reminder</div>
+                        <div className="text-[9px] text-slate-500">Saturday, 10:00 AM — Don't forget!</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom nav bar */}
+                  <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-100 px-4 py-2 flex items-center justify-around">
+                    <div className="flex flex-col items-center gap-0.5"><div className="h-1 w-4 rounded-full bg-emerald-600" /><GraduationCap className="h-4 w-4 text-emerald-600" /></div>
+                    <CalendarCheck className="h-4 w-4 text-slate-300" />
+                    <CreditCard className="h-4 w-4 text-slate-300" />
+                    <Bell className="h-4 w-4 text-slate-300" />
+                  </div>
+                </div>
               </motion.div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Tech stack */}
+      {/* How it works */}
       <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Built With</Badge>
+            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">How It Works</Badge>
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Modern tech,{' '}
-              <span className="emerald-text">built to scale</span>
+              From signup to{' '}
+              <span className="emerald-text">first day</span>{' '}
+              in minutes
             </h2>
             <p className="mt-4 text-muted-foreground">
-              A production-ready stack designed for performance, security, and growth.
+              A simple, top-down provisioning chain. Each role auto-creates the next.
             </p>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {TECH_STACK.map((t, i) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 relative">
+            {/* Connector line */}
+            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-emerald-500/20 via-amber-500/40 to-emerald-500/20" />
+            {[
+              { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-amber-500 to-orange-600' },
+              { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-emerald-500 to-emerald-700' },
+              { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-teal-500 to-cyan-600' },
+              { step: '04', icon: BookOpen, title: 'Teachers & Parents', desc: 'Take attendance, post results, pay fees — all in real time.', color: 'from-violet-500 to-purple-600' },
+            ].map((s, i) => (
               <motion.div
-                key={t.label}
+                key={s.step}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.06 }}
-                className="rounded-2xl border border-border/60 bg-card p-5 text-center hover:shadow-lg hover:-translate-y-0.5 transition"
+                transition={{ delay: i * 0.1 }}
+                className="relative rounded-2xl border border-border/60 bg-card p-6 text-center hover:shadow-xl hover:-translate-y-1 transition-all z-10"
               >
-                <div className="font-display font-bold text-base text-emerald-700 dark:text-emerald-300">{t.label}</div>
-                <div className="text-xs text-muted-foreground mt-1">{t.desc}</div>
+                <div className={`inline-flex h-12 w-12 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center shadow-md mb-4`}>
+                  <s.icon className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-xs font-bold text-amber-500 mb-1">STEP {s.step}</div>
+                <h3 className="font-bold text-base mb-2">{s.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -468,7 +584,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 Ready to modernize your campus?
               </h2>
               <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
-                Explore the full eSM portal now — a live, interactive demo. Provision an
+                Explore the full ESM portal now — a live, interactive demo. Provision an
                 institute, add branches, create teachers and students, and see how each
                 role gets their own scoped experience.
               </p>
@@ -476,9 +592,12 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 <Button size="lg" className="bg-white text-emerald-800 hover:bg-emerald-50" onClick={() => setView('login')}>
                   Launch the Portal <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
-                <Button size="lg" variant="outline" className="border-white/40 text-white hover:bg-white/10" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+                <button
+                  onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-emerald-800 transition-all duration-300"
+                >
                   See all modules
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -494,7 +613,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <div>
-                <div className="font-display font-extrabold text-lg">eSM</div>
+                <div className="font-display font-extrabold text-lg">ESM</div>
                 <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
               </div>
             </div>
@@ -523,14 +642,14 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
           <div>
             <h4 className="font-semibold text-sm mb-3">Get in touch</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> hello@esm-platform.com</li>
+              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> faisalkhan00297@gmail.com</li>
               <li className="flex items-center gap-2"><Globe className="h-4 w-4 shrink-0" /> Available worldwide</li>
             </ul>
             <Button size="sm" variant="outline" className="mt-3" onClick={() => setView('login')}>Request Demo</Button>
           </div>
         </div>
         <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} eSM — Electronic School Management. Built for educational purposes.
+          © {new Date().getFullYear()} ESM — Electronic School Management. Built for educational purposes.
         </div>
       </footer>
     </div>

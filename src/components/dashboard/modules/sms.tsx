@@ -40,7 +40,7 @@ export function SmsModule() {
 
   const templates = [
     { type: 'Absent Alert', icon: AlertCircle, text: 'Dear Parent, your child was absent today. Please contact the school office.', color: 'rose' },
-    { type: 'Fee Deposit', icon: CheckCircle2, text: 'Fee of $1,200 has been received. Thank you. — eSM School', color: 'emerald' },
+    { type: 'Fee Deposit', icon: CheckCircle2, text: 'Fee of $1,200 has been received. Thank you. — ESM School', color: 'emerald' },
     { type: 'Result Announcement', icon: Bell, text: 'Monthly test results have been published. Check the parent app.', color: 'violet' },
     { type: 'Holiday Notice', icon: MessageSquare, text: 'School will remain closed on Monday for the federal holiday.', color: 'amber' },
     { type: 'PTM Reminder', icon: PhoneCall, text: 'Parent-Teacher Meeting scheduled for Saturday 10:00 AM.', color: 'cyan' },
@@ -101,7 +101,7 @@ export function SmsModule() {
               <Textarea value={text} onChange={e => setText(e.target.value)} placeholder="Type your branded SMS…" rows={4} className="mt-1 resize-none" />
               <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
                 <span>{text.length} chars · {Math.ceil(text.length/160)} SMS</span>
-                <span>Sender: <span className="font-mono">eSM Alerts</span></span>
+                <span>Sender: <span className="font-mono">ESM Alerts</span></span>
               </div>
             </div>
             <Button onClick={send} disabled={sending} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">

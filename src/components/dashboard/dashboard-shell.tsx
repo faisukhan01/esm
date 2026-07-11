@@ -52,7 +52,7 @@ function SidebarContent({ collapsed, groupOpen, setGroupOpen, activeModule, setA
         </div>
         {!collapsed && (
           <div className="leading-tight">
-            <div className="font-display font-extrabold text-base text-white">eSM</div>
+            <div className="font-display font-extrabold text-base text-white">ESM</div>
             <div className="text-[10px] text-sidebar-foreground/60">Admin Portal</div>
           </div>
         )}
@@ -278,7 +278,7 @@ export function DashboardShell() {
         </main>
 
         <footer className="mt-auto border-t border-border/60 px-6 py-3 text-xs text-muted-foreground flex items-center justify-between bg-card/40">
-          <span>© {new Date().getFullYear()} eSM · Electronic School Management</span>
+          <span>© {new Date().getFullYear()} ESM · Electronic School Management</span>
           <span className="hidden sm:flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-amber-500" /> Powered by Cyber Advance Solutions</span>
         </footer>
       </div>

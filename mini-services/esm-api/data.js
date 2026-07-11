@@ -12,7 +12,7 @@ export const subjects = ['Mathematics','English','Physics','Chemistry','Biology'
 export const institutes = [];
 export const branches = [];
 export const platformUsers = [
-  { id: 'U-SUPER', name: 'Platform Owner', email: 'owner@esm-platform.com', password: 'esm123', role: 'super-admin', status: 'Active', title: 'Chief Executive Officer' },
+  { id: 'U-SUPER', name: 'Faisal Khan', email: 'faisu577277@gmail.com', password: 'QaReLc_61y8', role: 'super-admin', status: 'Active', title: 'Chief Executive Officer' },
 ];
 
 // Dynamic data stores — all start EMPTY, populated by real user actions

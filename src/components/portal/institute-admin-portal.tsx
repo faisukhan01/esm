@@ -196,7 +196,7 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
                 <div className="font-semibold text-emerald-700 dark:text-emerald-300">Branch Manager login</div>
                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono">{lastCreated.managerLogin.email}</span></div>
                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">esm123</span></div>
-                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">The manager signs in at the same portal — eSM routes them to the Branch Manager portal automatically.</div>
+                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">The manager signs in at the same portal — ESM routes them to the Branch Manager portal automatically.</div>
               </div>
               <div className="flex gap-2 mt-5">
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={() => { setShow(false); setLastCreated(null); }}>Done</Button>

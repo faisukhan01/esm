@@ -395,3 +395,39 @@ Stage Summary:
 - Landing hero: 3 educational background images (library, graduation, classroom) as auto-rotating slider with minimal clean text
 - Login page: premium animated design from uploaded code, with role selector (6 roles) + API connection + portal routing
 - Both rated 8/10 by VLM
+
+---
+Task ID: UI-FIXES-ALL
+Agent: Main (Z.ai Code)
+Task: Complete all user-requested UI fixes: button visibility, remove 'All' filter, redesign phone mockup, replace tech stack, fix CTA button, update email, eSM→ESM, add waving cartoon, fix login card bg, update super admin credentials, add auth security.
+
+Work Log:
+- Backend security: Added session-based auth (8hr TTL tokens with crypto random), rate limiting (5 attempts → 15min lockout), requireAuth + requireRole middleware on all protected endpoints (platform/overview, institutes CRUD, branches CRUD, platform/users CRUD). Added /api/auth/logout and /api/auth/verify endpoints. API client updated to send Bearer token from zustand store.
+- Super admin credentials: Changed from owner@esm-platform.com/esm123 to faisu577277@gmail.com/QaReLc_61y8. Verified login works.
+- Landing "Explore Modules" button: Replaced shadcn Button variant="outline" (which overrode text color to white-on-white) with a plain <button> using explicit border-2 border-white/40 text-white classes. Text now clearly visible.
+- Landing modules filter: Removed 'All' option from the filter pills. Default changed to MODULE_GROUPS[0]. filteredModules logic updated to always filter by group.
+- Landing phone mockup: Completely redesigned as a realistic app preview — proper phone frame with notch, status bar (9:41, signal bars, battery), side buttons, app header with avatar + name + notification bell, hero attendance card with gradient + mini bar chart, quick stats grid (GPA + Fees), recent results list with subject icons, PTM reminder card, bottom navigation bar with 4 icons. Floating notification card beside the phone.
+- Landing tech stack section: Replaced with "How It Works" section — 4-step provisioning chain (Super Admin → Institute Admin → Branch Manager → Teachers & Parents) with connector line, step numbers, gradient icons, and descriptions.
+- Landing CTA "See all modules" button: Same fix as Explore Modules — plain <button> with explicit white text styling.
+- Footer email: Changed from hello@esm-platform.com to faisalkhan00297@gmail.com.
+- Global eSM→ESM: All occurrences of "eSM" changed to "ESM" across layout.tsx, landing-page, login-page, role-portal, dashboard-shell, super-admin-portal, institute-admin-portal, generic module, sms module, modules.ts. Verified: 0 "eSM" remaining, 5+ "ESM" found.
+- Login page: Added WavingPerson SVG illustration (from uploaded AnimatedLoginPage design) — animated waving arm with SMIL animateTransform, sparkles, floating hearts, happy face. Placed in the cover panel above the welcome text. Changed panel background from blue to warm emerald gradient (#064e3b → #047857). Changed login-bg, btn-gradient, cover-gradient, input focus, checkbox, scrollbar all from blue/amber to emerald theme. Removed demo credentials display — all roles now show only an info note about how their account is created. Form starts empty for all roles.
+- Login button gradient: Changed from amber to emerald to match the overall theme.
+
+Verification (agent-browser + VLM):
+- "Explore Modules" button: VLM confirms "clearly visible without hovering"
+- "All" option: confirmed removed from DOM
+- Phone mockup: new realistic app preview with notch, status bar, bottom nav confirmed in DOM
+- "How It Works" section: confirmed present
+- "See all modules" button: VLM confirms "clearly visible without hovering"
+- Footer email: "faisalkhan00297@gmail.com" confirmed, old email removed
+- eSM→ESM: 0 "eSM" found, 5+ "ESM" found in DOM
+- Waving cartoon: SVG with viewBox "0 0 400 320" confirmed in DOM. VLM: "cartoon character with waving arm on left green panel"
+- Login card bg: VLM confirms "green/emerald colored (not blue)"
+- Demo credentials: VLM confirms "not visible"
+- Super admin login: faisu577277@gmail.com / QaReLc_61y8 → "Welcome back, Faisal 👑" confirmed
+- Rate limiting: 5 failed attempts → "Account locked for 15 minutes" confirmed
+- Lint passes clean
+
+Stage Summary:
+- ALL requested changes completed and verified. No remaining items.

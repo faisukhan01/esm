@@ -6,11 +6,27 @@ function apiUrl(path: string) {
   return `/api/${path.replace(/^\//, '')}${sep}XTransformPort=${API_PORT}`;
 }
 
+// Get the stored auth token (from zustand persist)
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem('esm-app');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.state?.token || null;
+    }
+  } catch {}
+  return null;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(apiUrl(path), {
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
-    ...options,
-  });
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) {
     const txt = await res.text().catch(() => res.statusText);
     throw new Error(`API ${res.status}: ${txt}`);

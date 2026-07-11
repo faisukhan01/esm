@@ -72,7 +72,7 @@ export function GenericModule({ id, name, icon }: { id: string; name: string; ic
     <div className="space-y-6">
       <ModuleHeader
         title={name}
-        subtitle={mod?.tagline || 'Bespoke solutions with eSM'}
+        subtitle={mod?.tagline || 'Bespoke solutions with ESM'}
         actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">Configure</Button>}
       />
 
@@ -114,7 +114,7 @@ export function GenericModule({ id, name, icon }: { id: string; name: string; ic
             <h3 className="font-display font-bold text-lg">{name}</h3>
             <p className="text-sm text-emerald-50/80 mt-1">{mod?.tagline}</p>
             <p className="text-xs text-emerald-100/60 mt-4">
-              This module is part of the eSM suite. The full configuration interface
+              This module is part of the ESM suite. The full configuration interface
               is available in the complete deployment.
             </p>
             <Button className="mt-5 bg-white text-emerald-800 hover:bg-emerald-50 w-full" size="sm">
