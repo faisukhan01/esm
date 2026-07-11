@@ -1,0 +1,973 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useCallback, useMemo, useRef } from 'react';
+     4→import { motion } from 'framer-motion';
+     5→import {
+     6→  User,
+     7→  Lock,
+     8→  Mail,
+     9→  Eye,
+    10→  EyeOff,
+    11→  Loader2,
+    12→  ArrowRight,
+    13→  Chrome,
+    14→  Apple,
+    15→  Shield,
+    16→  AtSign,
+    17→} from 'lucide-react';
+    18→
+    19→// ==================== SVG Illustrations ====================
+    20→
+    21→function DeskPersonIllustration() {
+    22→  return (
+    23→    <svg
+    24→      viewBox="0 0 400 320"
+    25→      fill="none"
+    26→      xmlns="http://www.w3.org/2000/svg"
+    27→      className="w-full h-full max-w-[320px] mx-auto desk-illustration"
+    28→    >
+    29→      {/* Desk */}
+    30→      <rect x="60" y="200" width="280" height="12" rx="6" fill="#4a3f8a" opacity="0.8" />
+    31→      <rect x="80" y="212" width="8" height="80" rx="3" fill="#3d3478" />
+    32→      <rect x="312" y="212" width="8" height="80" rx="3" fill="#3d3478" />
+    33→      <rect x="70" y="285" width="60" height="8" rx="3" fill="#3d3478" />
+    34→      <rect x="270" y="285" width="60" height="8" rx="3" fill="#3d3478" />
+    35→
+    36→      {/* Laptop Base */}
+    37→      <rect x="110" y="182" width="160" height="18" rx="4" fill="#c8d6e5" />
+    38→      <rect x="108" y="196" width="164" height="6" rx="2" fill="#a4b0be" />
+    39→
+    40→      {/* Laptop Screen */}
+    41→      <rect x="125" y="100" width="130" height="82" rx="6" fill="#2d3436" />
+    42→      <rect x="130" y="105" width="120" height="72" rx="4" fill="#6c5ce7" />
+    43→      {/* Screen Content */}
+    44→      <rect x="140" y="115" width="60" height="4" rx="2" fill="#a29bfe" opacity="0.8" />
+    45→      <rect x="140" y="125" width="100" height="3" rx="1.5" fill="#dfe6e9" opacity="0.5" />
+    46→      <rect x="140" y="133" width="85" height="3" rx="1.5" fill="#dfe6e9" opacity="0.4" />
+    47→      <rect x="140" y="141" width="95" height="3" rx="1.5" fill="#dfe6e9" opacity="0.3" />
+    48→      <rect x="140" y="153" width="40" height="14" rx="7" fill="#fff" opacity="0.3" />
+    49→      <rect x="190" y="153" width="40" height="14" rx="7" fill="#a29bfe" opacity="0.5" />
+    50→      {/* Code lines on screen */}
+    51→      <rect x="140" y="113" width="100" height="2" rx="1" fill="#a29bfe" opacity="0.3" />
+    52→      <rect x="140" y="119" width="80" height="2" rx="1" fill="#fd79a8" opacity="0.3" />
+    53→      <rect x="140" y="149" width="90" height="2" rx="1" fill="#00cec9" opacity="0.3" />
+    54→
+    55→      {/* Person - Body */}
+    56→      {/* Torso */}
+    57→      <path
+    58→        d="M175 120 C175 120 165 150 165 170 L165 195 L230 195 L230 170 C230 150 220 120 220 120 Z"
+    59→        fill="#667eea"
+    60→      />
+    61→      {/* Shirt collar */}
+    62→      <path d="M185 110 L197 135 L209 110" stroke="#fff" strokeWidth="2" fill="none" opacity="0.6" />
+    63→
+    64→      {/* Neck */}
+    65→      <rect x="190" y="85" width="20" height="25" rx="8" fill="#f0c8a0" />
+    66→
+    67→      {/* Head */}
+    68→      <ellipse cx="200" cy="65" rx="28" ry="32" fill="#f0c8a0" />
+    69→
+    70→      {/* Hair */}
+    71→      <path
+    72→        d="M172 55 C172 35 185 28 200 28 C215 28 228 35 228 55 C228 50 225 38 200 38 C175 38 172 50 172 55 Z"
+    73→        fill="#2d3436"
+    74→      />
+    75→      <path
+    76→        d="M170 55 C170 55 168 45 175 40"
+    77→        stroke="#2d3436"
+    78→        strokeWidth="4"
+    79→        strokeLinecap="round"
+    80→        fill="none"
+    81→      />
+    82→      <path
+    83→        d="M230 55 C230 55 232 45 225 40"
+    84→        stroke="#2d3436"
+    85→        strokeWidth="4"
+    86→        strokeLinecap="round"
+    87→        fill="none"
+    88→      />
+    89→
+    90→      {/* Eyes */}
+    91→      <ellipse cx="190" cy="62" rx="3.5" ry="4" fill="#2d3436" />
+    92→      <ellipse cx="210" cy="62" rx="3.5" ry="4" fill="#2d3436" />
+    93→      <circle cx="191" cy="61" r="1.2" fill="#fff" />
+    94→      <circle cx="211" cy="61" r="1.2" fill="#fff" />
+    95→
+    96→      {/* Eyebrows */}
+    97→      <path d="M185 55 Q190 52 195 55" stroke="#2d3436" strokeWidth="1.5" fill="none" />
+    98→      <path d="M205 55 Q210 52 215 55" stroke="#2d3436" strokeWidth="1.5" fill="none" />
+    99→
+   100→      {/* Nose */}
+   101→      <path d="M198 68 L200 74 L202 68" stroke="#d4a574" strokeWidth="1.2" fill="none" />
+   102→
+   103→      {/* Smile */}
+   104→      <path d="M192 80 Q200 87 208 80" stroke="#c0785c" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+   105→
+   106→      {/* Ears */}
+   107→      <ellipse cx="172" cy="65" rx="5" ry="7" fill="#f0c8a0" />
+   108→      <ellipse cx="228" cy="65" rx="5" ry="7" fill="#f0c8a0" />
+   109→
+   110→      {/* Arms */}
+   111→      {/* Left arm reaching to keyboard */}
+   112→      <path
+   113→        d="M170 130 C155 140 145 160 150 180 L155 190 L168 185 L165 175 C162 165 165 150 172 142"
+   114→        fill="#667eea"
+   115→        stroke="#5a6fd6"
+   116→        strokeWidth="1"
+   117→      />
+   118→      {/* Left hand */}
+   119→      <ellipse cx="155" cy="188" rx="8" ry="5" fill="#f0c8a0" transform="rotate(-10, 155, 188)" />
+   120→
+   121→      {/* Right arm reaching to keyboard */}
+   122→      <path
+   123→        d="M225 130 C240 140 250 160 245 180 L240 190 L227 185 L230 175 C233 165 230 150 223 142"
+   124→        fill="#667eea"
+   125→        stroke="#5a6fd6"
+   126→        strokeWidth="1"
+   127→      />
+   128→      {/* Right hand */}
+   129→      <ellipse cx="242" cy="188" rx="8" ry="5" fill="#f0c8a0" transform="rotate(10, 242, 188)" />
+   130→
+   131→      {/* Chair */}
+   132→      <rect x="155" y="210" width="90" height="8" rx="4" fill="#4a3f8a" />
+   133→      <rect x="170" y="218" width="6" height="50" rx="3" fill="#3d3478" />
+   134→      <rect x="224" y="218" width="6" height="50" rx="3" fill="#3d3478" />
+   135→      {/* Chair back */}
+   136→      <rect x="170" y="140" width="60" height="70" rx="8" fill="#4a3f8a" opacity="0.7" />
+   137→      <rect x="180" y="148" width="40" height="54" rx="6" fill="#5a4f9a" opacity="0.5" />
+   138→
+   139→      {/* Coffee mug on desk */}
+   140→      <rect x="290" y="182" width="20" height="18" rx="3" fill="#fff" opacity="0.8" />
+   141→      <path d="M310 188 C316 188 316 198 310 198" stroke="#fff" strokeWidth="2" fill="none" opacity="0.6" />
+   142→      {/* Steam */}
+   143→      <path d="M296 178 C296 172 300 172 300 166" stroke="#fff" strokeWidth="1.5" fill="none" opacity="0.3">
+   144→        <animate attributeName="d" values="M296 178 C296 172 300 172 300 166;M296 176 C298 170 294 170 296 164;M296 178 C296 172 300 172 300 166" dur="3s" repeatCount="indefinite" />
+   145→      </path>
+   146→      <path d="M304 178 C304 173 308 173 308 168" stroke="#fff" strokeWidth="1.5" fill="none" opacity="0.2">
+   147→        <animate attributeName="d" values="M304 178 C304 173 308 173 308 168;M304 176 C306 171 302 171 304 166;M304 178 C304 173 308 173 308 168" dur="3.5s" repeatCount="indefinite" />
+   148→      </path>
+   149→
+   150→      {/* Small plant on desk */}
+   151→      <rect x="72" y="185" width="16" height="15" rx="3" fill="#a29bfe" opacity="0.7" />
+   152→      <circle cx="80" cy="180" r="10" fill="#00b894" opacity="0.7" />
+   153→      <circle cx="74" cy="175" r="7" fill="#00cec9" opacity="0.6" />
+   154→      <circle cx="86" cy="177" r="6" fill="#55efc4" opacity="0.6" />
+   155→    </svg>
+   156→  );
+   157→}
+   158→
+   159→function WelcomePersonIllustration() {
+   160→  return (
+   161→    <svg
+   162→      viewBox="0 0 400 320"
+   163→      fill="none"
+   164→      xmlns="http://www.w3.org/2000/svg"
+   165→      className="w-full h-full max-w-[300px] mx-auto desk-illustration"
+   166→    >
+   167→      {/* Standing person */}
+   168→      {/* Legs */}
+   169→      <rect x="175" y="210" width="14" height="70" rx="6" fill="#2d3436" />
+   170→      <rect x="210" y="210" width="14" height="70" rx="6" fill="#2d3436" />
+   171→
+   172→      {/* Shoes */}
+   173→      <ellipse cx="182" cy="282" rx="12" ry="6" fill="#2d3436" />
+   174→      <ellipse cx="217" cy="282" rx="12" ry="6" fill="#2d3436" />
+   175→
+   176→      {/* Body / Shirt */}
+   177→      <path
+   178→        d="M168 100 C165 120 162 150 164 210 L235 210 C237 150 234 120 231 100 Z"
+   179→        fill="#764ba2"
+   180→      />
+   181→
+   182→      {/* Arms up waving */}
+   183→      {/* Left arm */}
+   184→      <path
+   185→        d="M168 110 C145 100 130 80 135 55 L140 50"
+   186→        fill="#764ba2"
+   187→        stroke="#6a4192"
+   188→        strokeWidth="1"
+   189→      />
+   190→      <ellipse cx="138" cy="48" rx="7" ry="6" fill="#f0c8a0" transform="rotate(-20, 138, 48)" />
+   191→
+   192→      {/* Right arm waving */}
+   193→      <path
+   194→        d="M231 110 C255 95 265 70 258 48"
+   195→        fill="#764ba2"
+   196→        stroke="#6a4192"
+   197→        strokeWidth="1"
+   198→      >
+   199→        <animateTransform
+   200→          attributeName="transform"
+   201→          type="rotate"
+   202→          values="0 231 110;5 231 110;0 231 110;-5 231 110;0 231 110"
+   203→          dur="1.5s"
+   204→          repeatCount="indefinite"
+   205→        />
+   206→      </path>
+   207→      <ellipse cx="260" cy="46" rx="7" ry="6" fill="#f0c8a0" transform="rotate(15, 260, 46)">
+   208→        <animateTransform
+   209→          attributeName="transform"
+   210→          type="rotate"
+   211→          values="15 260 46;20 260 46;15 260 46;10 260 46;15 260 46"
+   212→          dur="1.5s"
+   213→          repeatCount="indefinite"
+   214→        />
+   215→      </ellipse>
+   216→
+   217→      {/* Neck */}
+   218→      <rect x="192" y="72" width="16" height="22" rx="7" fill="#f0c8a0" />
+   219→
+   220→      {/* Head */}
+   221→      <ellipse cx="200" cy="50" rx="26" ry="30" fill="#f0c8a0" />
+   222→
+   223→      {/* Hair */}
+   224→      <path
+   225→        d="M174 42 C174 22 187 15 200 15 C213 15 226 22 226 42 C226 37 223 25 200 25 C177 25 174 37 174 42 Z"
+   226→        fill="#6c5ce7"
+   227→      />
+   228→      <path
+   229→        d="M172 42 C170 38 173 32 178 28"
+   230→        stroke="#6c5ce7"
+   231→        strokeWidth="5"
+   232→        strokeLinecap="round"
+   233→        fill="none"
+   234→      />
+   235→      <path
+   236→        d="M228 42 C230 38 227 32 222 28"
+   237→        stroke="#6c5ce7"
+   238→        strokeWidth="5"
+   239→        strokeLinecap="round"
+   240→        fill="none"
+   241→      />
+   242→
+   243→      {/* Eyes - happy squint */}
+   244→      <path d="M186 48 Q190 44 194 48" stroke="#2d3436" strokeWidth="2" fill="none" strokeLinecap="round" />
+   245→      <path d="M206 48 Q210 44 214 48" stroke="#2d3436" strokeWidth="2" fill="none" strokeLinecap="round" />
+   246→
+   247→      {/* Big smile */}
+   248→      <path d="M188 58 Q200 70 212 58" stroke="#c0785c" strokeWidth="2" fill="#e17055" opacity="0.5" strokeLinecap="round" />
+   249→
+   250→      {/* Blush */}
+   251→      <ellipse cx="183" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
+   252→      <ellipse cx="217" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
+   253→
+   254→      {/* Sparkles around */}
+   255→      <g>
+   256→        <path d="M130 30 L133 20 L136 30 L146 33 L136 36 L133 46 L130 36 L120 33 Z" fill="#ffeaa7" opacity="0.6">
+   257→          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" />
+   258→        </path>
+   259→        <path d="M260 80 L262 74 L264 80 L270 82 L264 84 L262 90 L260 84 L254 82 Z" fill="#dfe6e9" opacity="0.5">
+   260→          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" />
+   261→        </path>
+   262→        <path d="M155 100 L157 95 L159 100 L164 102 L159 104 L157 109 L155 104 L150 102 Z" fill="#ffeaa7" opacity="0.4">
+   263→          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.8s" repeatCount="indefinite" />
+   264→        </path>
+   265→      </g>
+   266→
+   267→      {/* Floating hearts */}
+   268→      <g opacity="0.5">
+   269→        <path d="M110 60 C110 55 115 50 120 55 C125 50 130 55 130 60 C130 68 120 75 120 75 C120 75 110 68 110 60 Z" fill="#fd79a8">
+   270→          <animateTransform attributeName="transform" type="translate" values="0,0;-5,-10;0,0" dur="3s" repeatCount="indefinite" />
+   271→          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite" />
+   272→        </path>
+   273→        <path d="M270 35 C270 31 274 27 278 31 C282 27 286 31 286 35 C286 41 278 47 278 47 C278 47 270 41 270 35 Z" fill="#fd79a8">
+   274→          <animateTransform attributeName="transform" type="translate" values="0,0;5,-8;0,0" dur="3.5s" repeatCount="indefinite" />
+   275→          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.5s" repeatCount="indefinite" />
+   276→        </path>
+   277→      </g>
+   278→    </svg>
+   279→  );
+   280→}
+   281→
+   282→// ==================== Particle Background ====================
+   283→
+   284→function ParticleBackground() {
+   285→  const particles = useMemo(() => {
+   286→    return Array.from({ length: 40 }, (_, i) => ({
+   287→      id: i,
+   288→      left: `${Math.random() * 100}%`,
+   289→      size: Math.random() * 3 + 1,
+   290→      duration: Math.random() * 20 + 10,
+   291→      delay: Math.random() * 15,
+   292→      drift: (Math.random() - 0.5) * 60,
+   293→      opacity: Math.random() * 0.5 + 0.1,
+   294→    }));
+   295→  }, []);
+   296→
+   297→  return (
+   298→    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+   299→      {particles.map((p) => (
+   300→        <div
+   301→          key={p.id}
+   302→          className="absolute rounded-full bg-white"
+   303→          style={{
+   304→            left: p.left,
+   305→            width: p.size,
+   306→            height: p.size,
+   307→            opacity: p.opacity,
+   308→            animation: `particleFloat ${p.duration}s linear infinite`,
+   309→            animationDelay: `${p.delay}s`,
+   310→            ['--drift' as string]: `${p.drift}px`,
+   311→          }}
+   312→        />
+   313→      ))}
+   314→    </div>
+   315→  );
+   316→}
+   317→
+   318→// ==================== Floating Shapes ====================
+   319→
+   320→function FloatingShapes() {
+   321→  return (
+   322→    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+   323→      <div
+   324→        className="float-shape-1 absolute w-20 h-20 rounded-full bg-white opacity-10"
+   325→        style={{ top: '15%', right: '10%' }}
+   326→      />
+   327→      <div
+   328→        className="float-shape-2 absolute w-14 h-14 rounded-full bg-white opacity-[0.07]"
+   329→        style={{ top: '60%', right: '25%' }}
+   330→      />
+   331→      <div
+   332→        className="float-shape-3 absolute w-24 h-24 rounded-full bg-white opacity-[0.05]"
+   333→        style={{ bottom: '15%', left: '5%' }}
+   334→      />
+   335→      <div
+   336→        className="float-shape-4 absolute w-10 h-10 rounded-lg bg-white opacity-[0.08] rotate-45"
+   337→        style={{ top: '40%', left: '15%' }}
+   338→      />
+   339→    </div>
+   340→  );
+   341→}
+   342→
+   343→// ==================== Password Strength ====================
+   344→
+   345→function getPasswordStrength(password: string): {
+   346→  score: number;
+   347→  label: string;
+   348→  color: string;
+   349→  width: string;
+   350→} {
+   351→  if (!password) return { score: 0, label: '', color: '#e5e7eb', width: '0%' };
+   352→
+   353→  let score = 0;
+   354→  if (password.length >= 8) score++;
+   355→  if (password.length >= 12) score++;
+   356→  if (/[A-Z]/.test(password)) score++;
+   357→  if (/[0-9]/.test(password)) score++;
+   358→  if (/[^A-Za-z0-9]/.test(password)) score++;
+   359→
+   360→  if (score <= 1) return { score, label: 'Weak', color: '#ef4444', width: '20%' };
+   361→  if (score <= 2) return { score, label: 'Fair', color: '#f97316', width: '40%' };
+   362→  if (score <= 3) return { score, label: 'Good', color: '#eab308', width: '60%' };
+   363→  if (score <= 4) return { score, label: 'Strong', color: '#22c55e', width: '80%' };
+   364→  return { score, label: 'Very Strong', color: '#16a34a', width: '100%' };
+   365→}
+   366→
+   367→// ==================== Floating Label Input ====================
+   368→
+   369→interface FloatingInputProps {
+   370→  id: string;
+   371→  type: string;
+   372→  placeholder: string;
+   373→  icon: React.ReactNode;
+   374→  value: string;
+   375→  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+   376→  error?: string;
+   377→  success?: boolean;
+   378→  togglePassword?: () => void;
+   379→  showPassword?: boolean;
+   380→  autoComplete?: string;
+   381→}
+   382→
+   383→function FloatingInput({
+   384→  id,
+   385→  type,
+   386→  placeholder,
+   387→  icon,
+   388→  value,
+   389→  onChange,
+   390→  error,
+   391→  success,
+   392→  togglePassword,
+   393→  showPassword,
+   394→  autoComplete,
+   395→}: FloatingInputProps) {
+   396→  const [focused, setFocused] = useState(false);
+   397→  const isActive = focused || value.length > 0;
+   398→
+   399→  return (
+   400→    <div className="login-input-wrapper relative">
+   401→      <div className="relative">
+   402→        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10">
+   403→          {icon}
+   404→        </span>
+   405→        <input
+   406→          id={id}
+   407→          type={type}
+   408→          value={value}
+   409→          onChange={onChange}
+   410→          onFocus={() => setFocused(true)}
+   411→          onBlur={() => setFocused(false)}
+   412→          placeholder=" "
+   413→          autoComplete={autoComplete}
+   414→          className={`login-input w-full h-12 pl-11 pr-11 rounded-xl border-2 border-gray-200 bg-white text-gray-800 text-sm outline-none transition-all duration-300 ${
+   415→            error
+   416→              ? 'login-input-error'
+   417→              : success
+   418→                ? 'login-input-success'
+   419→                : ''
+   420→          }`}
+   421→        />
+   422→        <label
+   423→          htmlFor={id}
+   424→          className={`floating-label ${isActive ? 'top-0 translate-y-[-50%] !left-3 !text-xs !px-1 bg-white !text-[#667eea]' : ''}`}
+   425→        >
+   426→          {placeholder}
+   427→        </label>
+   428→        {togglePassword && (
+   429→          <button
+   430→            type="button"
+   431→            onClick={togglePassword}
+   432→            className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"
+   433→            tabIndex={-1}
+   434→          >
+   435→            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+   436→          </button>
+   437→        )}
+   438→      </div>
+   439→      {error && (
+   440→        <motion.p
+   441→          initial={{ opacity: 0, y: -4 }}
+   442→          animate={{ opacity: 1, y: 0 }}
+   443→          className="text-red-500 text-xs mt-1 ml-1"
+   444→        >
+   445→          {error}
+   446→        </motion.p>
+   447→      )}
+   448→    </div>
+   449→  );
+   450→}
+   451→
+   452→// ==================== Social Login Buttons ====================
+   453→
+   454→function SocialLoginButtons() {
+   455→  return (
+   456→    <div className="flex items-center justify-center gap-4">
+   457→      <button
+   458→        type="button"
+   459→        className="social-btn w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center bg-white hover:border-gray-300"
+   460→        aria-label="Sign in with Google"
+   461→      >
+   462→        <Chrome size={20} className="text-gray-600" />
+   463→      </button>
+   464→      <button
+   465→        type="button"
+   466→        className="social-btn w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center bg-white hover:border-gray-300"
+   467→        aria-label="Sign in with Facebook"
+   468→      >
+   469→        <svg viewBox="0 0 24 24" width="20" height="20" fill="#1877F2">
+   470→          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+   471→        </svg>
+   472→      </button>
+   473→      <button
+   474→        type="button"
+   475→        className="social-btn w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center bg-white hover:border-gray-300"
+   476→        aria-label="Sign in with Apple"
+   477→      >
+   478→        <Apple size={20} className="text-gray-600" />
+   479→      </button>
+   480→    </div>
+   481→  );
+   482→}
+   483→
+   484→// ==================== Divider ====================
+   485→
+   486→function Divider() {
+   487→  return (
+   488→    <div className="flex items-center gap-3 my-4">
+   489→      <div className="flex-1 h-px bg-gray-200" />
+   490→      <span className="text-xs text-gray-400 font-medium">Or continue with</span>
+   491→      <div className="flex-1 h-px bg-gray-200" />
+   492→    </div>
+   493→  );
+   494→}
+   495→
+   496→// ==================== Cover Panel ====================
+   497→
+   498→interface CoverPanelProps {
+   499→  type: 'login' | 'signup';
+   500→}
+   501→
+   502→function CoverPanel({ type }: CoverPanelProps) {
+   503→  const isLogin = type === 'login';
+   504→
+   505→  return (
+   506→    <div className="cover-gradient relative flex flex-col items-center justify-center px-6 py-8 sm:px-8 sm:py-10 md:p-12 min-h-[180px] sm:min-h-[200px] md:min-h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
+   507→      <FloatingShapes />
+   508→
+   509→      {/* Glow circles */}
+   510→      <div className="glow-circle absolute w-48 h-48 rounded-full bg-white/5 -top-10 -left-10" />
+   511→      <div className="glow-circle absolute w-36 h-36 rounded-full bg-white/5 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
+   512→
+   513→      <div className="relative z-10 text-center">
+   514→        {/* Illustration */}
+   515→        <div className="mb-4 md:mb-6 fade-in-slide" style={{ '--delay': '0.2s' } as React.CSSProperties}>
+   516→          {isLogin ? <WelcomePersonIllustration /> : <DeskPersonIllustration />}
+   517→        </div>
+   518→
+   519→        {/* Text */}
+   520→        <motion.h2
+   521→          initial={{ opacity: 0, y: 15 }}
+   522→          animate={{ opacity: 1, y: 0 }}
+   523→          transition={{ delay: 0.4, duration: 0.6 }}
+   524→          className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1.5 md:mb-2"
+   525→        >
+   526→          {isLogin ? 'Welcome Back!' : 'Hello, Friend!'}
+   527→        </motion.h2>
+   528→        <motion.p
+   529→          initial={{ opacity: 0, y: 15 }}
+   530→          animate={{ opacity: 1, y: 0 }}
+   531→          transition={{ delay: 0.6, duration: 0.6 }}
+   532→          className="text-white/70 text-xs sm:text-sm md:text-base max-w-[220px] sm:max-w-[240px] mx-auto"
+   533→        >
+   534→          {isLogin
+   535→            ? 'Enter your credentials to access your account and continue your journey.'
+   536→            : 'Fill in your details to create your account and join our community.'}
+   537→        </motion.p>
+   538→      </div>
+   539→    </div>
+   540→  );
+   541→}
+   542→
+   543→// ==================== Login Form ====================
+   544→
+   545→interface LoginFormProps {
+   546→  onToggle: () => void;
+   547→}
+   548→
+   549→function LoginForm({ onToggle }: LoginFormProps) {
+   550→  const [email, setEmail] = useState('');
+   551→  const [password, setPassword] = useState('');
+   552→  const [showPassword, setShowPassword] = useState(false);
+   553→  const [rememberMe, setRememberMe] = useState(false);
+   554→  const [isLoading, setIsLoading] = useState(false);
+   555→  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+   556→  const buttonRef = useRef<HTMLButtonElement>(null);
+   557→
+   558→  const validate = (): boolean => {
+   559→    const newErrors: { email?: string; password?: string } = {};
+   560→    if (!email) newErrors.email = 'Email is required';
+   561→    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Please enter a valid email';
+   562→    if (!password) newErrors.password = 'Password is required';
+   563→    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+   564→    setErrors(newErrors);
+   565→    return Object.keys(newErrors).length === 0;
+   566→  };
+   567→
+   568→  const handleSubmit = (e: React.FormEvent) => {
+   569→    e.preventDefault();
+   570→    if (!validate()) return;
+   571→
+   572→    // Ripple effect
+   573→    const btn = buttonRef.current;
+   574→    if (btn) {
+   575→      const rect = btn.getBoundingClientRect();
+   576→      const ripple = document.createElement('span');
+   577→      ripple.className = 'ripple';
+   578→      ripple.style.left = `${rect.width / 2}px`;
+   579→      ripple.style.top = `${rect.height / 2}px`;
+   580→      ripple.style.width = ripple.style.height = `${Math.max(rect.width, rect.height)}px`;
+   581→      btn.appendChild(ripple);
+   582→      setTimeout(() => ripple.remove(), 600);
+   583→    }
+   584→
+   585→    setIsLoading(true);
+   586→    setTimeout(() => {
+   587→      setIsLoading(false);
+   588→    }, 2000);
+   589→  };
+   590→
+   591→  return (
+   592→    <div className="bg-white flex flex-col justify-center p-6 sm:p-8 md:p-10 rounded-b-2xl md:rounded-r-2xl md:rounded-bl-none">
+   593→      <div className="slide-up">
+   594→        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Sign In</h2>
+   595→        <p className="text-gray-400 text-xs sm:text-sm mb-5 sm:mb-6">Welcome back! Please sign in to continue</p>
+   596→      </div>
+   597→
+   598→      <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
+   599→        <div className="slide-up slide-up-delay-1">
+   600→          <FloatingInput
+   601→            id="login-email"
+   602→            type="email"
+   603→            placeholder="Email Address"
+   604→            icon={<Mail size={18} />}
+   605→            value={email}
+   606→            onChange={(e) => {
+   607→              setEmail(e.target.value);
+   608→              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+   609→            }}
+   610→            error={errors.email}
+   611→            success={email && /\S+@\S+\.\S+/.test(email)}
+   612→            autoComplete="email"
+   613→          />
+   614→        </div>
+   615→
+   616→        <div className="slide-up slide-up-delay-2">
+   617→          <FloatingInput
+   618→            id="login-password"
+   619→            type={showPassword ? 'text' : 'password'}
+   620→            placeholder="Password"
+   621→            icon={<Lock size={18} />}
+   622→            value={password}
+   623→            onChange={(e) => {
+   624→              setPassword(e.target.value);
+   625→              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+   626→            }}
+   627→            error={errors.password}
+   628→            success={password.length >= 6}
+   629→            togglePassword={() => setShowPassword(!showPassword)}
+   630→            showPassword={showPassword}
+   631→            autoComplete="current-password"
+   632→          />
+   633→        </div>
+   634→
+   635→        <div className="flex items-center justify-between slide-up slide-up-delay-3">
+   636→          <label className="flex items-center gap-2 cursor-pointer">
+   637→            <input
+   638→              type="checkbox"
+   639→              checked={rememberMe}
+   640→              onChange={(e) => setRememberMe(e.target.checked)}
+   641→              className="custom-checkbox w-4 h-4 rounded"
+   642→            />
+   643→            <span className="text-sm text-gray-500">Remember me</span>
+   644→          </label>
+   645→          <button type="button" className="text-sm text-[#667eea] hover:text-[#764ba2] font-medium transition-colors">
+   646→            Forgot password?
+   647→          </button>
+   648→        </div>
+   649→
+   650→        <div className="slide-up slide-up-delay-4">
+   651→          <motion.button
+   652→            ref={buttonRef}
+   653→            type="submit"
+   654→            disabled={isLoading}
+   655→            whileTap={{ scale: 0.98 }}
+   656→            className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+   657→          >
+   658→            {isLoading ? (
+   659→              <div className="spinner" />
+   660→            ) : (
+   661→              <>
+   662→                Sign In
+   663→                <ArrowRight size={18} />
+   664→              </>
+   665→            )}
+   666→          </motion.button>
+   667→        </div>
+   668→      </form>
+   669→
+   670→      <div className="slide-up slide-up-delay-4">
+   671→        <Divider />
+   672→        <SocialLoginButtons />
+   673→      </div>
+   674→
+   675→      <div className="mt-5 sm:mt-6 text-center slide-up slide-up-delay-5">
+   676→        <p className="text-sm text-gray-400">
+   677→          Don&apos;t have an account?{' '}
+   678→          <button
+   679→            type="button"
+   680→            onClick={onToggle}
+   681→            className="text-[#667eea] hover:text-[#764ba2] font-semibold transition-colors"
+   682→          >
+   683→            Sign Up
+   684→          </button>
+   685→        </p>
+   686→      </div>
+   687→    </div>
+   688→  );
+   689→}
+   690→
+   691→// ==================== Signup Form ====================
+   692→
+   693→interface SignupFormProps {
+   694→  onToggle: () => void;
+   695→}
+   696→
+   697→function SignupForm({ onToggle }: SignupFormProps) {
+   698→  const [fullName, setFullName] = useState('');
+   699→  const [email, setEmail] = useState('');
+   700→  const [password, setPassword] = useState('');
+   701→  const [confirmPassword, setConfirmPassword] = useState('');
+   702→  const [showPassword, setShowPassword] = useState(false);
+   703→  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+   704→  const [agreeTerms, setAgreeTerms] = useState(false);
+   705→  const [isLoading, setIsLoading] = useState(false);
+   706→  const [errors, setErrors] = useState<{
+   707→    fullName?: string;
+   708→    email?: string;
+   709→    password?: string;
+   710→    confirmPassword?: string;
+   711→    terms?: string;
+   712→  }>({});
+   713→  const buttonRef = useRef<HTMLButtonElement>(null);
+   714→
+   715→  const passwordStrength = getPasswordStrength(password);
+   716→
+   717→  const validate = (): boolean => {
+   718→    const newErrors: typeof errors = {};
+   719→    if (!fullName.trim()) newErrors.fullName = 'Full name is required';
+   720→    if (!email) newErrors.email = 'Email is required';
+   721→    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Please enter a valid email';
+   722→    if (!password) newErrors.password = 'Password is required';
+   723→    else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+   724→    if (!confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
+   725→    else if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+   726→    if (!agreeTerms) newErrors.terms = 'You must agree to the terms';
+   727→    setErrors(newErrors);
+   728→    return Object.keys(newErrors).length === 0;
+   729→  };
+   730→
+   731→  const handleSubmit = (e: React.FormEvent) => {
+   732→    e.preventDefault();
+   733→    if (!validate()) return;
+   734→
+   735→    const btn = buttonRef.current;
+   736→    if (btn) {
+   737→      const rect = btn.getBoundingClientRect();
+   738→      const ripple = document.createElement('span');
+   739→      ripple.className = 'ripple';
+   740→      ripple.style.left = `${rect.width / 2}px`;
+   741→      ripple.style.top = `${rect.height / 2}px`;
+   742→      ripple.style.width = ripple.style.height = `${Math.max(rect.width, rect.height)}px`;
+   743→      btn.appendChild(ripple);
+   744→      setTimeout(() => ripple.remove(), 600);
+   745→    }
+   746→
+   747→    setIsLoading(true);
+   748→    setTimeout(() => {
+   749→      setIsLoading(false);
+   750→    }, 2000);
+   751→  };
+   752→
+   753→  return (
+   754→    <div className="bg-white flex flex-col justify-center p-6 sm:p-8 md:p-10 rounded-b-2xl md:rounded-r-2xl md:rounded-bl-none overflow-y-auto max-h-[80vh] md:max-h-none custom-scrollbar">
+   755→      <div className="slide-up">
+   756→        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Create Account</h2>
+   757→        <p className="text-gray-400 text-xs sm:text-sm mb-4 sm:mb-5">Join us! Fill in your details to get started</p>
+   758→      </div>
+   759→
+   760→      <form onSubmit={handleSubmit} className="space-y-3.5">
+   761→        <div className="slide-up slide-up-delay-1">
+   762→          <FloatingInput
+   763→            id="signup-name"
+   764→            type="text"
+   765→            placeholder="Full Name"
+   766→            icon={<User size={18} />}
+   767→            value={fullName}
+   768→            onChange={(e) => {
+   769→              setFullName(e.target.value);
+   770→              if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+   771→            }}
+   772→            error={errors.fullName}
+   773→            success={fullName.trim().length > 0}
+   774→            autoComplete="name"
+   775→          />
+   776→        </div>
+   777→
+   778→        <div className="slide-up slide-up-delay-1">
+   779→          <FloatingInput
+   780→            id="signup-email"
+   781→            type="email"
+   782→            placeholder="Email Address"
+   783→            icon={<AtSign size={18} />}
+   784→            value={email}
+   785→            onChange={(e) => {
+   786→              setEmail(e.target.value);
+   787→              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+   788→            }}
+   789→            error={errors.email}
+   790→            success={email && /\S+@\S+\.\S+/.test(email)}
+   791→            autoComplete="email"
+   792→          />
+   793→        </div>
+   794→
+   795→        <div className="slide-up slide-up-delay-2">
+   796→          <FloatingInput
+   797→            id="signup-password"
+   798→            type={showPassword ? 'text' : 'password'}
+   799→            placeholder="Password"
+   800→            icon={<Shield size={18} />}
+   801→            value={password}
+   802→            onChange={(e) => {
+   803→              setPassword(e.target.value);
+   804→              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+   805→            }}
+   806→            error={errors.password}
+   807→            success={password.length >= 8 && passwordStrength.score >= 3}
+   808→            togglePassword={() => setShowPassword(!showPassword)}
+   809→            showPassword={showPassword}
+   810→            autoComplete="new-password"
+   811→          />
+   812→          {password && (
+   813→            <div className="mt-1.5 px-1">
+   814→              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+   815→                <div
+   816→                  className="strength-bar rounded-full"
+   817→                  style={{
+   818→                    width: passwordStrength.width,
+   819→                    backgroundColor: passwordStrength.color,
+   820→                  }}
+   821→                />
+   822→              </div>
+   823→              <p className="text-xs mt-0.5" style={{ color: passwordStrength.color }}>
+   824→                {passwordStrength.label}
+   825→              </p>
+   826→            </div>
+   827→          )}
+   828→        </div>
+   829→
+   830→        <div className="slide-up slide-up-delay-3">
+   831→          <FloatingInput
+   832→            id="signup-confirm"
+   833→            type={showConfirmPassword ? 'text' : 'password'}
+   834→            placeholder="Confirm Password"
+   835→            icon={<Lock size={18} />}
+   836→            value={confirmPassword}
+   837→            onChange={(e) => {
+   838→              setConfirmPassword(e.target.value);
+   839→              if (errors.confirmPassword)
+   840→                setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+   841→            }}
+   842→            error={errors.confirmPassword}
+   843→            success={confirmPassword.length > 0 && password === confirmPassword}
+   844→            togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+   845→            showPassword={showConfirmPassword}
+   846→            autoComplete="new-password"
+   847→          />
+   848→        </div>
+   849→
+   850→        <div className="slide-up slide-up-delay-3">
+   851→          <label className="flex items-start gap-2 cursor-pointer">
+   852→            <input
+   853→              type="checkbox"
+   854→              checked={agreeTerms}
+   855→              onChange={(e) => {
+   856→                setAgreeTerms(e.target.checked);
+   857→                if (errors.terms) setErrors((prev) => ({ ...prev, terms: undefined }));
+   858→              }}
+   859→              className="custom-checkbox w-4 h-4 rounded mt-0.5"
+   860→            />
+   861→            <span className="text-sm text-gray-500 leading-snug">
+   862→              I agree to the{' '}
+   863→              <span className="text-[#667eea] hover:text-[#764ba2] cursor-pointer font-medium">
+   864→                Terms of Service
+   865→              </span>{' '}
+   866→              and{' '}
+   867→              <span className="text-[#667eea] hover:text-[#764ba2] cursor-pointer font-medium">
+   868→                Privacy Policy
+   869→              </span>
+   870→            </span>
+   871→          </label>
+   872→          {errors.terms && (
+   873→            <motion.p
+   874→              initial={{ opacity: 0, y: -4 }}
+   875→              animate={{ opacity: 1, y: 0 }}
+   876→              className="text-red-500 text-xs mt-0.5 ml-6"
+   877→            >
+   878→              {errors.terms}
+   879→            </motion.p>
+   880→          )}
+   881→        </div>
+   882→
+   883→        <div className="slide-up slide-up-delay-4">
+   884→          <motion.button
+   885→            ref={buttonRef}
+   886→            type="submit"
+   887→            disabled={isLoading}
+   888→            whileTap={{ scale: 0.98 }}
+   889→            className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+   890→          >
+   891→            {isLoading ? (
+   892→              <div className="spinner" />
+   893→            ) : (
+   894→              <>
+   895→                Create Account
+   896→                <ArrowRight size={18} />
+   897→              </>
+   898→            )}
+   899→          </motion.button>
+   900→        </div>
+   901→      </form>
+   902→
+   903→      <div className="slide-up slide-up-delay-4">
+   904→        <Divider />
+   905→        <SocialLoginButtons />
+   906→      </div>
+   907→
+   908→      <div className="mt-4 sm:mt-5 text-center slide-up slide-up-delay-5">
+   909→        <p className="text-sm text-gray-400">
+   910→          Already have an account?{' '}
+   911→          <button
+   912→            type="button"
+   913→            onClick={onToggle}
+   914→            className="text-[#667eea] hover:text-[#764ba2] font-semibold transition-colors"
+   915→          >
+   916→            Sign In
+   917→          </button>
+   918→        </p>
+   919→      </div>
+   920→    </div>
+   921→  );
+   922→}
+   923→
+   924→// ==================== Main Animated Login Page ====================
+   925→
+   926→export default function AnimatedLoginPage() {
+   927→  const [isFlipped, setIsFlipped] = useState(false);
+   928→
+   929→  const handleToggle = useCallback(() => {
+   930→    setIsFlipped((prev) => !prev);
+   931→  }, []);
+   932→
+   933→  return (
+   934→    <div className="login-bg flex items-center justify-center min-h-screen p-3 sm:p-4 md:p-6">
+   935→      <ParticleBackground />
+   936→
+   937→      <motion.div
+   938→        initial={{ opacity: 0, y: 60 }}
+   939→        animate={{ opacity: 1, y: 0 }}
+   940→        transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+   941→        className="flip-container relative z-10 w-full"
+   942→      >
+   943→        <div
+   944→          className={`flip-card ${isFlipped ? 'flipped' : ''}`}
+   945→          style={{
+   946→            minHeight: '580px',
+   947→          }}
+   948→        >
+   949→          {/* Front Face - Login (illustration left, form right) */}
+   950→          <div className="flip-face flex flex-col md:flex-row rounded-2xl shadow-2xl shadow-black/30 overflow-hidden bg-white">
+   951→            <div className="w-full md:w-[45%]">
+   952→              <CoverPanel type="login" />
+   953→            </div>
+   954→            <div className="w-full md:w-[55%]">
+   955→              <LoginForm onToggle={handleToggle} />
+   956→            </div>
+   957→          </div>
+   958→
+   959→          {/* Back Face - Signup (form left, illustration right) */}
+   960→          <div className="flip-face flip-face-back flex flex-col md:flex-row rounded-2xl shadow-2xl shadow-black/30 overflow-hidden bg-white">
+   961→            <div className="w-full md:w-[55%] order-2 md:order-1">
+   962→              <SignupForm onToggle={handleToggle} />
+   963→            </div>
+   964→            <div className="w-full md:w-[45%] order-1 md:order-2">
+   965→              <CoverPanel type="signup" />
+   966→            </div>
+   967→          </div>
+   968→        </div>
+   969→      </motion.div>
+   970→    </div>
+   971→  );
+   972→}
+   973→

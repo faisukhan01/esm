@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HeroScene } from '@/components/three/hero-scene';
 import { MODULES, MODULE_GROUPS } from '@/lib/modules';
 import { useApp } from '@/lib/store';
 import {
@@ -58,6 +57,107 @@ export function LandingPage() {
     ? MODULES
     : MODULES.filter(m => m.group === activeGroup);
 
+  return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} activeGroup={activeGroup} setActiveGroup={setActiveGroup} scrolled={scrolled} filteredModules={filteredModules} />;
+}
+
+// ===== Hero Slider — 3 rotating educational background images =====
+const HERO_SLIDES = [
+  { img: 'https://sfile.chatglm.cn/images-ppt/157d0a5aed9f.jpg', caption: 'Modern campuses', sub: 'Libraries built for focus' },
+  { img: 'https://sfile.chatglm.cn/images-ppt/96fea72cbfed.jpg', caption: 'Graduation day', sub: 'Celebrating every milestone' },
+  { img: 'https://sfile.chatglm.cn/images-ppt/f289b20ec492.jpg', caption: 'Connected classrooms', sub: 'Technology that empowers' },
+];
+
+function HeroSlider({ setView }: { setView: (v: any) => void }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % HERO_SLIDES.length), 5500);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <section id="top" className="relative h-screen min-h-[640px] w-full overflow-hidden">
+      {/* Background images */}
+      {HERO_SLIDES.map((s, i) => (
+        <div
+          key={i}
+          className="absolute inset-0 transition-opacity duration-[1200ms] ease-in-out"
+          style={{ opacity: i === idx ? 1 : 0 }}
+        >
+          <img src={s.img} alt={s.caption} className="w-full h-full object-cover" />
+        </div>
+      ))}
+
+      {/* Dark gradient overlay for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+
+      {/* Slide dots */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2.5">
+        {HERO_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIdx(i)}
+            className={`h-2 rounded-full transition-all duration-300 ${i === idx ? 'w-8 bg-amber-400' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+            aria-label={`Slide ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Minimal centered text */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-3xl"
+        >
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur px-4 py-1.5 text-xs font-medium text-white mb-6">
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            Electronic School Management
+          </div>
+
+          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white">
+            One platform for{' '}
+            <span className="bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">your entire</span>{' '}
+            institution
+          </h1>
+
+          <p className="mt-5 text-base sm:text-lg text-white/80 max-w-xl mx-auto">
+            Admissions, attendance, fees, academics & parent communication — unified.
+          </p>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <Button size="lg" className="bg-white text-slate-900 hover:bg-white/90 shadow-xl" onClick={() => setView('login')}>
+              Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+            <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+              Explore Modules
+            </Button>
+          </div>
+
+          {/* Current slide caption */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.5 }}
+              className="mt-10 text-white/60 text-sm"
+            >
+              <span className="font-semibold text-amber-300">{HERO_SLIDES[idx].caption}</span>
+              <span className="mx-2">·</span>
+              {HERO_SLIDES[idx].sub}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActiveGroup, scrolled, filteredModules }: any) {
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Navbar */}
@@ -65,33 +165,33 @@ export function LandingPage() {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 group">
             <div className="relative">
-              <div className="absolute inset-0 rounded-xl bg-emerald-500/30 blur-md group-hover:bg-emerald-500/50 transition" />
-              <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 grid place-items-center shadow-lg">
+              <div className="absolute inset-0 rounded-xl bg-amber-400/40 blur-md group-hover:bg-amber-400/60 transition" />
+              <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 grid place-items-center shadow-lg">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
             </div>
             <div className="leading-tight">
-              <div className="font-display font-extrabold text-lg tracking-tight">eSM</div>
-              <div className="text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">Electronic School Management</div>
+              <div className={`font-display font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>eSM</div>
+              <div className={`text-[10px] -mt-0.5 hidden sm:block ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
             </div>
           </a>
 
           <div className="hidden md:flex items-center gap-1">
             {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
-              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/60 transition">
+              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className={`px-3 py-2 text-sm font-medium rounded-lg transition ${scrolled ? 'text-muted-foreground hover:text-foreground hover:bg-accent/60' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
                 {item}
               </a>
             ))}
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setView('login')}>
+            <Button variant="ghost" size="sm" className={`hidden sm:flex ${scrolled ? '' : 'text-white hover:bg-white/10 hover:text-white'}`} onClick={() => setView('login')}>
               Sign in
             </Button>
-            <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md" onClick={() => setView('login')}>
+            <Button size="sm" className="bg-white text-slate-900 hover:bg-white/90 shadow-md" onClick={() => setView('login')}>
               Launch Portal <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMenuOpen(v => !v)}>
+            <Button variant="ghost" size="icon" className={`md:hidden ${scrolled ? '' : 'text-white hover:bg-white/10'}`} onClick={() => setMenuOpen(v => !v)}>
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
@@ -116,64 +216,9 @@ export function LandingPage() {
         </AnimatePresence>
       </header>
 
-      {/* Hero */}
-      <section id="top" className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
-        {/* background layers */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50/60 via-background to-background dark:from-emerald-950/30" />
-        <div className="absolute inset-0 -z-10 bg-grid opacity-60 dark:bg-grid-dark" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl -z-10" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl -z-10" />
+      {/* Hero — full-bleed image slider with clean text overlay */}
+      <HeroSlider setView={setView} />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-center">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-center lg:text-left"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-5">
-              <Rocket className="h-3.5 w-3.5" />
-              Now in early access — be among the first
-            </div>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.05]">
-              The complete<br className="hidden sm:block" />{' '}
-              <span className="emerald-text">School Management</span>{' '}
-              platform built for{' '}
-              <span className="gold-text">modern campuses</span>
-            </h1>
-            <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
-              eSM unifies admissions, attendance, fees, academics, finance and parent
-              communication into one elegant, secure portal. Multi-tenant by design —
-              provision institutions, branches, and users with a click.
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-              <Button size="lg" className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-600/20" onClick={() => setView('login')}>
-                <PlayCircle className="h-5 w-5 mr-2" /> Explore the Live Demo
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
-                Browse Modules <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> No installation required</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Works on every device</span>
-              <span className="inline-flex items-center gap-1.5"><Lock className="h-4 w-4 text-emerald-600" /> Secure role-based access</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative h-[360px] sm:h-[460px] lg:h-[520px]"
-          >
-            <div className="absolute inset-0 rounded-3xl overflow-hidden">
-              <HeroScene className="w-full h-full" />
-            </div>
-          </motion.div>
-        </div>
-      </section>
 
       {/* Platform features (replaces fake stats) */}
       <section id="features" className="py-20 sm:py-28 relative">

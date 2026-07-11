@@ -350,3 +350,48 @@ Stage Summary:
 - ZERO fake data on landing page — completely honest about early-access status
 - Hero 3D replaced with elegant knowledge network constellation (no graduation cap)
 - Landing page is clean, aesthetic, and premium throughout
+
+---
+Task ID: LANDING-HERO-SLIDER + LOGIN-REDESIGN
+Agent: Main (Z.ai Code)
+Task: Replace ugly 3D hero with educational image slider (3 images). Rebuild login page using uploaded AnimatedLoginPage design with role selector.
+
+Work Log:
+- Searched and downloaded 3 aesthetic educational background images via image-search skill:
+  1. Modern campus library (3888x2592)
+  2. Graduation ceremony with caps
+  3. Connected classroom with technology
+- Landing hero COMPLETELY rebuilt:
+  - Full-screen image slider (3 images, auto-rotate every 5.5s, crossfade 1.2s)
+  - Dark gradient overlays (top-bottom + left-right) for text readability
+  - Minimal centered text: badge "Electronic School Management", headline "One platform for your entire institution", one-line subtitle, 2 CTA buttons
+  - Slide dots at bottom (clickable, active = amber, wider)
+  - Animated slide caption that changes with each image
+  - Navbar updated: transparent over hero with white text, becomes glass on scroll
+  - Logo changed from emerald to amber/gold gradient to match new theme
+  - Removed the 3D HeroScene (knowledge network) entirely — now using real photos
+- Login page COMPLETELY rebuilt using uploaded AnimatedLoginPage design:
+  - Ported all CSS from uploaded globals.css into our globals.css (login-bg, flip-card, floating-label, btn-gradient, particle, cover-gradient, glow-circle, custom-checkbox, slide-up animations, mobile responsive overrides)
+  - Dark gradient background (#0c0c1d → #1a1a4e → #0c0c1d) with twinkling star particles
+  - 25 floating particle elements drifting upward
+  - Two-panel layout: left = emerald cover panel with logo, welcome text, 3 feature bullets (Shield/Building2/Sparkles), floating shapes, glow circles; right = login form
+  - Floating label inputs (amber focus color to match brand)
+  - Role selector grid (3x2): Super Admin (Crown), Institute (Building2), Branch (Users), Teacher (BookOpen), Student (User), Parent (Heart)
+  - Active role = amber gradient pill; inactive = gray
+  - Super Admin pre-fills demo credentials + shows amber demo box; other roles clear form + show emerald info note
+  - Sign in button = amber gradient with ripple effect, text "Sign in as [Role]"
+  - Connected to our auth API → routes to correct portal based on role
+  - Back to home button (top-left, white)
+- Removed uploaded signInUp folder from project (was causing lint errors)
+
+Verification (agent-browser + VLM):
+- Landing hero: VLM 8/10 — "educational background image (graduation caps), text minimal and highly readable, clear hierarchy and contrast"
+- Login page: VLM 8/10 — "premium aesthetic design, dark blue starry background, role selector with all six options, visually appealing left panel with green gradient"
+- Super Admin sign-in → routes to portal correctly ("Welcome back, Platform 👑")
+- Teacher role → button changes to "Sign in as Teacher", info note "created by Branch Manager" appears
+- Lint passes clean
+
+Stage Summary:
+- Landing hero: 3 educational background images (library, graduation, classroom) as auto-rotating slider with minimal clean text
+- Login page: premium animated design from uploaded code, with role selector (6 roles) + API connection + portal routing
+- Both rated 8/10 by VLM
