@@ -56,6 +56,7 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'finance', name: 'Finance', icon: Landmark, color: 'from-yellow-600 to-amber-700' },
       { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
       { id: 'complaints', name: 'Complaints', icon: MessageCircleWarning, color: 'from-rose-500 to-red-600' },
+      { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
     ]},
     { group: 'Campus', items: [
       { id: 'events', name: 'Events', icon: Trophy, color: 'from-amber-500 to-rose-600' },
@@ -70,6 +71,8 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'branch-students', name: 'Students', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },
       { id: 'add-teacher', name: 'Add Teacher', icon: UserPlus, color: 'from-amber-500 to-yellow-600' },
       { id: 'add-student', name: 'Add Student', icon: UserPlus, color: 'from-emerald-500 to-teal-600' },
+      { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
+      { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-lime-500 to-emerald-600' },
     ]},
     { group: 'Academics', items: [
       { id: 'attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-teal-500 to-cyan-600' },
@@ -93,6 +96,7 @@ export const ROLE_MODULES: RoleModules = {
     ]},
     { group: 'Students', items: [
       { id: 'my-students', name: 'My Students', icon: Users, color: 'from-emerald-500 to-teal-700' },
+      { id: 'announcements', name: 'Announcements', icon: Bell, color: 'from-rose-500 to-pink-600' },
       { id: 'sms', name: 'Message Parents', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
     ]},
   ],
@@ -101,9 +105,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-cyan-500 to-teal-600' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-      { id: 'my-fees', name: 'My Fees', icon: CreditCard, color: 'from-amber-500 to-yellow-600' },
       { id: 'my-timetable', name: 'My Timetable', icon: Calendar, color: 'from-lime-500 to-emerald-600' },
       { id: 'my-diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-rose-500 to-amber-600' },
+      { id: 'my-announcements', name: 'Announcements', icon: Bell, color: 'from-amber-500 to-rose-600' },
     ]},
   ],
   'parent': [

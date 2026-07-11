@@ -606,3 +606,188 @@ Stage Summary:
 - Announcements module added to Super Admin — send to all or specific institutes
 - Institute cards have view-password, edit, and block/unblock buttons
 - All data persists in Turso DB
+
+---
+Task ID: BM-UPDATE
+Agent: full-stack-developer
+Task: Update Branch Manager portal
+
+Work Log:
+- Read previous worklog to understand ESM platform state (Next.js 16 frontend + Express backend on port 3001 via XTransformPort, Turso DB, session auth, all API methods already in src/lib/api.ts).
+- Confirmed backend contract for /api/classes, /api/courses (supports classId/branchId), POST /api/courses, POST /api/classes/:id/courses, POST /api/announcements, PATCH /api/platform/users/:id, PATCH /api/platform/users/:id/block, GET /api/platform/users/:id/password. The POST /api/platform/users body accepts both classId AND class NAME as `class` field.
+- role-modules.ts: Added two new modules to the 'branch-manager' sidebar Branch group:
+    { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' }
+    { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-lime-500 to-emerald-600' }
+  (MessageSquare and BookOpen were already imported at the top of the file — no import changes needed.)
+- add-user-modal.tsx:
+    * Verified teacher form has: Full name *, Roll No / ID * (Hash icon, required, with helper text), Email (optional), Assign Password * (≥4 chars), Class dropdown (Select fetched from api.getClasses()). For teacher: Course multi-select (checkbox list, fetched via api.getCourses({ classId }) when class is selected, scrollable max-h-44).
+    * Verified student form has: Full name *, Roll No / ID *, Email (optional), Assign Password *, Class dropdown (required).
+    * Made the modal scrollable: added `overflow-y-auto` to the overlay motion.div, and moved `max-h-[90vh] overflow-y-auto scroll-fancy` onto the Card itself (removed overflow from the inner motion.div to avoid double scrollbars).
+    * Submit now resolves the selected Class object from the fetched classes list, and sends BOTH `classId` (for both teacher & student) AND `class` (the class NAME like "Class 5") plus `section` in the request body. For teacher only, `courseIds` (selectedCourseIds) is also sent.
+    * Body shape sent: { name, email?, password, role, rollNo, instituteId, branchId, classId?, class?, section?, courseIds? }
+- branch-manager-portal.tsx: Completely rewritten to:
+    * Refactored main router to use a single `let content` pattern + always-rendered `<AddUserModal>` at the bottom (so the modal opens from any view — teachers/students/add-teacher/add-student/overview).
+    * Added `if (activeModule === 'announcements') return <AnnouncementsView user={user} />;` and `if (activeModule === 'class-courses') return <ClassCoursesView user={user} />;` (wired via the content router).
+    * New `ClassCoursesView` component:
+        - Fetches all 12 classes via api.getClasses(user.branchId) and shows them as a clickable grid (2/3/4 columns responsive) — selecting one sets activeClassId.
+        - Fetches all branch courses via api.getCourses({ branchId: user.branchId }) and shows which are assigned to the active class via api.getCourses({ classId }) (assigned course IDs are pre-checked).
+        - "New Course" button toggles a create-course form (name *, code) → api.createCourse({ name, code, branchId }). On success, refreshes the courses list.
+        - Multi-select grid of courses with checkbox UI; "Save Assignment" button calls api.assignClassCourses(classId, selectedCourseIds). Toast on success.
+        - Empty states for no-classes and no-courses.
+    * New `AnnouncementsView` component:
+        - Form: Title, Message (Textarea), Recipients (Select: "All Classes" / "Specific Classes"), Class checkboxes (fetched from api.getClasses(user.branchId)) shown when "Specific" is selected.
+        - Calls api.createAnnouncement({ title, message, targetScope, targetRole: 'student', targetIds?, classId? }).
+        - Lists existing announcements (from api.getAnnouncements()) with title, message, recipient scope, timestamp. Empty state with CTA.
+    * New `UserRowActions` component: View Password (Eye icon → api.getUserPassword(u.id), shows inline amber pill with password + mustChange indicator), Edit (Edit icon → opens EditUserModal), Block/Unblock (Lock/Unlock icon → api.blockUser(u.id, !u.blocked, reason)). All buttons have hover states + busy disabled states.
+    * New `EditUserModal` component: Full name, Email, New password (leave blank to keep current). Calls api.editUser(u.id, body). If password is changed, toast reminds that user must change on next sign-in.
+    * TeachersView & StudentsView updated: each row now has a new "Actions" column rendering <UserRowActions>, and the Status badge now reflects blocked state (red "Blocked" pill when u.blocked is true). Teachers table gained a Roll No column. Pass `onRefresh={refresh}` so view-password/edit/block updates trigger a re-fetch.
+- Ran `bun run lint` — passes with 0 errors. Dev server compiles cleanly with HTTP 200s.
+
+Stage Summary:
+- Branch Manager sidebar now includes 2 new modules: Announcements (rose-pink) and Classes & Courses (lime-emerald).
+- AddUserModal: scrollable (overflow-y-auto overlay + max-h-[90vh] scroll-fancy Card), and now sends both classId AND class NAME (and section) in the body for both teacher and student creation. Teacher-only courseIds included.
+- New ClassCoursesView: 12-class grid, course multi-select per class, create new course inline, save assignment via api.assignClassCourses — fully functional.
+- New AnnouncementsView: target all classes or specific classes via checkboxes, calls api.createAnnouncement — fully functional.
+- Teacher and Student tables gained a per-row "Actions" column with View Password (inline reveal), Edit (modal with name/email/new-password), and Block/Unblock (toggle via api.blockUser). All updates trigger refresh.
+- Lint clean. Dev server compiles cleanly.
+
+---
+Task ID: IA-UPDATE
+Agent: full-stack-developer
+Task: Update Institute Admin portal
+
+Work Log:
+- Read previous agent worklog (SUPERADMIN-FIX) to mirror the same patterns used for the Super Admin portal.
+- Verified backend endpoints already exist: POST /api/branches (accepts managerPassword), PATCH /api/branches/:id/block, GET /api/platform/users/:id/password, PATCH /api/platform/users/:id, GET/POST /api/announcements.
+- role-modules.ts: added `{ id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' }` to the institute-admin "Finance & Comms" group (MessageSquare was already imported).
+- institute-admin-portal.tsx — BranchModal rebuilt:
+  - Added `managerPassword: ''` to form state.
+  - Added required "Assign password *" input field below the manager email.
+  - Validation now requires name + managerEmail + managerPassword.
+  - createBranch call now spreads `form` so `managerPassword` is sent to the backend.
+  - Success modal now renders `lastCreated.managerLogin.password` instead of the hardcoded `esm123`.
+  - Replaced the "auto-created with password esm123" text with "You will set the Branch Manager's email and password. They must change it on first login."
+  - Made modal scrollable: outer overlay gets `overflow-y-auto`, the inner Card gets `max-h-[90vh] overflow-y-auto scroll-fancy` (plus `my-8` on the wrapper so it isn't glued to the viewport edge on small screens).
+- institute-admin-portal.tsx — branch card actions:
+  - Extracted the branch card into a new `BranchCard` component (each card manages its own state).
+  - 3 buttons on every card: View (eye) / Edit (pencil) / Block or Open (lock/unlock).
+  - View Password: lazily fetches the branch-manager user via `api.platformUsers({ branchId, role: 'branch-manager' })`, then `api.getUserPassword(userId)`; caches the password so subsequent clicks just toggle visibility.
+  - Edit: opens `EditBranchModal` with Branch Name (cosmetic), Manager Name, Manager Email, New Password fields; saves via `api.editUser(managerUserId, body)` (only name/email/password — branch name has no backend endpoint).
+  - Block/Unblock: calls `api.blockBranch(branch.id, !blocked, reason)` and refreshes.
+  - Blocked branches show a red "Blocked" badge on the card and in the BranchesManager table.
+- institute-admin-portal.tsx — Announcements module:
+  - New `AnnouncementsView` component wired in via `if (activeModule === 'announcements') return <AnnouncementsView user={user} />;` at the top of the portal (also added 'announcements' to the "default fallback" exclusion list so the overview doesn't render behind it).
+  - Form: Title, Message (Textarea), Recipients dropdown with 6 options — All Branches / All Teachers / All Students / Specific Branches / Specific Teachers / Specific Students.
+  - When "Specific Branches" is selected → checkbox list of branches from `api.branches(user.instituteId)`.
+  - When "Specific Teachers"/"Specific Students" is selected → checkbox list from `api.platformUsers({ instituteId, role })` (lazy-loaded).
+  - targetRole derived from selection: branch-manager / teacher / student; targetScope: all / specific; targetIds only sent when scope is specific.
+  - Lists existing announcements from `api.getAnnouncements()` with title, message, recipient label, and timestamp.
+  - Reused the same `custom-checkbox` and `scroll-fancy` styling as the Super Admin portal for consistency.
+- Imports: added `Textarea`, `Select/SelectContent/SelectItem/SelectTrigger/SelectValue` from shadcn/ui, and `Megaphone, Send, Lock, Unlock, Edit, Eye` from lucide-react.
+- Lint: ran `bun run lint`. My two touched files (institute-admin-portal.tsx + role-modules.ts) are clean (verified with `npx eslint <files>` — 0 errors). 3 pre-existing errors remain in `teacher-portal.tsx` (untouched by this task) — `react-hooks/preserve-manual-memoization` and two `react-hooks/set-state-in-effect` — those are out of scope for IA-UPDATE.
+- Verified dev.log: dev server compiling cleanly, no errors after edits; GET /api/branches, /api/announcements etc. all returning 200.
+
+Stage Summary:
+- Add Branch modal now has a required password field, scrollable layout, and the success screen shows the actual chosen password (not the legacy `esm123`).
+- Branch cards in the Institute Overview have View Password / Edit / Block-Unblock actions wired to the existing backend endpoints.
+- Announcements module is live for Institute Admins: send to All/Specific Branches (managers), Teachers, or Students, with a live list of past announcements.
+- Announcements nav item is in the institute-admin sidebar (Finance & Comms group, rose-pink accent).
+- All changes are frontend-only — backend untouched, as instructed.
+
+---
+Task ID: TS-UPDATE
+Agent: full-stack-developer
+Task: Update Teacher + Student portals (class cards dashboard, course detail tabs, course material upload/download, announcements, remove fees from student portal)
+
+Work Log:
+- Read previous worklog (TS-UPDATE context): backend already has /api/teacher/classes, /api/student/courses, /api/announcements, /api/course-materials, /api/course-materials/:id/download, /api/classes, /api/courses. API client already has getTeacherClasses, getStudentCourses, getAnnouncements, createAnnouncement, getCourseMaterials, addCourseMaterial, downloadMaterial.
+- Backend contract review (mini-services/esm-api/index.js):
+  - POST /api/attendance requires `{ classId, date, records }` (branchId auto-set from req.user).
+  - POST /api/results requires `{ exam, courseId, totalMarks, date, records, classId }` — courseId now in body.
+  - GET /api/course-materials/:id/download returns binary (Content-Disposition) for files OR JSON `{ linkUrl }` for link-type materials — auth required.
+  - GET /api/announcements scoped by role/branch/institute/class on the backend.
+  - GET /api/student/courses uses `req.user.class` (class name) to resolve classId internally but does NOT return it — frontend must resolve via getClasses(branchId) + name match.
+  - GET /api/teacher/classes returns grouped `{ id, name, section, branchId, courses: [...] }`.
+
+- API client (src/lib/api.ts): Added `downloadMaterialBlob(id)` helper — fetches the material endpoint with Bearer token, detects JSON `{ linkUrl }` response (link-type) vs binary blob (file-type), returns `{ blob, fileName }` or `{ linkUrl }` accordingly. Required because window.open(url) cannot send Authorization headers.
+
+- Role modules (src/lib/role-modules.ts): Added `announcements` module to teacher sidebar (Students group, Bell icon) and `my-announcements` module to student sidebar (My Portal group). Removed `my-fees` module from student sidebar.
+
+- Teacher portal (src/components/portal/teacher-portal.tsx) — completely rewritten:
+  - TeacherOverview: hero + 4 stat cards (My Classes, Courses, My Students, Diary Entries) + My Classes grid with one card per assigned class. Each class card shows class name, section, course count, course chips, and 4 quick action buttons (Attendance, Results, Material, Announce). Clicking the card or any quick action opens ClassDetail at the corresponding tab.
+  - ClassDetail: back button + course selector dropdown + tab bar (Attendance, Results, Materials, Announcements) with framer-motion transitions.
+  - ClassAttendance tab: same Present/Absent/Late marking UI but now sends `classId: cls.id` in the markAttendance body. Students filtered to the selected class (s.class === cls.name).
+  - ClassResults tab: exam + total marks inputs, marks table with auto-grade, sends `classId: cls.id, courseId` in postResults body.
+  - ClassMaterials tab: MaterialUploadForm with File/Link mode toggle. File mode uses FileReader.readAsDataURL → strips data: prefix → sends `{ fileType, fileName, fileData (base64) }`. Validates PDF/DOCX/PPT/PNG/JPG, max 8 MB. Link mode sends `linkUrl`. Lists existing materials via getCourseMaterials({ classId, courseId }). Each material card has Download/Open button using downloadMaterialBlob helper.
+  - ClassAnnouncements tab: form (title + message) → createAnnouncement({ classId, targetScope: 'class', targetRole: 'student' }). Lists announcements filtered to this class.
+  - Standalone MarkAttendance module: now requires a class picker (select dropdown) since classId is needed. Uses effectiveClassId = selectedClassId || classes[0]?.id (derived, no sync setState in effect).
+  - Standalone PostResults module: requires class + course pickers. Uses effectiveClassId + effectiveCourseId derived values. Sends courseId in body.
+  - TeacherAnnouncements module (new): form to announce to all classes (targetScope: 'all') OR a specific class (targetScope: 'class', classId). Lists all announcements visible to the teacher.
+
+- Student portal (src/components/portal/student-portal.tsx) — completely rewritten:
+  - Resolves classId via api.getClasses(user.branchId) then finds the class where c.name === user.class. Stored in state, passed to CourseDetail.
+  - StudentOverview: hero + 4 stat cards (Attendance, Avg Score, Results, Courses) + Latest Announcement preview + My Courses grid with one card per course. Each course card shows course name, code, recent mark (from results grouped by courseId), attendance rate, and an "Open" affordance. Clicking opens CourseDetail at the Materials tab.
+  - CourseDetail: back button + tab bar (Materials, Results, Attendance).
+  - CourseMaterialsView tab: getCourseMaterials({ classId, courseId }) list. Each material card has Download/Open button (downloadMaterialBlob for files, window.open for linkUrl).
+  - CourseResultsView tab: getResults({ studentId }) filtered to this course. Shows progress bars per result entry.
+  - CourseAttendanceView tab: getAttendance({ studentId }) — shows present/absent/late/rate stats + entries table.
+  - MyAnnouncements module (new): lists all announcements visible to the student (scoped by backend).
+  - Removed MyFees component, removed fees from StudentOverview stats cards, removed `my-fees` route handling, removed CreditCard import and fmtMoney helper.
+
+- Lint compliance: The project's eslint config has react-hooks/set-state-in-effect and react-hooks/preserve-manual-memoization rules. Adjusted patterns:
+  - Removed useCallback wrappers (preserve-manual-memoization).
+  - Removed useEffect(() => { setSelectedX(null) }, [activeModule]) resets — unnecessary because RolePortal wraps renderPortal() in <motion.div key={activeModule}> which remounts TeacherPortal/StudentPortal on sidebar change.
+  - Replaced `load` function wrappers (which had sync setState like setLoading(true) at top) with inline useEffect fetches and a reloadKey counter for onSaved callbacks. All setState calls now happen inside .then/.catch/.finally callbacks (async, not flagged).
+  - MarkAttendance/PostResults standalone modules use derived `effectiveClassId`/`effectiveCourseId` pattern instead of useEffect-based sync.
+
+- Verified: `bun run lint` passes with 0 errors and 0 warnings (exit 0). Dev server compiles cleanly (multiple "✓ Compiled in Xms" in dev.log, no errors).
+
+Stage Summary:
+- Teacher portal now shows one card per assigned class with quick actions; clicking opens a tabbed detail view (Attendance/Results/Materials/Announcements). Course materials can be uploaded as base64-encoded files (PDF/DOCX/PPT/PNG/JPG, max 8MB) or as external links. Announcements can be sent to a specific class from inside the class detail, or to all classes from the standalone Announcements module. markAttendance and postResults now include classId and courseId in the body, respectively.
+- Student portal now shows one card per course with recent marks, attendance rate, and material count. Clicking opens a tabbed detail view (Materials/Results/Attendance). Materials can be downloaded via an auth-header-aware helper (downloadMaterialBlob) for files or opened directly for links. Announcements module added to sidebar. Fees module removed entirely.
+- All modals/scrollable areas use `max-h-[90vh] overflow-y-auto scroll-fancy` where applicable (tab bars use scroll-fancy for horizontal overflow).
+- Lint passes clean. Backend untouched.
+
+---
+Task ID: ALL-PORTALS-UPDATE
+Agent: Main (Z.ai Code) + 3 subagents
+Task: Fix modal scroll issue + update ALL portals (Institute Admin, Branch Manager, Teacher, Student)
+
+Work Log:
+- **Modal scroll fix**: Super Admin provision modal + edit modal now have `overflow-y-auto` on overlay and `max-h-[90vh] overflow-y-auto scroll-fancy` on Card. Verified: VLM confirms "buttons visible at bottom, modal fully visible, not cut off."
+- **Institute Admin portal** (by subagent IA-UPDATE):
+  - BranchModal: added "Assign password *" field, sends managerPassword, success shows actual password
+  - BranchCard: added View Password, Edit, Block/Unblock buttons
+  - AnnouncementsView: send to All/Specific Branches, Teachers, or Students
+  - Added announcements module to sidebar
+- **Branch Manager portal** (by subagent BM-UPDATE):
+  - AddUserModal: scrollable, sends classId + class name + courseIds
+  - ClassCoursesView: 12-class grid, assign courses to classes, create new courses
+  - AnnouncementsView: announce to All/Specific Classes
+  - UserRowActions: View Password, Edit, Block/Unblock on teacher/student rows
+  - Added announcements + class-courses modules to sidebar
+- **Teacher portal** (by subagent TS-UPDATE):
+  - Dashboard: class cards (one per assigned class) with course count + quick actions
+  - ClassDetail: tabs for Attendance, Results, Materials, Announcements
+  - Course Material Upload: file (base64) or link, supports PDF/DOCX/PPT/PNG
+  - Announcements: to all or specific classes
+  - markAttendance + postResults now send classId + courseId
+- **Student portal** (by subagent TS-UPDATE):
+  - Dashboard: course cards (one per course in their class)
+  - CourseDetail: tabs for Materials, Results, Attendance
+  - Course Materials: view + download (auth-aware blob download)
+  - Announcements view added
+  - Fees removed (managed by admin)
+
+Verification:
+- Lint passes clean (0 errors)
+- Super Admin: provision modal scrollable, all fields visible, "Assign password" field present ✅
+- Created "Alhamd Institute" with admin numan2@gmail.com / numan@1122 → 201 Created ✅
+- Success modal shows actual password "numan@1122" ✅
+- All API calls return 200/201 in dev log ✅
+- All 5 portals updated with the requested features
+
+Stage Summary:
+- Modal scroll issue FIXED — all modals now scroll properly
+- ALL portals updated: Super Admin (password field, announcements, block/edit), Institute Admin (password field, announcements, block/edit), Branch Manager (Roll No, class/course assignment, announcements, block/edit), Teacher (class cards, course material upload, announcements), Student (course cards, material download, announcements)
+- Turso DB connected and working for all operations

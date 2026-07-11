@@ -74,6 +74,8 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
 
     setCreating(true);
     try {
+      // Resolve the class NAME (e.g. "Class 5") from the selected classId
+      const selectedClass = classes.find((c: any) => c.id === form.classId);
       const body: any = {
         name: form.name,
         rollNo: form.rollNo,
@@ -83,10 +85,13 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
         branchId,
       };
       if (form.email) body.email = form.email;
-      if (role === 'student' && form.classId) body.classId = form.classId;
-      if (role === 'teacher' && form.classId) {
+      if (form.classId) {
         body.classId = form.classId;
-        if (selectedCourseIds.length > 0) body.courseIds = selectedCourseIds;
+        if (selectedClass?.name) body.class = selectedClass.name;
+        if (selectedClass?.section) body.section = selectedClass.section;
+      }
+      if (role === 'teacher' && selectedCourseIds.length > 0) {
+        body.courseIds = selectedCourseIds;
       }
       const res = await api.createPlatformUser(body);
       setCreated(res);
@@ -101,15 +106,15 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto"
       onClick={() => { onClose(); setTimeout(reset, 200); }}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md my-4"
       >
-        <Card className="p-6">
+        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
           {created ? (
             <>
               <div className="flex items-center gap-3 mb-4">

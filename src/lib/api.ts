@@ -171,4 +171,23 @@ export const api = {
   },
   addCourseMaterial: (body: any) => request<any>('course-materials', { method: 'POST', body: JSON.stringify(body) }),
   downloadMaterial: (id: string) => apiUrl(`course-materials/${id}/download`),
+  /** Downloads a material file with auth headers; returns { blob, fileName } for files or { linkUrl } for link-type materials. */
+  downloadMaterialBlob: async (id: string): Promise<{ blob: Blob; fileName: string } | { linkUrl: string }> => {
+    const token = getToken();
+    const res = await fetch(apiUrl(`course-materials/${id}/download`), {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const json = await res.json();
+      if (json?.linkUrl) return { linkUrl: json.linkUrl as string };
+      throw new Error('No file or link available');
+    }
+    const cd = res.headers.get('content-disposition') || '';
+    const m = cd.match(/filename="([^"]+)"/);
+    const fileName = m ? m[1] : 'download';
+    const blob = await res.blob();
+    return { blob, fileName };
+  },
 };

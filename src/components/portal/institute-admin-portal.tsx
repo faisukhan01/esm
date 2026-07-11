@@ -8,8 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Network, Users, DollarSign, Plus, GraduationCap, Mail, Network as NetworkIcon, Inbox } from 'lucide-react';
+import {
+  Building2, Network, Users, DollarSign, Plus, GraduationCap, Mail, Inbox,
+  Megaphone, Send, Lock, Unlock, Edit, Eye,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const fmtMoney = (n: number) => '$' + n.toLocaleString('en-US');
@@ -30,6 +35,8 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
   };
   useEffect(() => { refresh(); }, [user?.instituteId]);
 
+  if (activeModule === 'announcements') return <AnnouncementsView user={user} />;
+
   return (
     <>
       {activeModule === 'branches' && <BranchesManager branches={branches} instituteId={user?.instituteId} onRefresh={refresh} showAdd={showAddBranch} setShowAdd={setShowAddBranch} lastCreated={lastCreated} setLastCreated={setLastCreated} />}
@@ -37,8 +44,8 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
       {['students','attendance','results','academics','fees','finance','sms','complaints','events','library','transport'].includes(activeModule) && (
         <ScopedModuleView activeModule={activeModule} user={user} stats={stats} staff={staff} branches={branches} />
       )}
-      {!['branches','staff','students','attendance','results','academics','fees','finance','sms','complaints','events','library','transport'].includes(activeModule) && (
-        <InstituteOverview user={user} stats={stats} branches={branches} onAddBranch={() => setShowAddBranch(true)} />
+      {!['branches','staff','students','attendance','results','academics','fees','finance','sms','complaints','events','library','transport','announcements'].includes(activeModule) && (
+        <InstituteOverview user={user} stats={stats} branches={branches} onRefresh={refresh} onAddBranch={() => setShowAddBranch(true)} />
       )}
       <BranchModal show={showAddBranch} setShow={setShowAddBranch} instituteId={user?.instituteId} onRefresh={refresh} lastCreated={lastCreated} setLastCreated={setLastCreated} />
     </>
@@ -65,7 +72,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   );
 }
 
-function InstituteOverview({ user, stats, branches, onAddBranch }: any) {
+function InstituteOverview({ user, stats, branches, onRefresh, onAddBranch }: any) {
   const cards = [
     { label: 'Branches', value: stats?.branches ?? 0, icon: Network, color: 'from-emerald-500 to-emerald-700' },
     { label: 'Total Students', value: stats?.students ?? 0, icon: GraduationCap, color: 'from-teal-500 to-cyan-600' },
@@ -102,7 +109,7 @@ function InstituteOverview({ user, stats, branches, onAddBranch }: any) {
       </div>
 
       {branches.length === 0 ? (
-        <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. A Branch Manager login will be auto-created so they can manage it independently."
+        <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password — they'll manage it independently."
           action={<Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Your First Branch</Button>} />
       ) : (
         <Card className="p-5">
@@ -113,19 +120,7 @@ function InstituteOverview({ user, stats, branches, onAddBranch }: any) {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {branches.map((br, i) => (
               <motion.div key={br.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Card className="p-5 hover:shadow-md transition">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-700 grid place-items-center"><Network className="h-5 w-5 text-white" /></div>
-                    <Badge variant="outline" className="font-mono text-[10px]">{br.id}</Badge>
-                  </div>
-                  <h3 className="font-bold text-sm">{br.name}</h3>
-                  <div className="text-[11px] text-muted-foreground">{br.city}</div>
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border/40 text-center">
-                    <div><div className="font-bold text-sm">{br.students}</div><div className="text-[10px] text-muted-foreground">Students</div></div>
-                    <div><div className="font-bold text-sm">{br.teachers}</div><div className="text-[10px] text-muted-foreground">Teachers</div></div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-border/40 text-[11px] text-muted-foreground truncate flex items-center gap-1"><Mail className="h-3 w-3" /> {br.managerEmail}</div>
-                </Card>
+                <BranchCard branch={br} onRefresh={onRefresh} />
               </motion.div>
             ))}
           </div>
@@ -135,13 +130,126 @@ function InstituteOverview({ user, stats, branches, onAddBranch }: any) {
   );
 }
 
+function BranchCard({ branch, onRefresh }: { branch: any; onRefresh: () => void }) {
+  const [showPass, setShowPass] = useState(false);
+  const [password, setPassword] = useState<string | null>(null);
+  const [loadingPass, setLoadingPass] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const blocked = !!branch.blocked;
+
+  const viewPassword = async () => {
+    if (password) { setShowPass(s => !s); return; }
+    setLoadingPass(true);
+    try {
+      const managers = await api.platformUsers({ branchId: branch.id, role: 'branch-manager' });
+      if (!managers.length) { toast({ title: 'No branch manager found', variant: 'destructive' }); return; }
+      const pw = await api.getUserPassword(managers[0].id);
+      setPassword(pw.password);
+      setShowPass(true);
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setLoadingPass(false); }
+  };
+
+  const toggleBlock = async () => {
+    setBusy(true);
+    try {
+      await api.blockBranch(branch.id, !blocked, blocked ? '' : 'Blocked by Institute Admin');
+      toast({ title: blocked ? 'Branch unblocked' : 'Branch blocked', description: branch.name });
+      onRefresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="p-5 hover:shadow-md transition flex flex-col">
+      <div className="flex items-start justify-between mb-2">
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-700 grid place-items-center"><Network className="h-5 w-5 text-white" /></div>
+        <Badge variant="outline" className={blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}>{blocked ? 'Blocked' : (branch.status || 'Active')}</Badge>
+      </div>
+      <h3 className="font-bold text-sm">{branch.name}</h3>
+      <div className="text-[11px] text-muted-foreground">{branch.city}</div>
+      <div className="mt-3 pt-3 border-t border-border/40 text-[11px] text-muted-foreground truncate flex items-center gap-1"><Mail className="h-3 w-3 shrink-0" /> {branch.managerEmail}</div>
+      {showPass && password && (
+        <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs">
+          <div className="text-amber-700 font-semibold mb-0.5">Manager Password:</div>
+          <div className="font-mono text-amber-900 break-all">{password}</div>
+        </div>
+      )}
+      <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-3 gap-1.5">
+        <Button size="sm" variant="outline" className="h-8 text-xs px-2" disabled={loadingPass} onClick={viewPassword} title="View manager password">
+          <Eye className="h-3.5 w-3.5 mr-1" /> {loadingPass ? '…' : showPass ? 'Hide' : 'View'}
+        </Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs px-2" onClick={() => setShowEdit(true)} title="Edit branch">
+          <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+        </Button>
+        <Button size="sm" variant="outline" className={`h-8 text-xs px-2 ${blocked ? 'text-emerald-600 hover:bg-emerald-500/10' : 'text-rose-600 hover:bg-rose-500/10'}`} disabled={busy} onClick={toggleBlock} title={blocked ? 'Unblock branch' : 'Block branch'}>
+          {blocked ? <><Unlock className="h-3.5 w-3.5 mr-1" /> Open</> : <><Lock className="h-3.5 w-3.5 mr-1" /> Block</>}
+        </Button>
+      </div>
+      {showEdit && <EditBranchModal branch={branch} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
+    </Card>
+  );
+}
+
+function EditBranchModal({ branch, onClose, onSaved }: { branch: any; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    name: branch.name || '',
+    managerName: branch.manager || '',
+    managerEmail: branch.managerEmail || '',
+    password: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [managerUserId, setManagerUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.platformUsers({ branchId: branch.id, role: 'branch-manager' })
+      .then((users: any[]) => { if (users.length) setManagerUserId(users[0].id); })
+      .catch(() => {});
+  }, [branch.id]);
+
+  const save = async () => {
+    if (!managerUserId) { toast({ title: 'Branch manager not found', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      const body: any = { name: form.managerName, email: form.managerEmail };
+      if (form.password) body.password = form.password;
+      await api.editUser(managerUserId, body);
+      toast({ title: 'Branch updated!', description: 'Manager must re-change password if you set a new one' });
+      onSaved();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-8">
+        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+          <h3 className="font-display font-bold text-lg mb-4">Edit Branch</h3>
+          <div className="space-y-3">
+            <div><Label>Branch Name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1" /></div>
+            <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager</div></div>
+            <div><Label>Manager Name</Label><Input value={form.managerName} onChange={e => setForm({ ...form, managerName: e.target.value })} className="mt-1" /></div>
+            <div><Label>Manager Email</Label><Input value={form.managerEmail} onChange={e => setForm({ ...form, managerEmail: e.target.value })} className="mt-1" /></div>
+            <div><Label>New Password (leave blank to keep current)</Label><Input type="text" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="Set new password" className="mt-1" /></div>
+          </div>
+          <div className="flex gap-2 mt-5">
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function BranchesManager({ branches, instituteId, onRefresh, showAdd, setShowAdd }: any) {
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Branches" subtitle="Add branches — a Branch Manager login is auto-created for each"
+      <ModuleHeader title="Branches" subtitle="Add branches — you set the Branch Manager's email and password"
         actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
       {branches.length === 0 ? (
-        <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. A Branch Manager login will be auto-created."
+        <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password."
           action={<Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
       ) : (
         <Card className="p-4">
@@ -154,10 +262,10 @@ function BranchesManager({ branches, instituteId, onRefresh, showAdd, setShowAdd
                 <TableRow key={br.id} className="hover:bg-muted/30">
                   <TableCell><div className="font-medium text-sm">{br.name}</div><div className="text-[11px] text-muted-foreground font-mono">{br.id}</div></TableCell>
                   <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{br.city}</TableCell>
-                  <TableCell className="text-sm font-medium">{br.students}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm">{br.teachers}</TableCell>
+                  <TableCell className="text-sm font-medium">{br.students ?? 0}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-sm">{br.teachers ?? 0}</TableCell>
                   <TableCell><div className="text-sm">{br.manager}</div><div className="text-[11px] text-muted-foreground">{br.managerEmail}</div></TableCell>
-                  <TableCell><Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/20">{br.status}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className={br.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}>{br.blocked ? 'Blocked' : br.status}</Badge></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -169,23 +277,23 @@ function BranchesManager({ branches, instituteId, onRefresh, showAdd, setShowAdd
 }
 
 function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLastCreated }: any) {
-  const [form, setForm] = useState({ name: '', city: '', managerName: '', managerEmail: '' });
+  const [form, setForm] = useState({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' });
   const [creating, setCreating] = useState(false);
   const create = async () => {
-    if (!form.name || !form.managerEmail) { toast({ title: 'Branch name and manager email required', variant: 'destructive' }); return; }
+    if (!form.name || !form.managerEmail || !form.managerPassword) { toast({ title: 'Branch name, manager email and password are required', variant: 'destructive' }); return; }
     setCreating(true);
     try {
       const res = await api.createBranch({ ...form, instituteId });
       toast({ title: 'Branch created!', description: `${res.branch.name} — manager login ready` });
-      setLastCreated(res); setForm({ name: '', city: '', managerName: '', managerEmail: '' }); onRefresh();
+      setLastCreated(res); setForm({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' }); onRefresh();
     } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
     finally { setCreating(false); }
   };
   if (!show && !lastCreated) return null;
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => { setShow(false); setLastCreated(null); }}>
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg">
-        <Card className="p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => { setShow(false); setLastCreated(null); }}>
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-8">
+        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
           {lastCreated ? (
             <>
               <div className="flex items-center gap-3 mb-4">
@@ -195,8 +303,8 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
               <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2 text-sm">
                 <div className="font-semibold text-emerald-700 dark:text-emerald-300">Branch Manager login</div>
                 <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono">{lastCreated.managerLogin.email}</span></div>
-                <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">esm123</span></div>
-                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">The manager signs in at the same portal — ESM routes them to the Branch Manager portal automatically.</div>
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">{lastCreated.managerLogin.password}</span></div>
+                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">The manager must change this password on first login. Share these credentials securely.</div>
               </div>
               <div className="flex gap-2 mt-5">
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={() => { setShow(false); setLastCreated(null); }}>Done</Button>
@@ -206,15 +314,16 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
           ) : (
             <>
               <h3 className="font-display font-bold text-lg mb-1">Add a new branch</h3>
-              <p className="text-sm text-muted-foreground mb-5">A Branch Manager login will be auto-created (password <span className="font-mono">esm123</span>)</p>
+              <p className="text-sm text-muted-foreground mb-5">You will set the Branch Manager's email and password. They must change it on first login.</p>
               <div className="space-y-3">
                 <div><Label>Branch name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. North Campus" className="mt-1" /></div>
                 <div><Label>City</Label><Input value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="Round Rock" className="mt-1" /></div>
-                <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Branch Manager (auto-provisioned)</div></div>
+                <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Branch Manager — You set the credentials</div></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Manager name</Label><Input value={form.managerName} onChange={e => setForm({ ...form, managerName: e.target.value })} placeholder="Lisa Chen" className="mt-1" /></div>
                   <div><Label>Manager email *</Label><Input type="email" value={form.managerEmail} onChange={e => setForm({ ...form, managerEmail: e.target.value })} placeholder="manager@school.edu" className="mt-1" /></div>
                 </div>
+                <div><Label>Assign password *</Label><Input type="text" value={form.managerPassword} onChange={e => setForm({ ...form, managerPassword: e.target.value })} placeholder="e.g. BranchPass2025" className="mt-1" /></div>
               </div>
               <div className="flex gap-2 mt-5">
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={creating} onClick={create}>{creating ? 'Creating…' : 'Create Branch'}</Button>
@@ -331,6 +440,169 @@ function ScopedModuleView({ activeModule, user, stats, staff, branches }: any) {
             </div>
           </Card>
         )
+      )}
+    </div>
+  );
+}
+
+// ===================== ANNOUNCEMENTS =====================
+type RecipientType =
+  | 'all-branches' | 'all-teachers' | 'all-students'
+  | 'specific-branches' | 'specific-teachers' | 'specific-students';
+
+function AnnouncementsView({ user }: { user: any }) {
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [form, setForm] = useState({
+    title: '', message: '',
+    recipientType: 'all-branches' as RecipientType,
+    selectedIds: [] as string[],
+  });
+  const [sending, setSending] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  const refresh = () => { api.getAnnouncements().then(setAnnouncements).catch(() => {}); };
+  useEffect(() => {
+    refresh();
+    if (user?.instituteId) api.branches(user.instituteId).then(setBranches).catch(() => {});
+  }, [user?.instituteId]);
+
+  // Lazy-load teachers/students when needed
+  useEffect(() => {
+    if (form.recipientType === 'specific-teachers') {
+      api.platformUsers({ instituteId: user.instituteId, role: 'teacher' }).then(setUsers).catch(() => {});
+    } else if (form.recipientType === 'specific-students') {
+      api.platformUsers({ instituteId: user.instituteId, role: 'student' }).then(setUsers).catch(() => {});
+    }
+  }, [form.recipientType, user?.instituteId]);
+
+  const roleForType = (t: RecipientType): 'branch-manager' | 'teacher' | 'student' => {
+    if (t.includes('branches')) return 'branch-manager';
+    if (t.includes('teachers')) return 'teacher';
+    return 'student';
+  };
+  const scopeForType = (t: RecipientType): 'all' | 'specific' => t.startsWith('all') ? 'all' : 'specific';
+
+  const send = async () => {
+    if (!form.title || !form.message) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+    if (scopeForType(form.recipientType) === 'specific' && form.selectedIds.length === 0) {
+      toast({ title: 'Select at least one recipient', variant: 'destructive' }); return;
+    }
+    setSending(true);
+    try {
+      await api.createAnnouncement({
+        title: form.title,
+        message: form.message,
+        targetRole: roleForType(form.recipientType),
+        targetScope: scopeForType(form.recipientType),
+        targetIds: scopeForType(form.recipientType) === 'specific' ? form.selectedIds : undefined,
+      });
+      const labels: Record<RecipientType, string> = {
+        'all-branches': 'All Branch Managers',
+        'all-teachers': 'All Teachers',
+        'all-students': 'All Students',
+        'specific-branches': `${form.selectedIds.length} branch manager(s)`,
+        'specific-teachers': `${form.selectedIds.length} teacher(s)`,
+        'specific-students': `${form.selectedIds.length} student(s)`,
+      };
+      toast({ title: 'Announcement sent!', description: `Sent to ${labels[form.recipientType]}` });
+      setForm({ title: '', message: '', recipientType: 'all-branches', selectedIds: [] });
+      setShowForm(false);
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setSending(false); }
+  };
+
+  const recipientLabel = (a: any) => {
+    const role = a.targetRole ? a.targetRole.replace('-', ' ') : 'all';
+    if (a.targetScope === 'all') return `All ${role}s`;
+    return `Specific ${role}s`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="Announcements" subtitle="Send messages to branches, teachers, and students in your institute"
+        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+      {showForm && (
+        <Card className="p-5">
+          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+          <div className="space-y-3">
+            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Winter break schedule" className="mt-1" /></div>
+            <div><Label>Message</Label><Textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" /></div>
+            <div>
+              <Label>Recipients</Label>
+              <Select value={form.recipientType} onValueChange={(v: RecipientType) => setForm({ ...form, recipientType: v, selectedIds: [] })}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-branches">All Branches (Branch Managers)</SelectItem>
+                  <SelectItem value="all-teachers">All Teachers</SelectItem>
+                  <SelectItem value="all-students">All Students</SelectItem>
+                  <SelectItem value="specific-branches">Specific Branches</SelectItem>
+                  <SelectItem value="specific-teachers">Specific Teachers</SelectItem>
+                  <SelectItem value="specific-students">Specific Students</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {form.recipientType === 'specific-branches' && (
+              <div>
+                <Label>Select Branches</Label>
+                <div className="mt-2 max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+                  {branches.length === 0 && <div className="text-xs text-muted-foreground">No branches available.</div>}
+                  {branches.map(br => (
+                    <label key={br.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+                      <input type="checkbox" checked={form.selectedIds.includes(br.id)} onChange={e => {
+                        if (e.target.checked) setForm({ ...form, selectedIds: [...form.selectedIds, br.id] });
+                        else setForm({ ...form, selectedIds: form.selectedIds.filter((id: string) => id !== br.id) });
+                      }} className="custom-checkbox w-4 h-4 rounded" />
+                      <span className="text-sm">{br.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(form.recipientType === 'specific-teachers' || form.recipientType === 'specific-students') && (
+              <div>
+                <Label>{form.recipientType === 'specific-teachers' ? 'Select Teachers' : 'Select Students'}</Label>
+                <div className="mt-2 max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+                  {users.length === 0 && <div className="text-xs text-muted-foreground">No users available.</div>}
+                  {users.map(u => (
+                    <label key={u.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+                      <input type="checkbox" checked={form.selectedIds.includes(u.id)} onChange={e => {
+                        if (e.target.checked) setForm({ ...form, selectedIds: [...form.selectedIds, u.id] });
+                        else setForm({ ...form, selectedIds: form.selectedIds.filter((id: string) => id !== u.id) });
+                      }} className="custom-checkbox w-4 h-4 rounded" />
+                      <span className="text-sm">{u.name} <span className="text-xs text-muted-foreground">· {u.email}</span></span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={sending} onClick={send}>
+              {sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>}
+            </Button>
+          </div>
+        </Card>
+      )}
+      {announcements.length === 0 ? (
+        <EmptyState icon={Megaphone} title="No announcements yet" desc="Send messages to all or specific branches, teachers, or students."
+          action={<Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(true)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+      ) : (
+        <div className="space-y-3">
+          {announcements.map(a => (
+            <Card key={a.id} className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-amber-500 shrink-0" />
+                  <div className="font-medium text-sm">{a.title}</div>
+                </div>
+                <span className="text-[11px] text-muted-foreground shrink-0">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</span>
+              </div>
+              <p className="text-sm text-muted-foreground ml-6 whitespace-pre-wrap">{a.message}</p>
+              <div className="text-[11px] text-muted-foreground mt-2 ml-6">To: {recipientLabel(a)}</div>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

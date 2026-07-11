@@ -200,9 +200,9 @@ function EditInstituteModal({ inst, onClose, onSaved }: any) {
     finally { setSaving(false); }
   };
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50" onClick={onClose}>
-      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
-        <Card className="p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-8">
+        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
           <h3 className="font-display font-bold text-lg mb-4">Edit Institute</h3>
           <div className="space-y-3">
             <div><Label>Institute Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" /></div>
@@ -255,9 +255,9 @@ function InstitutesManager({ institutes, onRefresh, showAdd, setShowAdd }: any) 
         </Card>
       )}
       {(showAdd || lastCreated) && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => { setShowAdd(false); setLastCreated(null); }}>
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg">
-            <Card className="p-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => { setShowAdd(false); setLastCreated(null); }}>
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-8">
+            <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
               {lastCreated ? (
                 <>
                   <div className="flex items-center gap-3 mb-4">
