@@ -431,3 +431,134 @@ Verification (agent-browser + VLM):
 
 Stage Summary:
 - ALL requested changes completed and verified. No remaining items.
+
+---
+Task ID: FRONTEND-UPDATES
+Agent: full-stack-developer
+Task: Frontend updates — remove Parent Portal everywhere, support Roll No/ID login, add Change Password modal for first-time login, extend API client with class/course/material/announcement/block methods, rebuild AddUserModal with rollNo + class dropdown + course multi-select.
+
+Work Log:
+- Read previous worklog to understand ESM platform state (Next.js 16 frontend + Express backend on port 3001 via XTransformPort, in-memory DB, session auth already in place).
+- Confirmed backend contract by inspecting mini-services/esm-api/index.js:
+  - POST /api/auth/login returns `{ token, user, mustChangePassword }` and accepts `email` field that matches either email OR rollNo (case-insensitive).
+  - POST /api/auth/change-password expects `{ currentPassword, newPassword }`.
+  - POST /api/platform/users accepts `rollNo`, `classId`, `courseIds` for teacher/student creation and sets `mustChangePassword = 1`.
+  - GET /api/classes, GET /api/courses (supports classId/branchId), POST /api/class-courses, POST /api/classes/:id/courses, POST /api/courses, GET /api/teacher/classes, GET /api/student/courses, GET/POST /api/announcements, GET/POST /api/course-materials, GET /api/course-materials/:id/download, PATCH /api/institutes/:id/block, PATCH /api/branches/:id/block, PATCH /api/platform/users/:id/block, GET /api/platform/users/:id/password, PATCH /api/platform/users/:id, PATCH /api/institutes/:id — all verified.
+- Login page (src/components/auth/login-page.tsx):
+  - Removed `Heart` import and the `parent` entry from `ROLES` (now 5 roles: super-admin, institute-admin, branch-manager, teacher, student). Updated `Role` type union accordingly.
+  - Updated teacher & student role notes to mention "You can sign in with your Email or Roll No / ID."
+  - Changed email field: label now "Email or Roll No / ID", input type changed from `email` → `text`, autoComplete="username", validation success state now triggers on length ≥ 3 (no longer requires email regex).
+  - Added contextual hint under email field for teacher/student roles: "Tip: you can sign in using either your registered email or your Roll No / ID." (with Shield icon).
+  - Updated submit toast/validation messages to "Email / Roll No and password are required".
+  - Added new `ChangePasswordModal` component with current/new/confirm password fields (each with own show/hide toggle), validation (required, min 4 chars, match, must differ from current), calls `api.changePassword(currentPassword, newPassword)`, on success calls onSuccess which routes to portal.
+  - Login submit flow now checks `mustChangePassword` from response: if true, stores `pendingAuth` and shows ChangePasswordModal (does not route to portal yet). On modal success, routes to portal.
+  - Modal styled in emerald theme consistent with rest of login page, includes Shield icon header and "won't be able to access the portal until your password is changed" reminder.
+- Landing page (src/components/landing/landing-page.tsx):
+  - Removed entire `parent-app` section (was ~204 lines including the realistic phone mockup with attendance card, GPA, recent results, PTM reminder, bottom nav, and floating notification card).
+  - Removed `PARENT_FEATURES` constant (no longer referenced).
+  - Removed "Parent App" from both desktop and mobile nav link arrays (now: Modules, Features, Tech).
+  - Cleaned up unused lucide imports (CheckCircle2, ChevronRight, LineChart, Bell, PlayCircle, MessageCircleWarning, Lock, Heart, CreditCard, CalendarCheck).
+  - Updated PLATFORM_FEATURES "Parent Mobile App" → "Mobile-Ready" and "Multi-Role Portals" desc no longer mentions Parents. Updated Real-Time Data desc to "admins see it instantly" instead of "parents see it instantly".
+  - Updated "How It Works" step 4 from "Teachers & Parents" → "Teachers & Students" with matching desc "Take attendance, post results, track progress — all in real time."
+- API client (src/lib/api.ts):
+  - Updated `login` return type to include `mustChangePassword?: boolean`.
+  - Added `changePassword(currentPassword, newPassword)` → POST auth/change-password.
+  - Added `editUser`, `blockUser`, `getUserPassword` for platform user management.
+  - Added `editInstitute` (alias of updateInstitute per spec), `blockInstitute`.
+  - Added `blockBranch`.
+  - Added `getClasses`, `getCourses` (with branchId/classId params), `createCourse`, `createClassCourse`, `assignClassCourses`.
+  - Added `getTeacherClasses`, `getStudentCourses`.
+  - Added `getAnnouncements`, `createAnnouncement`.
+  - Added `getCourseMaterials` (with classId/courseId/teacherId params), `addCourseMaterial`, `downloadMaterial` (returns URL via apiUrl helper).
+- AddUserModal (src/components/portal/add-user-modal.tsx) — completely rebuilt:
+  - Form fields: Full name *, Roll No / ID * (with Hash icon), Email (optional), Assign Password * (new label per spec), Class dropdown (Select component, fetched from api.getClasses()).
+  - For teacher role: after class is selected, fetches courses via `api.getCourses({ classId })` and shows a checkbox multi-select (scrollable, max-h-44). Selected courses are tracked in `selectedCourseIds`.
+  - For student role: class is required.
+  - Validation: name, rollNo, password (≥4 chars) all required; class required for student.
+  - Submit body includes: name, rollNo, password, role, instituteId, branchId, email (if provided), classId (student & teacher), courseIds (teacher only, if any).
+  - Success screen shows the new user's Roll No / ID, email (if provided), assigned password, portal label, plus a note that the user will be asked to set a new password on first sign-in.
+  - Modal is scrollable (max-h-[90vh] overflow-y-auto) so all fields fit on smaller screens.
+- Verified AddUserModal integration: branch-manager-portal.tsx still passes the same props (open, onClose, role, instituteId, branchId, onCreated) — no caller changes needed.
+- Ran `bun run lint` — passes with zero errors.
+- Verified dev server: page compiles cleanly, HTTP 200 on `/`, no runtime errors after edits settled. (There was a transient Fast Refresh error mid-edit when PARENT_FEATURES was deleted before the using section was deleted — resolved once both edits completed.)
+
+Stage Summary:
+- Parent Portal removed from login (5 roles) and landing (no phone mockup, no Parent App nav link, no PARENT_FEATURES).
+- Login now accepts Email OR Roll No / ID (sent as `email` field); teacher/student get an inline hint.
+- First-time login (`mustChangePassword: true`) triggers a forced Change Password modal that calls POST /api/auth/change-password and only proceeds to the portal on success.
+- API client extended with 15+ new methods covering classes, courses, class-courses, teacher/student scoped endpoints, announcements, course materials, and blocking/editing for institutes/branches/users.
+- AddUserModal rebuilt with rollNo (required), optional email, Assign Password label, class dropdown (from api.getClasses), and course multi-select for teachers (from api.getCourses filtered by classId) — sends rollNo/classId/courseIds to backend per spec.
+- Lint clean; dev server compiles cleanly with HTTP 200.
+
+---
+Task ID: TURSO-MIGRATION + FEATURES
+Agent: Main (Z.ai Code) + full-stack-developer subagent
+Task: Migrate to Turso DB + implement credential assignment, block/unblock, announcements, classes/courses, teacher/student dashboards with class/course cards
+
+Work Log:
+- **Turso DB Migration**: Installed @libsql/client, created db.js with full schema (users, institutes, branches, classes, courses, class_courses, teacher_class_courses, announcements, course_materials, attendance, results, fees, diary, sessions). Created .env in esm-api with Turso credentials. Verified connection: `Turso connection OK` + `Turso DB initialized` + `Super admin seeded`.
+- **Backend (index.js) completely rewritten** to use Turso DB:
+  - All CRUD operations now use `db.execute()` with parameterized SQL
+  - Session-based auth stored in Turso `sessions` table (8hr TTL, auto-cleanup)
+  - Rate limiting for login (5 attempts → 15min lockout)
+  - `requireAuth` + `requireRole` middleware on all protected endpoints
+  - Cascade block checking (institute blocked → all users in that institute blocked)
+- **Credential Assignment**:
+  - Super Admin sets Institute Admin password when creating institute (POST /api/institutes accepts adminPassword)
+  - Institute Admin sets Branch Manager password when creating branch (POST /api/branches accepts managerPassword)
+  - Branch Manager adds Teacher/Student with Roll No (required), ID, password (email optional)
+  - `mustChangePassword` flag set to 1 for all newly created users
+  - POST /api/auth/change-password endpoint clears the flag
+- **Block/Unblock (cascading)**:
+  - PATCH /api/institutes/:id/block — blocks institute + all branches + all users (except super-admin), invalidates their sessions
+  - PATCH /api/branches/:id/block — blocks branch + all teachers/students in it
+  - PATCH /api/platform/users/:id/block — blocks individual user
+  - Login checks blocked status + institute/branch block status (cascade)
+- **Password Visibility Cascade**:
+  - GET /api/platform/users/:id/password — admin can see current password of users they manage
+  - PATCH /api/platform/users/:id — admin can edit name/email/password; when password is changed, mustChangePassword is set back to 1
+- **Announcements System**:
+  - POST /api/announcements — any authenticated user can create (with targetRole, targetScope, targetIds, classId)
+  - GET /api/announcements — scoped to the user's role/institute/branch/class
+- **Classes (1-12) + Courses**:
+  - POST /api/branches auto-creates 12 classes (Class 1 through Class 12) for each new branch
+  - GET /api/classes — list classes for a branch
+  - POST /api/courses — create a course/subject
+  - POST /api/classes/:id/courses — assign multiple courses to a class (replaces existing)
+  - GET /api/courses?classId=X — get courses assigned to a class
+  - POST /api/platform/users (teacher) — assigns teacher to class + courses via teacher_class_courses table
+- **Teacher Dashboard**:
+  - GET /api/teacher/classes — returns teacher's assigned classes with their courses
+  - Teacher can teach multiple classes and multiple courses
+- **Student Dashboard**:
+  - GET /api/student/courses — returns courses assigned to the student's class
+  - Student sees all courses that are assigned to their class automatically
+- **Course Materials**:
+  - POST /api/course-materials — teacher uploads material (title, description, fileType, fileName, fileData as base64, or linkUrl)
+  - GET /api/course-materials?classId=X&courseId=Y — list materials for a class/course
+  - GET /api/course-materials/:id/download — download the file (returns binary with Content-Disposition header)
+  - Supports: PDF, DOCX, PNG, PPT, links, and other file types
+- **Frontend updates** (by subagent):
+  - Parent portal removed from landing + login (5 roles now)
+  - Login supports Roll No/ID (label: "Email or Roll No / ID")
+  - ChangePasswordModal for first-time login (mustChangePassword flow)
+  - API client updated with 15+ new methods
+  - AddUserModal rebuilt: teacher gets Roll No + Class dropdown + Course multi-select; student gets Roll No + Class dropdown; password labeled "Assign Password"
+
+Verification:
+- Backend health: `{"ok": true, "db": "turso", "users": 1}`
+- Super admin login: `Faisal Khan | Super Admin | mustChange: False` ✅
+- Create institute with custom password: `adminPassword: "MySecurePass123"` → institute created ✅
+- Institute admin login: `Dr. Ahmed | Institute Admin | mustChange: True` ✅ (first-login password change triggered)
+- Agent Browser: landing page loads, login shows 5 roles (no Parent), super admin sign-in → "Welcome back, Faisal 👑" → sees "Test Academy" in portal
+- Lint passes clean
+
+Stage Summary:
+- **Turso DB is the sole database** — no more in-memory data. All data persists in Turso (libsql://campus-prod-faisukhan01.aws-ap-south-1.turso.io)
+- **Credential assignment chain works**: Super Admin → sets Institute Admin password → Institute Admin sets Branch Manager password → Branch Manager sets Teacher/Student password with Roll No
+- **First-login password change** enforced via mustChangePassword flag
+- **Block/unblock cascades**: blocking an institute blocks all its branches and users
+- **Parent portal removed** from landing + login
+- **Announcements, classes, courses, course materials** infrastructure is in the backend
+- **Teacher/Student dashboards** backend endpoints ready (class cards + course cards)
+- Remaining: frontend teacher/student dashboard UI with class/course cards, announcements UI, course material upload UI, block/unblock UI buttons in admin portals — these are the next phase

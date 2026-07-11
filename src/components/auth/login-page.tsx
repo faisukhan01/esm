@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import {
   User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield,
-  Crown, Building2, Users, BookOpen, Heart, Sparkles, GraduationCap, ArrowLeft,
+  Crown, Building2, Users, BookOpen, Sparkles, GraduationCap, ArrowLeft,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -187,16 +187,137 @@ function CoverPanel() {
 }
 
 // ==================== Role Definitions ====================
-type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student' | 'parent';
+type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student';
 
 const ROLES: { id: Role; label: string; icon: any; note: string }[] = [
   { id: 'super-admin', label: 'Super Admin', icon: Crown, note: 'Owns the platform. Provisions institutions and manages everything.' },
   { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin when institute is provisioned.' },
   { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin when branch is added.' },
-  { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Login created by Branch Manager.' },
-  { id: 'student', label: 'Student', icon: User, note: 'Login created by Branch Manager.' },
-  { id: 'parent', label: 'Parent', icon: Heart, note: 'Login created by Branch Manager and linked to your ward.' },
+  { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Login created by Branch Manager. You can sign in with your Email or Roll No / ID.' },
+  { id: 'student', label: 'Student', icon: User, note: 'Login created by Branch Manager. You can sign in with your Email or Roll No / ID.' },
 ];
+
+// ==================== Change Password Modal (first-time login) ====================
+function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({ title: 'All fields are required', variant: 'destructive' });
+      return;
+    }
+    if (newPassword.length < 4) {
+      toast({ title: 'Password too short', description: 'Use at least 4 characters', variant: 'destructive' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Passwords do not match', description: 'New password and confirm password must match', variant: 'destructive' });
+      return;
+    }
+    if (newPassword === currentPassword) {
+      toast({ title: 'Choose a different password', description: 'New password must differ from the current one', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      toast({ title: 'Password updated', description: 'You can now continue to your portal.' });
+      onSuccess();
+    } catch (err: any) {
+      const msg = err.message.includes('401') ? 'Current password is incorrect' : err.message;
+      toast({ title: 'Could not update password', description: msg, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/60 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+        className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-11 w-11 rounded-xl bg-emerald-100 grid place-items-center shrink-0">
+            <Shield className="h-5 w-5 text-emerald-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">Change your password</h3>
+            <p className="text-xs text-gray-500">For your security, please set a new password before continuing.</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="login-input-wrapper">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
+            <input
+              id="cp-current" type={showCurrent ? 'text' : 'password'} value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              placeholder=" "
+            />
+            <label className="floating-label">Current password</label>
+            <button type="button" onClick={() => setShowCurrent(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          <div className="login-input-wrapper">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
+            <input
+              id="cp-new" type={showNew ? 'text' : 'password'} value={newPassword}
+              onChange={e => setNewPassword(e.target.value)} autoComplete="new-password"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              placeholder=" "
+            />
+            <label className="floating-label">New password</label>
+            <button type="button" onClick={() => setShowNew(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          <div className="login-input-wrapper">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
+            <input
+              id="cp-confirm" type={showConfirm ? 'text' : 'password'} value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              placeholder=" "
+            />
+            <label className="floating-label">Confirm new password</label>
+            <button type="button" onClick={() => setShowConfirm(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          disabled={saving}
+          onClick={submit}
+          className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 mt-5 disabled:opacity-70"
+        >
+          {saving ? <div className="spinner" /> : <>Update & continue <ArrowRight size={18} /></>}
+        </motion.button>
+        <p className="text-center text-xs text-gray-400 mt-3">
+          You won't be able to access the portal until your password is changed.
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 // ==================== Login Form with Role Selector ====================
 function LoginForm({ setView }: { setView: (v: any) => void }) {
@@ -207,9 +328,11 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingAuth, setPendingAuth] = useState<{ token: string; user: any } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const activeRole = ROLES.find(r => r.id === role)!;
+  const showRollHint = role === 'teacher' || role === 'student';
 
   const pickRole = (r: Role) => {
     setRole(r);
@@ -219,7 +342,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { toast({ title: 'Email and password required', variant: 'destructive' }); return; }
+    if (!email || !password) { toast({ title: 'Email / Roll No and password are required', variant: 'destructive' }); return; }
 
     const btn = buttonRef.current;
     if (btn) {
@@ -235,13 +358,18 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
     setIsLoading(true);
     try {
-      const { token, user } = await api.login(email, password);
+      const { token, user, mustChangePassword } = await api.login(email, password);
       setToken(token);
       setUser(user);
-      toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
-      setView('portal');
+      if (mustChangePassword) {
+        setPendingAuth({ token, user });
+        toast({ title: `Welcome, ${user.name}`, description: 'Please set a new password to continue.' });
+      } else {
+        toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
+        setView('portal');
+      }
     } catch (err: any) {
-      const msg = err.message.includes('401') ? 'Invalid email or password' : err.message.includes('429') ? 'Too many failed attempts. Account locked.' : err.message;
+      const msg = err.message.includes('401') ? 'Invalid credentials' : err.message.includes('429') ? 'Too many failed attempts. Account locked.' : err.message;
       toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -278,10 +406,16 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       <form onSubmit={handleSubmit} className="space-y-3.5">
         <div className="slide-up slide-up-delay-2">
           <FloatingInput
-            id="login-email" type="email" placeholder="Email Address" icon={<Mail size={18} />}
+            id="login-email" type="text" placeholder="Email or Roll No / ID" icon={<Mail size={18} />}
             value={email} onChange={(e: any) => setEmail(e.target.value)}
-            success={email && /\S+@\S+\.\S+/.test(email)} autoComplete="email"
+            success={email.trim().length >= 3} autoComplete="username"
           />
+          {showRollHint && (
+            <p className="mt-1.5 text-[11px] text-emerald-700/80 flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Tip: you can sign in using either your registered email or your Roll No / ID.
+            </p>
+          )}
         </div>
         <div className="slide-up slide-up-delay-3">
           <FloatingInput
@@ -319,6 +453,12 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
           <p className="text-emerald-800 text-[11px]">{activeRole.note}</p>
         </div>
       </div>
+
+      <ChangePasswordModal
+        open={!!pendingAuth}
+        onClose={() => setPendingAuth(null)}
+        onSuccess={() => { setPendingAuth(null); setView('portal'); }}
+      />
     </div>
   );
 }

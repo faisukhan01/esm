@@ -36,15 +36,22 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: any }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    request<{ token: string; user: any; mustChangePassword?: boolean }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<any>('auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   // platform
   platformOverview: () => request<any>('platform/overview'),
   institutes: () => request<any[]>('institutes'),
   institute: (id: string) => request<any>(`institutes/${id}`),
   createInstitute: (body: any) => request<any>('institutes', { method: 'POST', body: JSON.stringify(body) }),
   updateInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  editInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  blockInstitute: (id: string, blocked: boolean, reason?: string) =>
+    request<any>(`institutes/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
   branches: (instituteId?: string) => request<any[]>(instituteId ? `branches?instituteId=${instituteId}` : 'branches'),
   createBranch: (body: any) => request<any>('branches', { method: 'POST', body: JSON.stringify(body) }),
+  blockBranch: (id: string, blocked: boolean, reason?: string) =>
+    request<any>(`branches/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
   platformUsers: (params?: { role?: string; branchId?: string; instituteId?: string }) => {
     const q = new URLSearchParams();
     if (params?.role) q.set('role', params.role);
@@ -54,6 +61,10 @@ export const api = {
     return request<any[]>(qs ? `platform/users?${qs}` : 'platform/users');
   },
   createPlatformUser: (body: any) => request<any>('platform/users', { method: 'POST', body: JSON.stringify(body) }),
+  editUser: (id: string, body: any) => request<any>(`platform/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  blockUser: (id: string, blocked: boolean, reason?: string) =>
+    request<any>(`platform/users/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
+  getUserPassword: (id: string) => request<any>(`platform/users/${id}/password`),
   scopedStats: (instituteId?: string, branchId?: string) => {
     const q = new URLSearchParams();
     if (instituteId) q.set('instituteId', instituteId);
@@ -131,4 +142,33 @@ export const api = {
   addRoute: (body: any) => request<any>('transport/routes', { method: 'POST', body: JSON.stringify(body) }),
   // reference
   reference: () => request<{ classes: string[]; sections: string[]; subjects: string[] }>('reference'),
+  // classes & courses
+  getClasses: (branchId?: string) => request<any[]>(branchId ? `classes?branchId=${branchId}` : 'classes'),
+  getCourses: (params?: { branchId?: string; classId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.classId) q.set('classId', params.classId);
+    return request<any[]>(q.toString() ? `courses?${q.toString()}` : 'courses');
+  },
+  createCourse: (body: any) => request<any>('courses', { method: 'POST', body: JSON.stringify(body) }),
+  createClassCourse: (classId: string, courseId: string) =>
+    request<any>('class-courses', { method: 'POST', body: JSON.stringify({ classId, courseId }) }),
+  assignClassCourses: (classId: string, courseIds: string[]) =>
+    request<any>(`classes/${classId}/courses`, { method: 'POST', body: JSON.stringify({ courseIds }) }),
+  // teacher & student scoped
+  getTeacherClasses: () => request<any[]>('teacher/classes'),
+  getStudentCourses: () => request<any[]>('student/courses'),
+  // announcements
+  getAnnouncements: () => request<any[]>('announcements'),
+  createAnnouncement: (body: any) => request<any>('announcements', { method: 'POST', body: JSON.stringify(body) }),
+  // course materials
+  getCourseMaterials: (params?: { classId?: string; courseId?: string; teacherId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.classId) q.set('classId', params.classId);
+    if (params?.courseId) q.set('courseId', params.courseId);
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    return request<any[]>(q.toString() ? `course-materials?${q.toString()}` : 'course-materials');
+  },
+  addCourseMaterial: (body: any) => request<any>('course-materials', { method: 'POST', body: JSON.stringify(body) }),
+  downloadMaterial: (id: string) => apiUrl(`course-materials/${id}/download`),
 };

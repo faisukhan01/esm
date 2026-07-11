@@ -6,9 +6,9 @@ import { MODULES, MODULE_GROUPS } from '@/lib/modules';
 import { useApp } from '@/lib/store';
 import {
   GraduationCap, ArrowRight, Sparkles, ShieldCheck, Users, Building2,
-  CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
-  Smartphone, Mail, ArrowUpRight, PlayCircle, MessageCircleWarning,
-  Lock, Layers, Globe, Rocket, Heart, Crown, CreditCard, CalendarCheck, BookOpen,
+  Menu, X, Zap,
+  Smartphone, Mail, ArrowUpRight,
+  Layers, Globe, Rocket, Crown, BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,20 +16,11 @@ import { Badge } from '@/components/ui/badge';
 // Real features the platform actually offers — no fake stats
 const PLATFORM_FEATURES = [
   { icon: Layers, title: '22 Integrated Modules', desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
-  { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers, Students & Parents.' },
+  { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers & Students.' },
   { icon: Building2, title: 'Multi-Tenant SaaS', desc: 'Provision unlimited institutions. Each gets its own admin, branches, and isolated data.' },
   { icon: ShieldCheck, title: 'Role-Based Access', desc: 'Granular permissions — every user sees exactly what they need, nothing more.' },
-  { icon: Smartphone, title: 'Parent Mobile App', desc: 'Parents track attendance, results, fees, diary & complaints in real time.' },
-  { icon: Zap, title: 'Real-Time Data', desc: 'Live dashboards. No imports, no delays. Teachers mark attendance → parents see it instantly.' },
-];
-
-const PARENT_FEATURES = [
-  { icon: Bell, title: 'Instant Notifications', desc: 'Alerts for absences, fees, results and events — pushed to the parent app.' },
-  { icon: LineChart, title: 'Live Progress Tracking', desc: 'Attendance trends, subject-wise results, and GPA at a glance.' },
-  { icon: ShieldCheck, title: 'Fee Payments', desc: 'View balances, pay online, download receipts — paperless and transparent.' },
-  { icon: Smartphone, title: 'Daily Diary & Homework', desc: 'Teachers post assignments; parents and students see them instantly.' },
-  { icon: MessageCircleWarning, title: 'Two-Way Complaints', desc: 'Raise concerns, track status, and chat with the school — all in one thread.' },
-  { icon: Heart, title: 'Event Calendar', desc: 'Never miss a PTM, exam, or school event with synced calendars.' },
+  { icon: Smartphone, title: 'Mobile-Ready', desc: 'Responsive portals for teachers, students and admins — works beautifully on any device.' },
+  { icon: Zap, title: 'Real-Time Data', desc: 'Live dashboards. No imports, no delays. Teachers mark attendance → admins see it instantly.' },
 ];
 
 const TECH_STACK = [
@@ -178,7 +169,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
           </a>
 
           <div className="hidden md:flex items-center gap-1">
-            {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+            {['Modules', 'Features', 'Tech'].map(item => (
               <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className={`px-3 py-2 text-sm font-medium rounded-lg transition ${scrolled ? 'text-muted-foreground hover:text-foreground hover:bg-accent/60' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
                 {item}
               </a>
@@ -206,7 +197,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               className="md:hidden glass border-b border-border/60 overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
-                {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+                {['Modules', 'Features', 'Tech'].map(item => (
                   <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
                     {item}
                   </a>
@@ -322,212 +313,6 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         </div>
       </section>
 
-      {/* Parent app deep-dive */}
-      <section id="parent-app" className="py-20 sm:py-28 relative">
-        <div className="absolute inset-0 bg-grid opacity-40 dark:bg-grid-dark -z-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">Parent Application</Badge>
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-                Bring parents into the{' '}
-                <span className="gold-text">learning journey</span>
-              </h2>
-              <p className="mt-4 text-muted-foreground">
-                Any notice concerning school or student reaches guardians instantly.
-                Parents stay involved — from attendance to results to fee balance —
-                all from a beautiful mobile experience.
-              </p>
-              <div className="mt-8 grid sm:grid-cols-2 gap-4">
-                {PARENT_FEATURES.map((f, i) => (
-                  <motion.div
-                    key={f.title}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex gap-3"
-                  >
-                    <div className="h-10 w-10 shrink-0 rounded-lg bg-emerald-500/10 grid place-items-center">
-                      <f.icon className="h-5 w-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm">{f.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{f.desc}</div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Realistic Phone App Preview */}
-            <div className="relative flex justify-center">
-              {/* Floating notification card */}
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute -left-2 sm:-left-6 top-24 z-20 glass rounded-2xl border border-white/40 shadow-2xl px-4 py-3 hidden sm:block w-[200px]"
-              >
-                <div className="flex items-start gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-500 grid place-items-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-700">Attendance marked</div>
-                    <div className="text-[10px] text-slate-500">Your child is present today</div>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Phone frame */}
-              <motion.div
-                initial={{ opacity: 0, y: 30, rotateZ: -2 }}
-                whileInView={{ opacity: 1, y: 0, rotateZ: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-                className="relative w-[300px] h-[620px] rounded-[3rem] bg-slate-900 p-3 shadow-2xl"
-              >
-                {/* Side buttons */}
-                <div className="absolute -left-1 top-32 w-1 h-12 rounded-l bg-slate-800" />
-                <div className="absolute -left-1 top-48 w-1 h-16 rounded-l bg-slate-800" />
-                <div className="absolute -right-1 top-40 w-1 h-20 rounded-r bg-slate-800" />
-
-                {/* Screen */}
-                <div className="relative w-full h-full rounded-[2.3rem] overflow-hidden bg-slate-50">
-                  {/* Notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-900 rounded-b-2xl z-30" />
-
-                  {/* Status bar */}
-                  <div className="flex items-center justify-between px-6 pt-2 pb-1 text-[10px] font-semibold text-slate-700 z-20 relative">
-                    <span>9:41</span>
-                    <div className="flex items-center gap-1">
-                      <div className="flex gap-0.5">
-                        <div className="w-1 h-1.5 rounded-sm bg-slate-700" />
-                        <div className="w-1 h-2 rounded-sm bg-slate-700" />
-                        <div className="w-1 h-2.5 rounded-sm bg-slate-700" />
-                      </div>
-                      <div className="w-4 h-2 rounded-sm border border-slate-700" />
-                    </div>
-                  </div>
-
-                  {/* App content — scrollable feel */}
-                  <div className="px-3 pt-1 pb-4 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center">
-                          <GraduationCap className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-slate-400">Welcome,</div>
-                          <div className="text-xs font-bold text-slate-800">Sarah Johnson</div>
-                        </div>
-                      </div>
-                      <div className="relative">
-                        <Bell className="h-5 w-5 text-slate-400" />
-                        <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 border border-white" />
-                      </div>
-                    </div>
-
-                    {/* Hero card — attendance */}
-                    <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-3 text-white shadow-lg">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] uppercase tracking-wider opacity-80">Today's Attendance</span>
-                        <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">Live</span>
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <div className="text-2xl font-extrabold">94%</div>
-                          <div className="text-[9px] opacity-80">Present this month</div>
-                        </div>
-                        <div className="flex gap-0.5 items-end">
-                          {[40, 55, 35, 60, 45, 70, 50].map((h, i) => (
-                            <div key={i} className="w-1 rounded-full bg-white/40" style={{ height: `${h * 0.3}px` }} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Quick stats grid */}
-                    <div className="grid grid-cols-2 gap-2 mt-3">
-                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <div className="h-5 w-5 rounded-md bg-amber-100 grid place-items-center"><Zap className="h-2.5 w-2.5 text-amber-600" /></div>
-                          <span className="text-[9px] text-slate-400 uppercase">GPA</span>
-                        </div>
-                        <div className="text-lg font-bold text-slate-800">3.8</div>
-                        <div className="text-[8px] text-emerald-600">▲ 0.2 this term</div>
-                      </div>
-                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <div className="h-5 w-5 rounded-md bg-emerald-100 grid place-items-center"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" /></div>
-                          <span className="text-[9px] text-slate-400 uppercase">Fees</span>
-                        </div>
-                        <div className="text-lg font-bold text-slate-800">Paid</div>
-                        <div className="text-[8px] text-slate-400">Next: Jan 5</div>
-                      </div>
-                    </div>
-
-                    {/* Recent result card */}
-                    <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100 mt-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Recent Result</span>
-                        <span className="text-[9px] text-emerald-600 font-medium">View all</span>
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-6 w-6 rounded bg-violet-100 grid place-items-center"><BookOpen className="h-3 w-3 text-violet-600" /></div>
-                            <div>
-                              <div className="text-[10px] font-semibold text-slate-700">Mathematics</div>
-                              <div className="text-[8px] text-slate-400">Monthly Test</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs font-bold text-emerald-600">92/100</div>
-                            <div className="text-[8px] text-slate-400">Grade A+</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-6 w-6 rounded bg-cyan-100 grid place-items-center"><BookOpen className="h-3 w-3 text-cyan-600" /></div>
-                            <div>
-                              <div className="text-[10px] font-semibold text-slate-700">Physics</div>
-                              <div className="text-[8px] text-slate-400">Weekly Test</div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs font-bold text-emerald-600">88/100</div>
-                            <div className="text-[8px] text-slate-400">Grade A</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Notification card */}
-                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 mt-3 flex items-start gap-2">
-                      <div className="h-6 w-6 rounded-full bg-amber-400 grid place-items-center shrink-0"><Bell className="h-3 w-3 text-white" /></div>
-                      <div>
-                        <div className="text-[10px] font-semibold text-slate-700">PTM Reminder</div>
-                        <div className="text-[9px] text-slate-500">Saturday, 10:00 AM — Don't forget!</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom nav bar */}
-                  <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-100 px-4 py-2 flex items-center justify-around">
-                    <div className="flex flex-col items-center gap-0.5"><div className="h-1 w-4 rounded-full bg-emerald-600" /><GraduationCap className="h-4 w-4 text-emerald-600" /></div>
-                    <CalendarCheck className="h-4 w-4 text-slate-300" />
-                    <CreditCard className="h-4 w-4 text-slate-300" />
-                    <Bell className="h-4 w-4 text-slate-300" />
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* How it works */}
       <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -549,7 +334,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-amber-500 to-orange-600' },
               { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-emerald-500 to-emerald-700' },
               { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-teal-500 to-cyan-600' },
-              { step: '04', icon: BookOpen, title: 'Teachers & Parents', desc: 'Take attendance, post results, pay fees — all in real time.', color: 'from-violet-500 to-purple-600' },
+              { step: '04', icon: BookOpen, title: 'Teachers & Students', desc: 'Take attendance, post results, track progress — all in real time.', color: 'from-violet-500 to-purple-600' },
             ].map((s, i) => (
               <motion.div
                 key={s.step}

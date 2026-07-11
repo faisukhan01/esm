@@ -1,0 +1,658 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { MODULES, MODULE_GROUPS } from '@/lib/modules';
+     6→import { useApp } from '@/lib/store';
+     7→import {
+     8→  GraduationCap, ArrowRight, Sparkles, ShieldCheck, Users, Building2,
+     9→  CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
+    10→  Smartphone, Mail, ArrowUpRight, PlayCircle, MessageCircleWarning,
+    11→  Lock, Layers, Globe, Rocket, Heart, Crown, CreditCard, CalendarCheck, BookOpen,
+    12→} from 'lucide-react';
+    13→import { Button } from '@/components/ui/button';
+    14→import { Badge } from '@/components/ui/badge';
+    15→
+    16→// Real features the platform actually offers — no fake stats
+    17→const PLATFORM_FEATURES = [
+    18→  { icon: Layers, title: '22 Integrated Modules', desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
+    19→  { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers, Students & Parents.' },
+    20→  { icon: Building2, title: 'Multi-Tenant SaaS', desc: 'Provision unlimited institutions. Each gets its own admin, branches, and isolated data.' },
+    21→  { icon: ShieldCheck, title: 'Role-Based Access', desc: 'Granular permissions — every user sees exactly what they need, nothing more.' },
+    22→  { icon: Smartphone, title: 'Parent Mobile App', desc: 'Parents track attendance, results, fees, diary & complaints in real time.' },
+    23→  { icon: Zap, title: 'Real-Time Data', desc: 'Live dashboards. No imports, no delays. Teachers mark attendance → parents see it instantly.' },
+    24→];
+    25→
+    26→const PARENT_FEATURES = [
+    27→  { icon: Bell, title: 'Instant Notifications', desc: 'Alerts for absences, fees, results and events — pushed to the parent app.' },
+    28→  { icon: LineChart, title: 'Live Progress Tracking', desc: 'Attendance trends, subject-wise results, and GPA at a glance.' },
+    29→  { icon: ShieldCheck, title: 'Fee Payments', desc: 'View balances, pay online, download receipts — paperless and transparent.' },
+    30→  { icon: Smartphone, title: 'Daily Diary & Homework', desc: 'Teachers post assignments; parents and students see them instantly.' },
+    31→  { icon: MessageCircleWarning, title: 'Two-Way Complaints', desc: 'Raise concerns, track status, and chat with the school — all in one thread.' },
+    32→  { icon: Heart, title: 'Event Calendar', desc: 'Never miss a PTM, exam, or school event with synced calendars.' },
+    33→];
+    34→
+    35→const TECH_STACK = [
+    36→  { label: 'Next.js 16', desc: 'Modern React framework' },
+    37→  { label: 'Three.js', desc: '3D visualizations' },
+    38→  { label: 'Node.js + Express', desc: 'Scalable backend API' },
+    39→  { label: 'TypeScript', desc: 'Type-safe throughout' },
+    40→  { label: 'Tailwind CSS', desc: 'Premium responsive UI' },
+    41→  { label: 'Role-Based Auth', desc: 'Secure multi-tenant access' },
+    42→];
+    43→
+    44→export function LandingPage() {
+    45→  const setView = useApp(s => s.setView);
+    46→  const [menuOpen, setMenuOpen] = useState(false);
+    47→  const [activeGroup, setActiveGroup] = useState<string>(MODULE_GROUPS[0] || 'Overview');
+    48→  const [scrolled, setScrolled] = useState(false);
+    49→
+    50→  useEffect(() => {
+    51→    const onScroll = () => setScrolled(window.scrollY > 20);
+    52→    window.addEventListener('scroll', onScroll);
+    53→    return () => window.removeEventListener('scroll', onScroll);
+    54→  }, []);
+    55→
+    56→  const filteredModules = MODULES.filter(m => m.group === activeGroup);
+    57→
+    58→  return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} activeGroup={activeGroup} setActiveGroup={setActiveGroup} scrolled={scrolled} filteredModules={filteredModules} />;
+    59→}
+    60→
+    61→// ===== Hero Slider — 3 rotating educational background images =====
+    62→const HERO_SLIDES = [
+    63→  { img: 'https://sfile.chatglm.cn/images-ppt/157d0a5aed9f.jpg', caption: 'Modern campuses', sub: 'Libraries built for focus' },
+    64→  { img: 'https://sfile.chatglm.cn/images-ppt/96fea72cbfed.jpg', caption: 'Graduation day', sub: 'Celebrating every milestone' },
+    65→  { img: 'https://sfile.chatglm.cn/images-ppt/f289b20ec492.jpg', caption: 'Connected classrooms', sub: 'Technology that empowers' },
+    66→];
+    67→
+    68→function HeroSlider({ setView }: { setView: (v: any) => void }) {
+    69→  const [idx, setIdx] = useState(0);
+    70→  useEffect(() => {
+    71→    const t = setInterval(() => setIdx(i => (i + 1) % HERO_SLIDES.length), 5500);
+    72→    return () => clearInterval(t);
+    73→  }, []);
+    74→
+    75→  return (
+    76→    <section id="top" className="relative h-screen min-h-[640px] w-full overflow-hidden">
+    77→      {/* Background images */}
+    78→      {HERO_SLIDES.map((s, i) => (
+    79→        <div
+    80→          key={i}
+    81→          className="absolute inset-0 transition-opacity duration-[1200ms] ease-in-out"
+    82→          style={{ opacity: i === idx ? 1 : 0 }}
+    83→        >
+    84→          <img src={s.img} alt={s.caption} className="w-full h-full object-cover" />
+    85→        </div>
+    86→      ))}
+    87→
+    88→      {/* Dark gradient overlay for text readability */}
+    89→      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+    90→      <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+    91→
+    92→      {/* Slide dots */}
+    93→      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2.5">
+    94→        {HERO_SLIDES.map((_, i) => (
+    95→          <button
+    96→            key={i}
+    97→            onClick={() => setIdx(i)}
+    98→            className={`h-2 rounded-full transition-all duration-300 ${i === idx ? 'w-8 bg-amber-400' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+    99→            aria-label={`Slide ${i + 1}`}
+   100→          />
+   101→        ))}
+   102→      </div>
+   103→
+   104→      {/* Minimal centered text */}
+   105→      <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+   106→        <motion.div
+   107→          initial={{ opacity: 0, y: 20 }}
+   108→          animate={{ opacity: 1, y: 0 }}
+   109→          transition={{ duration: 0.8 }}
+   110→          className="max-w-3xl"
+   111→        >
+   112→          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur px-4 py-1.5 text-xs font-medium text-white mb-6">
+   113→            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+   114→            Electronic School Management
+   115→          </div>
+   116→
+   117→          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white">
+   118→            One platform for{' '}
+   119→            <span className="bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">your entire</span>{' '}
+   120→            institution
+   121→          </h1>
+   122→
+   123→          <p className="mt-5 text-base sm:text-lg text-white/80 max-w-xl mx-auto">
+   124→            Admissions, attendance, fees, academics & parent communication — unified.
+   125→          </p>
+   126→
+   127→          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+   128→            <Button size="lg" className="bg-white text-slate-900 hover:bg-white/90 shadow-xl" onClick={() => setView('login')}>
+   129→              Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
+   130→            </Button>
+   131→            <button
+   132→              onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
+   133→              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-slate-900 transition-all duration-300"
+   134→            >
+   135→              Explore Modules
+   136→            </button>
+   137→          </div>
+   138→
+   139→          {/* Current slide caption */}
+   140→          <AnimatePresence mode="wait">
+   141→            <motion.div
+   142→              key={idx}
+   143→              initial={{ opacity: 0, y: 10 }}
+   144→              animate={{ opacity: 1, y: 0 }}
+   145→              exit={{ opacity: 0, y: -10 }}
+   146→              transition={{ duration: 0.5 }}
+   147→              className="mt-10 text-white/60 text-sm"
+   148→            >
+   149→              <span className="font-semibold text-amber-300">{HERO_SLIDES[idx].caption}</span>
+   150→              <span className="mx-2">·</span>
+   151→              {HERO_SLIDES[idx].sub}
+   152→            </motion.div>
+   153→          </AnimatePresence>
+   154→        </motion.div>
+   155→      </div>
+   156→    </section>
+   157→  );
+   158→}
+   159→
+   160→function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActiveGroup, scrolled, filteredModules }: any) {
+   161→
+   162→  return (
+   163→    <div className="min-h-screen flex flex-col bg-background">
+   164→      {/* Navbar */}
+   165→      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'glass border-b border-border/60 shadow-sm' : 'bg-transparent'}`}>
+   166→        <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+   167→          <a href="#top" className="flex items-center gap-2.5 group">
+   168→            <div className="relative">
+   169→              <div className="absolute inset-0 rounded-xl bg-amber-400/40 blur-md group-hover:bg-amber-400/60 transition" />
+   170→              <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 grid place-items-center shadow-lg">
+   171→                <GraduationCap className="h-5 w-5 text-white" />
+   172→              </div>
+   173→            </div>
+   174→            <div className="leading-tight">
+   175→              <div className={`font-display font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
+   176→              <div className={`text-[10px] -mt-0.5 hidden sm:block ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
+   177→            </div>
+   178→          </a>
+   179→
+   180→          <div className="hidden md:flex items-center gap-1">
+   181→            {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+   182→              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className={`px-3 py-2 text-sm font-medium rounded-lg transition ${scrolled ? 'text-muted-foreground hover:text-foreground hover:bg-accent/60' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
+   183→                {item}
+   184→              </a>
+   185→            ))}
+   186→          </div>
+   187→
+   188→          <div className="flex items-center gap-2">
+   189→            <Button variant="ghost" size="sm" className={`hidden sm:flex ${scrolled ? '' : 'text-white hover:bg-white/10 hover:text-white'}`} onClick={() => setView('login')}>
+   190→              Sign in
+   191→            </Button>
+   192→            <Button size="sm" className="bg-white text-slate-900 hover:bg-white/90 shadow-md" onClick={() => setView('login')}>
+   193→              Launch Portal <ArrowRight className="h-4 w-4 ml-1" />
+   194→            </Button>
+   195→            <Button variant="ghost" size="icon" className={`md:hidden ${scrolled ? '' : 'text-white hover:bg-white/10'}`} onClick={() => setMenuOpen(v => !v)}>
+   196→              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+   197→            </Button>
+   198→          </div>
+   199→        </nav>
+   200→        <AnimatePresence>
+   201→          {menuOpen && (
+   202→            <motion.div
+   203→              initial={{ height: 0, opacity: 0 }}
+   204→              animate={{ height: 'auto', opacity: 1 }}
+   205→              exit={{ height: 0, opacity: 0 }}
+   206→              className="md:hidden glass border-b border-border/60 overflow-hidden"
+   207→            >
+   208→              <div className="px-4 py-3 space-y-1">
+   209→                {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+   210→                  <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
+   211→                    {item}
+   212→                  </a>
+   213→                ))}
+   214→              </div>
+   215→            </motion.div>
+   216→          )}
+   217→        </AnimatePresence>
+   218→      </header>
+   219→
+   220→      {/* Hero — full-bleed image slider with clean text overlay */}
+   221→      <HeroSlider setView={setView} />
+   222→
+   223→
+   224→      {/* Platform features (replaces fake stats) */}
+   225→      <section id="features" className="py-20 sm:py-28 relative">
+   226→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   227→          <div className="text-center max-w-2xl mx-auto mb-12">
+   228→            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Platform Capabilities</Badge>
+   229→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   230→              Built to run{' '}
+   231→              <span className="emerald-text">your entire institution</span>
+   232→            </h2>
+   233→            <p className="mt-4 text-muted-foreground">
+   234→              From the first inquiry to graduation day — every workflow is connected, scoped, and real-time.
+   235→            </p>
+   236→          </div>
+   237→
+   238→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   239→            {PLATFORM_FEATURES.map((f, i) => (
+   240→              <motion.div
+   241→                key={f.title}
+   242→                initial={{ opacity: 0, y: 20 }}
+   243→                whileInView={{ opacity: 1, y: 0 }}
+   244→                viewport={{ once: true }}
+   245→                transition={{ delay: i * 0.08 }}
+   246→                className="group relative rounded-2xl border border-border/60 bg-card p-6 hover:shadow-xl hover:-translate-y-1 transition-all"
+   247→              >
+   248→                <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent opacity-0 group-hover:opacity-100 transition" />
+   249→                <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/15 to-amber-500/10 items-center justify-center mb-4 group-hover:scale-110 transition">
+   250→                  <f.icon className="h-6 w-6 text-emerald-600" />
+   251→                </div>
+   252→                <h3 className="font-bold text-lg mb-2">{f.title}</h3>
+   253→                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+   254→              </motion.div>
+   255→            ))}
+   256→          </div>
+   257→        </div>
+   258→      </section>
+   259→
+   260→      {/* Modules showcase */}
+   261→      <section id="modules" className="py-20 sm:py-28 relative bg-gradient-to-b from-emerald-50/40 to-background dark:from-emerald-950/20">
+   262→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   263→          <div className="text-center max-w-2xl mx-auto mb-12">
+   264→            <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">{MODULES.length} Integrated Modules</Badge>
+   265→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   266→              Every module your institution needs,{' '}
+   267→              <span className="emerald-text">in one place</span>
+   268→            </h2>
+   269→            <p className="mt-4 text-muted-foreground">
+   270→              Filter by category to explore what ESM can do.
+   271→            </p>
+   272→          </div>
+   273→
+   274→          {/* group filter */}
+   275→          <div className="flex flex-wrap justify-center gap-2 mb-10">
+   276→            {MODULE_GROUPS.map(g => (
+   277→              <button
+   278→                key={g}
+   279→                onClick={() => setActiveGroup(g)}
+   280→                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition ${
+   281→                  activeGroup === g
+   282→                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+   283→                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/40'
+   284→                }`}
+   285→              >
+   286→                {g}
+   287→              </button>
+   288→            ))}
+   289→          </div>
+   290→
+   291→          <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   292→            <AnimatePresence mode="popLayout">
+   293→              {filteredModules.map(m => (
+   294→                <motion.div
+   295→                  key={m.id}
+   296→                  layout
+   297→                  initial={{ opacity: 0, scale: 0.95 }}
+   298→                  animate={{ opacity: 1, scale: 1 }}
+   299→                  exit={{ opacity: 0, scale: 0.95 }}
+   300→                  whileHover={{ y: -4 }}
+   301→                  className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden cursor-pointer"
+   302→                  onClick={() => { setView('login'); }}
+   303→                >
+   304→                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-20 blur-2xl transition`} />
+   305→                  <div className={`inline-flex h-11 w-11 rounded-xl bg-gradient-to-br ${m.color} items-center justify-center shadow-md mb-4`}>
+   306→                    <m.icon className="h-5 w-5 text-white" />
+   307→                  </div>
+   308→                  <h3 className="font-bold text-base mb-1 flex items-center gap-1.5">
+   309→                    {m.name}
+   310→                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition" />
+   311→                  </h3>
+   312→                  <p className="text-sm text-muted-foreground mb-3">{m.tagline}</p>
+   313→                  <div className="flex flex-wrap gap-1.5">
+   314→                    {m.features.slice(0, 3).map(f => (
+   315→                      <span key={f} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{f}</span>
+   316→                    ))}
+   317→                  </div>
+   318→                </motion.div>
+   319→              ))}
+   320→            </AnimatePresence>
+   321→          </motion.div>
+   322→        </div>
+   323→      </section>
+   324→
+   325→      {/* Parent app deep-dive */}
+   326→      <section id="parent-app" className="py-20 sm:py-28 relative">
+   327→        <div className="absolute inset-0 bg-grid opacity-40 dark:bg-grid-dark -z-10" />
+   328→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   329→          <div className="grid lg:grid-cols-2 gap-12 items-center">
+   330→            <div>
+   331→              <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">Parent Application</Badge>
+   332→              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   333→                Bring parents into the{' '}
+   334→                <span className="gold-text">learning journey</span>
+   335→              </h2>
+   336→              <p className="mt-4 text-muted-foreground">
+   337→                Any notice concerning school or student reaches guardians instantly.
+   338→                Parents stay involved — from attendance to results to fee balance —
+   339→                all from a beautiful mobile experience.
+   340→              </p>
+   341→              <div className="mt-8 grid sm:grid-cols-2 gap-4">
+   342→                {PARENT_FEATURES.map((f, i) => (
+   343→                  <motion.div
+   344→                    key={f.title}
+   345→                    initial={{ opacity: 0, x: -10 }}
+   346→                    whileInView={{ opacity: 1, x: 0 }}
+   347→                    viewport={{ once: true }}
+   348→                    transition={{ delay: i * 0.05 }}
+   349→                    className="flex gap-3"
+   350→                  >
+   351→                    <div className="h-10 w-10 shrink-0 rounded-lg bg-emerald-500/10 grid place-items-center">
+   352→                      <f.icon className="h-5 w-5 text-emerald-600" />
+   353→                    </div>
+   354→                    <div>
+   355→                      <div className="font-semibold text-sm">{f.title}</div>
+   356→                      <div className="text-xs text-muted-foreground mt-0.5">{f.desc}</div>
+   357→                    </div>
+   358→                  </motion.div>
+   359→                ))}
+   360→              </div>
+   361→            </div>
+   362→
+   363→            {/* Realistic Phone App Preview */}
+   364→            <div className="relative flex justify-center">
+   365→              {/* Floating notification card */}
+   366→              <motion.div
+   367→                animate={{ y: [0, -10, 0] }}
+   368→                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+   369→                className="absolute -left-2 sm:-left-6 top-24 z-20 glass rounded-2xl border border-white/40 shadow-2xl px-4 py-3 hidden sm:block w-[200px]"
+   370→              >
+   371→                <div className="flex items-start gap-2">
+   372→                  <div className="h-8 w-8 rounded-lg bg-emerald-500 grid place-items-center shrink-0">
+   373→                    <CheckCircle2 className="h-4 w-4 text-white" />
+   374→                  </div>
+   375→                  <div>
+   376→                    <div className="text-[10px] font-bold text-slate-700">Attendance marked</div>
+   377→                    <div className="text-[10px] text-slate-500">Your child is present today</div>
+   378→                  </div>
+   379→                </div>
+   380→              </motion.div>
+   381→
+   382→              {/* Phone frame */}
+   383→              <motion.div
+   384→                initial={{ opacity: 0, y: 30, rotateZ: -2 }}
+   385→                whileInView={{ opacity: 1, y: 0, rotateZ: 0 }}
+   386→                viewport={{ once: true }}
+   387→                transition={{ duration: 0.8 }}
+   388→                className="relative w-[300px] h-[620px] rounded-[3rem] bg-slate-900 p-3 shadow-2xl"
+   389→              >
+   390→                {/* Side buttons */}
+   391→                <div className="absolute -left-1 top-32 w-1 h-12 rounded-l bg-slate-800" />
+   392→                <div className="absolute -left-1 top-48 w-1 h-16 rounded-l bg-slate-800" />
+   393→                <div className="absolute -right-1 top-40 w-1 h-20 rounded-r bg-slate-800" />
+   394→
+   395→                {/* Screen */}
+   396→                <div className="relative w-full h-full rounded-[2.3rem] overflow-hidden bg-slate-50">
+   397→                  {/* Notch */}
+   398→                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-900 rounded-b-2xl z-30" />
+   399→
+   400→                  {/* Status bar */}
+   401→                  <div className="flex items-center justify-between px-6 pt-2 pb-1 text-[10px] font-semibold text-slate-700 z-20 relative">
+   402→                    <span>9:41</span>
+   403→                    <div className="flex items-center gap-1">
+   404→                      <div className="flex gap-0.5">
+   405→                        <div className="w-1 h-1.5 rounded-sm bg-slate-700" />
+   406→                        <div className="w-1 h-2 rounded-sm bg-slate-700" />
+   407→                        <div className="w-1 h-2.5 rounded-sm bg-slate-700" />
+   408→                      </div>
+   409→                      <div className="w-4 h-2 rounded-sm border border-slate-700" />
+   410→                    </div>
+   411→                  </div>
+   412→
+   413→                  {/* App content — scrollable feel */}
+   414→                  <div className="px-3 pt-1 pb-4 overflow-hidden">
+   415→                    {/* Header */}
+   416→                    <div className="flex items-center justify-between mb-3">
+   417→                      <div className="flex items-center gap-2">
+   418→                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center">
+   419→                          <GraduationCap className="h-4 w-4 text-white" />
+   420→                        </div>
+   421→                        <div>
+   422→                          <div className="text-[10px] text-slate-400">Welcome,</div>
+   423→                          <div className="text-xs font-bold text-slate-800">Sarah Johnson</div>
+   424→                        </div>
+   425→                      </div>
+   426→                      <div className="relative">
+   427→                        <Bell className="h-5 w-5 text-slate-400" />
+   428→                        <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-rose-500 border border-white" />
+   429→                      </div>
+   430→                    </div>
+   431→
+   432→                    {/* Hero card — attendance */}
+   433→                    <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 p-3 text-white shadow-lg">
+   434→                      <div className="flex items-center justify-between mb-1">
+   435→                        <span className="text-[9px] uppercase tracking-wider opacity-80">Today's Attendance</span>
+   436→                        <span className="text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">Live</span>
+   437→                      </div>
+   438→                      <div className="flex items-end justify-between">
+   439→                        <div>
+   440→                          <div className="text-2xl font-extrabold">94%</div>
+   441→                          <div className="text-[9px] opacity-80">Present this month</div>
+   442→                        </div>
+   443→                        <div className="flex gap-0.5 items-end">
+   444→                          {[40, 55, 35, 60, 45, 70, 50].map((h, i) => (
+   445→                            <div key={i} className="w-1 rounded-full bg-white/40" style={{ height: `${h * 0.3}px` }} />
+   446→                          ))}
+   447→                        </div>
+   448→                      </div>
+   449→                    </div>
+   450→
+   451→                    {/* Quick stats grid */}
+   452→                    <div className="grid grid-cols-2 gap-2 mt-3">
+   453→                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
+   454→                        <div className="flex items-center gap-1.5 mb-1">
+   455→                          <div className="h-5 w-5 rounded-md bg-amber-100 grid place-items-center"><Zap className="h-2.5 w-2.5 text-amber-600" /></div>
+   456→                          <span className="text-[9px] text-slate-400 uppercase">GPA</span>
+   457→                        </div>
+   458→                        <div className="text-lg font-bold text-slate-800">3.8</div>
+   459→                        <div className="text-[8px] text-emerald-600">▲ 0.2 this term</div>
+   460→                      </div>
+   461→                      <div className="rounded-xl bg-white p-2.5 shadow-sm border border-slate-100">
+   462→                        <div className="flex items-center gap-1.5 mb-1">
+   463→                          <div className="h-5 w-5 rounded-md bg-emerald-100 grid place-items-center"><CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" /></div>
+   464→                          <span className="text-[9px] text-slate-400 uppercase">Fees</span>
+   465→                        </div>
+   466→                        <div className="text-lg font-bold text-slate-800">Paid</div>
+   467→                        <div className="text-[8px] text-slate-400">Next: Jan 5</div>
+   468→                      </div>
+   469→                    </div>
+   470→
+   471→                    {/* Recent result card */}
+   472→                    <div className="rounded-xl bg-white p-3 shadow-sm border border-slate-100 mt-3">
+   473→                      <div className="flex items-center justify-between mb-2">
+   474→                        <span className="text-[9px] font-bold text-slate-400 uppercase">Recent Result</span>
+   475→                        <span className="text-[9px] text-emerald-600 font-medium">View all</span>
+   476→                      </div>
+   477→                      <div className="space-y-1.5">
+   478→                        <div className="flex items-center justify-between">
+   479→                          <div className="flex items-center gap-1.5">
+   480→                            <div className="h-6 w-6 rounded bg-violet-100 grid place-items-center"><BookOpen className="h-3 w-3 text-violet-600" /></div>
+   481→                            <div>
+   482→                              <div className="text-[10px] font-semibold text-slate-700">Mathematics</div>
+   483→                              <div className="text-[8px] text-slate-400">Monthly Test</div>
+   484→                            </div>
+   485→                          </div>
+   486→                          <div className="text-right">
+   487→                            <div className="text-xs font-bold text-emerald-600">92/100</div>
+   488→                            <div className="text-[8px] text-slate-400">Grade A+</div>
+   489→                          </div>
+   490→                        </div>
+   491→                        <div className="flex items-center justify-between">
+   492→                          <div className="flex items-center gap-1.5">
+   493→                            <div className="h-6 w-6 rounded bg-cyan-100 grid place-items-center"><BookOpen className="h-3 w-3 text-cyan-600" /></div>
+   494→                            <div>
+   495→                              <div className="text-[10px] font-semibold text-slate-700">Physics</div>
+   496→                              <div className="text-[8px] text-slate-400">Weekly Test</div>
+   497→                            </div>
+   498→                          </div>
+   499→                          <div className="text-right">
+   500→                            <div className="text-xs font-bold text-emerald-600">88/100</div>
+   501→                            <div className="text-[8px] text-slate-400">Grade A</div>
+   502→                          </div>
+   503→                        </div>
+   504→                      </div>
+   505→                    </div>
+   506→
+   507→                    {/* Notification card */}
+   508→                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 mt-3 flex items-start gap-2">
+   509→                      <div className="h-6 w-6 rounded-full bg-amber-400 grid place-items-center shrink-0"><Bell className="h-3 w-3 text-white" /></div>
+   510→                      <div>
+   511→                        <div className="text-[10px] font-semibold text-slate-700">PTM Reminder</div>
+   512→                        <div className="text-[9px] text-slate-500">Saturday, 10:00 AM — Don't forget!</div>
+   513→                      </div>
+   514→                    </div>
+   515→                  </div>
+   516→
+   517→                  {/* Bottom nav bar */}
+   518→                  <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-100 px-4 py-2 flex items-center justify-around">
+   519→                    <div className="flex flex-col items-center gap-0.5"><div className="h-1 w-4 rounded-full bg-emerald-600" /><GraduationCap className="h-4 w-4 text-emerald-600" /></div>
+   520→                    <CalendarCheck className="h-4 w-4 text-slate-300" />
+   521→                    <CreditCard className="h-4 w-4 text-slate-300" />
+   522→                    <Bell className="h-4 w-4 text-slate-300" />
+   523→                  </div>
+   524→                </div>
+   525→              </motion.div>
+   526→            </div>
+   527→          </div>
+   528→        </div>
+   529→      </section>
+   530→
+   531→      {/* How it works */}
+   532→      <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
+   533→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   534→          <div className="text-center max-w-2xl mx-auto mb-12">
+   535→            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">How It Works</Badge>
+   536→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   537→              From signup to{' '}
+   538→              <span className="emerald-text">first day</span>{' '}
+   539→              in minutes
+   540→            </h2>
+   541→            <p className="mt-4 text-muted-foreground">
+   542→              A simple, top-down provisioning chain. Each role auto-creates the next.
+   543→            </p>
+   544→          </div>
+   545→          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 relative">
+   546→            {/* Connector line */}
+   547→            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-emerald-500/20 via-amber-500/40 to-emerald-500/20" />
+   548→            {[
+   549→              { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-amber-500 to-orange-600' },
+   550→              { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-emerald-500 to-emerald-700' },
+   551→              { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-teal-500 to-cyan-600' },
+   552→              { step: '04', icon: BookOpen, title: 'Teachers & Parents', desc: 'Take attendance, post results, pay fees — all in real time.', color: 'from-violet-500 to-purple-600' },
+   553→            ].map((s, i) => (
+   554→              <motion.div
+   555→                key={s.step}
+   556→                initial={{ opacity: 0, y: 20 }}
+   557→                whileInView={{ opacity: 1, y: 0 }}
+   558→                viewport={{ once: true }}
+   559→                transition={{ delay: i * 0.1 }}
+   560→                className="relative rounded-2xl border border-border/60 bg-card p-6 text-center hover:shadow-xl hover:-translate-y-1 transition-all z-10"
+   561→              >
+   562→                <div className={`inline-flex h-12 w-12 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center shadow-md mb-4`}>
+   563→                  <s.icon className="h-6 w-6 text-white" />
+   564→                </div>
+   565→                <div className="text-xs font-bold text-amber-500 mb-1">STEP {s.step}</div>
+   566→                <h3 className="font-bold text-base mb-2">{s.title}</h3>
+   567→                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+   568→              </motion.div>
+   569→            ))}
+   570→          </div>
+   571→        </div>
+   572→      </section>
+   573→
+   574→      {/* CTA — honest early access */}
+   575→      <section className="py-20 sm:py-24">
+   576→        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+   577→          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 p-8 sm:p-12 text-center text-white">
+   578→            <div className="absolute inset-0 bg-grid-dark opacity-30" />
+   579→            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
+   580→            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+   581→            <div className="relative">
+   582→              <Rocket className="h-8 w-8 mx-auto text-amber-300 mb-4" />
+   583→              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   584→                Ready to modernize your campus?
+   585→              </h2>
+   586→              <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
+   587→                Explore the full ESM portal now — a live, interactive demo. Provision an
+   588→                institute, add branches, create teachers and students, and see how each
+   589→                role gets their own scoped experience.
+   590→              </p>
+   591→              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+   592→                <Button size="lg" className="bg-white text-emerald-800 hover:bg-emerald-50" onClick={() => setView('login')}>
+   593→                  Launch the Portal <ArrowRight className="h-4 w-4 ml-2" />
+   594→                </Button>
+   595→                <button
+   596→                  onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
+   597→                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-emerald-800 transition-all duration-300"
+   598→                >
+   599→                  See all modules
+   600→                </button>
+   601→              </div>
+   602→            </div>
+   603→          </div>
+   604→        </div>
+   605→      </section>
+   606→
+   607→      {/* Footer */}
+   608→      <footer className="mt-auto border-t border-border/60 bg-card/50">
+   609→        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+   610→          <div>
+   611→            <div className="flex items-center gap-2.5 mb-3">
+   612→              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 grid place-items-center">
+   613→                <GraduationCap className="h-5 w-5 text-white" />
+   614→              </div>
+   615→              <div>
+   616→                <div className="font-display font-extrabold text-lg">ESM</div>
+   617→                <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
+   618→              </div>
+   619→            </div>
+   620→            <p className="text-sm text-muted-foreground">
+   621→              Intelligent solutions for a better institution. A modern, multi-tenant school management platform.
+   622→            </p>
+   623→          </div>
+   624→          <div>
+   625→            <h4 className="font-semibold text-sm mb-3">Modules</h4>
+   626→            <ul className="space-y-2 text-sm text-muted-foreground">
+   627→              {MODULES.slice(0, 5).map(m => (
+   628→                <li key={m.id}><button className="hover:text-foreground transition" onClick={() => setView('login')}>{m.name}</button></li>
+   629→              ))}
+   630→            </ul>
+   631→          </div>
+   632→          <div>
+   633→            <h4 className="font-semibold text-sm mb-3">Features</h4>
+   634→            <ul className="space-y-2 text-sm text-muted-foreground">
+   635→              <li>Multi-tenant SaaS</li>
+   636→              <li>Role-based portals</li>
+   637→              <li>Real-time data</li>
+   638→              <li>Parent mobile app</li>
+   639→              <li>Secure authentication</li>
+   640→            </ul>
+   641→          </div>
+   642→          <div>
+   643→            <h4 className="font-semibold text-sm mb-3">Get in touch</h4>
+   644→            <ul className="space-y-2 text-sm text-muted-foreground">
+   645→              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> faisalkhan00297@gmail.com</li>
+   646→              <li className="flex items-center gap-2"><Globe className="h-4 w-4 shrink-0" /> Available worldwide</li>
+   647→            </ul>
+   648→            <Button size="sm" variant="outline" className="mt-3" onClick={() => setView('login')}>Request Demo</Button>
+   649→          </div>
+   650→        </div>
+   651→        <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
+   652→          © {new Date().getFullYear()} ESM — Electronic School Management. Built for educational purposes.
+   653→        </div>
+   654→      </footer>
+   655→    </div>
+   656→  );
+   657→}
+   658→
