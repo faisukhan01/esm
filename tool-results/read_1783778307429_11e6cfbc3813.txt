@@ -1,0 +1,561 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { HeroScene } from '@/components/three/hero-scene';
+     6→import { MODULES, MODULE_GROUPS } from '@/lib/modules';
+     7→import { useApp } from '@/lib/store';
+     8→import {
+     9→  GraduationCap, ArrowRight, Sparkles, ShieldCheck, Award, Users, Building2,
+    10→  Globe2, CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
+    11→  Smartphone, MapPin, Phone, Mail, Star, ArrowUpRight, PlayCircle,
+    12→  MessageCircleWarning,
+    13→} from 'lucide-react';
+    14→import { Button } from '@/components/ui/button';
+    15→import { Badge } from '@/components/ui/badge';
+    16→
+    17→const STATS = [
+    18→  { value: '1M+', label: 'Students Managed', icon: Users },
+    19→  { value: '10K+', label: 'Institutions', icon: Building2 },
+    20→  { value: '100K+', label: 'Staff Members', icon: ShieldCheck },
+    21→  { value: '5+', label: 'Countries', icon: Globe2 },
+    22→];
+    23→
+    24→const ACHIEVEMENTS = [
+    25→  { value: '40', suffix: ' yrs', label: 'Of Education Expertise' },
+    26→  { value: '#1', suffix: '', label: 'School Management System in Pakistan' },
+    27→  { value: '1st', suffix: '', label: 'LCCI IT Award Winner' },
+    28→  { value: '22', suffix: '', label: 'Integrated Modules' },
+    29→];
+    30→
+    31→const CLIENT_CATEGORIES = [
+    32→  { name: 'Schools', items: ['Unique Group of Institute', 'Punjab School System', 'The Educators', 'Universal Grammar School', 'Saint Anthony', 'Star School'] },
+    33→  { name: 'Colleges', items: ['Riphah International College', 'Superior College', 'Aspire College', 'Lead Group of Colleges', 'Pak Intec College', 'Star College'] },
+    34→  { name: 'Academies', items: ['Star Academy', 'Adliyaan Academy', 'Ajwa Academy', 'Al Tayyaba Academy', 'Meem Academy'] },
+    35→  { name: 'Medical Institutes', items: ['Indus Medical College', 'University of Modern Sciences', 'Gujrawala College of Pharmacy', 'Wazirabad College of Pharmacy'] },
+    36→  { name: 'Army Institutes', items: ['LGES', 'DHAI Islamabad'] },
+    37→  { name: 'Hotel & Tourism', items: ['Cothm', 'Ithm'] },
+    38→];
+    39→
+    40→const PARENT_FEATURES = [
+    41→  { icon: Bell, title: 'Pop-Up Notifications', desc: 'Instant alerts for absences, fees, results and events.' },
+    42→  { icon: LineChart, title: 'Attendance & Results', desc: 'Track presence and grades with live progress charts.' },
+    43→  { icon: ShieldCheck, title: 'Fee Balance & History', desc: 'View balances, download receipts, pay online.' },
+    44→  { icon: Smartphone, title: 'Diary & Homework', desc: 'Daily diary and assignments right on the phone.' },
+    45→  { icon: MessageCircleWarning, title: 'Complaints System', desc: 'Raise and track concerns with two-way chat.' },
+    46→  { icon: Sparkles, title: 'Events & Calendar', desc: 'Never miss a PTM, exam, or school event.' },
+    47→];
+    48→
+    49→export function LandingPage() {
+    50→  const setView = useApp(s => s.setView);
+    51→  const [menuOpen, setMenuOpen] = useState(false);
+    52→  const [activeGroup, setActiveGroup] = useState<string>('Overview');
+    53→  const [scrolled, setScrolled] = useState(false);
+    54→
+    55→  useEffect(() => {
+    56→    const onScroll = () => setScrolled(window.scrollY > 20);
+    57→    window.addEventListener('scroll', onScroll);
+    58→    return () => window.removeEventListener('scroll', onScroll);
+    59→  }, []);
+    60→
+    61→  const filteredModules = activeGroup === 'All'
+    62→    ? MODULES
+    63→    : MODULES.filter(m => m.group === activeGroup);
+    64→
+    65→  return (
+    66→    <div className="min-h-screen flex flex-col bg-background">
+    67→      {/* Navbar */}
+    68→      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'glass border-b border-border/60 shadow-sm' : 'bg-transparent'}`}>
+    69→        <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    70→          <a href="#top" className="flex items-center gap-2.5 group">
+    71→            <div className="relative">
+    72→              <div className="absolute inset-0 rounded-xl bg-emerald-500/30 blur-md group-hover:bg-emerald-500/50 transition" />
+    73→              <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 grid place-items-center shadow-lg">
+    74→                <GraduationCap className="h-5 w-5 text-white" />
+    75→              </div>
+    76→            </div>
+    77→            <div className="leading-tight">
+    78→              <div className="font-display font-extrabold text-lg tracking-tight">eSM</div>
+    79→              <div className="text-[10px] text-muted-foreground -mt-0.5 hidden sm:block">Electronic School Management</div>
+    80→            </div>
+    81→          </a>
+    82→
+    83→          <div className="hidden md:flex items-center gap-1">
+    84→            {['Modules', 'Features', 'Achievements', 'Clients'].map(item => (
+    85→              <a key={item} href={`#${item.toLowerCase()}`} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/60 transition">
+    86→                {item}
+    87→              </a>
+    88→            ))}
+    89→          </div>
+    90→
+    91→          <div className="flex items-center gap-2">
+    92→            <Button variant="ghost" size="sm" className="hidden sm:flex" onClick={() => setView('login')}>
+    93→              Sign in
+    94→            </Button>
+    95→            <Button size="sm" className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-md" onClick={() => setView('login')}>
+    96→              Launch Portal <ArrowRight className="h-4 w-4 ml-1" />
+    97→            </Button>
+    98→            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMenuOpen(v => !v)}>
+    99→              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+   100→            </Button>
+   101→          </div>
+   102→        </nav>
+   103→        <AnimatePresence>
+   104→          {menuOpen && (
+   105→            <motion.div
+   106→              initial={{ height: 0, opacity: 0 }}
+   107→              animate={{ height: 'auto', opacity: 1 }}
+   108→              exit={{ height: 0, opacity: 0 }}
+   109→              className="md:hidden glass border-b border-border/60 overflow-hidden"
+   110→            >
+   111→              <div className="px-4 py-3 space-y-1">
+   112→                {['Modules', 'Features', 'Achievements', 'Clients'].map(item => (
+   113→                  <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
+   114→                    {item}
+   115→                  </a>
+   116→                ))}
+   117→              </div>
+   118→            </motion.div>
+   119→          )}
+   120→        </AnimatePresence>
+   121→      </header>
+   122→
+   123→      {/* Hero */}
+   124→      <section id="top" className="relative pt-28 pb-20 sm:pt-36 sm:pb-28 overflow-hidden">
+   125→        {/* background layers */}
+   126→        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-50/60 via-background to-background dark:from-emerald-950/30" />
+   127→        <div className="absolute inset-0 -z-10 bg-grid opacity-60 dark:bg-grid-dark" />
+   128→        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl -z-10" />
+   129→        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-amber-500/10 blur-3xl -z-10" />
+   130→
+   131→        <div className="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-10 items-center">
+   132→          <motion.div
+   133→            initial={{ opacity: 0, y: 24 }}
+   134→            animate={{ opacity: 1, y: 0 }}
+   135→            transition={{ duration: 0.7 }}
+   136→            className="text-center lg:text-left"
+   137→          >
+   138→            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-5">
+   139→              <Award className="h-3.5 w-3.5" />
+   140→              1st LCCI IT Award · 40+ Years of Education Expertise
+   141→            </div>
+   142→            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.05]">
+   143→              The complete<br className="hidden sm:block" />{' '}
+   144→              <span className="emerald-text">School Management</span>{' '}
+   145→              platform built for{' '}
+   146→              <span className="gold-text">modern campuses</span>
+   147→            </h1>
+   148→            <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
+   149→              eSM unifies admissions, attendance, fees, academics, finance and parent
+   150→              communication into one elegant, secure portal — trusted by 10,000+ institutions
+   151→              across 5 countries.
+   152→            </p>
+   153→            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+   154→              <Button size="lg" className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-600/20" onClick={() => setView('login')}>
+   155→                <PlayCircle className="h-5 w-5 mr-2" /> Explore the Live Demo
+   156→              </Button>
+   157→              <Button size="lg" variant="outline" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+   158→                Browse 22 Modules <ChevronRight className="h-4 w-4 ml-1" />
+   159→              </Button>
+   160→            </div>
+   161→
+   162→            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-muted-foreground">
+   163→              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> No installation required</span>
+   164→              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Works on every device</span>
+   165→              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> SOC 2 ready security</span>
+   166→            </div>
+   167→          </motion.div>
+   168→
+   169→          <motion.div
+   170→            initial={{ opacity: 0, scale: 0.9 }}
+   171→            animate={{ opacity: 1, scale: 1 }}
+   172→            transition={{ duration: 0.8, delay: 0.2 }}
+   173→            className="relative h-[360px] sm:h-[460px] lg:h-[520px]"
+   174→          >
+   175→            <div className="absolute inset-0 rounded-3xl overflow-hidden">
+   176→              <HeroScene className="w-full h-full" />
+   177→            </div>
+   178→            {/* floating stat chips */}
+   179→            <motion.div
+   180→              animate={{ y: [0, -10, 0] }}
+   181→              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+   182→              className="absolute top-6 left-2 sm:left-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3"
+   183→            >
+   184→              <div className="flex items-center gap-2">
+   185→                <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center"><Users className="h-4 w-4 text-emerald-600" /></div>
+   186→                <div>
+   187→                  <div className="text-xs text-muted-foreground">Live attendance</div>
+   188→                  <div className="font-bold text-emerald-600 dark:text-emerald-400">94.2%</div>
+   189→                </div>
+   190→              </div>
+   191→            </motion.div>
+   192→            <motion.div
+   193→              animate={{ y: [0, 10, 0] }}
+   194→              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+   195→              className="absolute bottom-8 right-2 sm:right-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3"
+   196→            >
+   197→              <div className="flex items-center gap-2">
+   198→                <div className="h-9 w-9 rounded-lg bg-amber-500/15 grid place-items-center"><Zap className="h-4 w-4 text-amber-600" /></div>
+   199→                <div>
+   200→                  <div className="text-xs text-muted-foreground">Fee collected (mo)</div>
+   201→                  <div className="font-bold text-amber-600 dark:text-amber-400">$1.28M</div>
+   202→                </div>
+   203→              </div>
+   204→            </motion.div>
+   205→            <motion.div
+   206→              animate={{ y: [0, -8, 0] }}
+   207→              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+   208→              className="absolute top-1/2 -translate-y-1/2 right-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3 hidden sm:block"
+   209→            >
+   210→              <div className="flex items-center gap-2">
+   211→                <div className="h-9 w-9 rounded-lg bg-violet-500/15 grid place-items-center"><Bell className="h-4 w-4 text-violet-600" /></div>
+   212→                <div>
+   213→                  <div className="text-xs text-muted-foreground">SMS sent today</div>
+   214→                  <div className="font-bold">3,481</div>
+   215→                </div>
+   216→              </div>
+   217→            </motion.div>
+   218→          </motion.div>
+   219→        </div>
+   220→
+   221→        {/* Stats bar */}
+   222→        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-16 sm:mt-20">
+   223→          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   224→            {STATS.map((s, i) => (
+   225→              <motion.div
+   226→                key={s.label}
+   227→                initial={{ opacity: 0, y: 20 }}
+   228→                whileInView={{ opacity: 1, y: 0 }}
+   229→                viewport={{ once: true }}
+   230→                transition={{ delay: i * 0.1 }}
+   231→                className="relative rounded-2xl border border-border/60 bg-card p-5 text-center hover:shadow-lg hover:-translate-y-0.5 transition"
+   232→              >
+   233→                <s.icon className="h-6 w-6 mx-auto text-emerald-600 mb-2" />
+   234→                <div className="text-3xl font-extrabold font-display">{s.value}</div>
+   235→                <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+   236→              </motion.div>
+   237→            ))}
+   238→          </div>
+   239→        </div>
+   240→      </section>
+   241→
+   242→      {/* Modules showcase */}
+   243→      <section id="modules" className="py-20 sm:py-28 relative">
+   244→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   245→          <div className="text-center max-w-2xl mx-auto mb-12">
+   246→            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">22 Integrated Modules</Badge>
+   247→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   248→              Everything your institution needs,{' '}
+   249→              <span className="emerald-text">in one place</span>
+   250→            </h2>
+   251→            <p className="mt-4 text-muted-foreground">
+   252→              From the first inquiry to graduation day — every workflow is connected.
+   253→            </p>
+   254→          </div>
+   255→
+   256→          {/* group filter */}
+   257→          <div className="flex flex-wrap justify-center gap-2 mb-10">
+   258→            {['All', ...MODULE_GROUPS].map(g => (
+   259→              <button
+   260→                key={g}
+   261→                onClick={() => setActiveGroup(g)}
+   262→                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition ${
+   263→                  activeGroup === g
+   264→                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+   265→                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/40'
+   266→                }`}
+   267→              >
+   268→                {g}
+   269→              </button>
+   270→            ))}
+   271→          </div>
+   272→
+   273→          <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   274→            <AnimatePresence mode="popLayout">
+   275→              {filteredModules.map(m => (
+   276→                <motion.div
+   277→                  key={m.id}
+   278→                  layout
+   279→                  initial={{ opacity: 0, scale: 0.95 }}
+   280→                  animate={{ opacity: 1, scale: 1 }}
+   281→                  exit={{ opacity: 0, scale: 0.95 }}
+   282→                  whileHover={{ y: -4 }}
+   283→                  className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden cursor-pointer"
+   284→                  onClick={() => { setView('login'); }}
+   285→                >
+   286→                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-20 blur-2xl transition`} />
+   287→                  <div className={`inline-flex h-11 w-11 rounded-xl bg-gradient-to-br ${m.color} items-center justify-center shadow-md mb-4`}>
+   288→                    <m.icon className="h-5 w-5 text-white" />
+   289→                  </div>
+   290→                  <h3 className="font-bold text-base mb-1 flex items-center gap-1.5">
+   291→                    {m.name}
+   292→                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition" />
+   293→                  </h3>
+   294→                  <p className="text-sm text-muted-foreground mb-3">{m.tagline}</p>
+   295→                  <div className="flex flex-wrap gap-1.5">
+   296→                    {m.features.slice(0, 3).map(f => (
+   297→                      <span key={f} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{f}</span>
+   298→                    ))}
+   299→                  </div>
+   300→                </motion.div>
+   301→              ))}
+   302→            </AnimatePresence>
+   303→          </motion.div>
+   304→        </div>
+   305→      </section>
+   306→
+   307→      {/* Features deep-dive / Parent app */}
+   308→      <section id="features" className="py-20 sm:py-28 bg-gradient-to-b from-emerald-50/50 to-background dark:from-emerald-950/20 relative">
+   309→        <div className="absolute inset-0 bg-grid opacity-40 dark:bg-grid-dark -z-10" />
+   310→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   311→          <div className="grid lg:grid-cols-2 gap-12 items-center">
+   312→            <div>
+   313→              <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">Parent Application</Badge>
+   314→              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   315→                Bring parents into the{' '}
+   316→                <span className="gold-text">learning journey</span>
+   317→              </h2>
+   318→              <p className="mt-4 text-muted-foreground">
+   319→                Any notice concerning school or student reaches guardians instantly.
+   320→                Parents stay involved — from attendance to results to fee balance —
+   321→                all from a beautiful mobile experience.
+   322→              </p>
+   323→              <div className="mt-8 grid sm:grid-cols-2 gap-4">
+   324→                {PARENT_FEATURES.map((f, i) => (
+   325→                  <motion.div
+   326→                    key={f.title}
+   327→                    initial={{ opacity: 0, x: -10 }}
+   328→                    whileInView={{ opacity: 1, x: 0 }}
+   329→                    viewport={{ once: true }}
+   330→                    transition={{ delay: i * 0.05 }}
+   331→                    className="flex gap-3"
+   332→                  >
+   333→                    <div className="h-10 w-10 shrink-0 rounded-lg bg-emerald-500/10 grid place-items-center">
+   334→                      <f.icon className="h-5 w-5 text-emerald-600" />
+   335→                    </div>
+   336→                    <div>
+   337→                      <div className="font-semibold text-sm">{f.title}</div>
+   338→                      <div className="text-xs text-muted-foreground mt-0.5">{f.desc}</div>
+   339→                    </div>
+   340→                  </motion.div>
+   341→                ))}
+   342→              </div>
+   343→            </div>
+   344→
+   345→            {/* Phone mockup */}
+   346→            <div className="relative flex justify-center">
+   347→              <motion.div
+   348→                initial={{ opacity: 0, y: 30 }}
+   349→                whileInView={{ opacity: 1, y: 0 }}
+   350→                viewport={{ once: true }}
+   351→                className="relative w-[280px] h-[560px] rounded-[2.5rem] border-[8px] border-slate-900 dark:border-slate-800 bg-slate-900 dark:bg-slate-950 shadow-2xl overflow-hidden"
+   352→              >
+   353→                <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 dark:bg-slate-950 flex justify-center items-end pb-1">
+   354→                  <div className="h-1.5 w-16 rounded-full bg-slate-700" />
+   355→                </div>
+   356→                <div className="absolute inset-0 pt-7 bg-gradient-to-b from-emerald-600 to-emerald-900">
+   357→                  <div className="px-4 py-3 text-white">
+   358→                    <div className="flex items-center justify-between">
+   359→                      <div>
+   360→                        <div className="text-[10px] opacity-80">Good morning,</div>
+   361→                        <div className="font-bold text-sm">Sarah · Parent</div>
+   362→                      </div>
+   363→                      <Bell className="h-4 w-4" />
+   364→                    </div>
+   365→                  </div>
+   366→                  <div className="mx-3 mt-2 rounded-2xl bg-white p-3 space-y-3">
+   367→                    <div className="flex items-center justify-between">
+   368→                      <span className="text-[10px] font-semibold text-slate-500">ATTENDANCE</span>
+   369→                      <span className="text-[10px] text-emerald-600 font-bold">94%</span>
+   370→                    </div>
+   371→                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+   372→                      <div className="h-full w-[94%] bg-gradient-to-r from-emerald-500 to-emerald-600" />
+   373→                    </div>
+   374→                    <div className="grid grid-cols-2 gap-2 pt-1">
+   375→                      <div className="rounded-xl bg-emerald-50 p-2.5">
+   376→                        <div className="text-[9px] text-slate-500">Fees</div>
+   377→                        <div className="text-sm font-bold text-emerald-700">Paid</div>
+   378→                      </div>
+   379→                      <div className="rounded-xl bg-amber-50 p-2.5">
+   380→                        <div className="text-[9px] text-slate-500">GPA</div>
+   381→                        <div className="text-sm font-bold text-amber-700">3.8</div>
+   382→                      </div>
+   383→                    </div>
+   384→                    <div className="rounded-xl bg-slate-50 p-2.5">
+   385→                      <div className="flex items-center gap-1.5">
+   386→                        <div className="h-6 w-6 rounded-full bg-emerald-500 grid place-items-center"><Bell className="h-3 w-3 text-white" /></div>
+   387→                        <div className="text-[10px] text-slate-700 font-medium">PTM scheduled Sat 10:00 AM</div>
+   388→                      </div>
+   389→                    </div>
+   390→                    <div className="rounded-xl bg-violet-50 p-2.5">
+   391→                      <div className="text-[9px] text-slate-500">RECENT RESULT</div>
+   392→                      <div className="text-sm font-bold text-violet-700">Math Monthly · A grade</div>
+   393→                    </div>
+   394→                  </div>
+   395→                </div>
+   396→              </motion.div>
+   397→              <motion.div
+   398→                animate={{ y: [0, -12, 0] }}
+   399→                transition={{ duration: 4, repeat: Infinity }}
+   400→                className="absolute -left-2 top-20 glass rounded-xl border border-border/60 shadow-lg px-3 py-2 hidden sm:block"
+   401→              >
+   402→                <div className="text-[10px] text-muted-foreground">Push notification</div>
+   403→                <div className="text-xs font-bold">Aiden was marked present</div>
+   404→              </motion.div>
+   405→            </div>
+   406→          </div>
+   407→        </div>
+   408→      </section>
+   409→
+   410→      {/* Achievements */}
+   411→      <section id="achievements" className="py-20 sm:py-28">
+   412→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   413→          <div className="text-center max-w-2xl mx-auto mb-12">
+   414→            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Our Achievements</Badge>
+   415→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   416→              A track record institutions{' '}
+   417→              <span className="emerald-text">trust</span>
+   418→            </h2>
+   419→          </div>
+   420→          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+   421→            {ACHIEVEMENTS.map((a, i) => (
+   422→              <motion.div
+   423→                key={a.label}
+   424→                initial={{ opacity: 0, y: 20 }}
+   425→                whileInView={{ opacity: 1, y: 0 }}
+   426→                viewport={{ once: true }}
+   427→                transition={{ delay: i * 0.1 }}
+   428→                className="relative rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 overflow-hidden"
+   429→              >
+   430→                <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
+   431→                <div className="text-4xl sm:text-5xl font-extrabold font-display">
+   432→                  {a.value}<span className="text-amber-300">{a.suffix}</span>
+   433→                </div>
+   434→                <div className="mt-2 text-sm text-emerald-50/90">{a.label}</div>
+   435→              </motion.div>
+   436→            ))}
+   437→          </div>
+   438→        </div>
+   439→      </section>
+   440→
+   441→      {/* Clients */}
+   442→      <section id="clients" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
+   443→        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+   444→          <div className="text-center max-w-2xl mx-auto mb-12">
+   445→            <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">Our Valued Clients</Badge>
+   446→            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   447→              Trusted across <span className="gold-text">every sector</span> of education
+   448→            </h2>
+   449→            <p className="mt-4 text-muted-foreground">
+   450→              Army Institutes, Medical Institutes, Schools, Colleges, NGOs, Academies, Government Institutions & Hotel Management.
+   451→            </p>
+   452→          </div>
+   453→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   454→            {CLIENT_CATEGORIES.map((cat, i) => (
+   455→              <motion.div
+   456→                key={cat.name}
+   457→                initial={{ opacity: 0, y: 20 }}
+   458→                whileInView={{ opacity: 1, y: 0 }}
+   459→                viewport={{ once: true }}
+   460→                transition={{ delay: i * 0.08 }}
+   461→                className="rounded-2xl border border-border/60 bg-card p-5"
+   462→              >
+   463→                <div className="flex items-center gap-2 mb-3">
+   464→                  <Star className="h-4 w-4 text-amber-500" />
+   465→                  <h3 className="font-bold text-sm">{cat.name}</h3>
+   466→                </div>
+   467→                <ul className="space-y-1.5">
+   468→                  {cat.items.map(item => (
+   469→                    <li key={item} className="text-xs text-muted-foreground flex items-start gap-1.5">
+   470→                      <CheckCircle2 className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
+   471→                      {item}
+   472→                    </li>
+   473→                  ))}
+   474→                </ul>
+   475→              </motion.div>
+   476→            ))}
+   477→          </div>
+   478→        </div>
+   479→      </section>
+   480→
+   481→      {/* CTA */}
+   482→      <section className="py-20 sm:py-24">
+   483→        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+   484→          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 p-8 sm:p-12 text-center text-white">
+   485→            <div className="absolute inset-0 bg-grid-dark opacity-30" />
+   486→            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
+   487→            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+   488→            <div className="relative">
+   489→              <Sparkles className="h-8 w-8 mx-auto text-amber-300 mb-4" />
+   490→              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+   491→                Ready to modernize your campus?
+   492→              </h2>
+   493→              <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
+   494→                Explore the full eSM portal now — a live, interactive demo with realistic
+   495→                student, fee, attendance and academic data.
+   496→              </p>
+   497→              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+   498→                <Button size="lg" className="bg-white text-emerald-800 hover:bg-emerald-50" onClick={() => setView('login')}>
+   499→                  Launch the Portal <ArrowRight className="h-4 w-4 ml-2" />
+   500→                </Button>
+   501→                <Button size="lg" variant="outline" className="border-white/40 text-white hover:bg-white/10" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
+   502→                  See all modules
+   503→                </Button>
+   504→              </div>
+   505→            </div>
+   506→          </div>
+   507→        </div>
+   508→      </section>
+   509→
+   510→      {/* Footer */}
+   511→      <footer className="mt-auto border-t border-border/60 bg-card/50">
+   512→        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+   513→          <div>
+   514→            <div className="flex items-center gap-2.5 mb-3">
+   515→              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 grid place-items-center">
+   516→                <GraduationCap className="h-5 w-5 text-white" />
+   517→              </div>
+   518→              <div>
+   519→                <div className="font-display font-extrabold text-lg">eSM</div>
+   520→                <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
+   521→              </div>
+   522→            </div>
+   523→            <p className="text-sm text-muted-foreground">
+   524→              Intelligent solutions for a better institution. By Cyber Advance Solutions (Pvt.) Ltd.
+   525→            </p>
+   526→          </div>
+   527→          <div>
+   528→            <h4 className="font-semibold text-sm mb-3">Modules</h4>
+   529→            <ul className="space-y-2 text-sm text-muted-foreground">
+   530→              {MODULES.slice(0, 5).map(m => (
+   531→                <li key={m.id}><button className="hover:text-foreground transition" onClick={() => setView('login')}>{m.name}</button></li>
+   532→              ))}
+   533→            </ul>
+   534→          </div>
+   535→          <div>
+   536→            <h4 className="font-semibold text-sm mb-3">Services</h4>
+   537→            <ul className="space-y-2 text-sm text-muted-foreground">
+   538→              <li>Web Development</li>
+   539→              <li>ERP (Customized)</li>
+   540→              <li>E-Commerce Solution</li>
+   541→              <li>Mobile App Development</li>
+   542→              <li>Branded SMS & Digital Marketing</li>
+   543→            </ul>
+   544→          </div>
+   545→          <div>
+   546→            <h4 className="font-semibold text-sm mb-3">Get in touch</h4>
+   547→            <ul className="space-y-2 text-sm text-muted-foreground">
+   548→              <li className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 shrink-0" /> 5900 Balcones Drive STE 7383, Austin TX, USA 78731</li>
+   549→              <li className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0" /> 042-35442760</li>
+   550→              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> info@cyberasol.com</li>
+   551→            </ul>
+   552→          </div>
+   553→        </div>
+   554→        <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
+   555→          © {new Date().getFullYear()} eSM — Electronic School Management. A Cyber Advance Solutions product. Built for educational purposes.
+   556→        </div>
+   557→      </footer>
+   558→    </div>
+   559→  );
+   560→}
+   561→

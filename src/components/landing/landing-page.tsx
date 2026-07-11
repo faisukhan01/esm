@@ -6,50 +6,46 @@ import { HeroScene } from '@/components/three/hero-scene';
 import { MODULES, MODULE_GROUPS } from '@/lib/modules';
 import { useApp } from '@/lib/store';
 import {
-  GraduationCap, ArrowRight, Sparkles, ShieldCheck, Award, Users, Building2,
-  Globe2, CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
-  Smartphone, MapPin, Phone, Mail, Star, ArrowUpRight, PlayCircle,
-  MessageCircleWarning,
+  GraduationCap, ArrowRight, Sparkles, ShieldCheck, Users, Building2,
+  CheckCircle2, Menu, X, ChevronRight, Zap, LineChart, Bell,
+  Smartphone, Mail, ArrowUpRight, PlayCircle, MessageCircleWarning,
+  Lock, Layers, Globe, Rocket, Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-const STATS = [
-  { value: '1M+', label: 'Students Managed', icon: Users },
-  { value: '10K+', label: 'Institutions', icon: Building2 },
-  { value: '100K+', label: 'Staff Members', icon: ShieldCheck },
-  { value: '5+', label: 'Countries', icon: Globe2 },
-];
-
-const ACHIEVEMENTS = [
-  { value: '40', suffix: ' yrs', label: 'Of Education Expertise' },
-  { value: '#1', suffix: '', label: 'School Management System in Pakistan' },
-  { value: '1st', suffix: '', label: 'LCCI IT Award Winner' },
-  { value: '22', suffix: '', label: 'Integrated Modules' },
-];
-
-const CLIENT_CATEGORIES = [
-  { name: 'Schools', items: ['Unique Group of Institute', 'Punjab School System', 'The Educators', 'Universal Grammar School', 'Saint Anthony', 'Star School'] },
-  { name: 'Colleges', items: ['Riphah International College', 'Superior College', 'Aspire College', 'Lead Group of Colleges', 'Pak Intec College', 'Star College'] },
-  { name: 'Academies', items: ['Star Academy', 'Adliyaan Academy', 'Ajwa Academy', 'Al Tayyaba Academy', 'Meem Academy'] },
-  { name: 'Medical Institutes', items: ['Indus Medical College', 'University of Modern Sciences', 'Gujrawala College of Pharmacy', 'Wazirabad College of Pharmacy'] },
-  { name: 'Army Institutes', items: ['LGES', 'DHAI Islamabad'] },
-  { name: 'Hotel & Tourism', items: ['Cothm', 'Ithm'] },
+// Real features the platform actually offers — no fake stats
+const PLATFORM_FEATURES = [
+  { icon: Layers, title: '22 Integrated Modules', desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
+  { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers, Students & Parents.' },
+  { icon: Building2, title: 'Multi-Tenant SaaS', desc: 'Provision unlimited institutions. Each gets its own admin, branches, and isolated data.' },
+  { icon: ShieldCheck, title: 'Role-Based Access', desc: 'Granular permissions — every user sees exactly what they need, nothing more.' },
+  { icon: Smartphone, title: 'Parent Mobile App', desc: 'Parents track attendance, results, fees, diary & complaints in real time.' },
+  { icon: Zap, title: 'Real-Time Data', desc: 'Live dashboards. No imports, no delays. Teachers mark attendance → parents see it instantly.' },
 ];
 
 const PARENT_FEATURES = [
-  { icon: Bell, title: 'Pop-Up Notifications', desc: 'Instant alerts for absences, fees, results and events.' },
-  { icon: LineChart, title: 'Attendance & Results', desc: 'Track presence and grades with live progress charts.' },
-  { icon: ShieldCheck, title: 'Fee Balance & History', desc: 'View balances, download receipts, pay online.' },
-  { icon: Smartphone, title: 'Diary & Homework', desc: 'Daily diary and assignments right on the phone.' },
-  { icon: MessageCircleWarning, title: 'Complaints System', desc: 'Raise and track concerns with two-way chat.' },
-  { icon: Sparkles, title: 'Events & Calendar', desc: 'Never miss a PTM, exam, or school event.' },
+  { icon: Bell, title: 'Instant Notifications', desc: 'Alerts for absences, fees, results and events — pushed to the parent app.' },
+  { icon: LineChart, title: 'Live Progress Tracking', desc: 'Attendance trends, subject-wise results, and GPA at a glance.' },
+  { icon: ShieldCheck, title: 'Fee Payments', desc: 'View balances, pay online, download receipts — paperless and transparent.' },
+  { icon: Smartphone, title: 'Daily Diary & Homework', desc: 'Teachers post assignments; parents and students see them instantly.' },
+  { icon: MessageCircleWarning, title: 'Two-Way Complaints', desc: 'Raise concerns, track status, and chat with the school — all in one thread.' },
+  { icon: Heart, title: 'Event Calendar', desc: 'Never miss a PTM, exam, or school event with synced calendars.' },
+];
+
+const TECH_STACK = [
+  { label: 'Next.js 16', desc: 'Modern React framework' },
+  { label: 'Three.js', desc: '3D visualizations' },
+  { label: 'Node.js + Express', desc: 'Scalable backend API' },
+  { label: 'TypeScript', desc: 'Type-safe throughout' },
+  { label: 'Tailwind CSS', desc: 'Premium responsive UI' },
+  { label: 'Role-Based Auth', desc: 'Secure multi-tenant access' },
 ];
 
 export function LandingPage() {
   const setView = useApp(s => s.setView);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeGroup, setActiveGroup] = useState<string>('Overview');
+  const [activeGroup, setActiveGroup] = useState<string>('All');
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -81,8 +77,8 @@ export function LandingPage() {
           </a>
 
           <div className="hidden md:flex items-center gap-1">
-            {['Modules', 'Features', 'Achievements', 'Clients'].map(item => (
-              <a key={item} href={`#${item.toLowerCase()}`} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/60 transition">
+            {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/60 transition">
                 {item}
               </a>
             ))}
@@ -109,8 +105,8 @@ export function LandingPage() {
               className="md:hidden glass border-b border-border/60 overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
-                {['Modules', 'Features', 'Achievements', 'Clients'].map(item => (
-                  <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
+                {['Modules', 'Features', 'Parent App', 'Tech'].map(item => (
+                  <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
                     {item}
                   </a>
                 ))}
@@ -136,8 +132,8 @@ export function LandingPage() {
             className="text-center lg:text-left"
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 mb-5">
-              <Award className="h-3.5 w-3.5" />
-              1st LCCI IT Award · 40+ Years of Education Expertise
+              <Rocket className="h-3.5 w-3.5" />
+              Now in early access — be among the first
             </div>
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.05]">
               The complete<br className="hidden sm:block" />{' '}
@@ -147,22 +143,22 @@ export function LandingPage() {
             </h1>
             <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0">
               eSM unifies admissions, attendance, fees, academics, finance and parent
-              communication into one elegant, secure portal — trusted by 10,000+ institutions
-              across 5 countries.
+              communication into one elegant, secure portal. Multi-tenant by design —
+              provision institutions, branches, and users with a click.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <Button size="lg" className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-lg shadow-emerald-600/20" onClick={() => setView('login')}>
                 <PlayCircle className="h-5 w-5 mr-2" /> Explore the Live Demo
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}>
-                Browse 22 Modules <ChevronRight className="h-4 w-4 ml-1" />
+                Browse Modules <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
 
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> No installation required</span>
               <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Works on every device</span>
-              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> SOC 2 ready security</span>
+              <span className="inline-flex items-center gap-1.5"><Lock className="h-4 w-4 text-emerald-600" /> Secure role-based access</span>
             </div>
           </motion.div>
 
@@ -175,64 +171,40 @@ export function LandingPage() {
             <div className="absolute inset-0 rounded-3xl overflow-hidden">
               <HeroScene className="w-full h-full" />
             </div>
-            {/* floating stat chips */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute top-6 left-2 sm:left-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3"
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center"><Users className="h-4 w-4 text-emerald-600" /></div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Live attendance</div>
-                  <div className="font-bold text-emerald-600 dark:text-emerald-400">94.2%</div>
-                </div>
-              </div>
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-              className="absolute bottom-8 right-2 sm:right-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3"
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-amber-500/15 grid place-items-center"><Zap className="h-4 w-4 text-amber-600" /></div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Fee collected (mo)</div>
-                  <div className="font-bold text-amber-600 dark:text-amber-400">$1.28M</div>
-                </div>
-              </div>
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute top-1/2 -translate-y-1/2 right-0 glass rounded-2xl border border-border/60 shadow-lg px-4 py-3 hidden sm:block"
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-violet-500/15 grid place-items-center"><Bell className="h-4 w-4 text-violet-600" /></div>
-                <div>
-                  <div className="text-xs text-muted-foreground">SMS sent today</div>
-                  <div className="font-bold">3,481</div>
-                </div>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
+      </section>
 
-        {/* Stats bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-16 sm:mt-20">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {STATS.map((s, i) => (
+      {/* Platform features (replaces fake stats) */}
+      <section id="features" className="py-20 sm:py-28 relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Platform Capabilities</Badge>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              Built to run{' '}
+              <span className="emerald-text">your entire institution</span>
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              From the first inquiry to graduation day — every workflow is connected, scoped, and real-time.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {PLATFORM_FEATURES.map((f, i) => (
               <motion.div
-                key={s.label}
+                key={f.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="relative rounded-2xl border border-border/60 bg-card p-5 text-center hover:shadow-lg hover:-translate-y-0.5 transition"
+                transition={{ delay: i * 0.08 }}
+                className="group relative rounded-2xl border border-border/60 bg-card p-6 hover:shadow-xl hover:-translate-y-1 transition-all"
               >
-                <s.icon className="h-6 w-6 mx-auto text-emerald-600 mb-2" />
-                <div className="text-3xl font-extrabold font-display">{s.value}</div>
-                <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+                <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent opacity-0 group-hover:opacity-100 transition" />
+                <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/15 to-amber-500/10 items-center justify-center mb-4 group-hover:scale-110 transition">
+                  <f.icon className="h-6 w-6 text-emerald-600" />
+                </div>
+                <h3 className="font-bold text-lg mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -240,16 +212,16 @@ export function LandingPage() {
       </section>
 
       {/* Modules showcase */}
-      <section id="modules" className="py-20 sm:py-28 relative">
+      <section id="modules" className="py-20 sm:py-28 relative bg-gradient-to-b from-emerald-50/40 to-background dark:from-emerald-950/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">22 Integrated Modules</Badge>
+            <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">{MODULES.length} Integrated Modules</Badge>
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Everything your institution needs,{' '}
+              Every module your institution needs,{' '}
               <span className="emerald-text">in one place</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
-              From the first inquiry to graduation day — every workflow is connected.
+              Filter by category to explore what eSM can do.
             </p>
           </div>
 
@@ -304,8 +276,8 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Features deep-dive / Parent app */}
-      <section id="features" className="py-20 sm:py-28 bg-gradient-to-b from-emerald-50/50 to-background dark:from-emerald-950/20 relative">
+      {/* Parent app deep-dive */}
+      <section id="parent-app" className="py-20 sm:py-28 relative">
         <div className="absolute inset-0 bg-grid opacity-40 dark:bg-grid-dark -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -358,7 +330,7 @@ export function LandingPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-[10px] opacity-80">Good morning,</div>
-                        <div className="font-bold text-sm">Sarah · Parent</div>
+                        <div className="font-bold text-sm">Parent Portal</div>
                       </div>
                       <Bell className="h-4 w-4" />
                     </div>
@@ -366,7 +338,7 @@ export function LandingPage() {
                   <div className="mx-3 mt-2 rounded-2xl bg-white p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-semibold text-slate-500">ATTENDANCE</span>
-                      <span className="text-[10px] text-emerald-600 font-bold">94%</span>
+                      <span className="text-[10px] text-emerald-600 font-bold">Live</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                       <div className="h-full w-[94%] bg-gradient-to-r from-emerald-500 to-emerald-600" />
@@ -407,78 +379,38 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Achievements */}
-      <section id="achievements" className="py-20 sm:py-28">
+      {/* Tech stack */}
+      <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Our Achievements</Badge>
+            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Built With</Badge>
             <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              A track record institutions{' '}
-              <span className="emerald-text">trust</span>
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {ACHIEVEMENTS.map((a, i) => (
-              <motion.div
-                key={a.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="relative rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 overflow-hidden"
-              >
-                <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
-                <div className="text-4xl sm:text-5xl font-extrabold font-display">
-                  {a.value}<span className="text-amber-300">{a.suffix}</span>
-                </div>
-                <div className="mt-2 text-sm text-emerald-50/90">{a.label}</div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Clients */}
-      <section id="clients" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">Our Valued Clients</Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Trusted across <span className="gold-text">every sector</span> of education
+              Modern tech,{' '}
+              <span className="emerald-text">built to scale</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Army Institutes, Medical Institutes, Schools, Colleges, NGOs, Academies, Government Institutions & Hotel Management.
+              A production-ready stack designed for performance, security, and growth.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CLIENT_CATEGORIES.map((cat, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {TECH_STACK.map((t, i) => (
               <motion.div
-                key={cat.name}
+                key={t.label}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-border/60 bg-card p-5"
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl border border-border/60 bg-card p-5 text-center hover:shadow-lg hover:-translate-y-0.5 transition"
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="h-4 w-4 text-amber-500" />
-                  <h3 className="font-bold text-sm">{cat.name}</h3>
-                </div>
-                <ul className="space-y-1.5">
-                  {cat.items.map(item => (
-                    <li key={item} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <div className="font-display font-bold text-base text-emerald-700 dark:text-emerald-300">{t.label}</div>
+                <div className="text-xs text-muted-foreground mt-1">{t.desc}</div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA — honest early access */}
       <section className="py-20 sm:py-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 p-8 sm:p-12 text-center text-white">
@@ -486,13 +418,14 @@ export function LandingPage() {
             <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
             <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
             <div className="relative">
-              <Sparkles className="h-8 w-8 mx-auto text-amber-300 mb-4" />
+              <Rocket className="h-8 w-8 mx-auto text-amber-300 mb-4" />
               <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
                 Ready to modernize your campus?
               </h2>
               <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
-                Explore the full eSM portal now — a live, interactive demo with realistic
-                student, fee, attendance and academic data.
+                Explore the full eSM portal now — a live, interactive demo. Provision an
+                institute, add branches, create teachers and students, and see how each
+                role gets their own scoped experience.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <Button size="lg" className="bg-white text-emerald-800 hover:bg-emerald-50" onClick={() => setView('login')}>
@@ -521,7 +454,7 @@ export function LandingPage() {
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Intelligent solutions for a better institution. By Cyber Advance Solutions (Pvt.) Ltd.
+              Intelligent solutions for a better institution. A modern, multi-tenant school management platform.
             </p>
           </div>
           <div>
@@ -533,26 +466,26 @@ export function LandingPage() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold text-sm mb-3">Services</h4>
+            <h4 className="font-semibold text-sm mb-3">Features</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Web Development</li>
-              <li>ERP (Customized)</li>
-              <li>E-Commerce Solution</li>
-              <li>Mobile App Development</li>
-              <li>Branded SMS & Digital Marketing</li>
+              <li>Multi-tenant SaaS</li>
+              <li>Role-based portals</li>
+              <li>Real-time data</li>
+              <li>Parent mobile app</li>
+              <li>Secure authentication</li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold text-sm mb-3">Get in touch</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 shrink-0" /> 5900 Balcones Drive STE 7383, Austin TX, USA 78731</li>
-              <li className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0" /> 042-35442760</li>
-              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> info@cyberasol.com</li>
+              <li className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0" /> hello@esm-platform.com</li>
+              <li className="flex items-center gap-2"><Globe className="h-4 w-4 shrink-0" /> Available worldwide</li>
             </ul>
+            <Button size="sm" variant="outline" className="mt-3" onClick={() => setView('login')}>Request Demo</Button>
           </div>
         </div>
         <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} eSM — Electronic School Management. A Cyber Advance Solutions product. Built for educational purposes.
+          © {new Date().getFullYear()} eSM — Electronic School Management. Built for educational purposes.
         </div>
       </footer>
     </div>
