@@ -25,6 +25,7 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'all-branches', name: 'All Branches', icon: Network, color: 'from-teal-500 to-cyan-600' },
       { id: 'platform-users', name: 'All Users', icon: Users, color: 'from-violet-500 to-purple-600' },
       { id: 'revenue', name: 'Revenue & Plans', icon: DollarSign, color: 'from-amber-500 to-yellow-600' },
+      { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
     ]},
     { group: 'Operations', items: [
       { id: 'students', name: 'All Students', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },

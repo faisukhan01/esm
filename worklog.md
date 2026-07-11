@@ -562,3 +562,47 @@ Stage Summary:
 - **Announcements, classes, courses, course materials** infrastructure is in the backend
 - **Teacher/Student dashboards** backend endpoints ready (class cards + course cards)
 - Remaining: frontend teacher/student dashboard UI with class/course cards, announcements UI, course material upload UI, block/unblock UI buttons in admin portals — these are the next phase
+
+---
+Task ID: SUPERADMIN-FIX
+Agent: Main (Z.ai Code)
+Task: Fix Super Admin portal — add password field to provision modal, fix API 400 error, add announcements, add block/unblock + edit
+
+Work Log:
+- **Root cause of API 400 error**: The SuperAdminPortal was still using the OLD modal that sent `{ name, city, country, plan, adminName, adminEmail }` WITHOUT `adminPassword`. The new backend requires `adminPassword`. Fixed by adding the password field to the form and sending it.
+- **Provision modal rebuilt**:
+  - Added "Assign password *" field (required)
+  - Changed text from "auto-created with password esm123" to "You will set the Institute Admin's email and password. They must change it on first login."
+  - Success modal now shows the ACTUAL password that was set (not hardcoded esm123)
+  - Validation requires name, adminEmail, AND adminPassword
+- **Institute card rebuilt** with 3 action buttons:
+  - 👁 View admin password — fetches current password via GET /api/platform/users/:id/password
+  - ✏ Edit — opens EditInstituteModal with name/plan/adminName/adminEmail/adminPassword fields (PATCH /api/institutes/:id)
+  - 🔓/🔒 Block/Unblock — calls PATCH /api/institutes/:id/block (cascades to branches + users, invalidates sessions)
+  - Blocked institutes show "Blocked" badge in red
+- **Announcements module added** to Super Admin sidebar
+  - New AnnouncementsView component with "New Announcement" button
+  - Form: title, message, recipient dropdown (All Institute Admins / Specific Institutes)
+  - When "Specific Institutes" selected: shows checkbox list of all institutes
+  - Calls POST /api/announcements with targetRole='institute-admin', targetScope, targetIds
+  - Shows toast "Announcement sent! Sent to all institutes" on success
+  - Lists existing announcements with title, message, recipient scope, timestamp
+- **role-modules.ts updated**: Added announcements module to super-admin sidebar (icon: MessageSquare, color: rose-pink)
+
+Verification (agent-browser):
+- Login as Super Admin (faisu577277@gmail.com / QaReLc_61y8) → "Welcome back, Faisal 👑" ✅
+- Institutes → Provision Institute → modal now has "Assign password *" field ✅
+- Old text "auto-created with password esm123" REMOVED ✅
+- New text "You will set the Institute Admin's email and password" PRESENT ✅
+- Filled form: Liberty School, Mr. Smith, smith@liberty.edu, SmithPass2025 → submitted → "Institute provisioned!" ✅
+- Success modal shows actual password "SmithPass2025" (not esm123) ✅
+- Announcements nav item visible → click → "No announcements yet" → New Announcement form works ✅
+- Sent "Platform Update" announcement → "Announcement sent! Sent to all institutes" ✅
+- All API calls return 200/201 in dev log — no 400 errors ✅
+- Lint passes clean
+
+Stage Summary:
+- Provision modal now has the password field — API 400 error FIXED
+- Announcements module added to Super Admin — send to all or specific institutes
+- Institute cards have view-password, edit, and block/unblock buttons
+- All data persists in Turso DB
