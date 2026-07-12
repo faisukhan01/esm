@@ -29,7 +29,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) {
     const txt = await res.text().catch(() => res.statusText);
-    throw new Error(`API ${res.status}: ${txt}`);
+    // Try to parse the error as JSON and extract the message
+    try {
+      const parsed = JSON.parse(txt);
+      throw new Error(parsed.error || parsed.message || `Request failed (${res.status})`);
+    } catch (parseErr) {
+      // If it's not JSON, check if the error is already parsed
+      if (parseErr instanceof Error && parseErr.message !== txt) {
+        throw parseErr; // Re-throw the parsed error
+      }
+      throw new Error(txt || `Request failed (${res.status})`);
+    }
   }
   return res.json() as Promise<T>;
 }

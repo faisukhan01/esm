@@ -104,7 +104,19 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
       const res = await api.createPlatformUser(body);
       setCreated(res);
       onCreated();
-    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    } catch (e: any) {
+      const msg = e.message || 'Something went wrong';
+      // Show user-friendly error messages
+      if (msg.includes('Email already in use')) {
+        toast({ title: 'Email already registered', description: 'This email is already in use. Use a different email or leave it blank (email is optional for teachers and students).', variant: 'destructive' });
+      } else if (msg.includes('Roll Number already exists')) {
+        toast({ title: 'Roll No already exists', description: 'A user with this Roll Number already exists in this branch. Use a different Roll No.', variant: 'destructive' });
+      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+        toast({ title: 'Session expired', description: 'Please sign out and sign in again, then retry.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Failed to add user', description: msg, variant: 'destructive' });
+      }
+    }
     finally { setCreating(false); }
   };
 

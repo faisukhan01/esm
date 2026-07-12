@@ -916,3 +916,24 @@ Stage Summary:
 - Login: 3-field authentication for teachers (Name + ID + Pass) and students (Name + RollNo + Pass)
 - Branch Manager portal: cleaner structure, sorted clickable class cards with course/section management inside
 - Course-first flow enforced: teachers can't be added to a class without courses
+
+---
+Task ID: ERROR-HANDLING-FIX
+Agent: Main (Z.ai Code)
+Task: Fix API 409 error when adding teacher — improve error parsing and user-friendly messages
+
+Work Log:
+- **Root cause**: The API client threw `new Error(\`API ${res.status}: ${txt}\`)` which included the raw JSON response body. The toast then showed "API 409: {"error":"Email already in use"}" which was confusing.
+- **API client fix** (`src/lib/api.ts`): The `request()` function now tries to parse the error response as JSON and extracts the `error` or `message` field. If parsing succeeds, throws `new Error(parsed.error)` — e.g. "Email already in use". If parsing fails, falls back to the raw text.
+- **Add User Modal fix** (`src/components/portal/add-user-modal.tsx`): Enhanced error handling with user-friendly messages:
+  - "Email already in use" → "Email already registered — This email is already in use. Use a different email or leave it blank (email is optional for teachers and students)."
+  - "Roll Number already exists" → "Roll No already exists — A user with this Roll Number already exists in this branch. Use a different Roll No."
+  - "Authentication required" / "session" → "Session expired — Please sign out and sign in again, then retry."
+  - Default → shows the raw error message
+- **Backend verified**: Returns `{"error":"Email already in use"}` for duplicate emails, `{"error":"Roll Number already exists in this branch"}` for duplicate roll numbers.
+- **Dev log verified**: 409 errors now produce clear, actionable toast messages instead of raw JSON.
+
+Stage Summary:
+- API errors are now parsed and shown as user-friendly messages
+- The 409 "email already in use" error now tells the user exactly what's wrong and what to do
+- Same for roll number conflicts and session expiry
