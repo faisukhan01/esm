@@ -35,8 +35,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  login: (email: string, password: string) =>
-    request<{ token: string; user: any; mustChangePassword?: boolean }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string, name?: string) =>
+    request<{ token: string; user: any; mustChangePassword?: boolean }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
     request<any>('auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   // platform
@@ -155,6 +155,12 @@ export const api = {
     request<any>('class-courses', { method: 'POST', body: JSON.stringify({ classId, courseId }) }),
   assignClassCourses: (classId: string, courseIds: string[]) =>
     request<any>(`classes/${classId}/courses`, { method: 'POST', body: JSON.stringify({ courseIds }) }),
+  // Create a new section (e.g. Class 1B) inside an existing class. Inherits the parent's course assignments.
+  createClassSection: (classId: string, section?: string) =>
+    request<any>(`classes/${classId}/sections`, { method: 'POST', body: JSON.stringify({ section }) }),
+  // Delete a section (only allowed when it has no students assigned and is not the only section for that class)
+  deleteClassSection: (classId: string) =>
+    request<any>(`classes/${classId}`, { method: 'DELETE' }),
   // teacher & student scoped
   getTeacherClasses: () => request<any[]>('teacher/classes'),
   getStudentCourses: () => request<any[]>('student/courses'),

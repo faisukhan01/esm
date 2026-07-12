@@ -18,6 +18,7 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
     email: '',
     password: '',
     classId: '',
+    section: '',
   });
   const [classes, setClasses] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -33,14 +34,14 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
     if (role !== 'teacher' && role !== 'student') return;
     let cancelled = false;
     setLoadingClasses(true);
-    api.getClasses()
+    api.getClasses(branchId)
       .then(rows => { if (!cancelled) setClasses(Array.isArray(rows) ? rows : []); })
       .catch(() => { if (!cancelled) setClasses([]); })
       .finally(() => { if (!cancelled) setLoadingClasses(false); });
     return () => { cancelled = true; };
-  }, [open, role]);
+  }, [open, role, branchId]);
 
-  // Fetch courses when class is selected (teacher only)
+  // Fetch courses when class is selected (teacher only — only courses assigned to that class)
   useEffect(() => {
     if (role !== 'teacher') { setCourses([]); setSelectedCourseIds([]); return; }
     if (!form.classId) { setCourses([]); setSelectedCourseIds([]); return; }
@@ -55,7 +56,7 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
   }, [role, form.classId]);
 
   const reset = () => {
-    setForm({ name: '', rollNo: '', email: '', password: '', classId: '' });
+    setForm({ name: '', rollNo: '', email: '', password: '', classId: '', section: '' });
     setClasses([]);
     setCourses([]);
     setSelectedCourseIds([]);
@@ -70,7 +71,12 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
     if (!form.name) { toast({ title: 'Full name is required', variant: 'destructive' }); return; }
     if (!form.rollNo) { toast({ title: 'Roll No / ID is required', variant: 'destructive' }); return; }
     if (!form.password || form.password.length < 4) { toast({ title: 'Assign a password', description: 'At least 4 characters', variant: 'destructive' }); return; }
-    if (role === 'student' && !form.classId) { toast({ title: 'Please select a class', variant: 'destructive' }); return; }
+    if (!form.classId) { toast({ title: 'Please select a class', variant: 'destructive' }); return; }
+    // Teacher must have at least one course assigned (so they can actually teach something)
+    if (role === 'teacher' && selectedCourseIds.length === 0) {
+      toast({ title: 'Assign at least one course', description: 'If the list is empty, please assign courses to this class first in Classes & Courses.', variant: 'destructive' });
+      return;
+    }
 
     setCreating(true);
     try {
@@ -88,7 +94,9 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
       if (form.classId) {
         body.classId = form.classId;
         if (selectedClass?.name) body.class = selectedClass.name;
-        if (selectedClass?.section) body.section = selectedClass.section;
+        // Section: prefer the explicit student-typed section; otherwise fall back to the class row's section.
+        const sectionValue = (form.section || '').trim() || selectedClass?.section || 'A';
+        body.section = sectionValue;
       }
       if (role === 'teacher' && selectedCourseIds.length > 0) {
         body.courseIds = selectedCourseIds;
@@ -200,10 +208,10 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
                 </div>
 
                 <div>
-                  <Label>Class {role === 'student' ? '*' : '(optional)'}</Label>
+                  <Label>Class *</Label>
                   <Select
                     value={form.classId}
-                    onValueChange={(v) => setForm({ ...form, classId: v })}
+                    onValueChange={(v) => setForm({ ...form, classId: v, section: '' })}
                   >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder={loadingClasses ? 'Loading classes…' : 'Select a class'} />
@@ -221,47 +229,62 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
                   </Select>
                 </div>
 
-                {role === 'teacher' && form.classId && (
+                {role === 'teacher' && form.classId && loadingCourses && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading courses assigned to this class…
+                  </div>
+                )}
+
+                {role === 'teacher' && form.classId && !loadingCourses && courses.length === 0 && (
+                  <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-200">
+                    <strong>No courses assigned to this class yet.</strong> Please assign courses to this class first in <em>Classes &amp; Courses</em> before adding a teacher.
+                  </div>
+                )}
+
+                {role === 'teacher' && form.classId && courses.length > 0 && (
                   <div>
                     <Label>Courses (assign to this teacher)</Label>
                     <div className="mt-1 rounded-xl border border-border max-h-44 overflow-y-auto p-2 space-y-1">
-                      {loadingCourses ? (
-                        <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading courses…
-                        </div>
-                      ) : courses.length === 0 ? (
-                        <div className="px-2 py-3 text-xs text-muted-foreground">
-                          No courses assigned to this class yet. Add courses to the class first.
-                        </div>
-                      ) : (
-                        courses.map((c: any) => {
-                          const checked = selectedCourseIds.includes(c.id);
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => toggleCourse(c.id)}
-                              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition ${
-                                checked ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'hover:bg-accent text-foreground'
-                              }`}
-                            >
-                              <span className={`h-4 w-4 rounded border flex items-center justify-center transition ${
-                                checked ? 'bg-emerald-600 border-emerald-600' : 'border-input bg-background'
-                              }`}>
-                                {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
-                              </span>
-                              <span className="font-medium">{c.name}</span>
-                              {c.code && <span className="text-[10px] text-muted-foreground uppercase">{c.code}</span>}
-                            </button>
-                          );
-                        })
-                      )}
+                      {courses.map((c: any) => {
+                        const checked = selectedCourseIds.includes(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => toggleCourse(c.id)}
+                            className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition ${
+                              checked ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'hover:bg-accent text-foreground'
+                            }`}
+                          >
+                            <span className={`h-4 w-4 rounded border flex items-center justify-center transition ${
+                              checked ? 'bg-emerald-600 border-emerald-600' : 'border-input bg-background'
+                            }`}>
+                              {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                            </span>
+                            <span className="font-medium">{c.name}</span>
+                            {c.code && <span className="text-[10px] text-muted-foreground uppercase">{c.code}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
-                    {courses.length > 0 && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        {selectedCourseIds.length} of {courses.length} course{courses.length === 1 ? '' : 's'} selected.
-                      </p>
-                    )}
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {selectedCourseIds.length} of {courses.length} course{courses.length === 1 ? '' : 's'} selected.
+                    </p>
+                  </div>
+                )}
+
+                {role === 'student' && form.classId && (
+                  <div>
+                    <Label>Section (optional)</Label>
+                    <Input
+                      value={form.section}
+                      onChange={e => setForm({ ...form, section: e.target.value })}
+                      placeholder="e.g. B — leave blank to use the class default"
+                      className="mt-1"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Used to place this student into a specific section like “1B”. Leave blank to use the class's default section.
+                    </p>
                   </div>
                 )}
               </div>

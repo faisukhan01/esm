@@ -106,12 +106,14 @@ function nextId(prefix) {
 
 // ===================== AUTH =====================
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password, loginId } = req.body || {};
+  const { email, password, loginId, name, role: requestedRole } = req.body || {};
   const identifier = (email || loginId || '').toLowerCase().trim();
-  if (!identifier || !password) return res.status(400).json({ error: 'Email/ID and password required' });
+  const userName = (name || '').toLowerCase().trim();
+  if (!identifier || !password) return res.status(400).json({ error: 'Credentials and password required' });
 
-  // Rate limiting
-  const attempts = loginAttempts.get(identifier);
+  // Rate limiting key (combine identifier + name for uniqueness)
+  const rateKey = userName ? `${userName}:${identifier}` : identifier;
+  const attempts = loginAttempts.get(rateKey);
   if (attempts && attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
     const remaining = Math.ceil((attempts.lockedUntil - Date.now()) / 60000);
     return res.status(429).json({ error: `Too many failed attempts. Locked for ${remaining} min.` });
@@ -119,23 +121,36 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     // Find user by email OR rollNo/ID
-    let result = await db.execute({ sql: 'SELECT * FROM users WHERE LOWER(email) = ?', args: [identifier] });
+    let result = await db.execute({ sql: 'SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(rollNo) = ?', args: [identifier, identifier.toLowerCase()] });
+
     if (result.rows.length === 0) {
-      result = await db.execute({ sql: 'SELECT * FROM users WHERE LOWER(rollNo) = ?', args: [identifier] });
-    }
-    if (result.rows.length === 0) {
-      const current = loginAttempts.get(identifier) || { count: 0, lockedUntil: 0 };
+      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
       current.count++;
       if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
-      loginAttempts.set(identifier, current);
+      loginAttempts.set(rateKey, current);
       return res.status(401).json({ error: `Invalid credentials. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
     }
-    const u = result.rows[0];
-    if (u.password !== password) {
-      const current = loginAttempts.get(identifier) || { count: 0, lockedUntil: 0 };
+
+    // If multiple results (e.g. same rollNo across branches), filter by name if provided
+    let u = result.rows[0];
+    if (userName && result.rows.length > 1) {
+      const byName = result.rows.find(r => String(r.name).toLowerCase().trim() === userName);
+      if (byName) u = byName;
+    }
+    // If name provided, verify it matches
+    if (userName && String(u.name).toLowerCase().trim() !== userName) {
+      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
       current.count++;
       if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
-      loginAttempts.set(identifier, current);
+      loginAttempts.set(rateKey, current);
+      return res.status(401).json({ error: `Name does not match. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
+    }
+
+    if (u.password !== password) {
+      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
+      current.count++;
+      if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
+      loginAttempts.set(rateKey, current);
       return res.status(401).json({ error: `Invalid credentials. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
     }
     if (u.status !== 'Active') return res.status(403).json({ error: 'Account is ' + u.status });
@@ -151,7 +166,7 @@ app.post('/api/auth/login', async (req, res) => {
       if (br.rows.length > 0 && br.rows[0].blocked === 1) return res.status(403).json({ error: 'Branch access blocked.' });
     }
 
-    loginAttempts.delete(identifier);
+    loginAttempts.delete(rateKey);
     const token = await createSession(u);
     res.json({ token, user: buildUserProfile(u), mustChangePassword: u.mustChangePassword === 1 });
   } catch (e) {
@@ -458,6 +473,55 @@ app.post('/api/classes/:id/courses', requireAuth, requireRole('branch-manager', 
     await db.execute({ sql: 'INSERT INTO class_courses (id, classId, courseId) VALUES (?, ?, ?)', args: [id, req.params.id, courseId] });
   }
   res.json({ success: true, count: courseIds.length });
+});
+
+// Create a new section inside an existing class (e.g. add "Class 1B" to a class that has "Class 1A").
+// The new section is a new row in the classes table with the same `name` but a different `section` letter.
+// Course assignments from the parent class are copied so the new section inherits the same curriculum.
+app.post('/api/classes/:id/sections', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const parent = await db.execute({ sql: 'SELECT * FROM classes WHERE id = ?', args: [req.params.id] });
+  if (parent.rows.length === 0) return res.status(404).json({ error: 'Class not found' });
+  const parentClass = parent.rows[0];
+
+  // Determine the next section letter (A, B, C, ...)
+  const existing = await db.execute({ sql: 'SELECT section FROM classes WHERE branchId = ? AND name = ?', args: [parentClass.branchId, parentClass.name] });
+  const usedLetters = new Set(existing.rows.map(r => (r.section || 'A').toUpperCase()));
+  let nextLetter = 'A';
+  while (usedLetters.has(nextLetter) && nextLetter.charCodeAt(0) < 90) {
+    nextLetter = String.fromCharCode(nextLetter.charCodeAt(0) + 1);
+  }
+
+  // Optionally accept a custom section letter from the body
+  const customSection = (req.body?.section || '').trim().toUpperCase();
+  const section = customSection && !usedLetters.has(customSection) ? customSection : nextLetter;
+
+  const id = nextId('CLS');
+  await db.execute({ sql: 'INSERT INTO classes (id, branchId, name, section) VALUES (?, ?, ?, ?)', args: [id, parentClass.branchId, parentClass.name, section] });
+
+  // Copy course assignments from the parent class so the new section inherits the same curriculum
+  const parentCourses = await db.execute({ sql: 'SELECT courseId FROM class_courses WHERE classId = ?', args: [parentClass.id] });
+  for (const row of parentCourses.rows) {
+    const ccId = nextId('CC');
+    await db.execute({ sql: 'INSERT INTO class_courses (id, classId, courseId) VALUES (?, ?, ?)', args: [ccId, id, row.courseId] });
+  }
+
+  res.status(201).json({ id, branchId: parentClass.branchId, name: parentClass.name, section, courseCount: parentCourses.rows.length });
+});
+
+// Delete a section (only if it has no students assigned)
+app.delete('/api/classes/:id', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const cls = await db.execute({ sql: 'SELECT * FROM classes WHERE id = ?', args: [req.params.id] });
+  if (cls.rows.length === 0) return res.status(404).json({ error: 'Class not found' });
+  const c = cls.rows[0];
+  // Don't allow deleting the only remaining section for a class name
+  const siblings = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [c.branchId, c.name] });
+  if (siblings.rows.length <= 1) return res.status(400).json({ error: 'Cannot delete the only section for this class' });
+  // Block deletion if any students are assigned
+  const students = await db.execute({ sql: 'SELECT id FROM users WHERE class = ? AND section = ? AND role = ?', args: [c.name, c.section, 'student'] });
+  if (students.rows.length > 0) return res.status(400).json({ error: 'Cannot delete section with students assigned' });
+  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId = ?', args: [req.params.id] });
+  await db.execute({ sql: 'DELETE FROM classes WHERE id = ?', args: [req.params.id] });
+  res.json({ success: true });
 });
 
 // Get teacher's classes + courses

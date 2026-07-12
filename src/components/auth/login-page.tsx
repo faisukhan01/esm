@@ -191,10 +191,10 @@ type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | '
 
 const ROLES: { id: Role; label: string; icon: any; note: string }[] = [
   { id: 'super-admin', label: 'Super Admin', icon: Crown, note: 'Owns the platform. Provisions institutions and manages everything.' },
-  { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin when institute is provisioned.' },
-  { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin when branch is added.' },
-  { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Login created by Branch Manager. You can sign in with your Email or Roll No / ID.' },
-  { id: 'student', label: 'Student', icon: User, note: 'Login created by Branch Manager. You can sign in with your Email or Roll No / ID.' },
+  { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin. Sign in with your email and password.' },
+  { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin. Sign in with your email and password.' },
+  { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Sign in with your Name, Teacher ID, and Password.' },
+  { id: 'student', label: 'Student', icon: User, note: 'Sign in with your Name, Roll Number, and Password.' },
 ];
 
 // ==================== Change Password Modal (first-time login) ====================
@@ -324,6 +324,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const setUser = useApp(s => s.setUser);
   const setToken = useApp(s => s.setToken);
   const [role, setRole] = useState<Role>('super-admin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -331,17 +332,20 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const activeRole = ROLES.find(r => r.id === role)!;
-  const showRollHint = role === 'teacher' || role === 'student';
+  const needsName = role === 'teacher' || role === 'student';
+  const idLabel = role === 'teacher' ? 'Teacher ID' : role === 'student' ? 'Roll Number' : 'Email or ID';
 
   const pickRole = (r: Role) => {
     setRole(r);
     setEmail('');
     setPassword('');
+    setName('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { toast({ title: 'Email / Roll No and password are required', variant: 'destructive' }); return; }
+    if (needsName && !name) { toast({ title: 'Name is required', variant: 'destructive' }); return; }
+    if (!email || !password) { toast({ title: 'All fields are required', variant: 'destructive' }); return; }
 
     const btn = buttonRef.current;
     if (btn) {
@@ -357,7 +361,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
     setIsLoading(true);
     try {
-      const { token, user } = await api.login(email, password);
+      const { token, user } = await api.login(email, password, needsName ? name : undefined);
       setToken(token);
       setUser(user);
       toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
@@ -398,18 +402,22 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Name field — only for teacher and student */}
+        {needsName && (
+          <div className="slide-up slide-up-delay-2">
+            <FloatingInput
+              id="login-name" type="text" placeholder="Full Name" icon={<User size={18} />}
+              value={name} onChange={(e: any) => setName(e.target.value)}
+              success={name.trim().length >= 2} autoComplete="name"
+            />
+          </div>
+        )}
         <div className="slide-up slide-up-delay-2">
           <FloatingInput
-            id="login-email" type="text" placeholder="Email or Roll No / ID" icon={<Mail size={18} />}
+            id="login-email" type="text" placeholder={idLabel} icon={<Mail size={18} />}
             value={email} onChange={(e: any) => setEmail(e.target.value)}
-            success={email.trim().length >= 3} autoComplete="username"
+            success={email.trim().length >= 2} autoComplete="username"
           />
-          {showRollHint && (
-            <p className="mt-1.5 text-[11px] text-emerald-700/80 flex items-center gap-1">
-              <Shield className="h-3 w-3" />
-              Tip: you can sign in using either your registered email or your Roll No / ID.
-            </p>
-          )}
         </div>
         <div className="slide-up slide-up-delay-3">
           <FloatingInput

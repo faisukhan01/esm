@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Users, GraduationCap, DollarSign, CalendarCheck, Plus, CheckCircle2, UserPlus, BookOpen,
-  Network, Inbox, Calendar, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
+  Network, Inbox, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
@@ -39,8 +39,8 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   const openAdd = (role: 'teacher' | 'student') => { setAddRole(role); setShowAdd(true); };
 
   let content: React.ReactNode;
-  if (activeModule === 'teachers' || activeModule === 'add-teacher') content = <TeachersView teachers={teachers} onRefresh={refresh} onAdd={() => openAdd('teacher')} />;
-  else if (activeModule === 'branch-students' || activeModule === 'add-student') content = <StudentsView students={students} onRefresh={refresh} onAdd={() => openAdd('student')} />;
+  if (activeModule === 'teachers') content = <TeachersView teachers={teachers} onRefresh={refresh} onAdd={() => openAdd('teacher')} />;
+  else if (activeModule === 'branch-students') content = <StudentsView students={students} onRefresh={refresh} onAdd={() => openAdd('student')} />;
   else if (activeModule === 'announcements') content = <AnnouncementsView user={user} />;
   else if (activeModule === 'class-courses') content = <ClassCoursesView user={user} />;
   else if (['attendance','results','timetable','fees','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule activeModule={activeModule} user={user} stats={stats} />;
@@ -313,49 +313,89 @@ function StudentsView({ students, onAdd, onRefresh }: any) {
 }
 
 // ============ Class & Course Management ============
+// Extract the numeric portion of a class name (e.g. "Class 5" → 5, "Class 12" → 12) for sorting.
+function classNumber(name: string): number {
+  const m = String(name || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
+
+type ClassGroup = { name: string; primary: any; sections: any[] };
+
+function groupClassesByName(rows: any[]): ClassGroup[] {
+  const map: Record<string, any[]> = {};
+  for (const c of rows) {
+    const key = c.name || 'Class';
+    if (!map[key]) map[key] = [];
+    map[key].push(c);
+  }
+  return Object.entries(map).map(([name, sections]) => {
+    const sorted = [...sections].sort((a, b) => (a.section || 'A').localeCompare(b.section || 'A'));
+    return { name, primary: sorted[0], sections: sorted };
+  }).sort((a, b) => classNumber(a.name) - classNumber(b.name));
+}
+
 function ClassCoursesView({ user }: { user: any }) {
   const [classes, setClasses] = useState<any[]>([]);
   const [allCourses, setAllCourses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeClassId, setActiveClassId] = useState<string>('');
+  const [activeClassName, setActiveClassName] = useState<string>('');
   const [assignedCourseIds, setAssignedCourseIds] = useState<string[]>([]);
+  const [loadingAssigned, setLoadingAssigned] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showAssignCourses, setShowAssignCourses] = useState(false);
   const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [newCourse, setNewCourse] = useState({ name: '', code: '' });
   const [creating, setCreating] = useState(false);
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [newSectionLetter, setNewSectionLetter] = useState('');
+  const [creatingSection, setCreatingSection] = useState(false);
 
   const refresh = () => {
     setLoading(true);
     Promise.all([
       api.getClasses(user.branchId).then(r => Array.isArray(r) ? r : []).catch(() => []),
       api.getCourses({ branchId: user.branchId }).then(r => Array.isArray(r) ? r : []).catch(() => []),
-    ]).then(([cls, crs]) => {
+      api.platformUsers({ branchId: user.branchId, role: 'student' }).then(r => Array.isArray(r) ? r : []).catch(() => []),
+    ]).then(([cls, crs, stu]) => {
       setClasses(cls);
       setAllCourses(crs);
-      if (cls.length > 0 && !activeClassId) setActiveClassId(cls[0].id);
+      setStudents(stu);
     }).finally(() => setLoading(false));
   };
 
   useEffect(() => { refresh(); }, [user.branchId]);
 
-  // When active class changes, fetch assigned courses for that class
+  // When the active class changes, fetch its assigned courses (uses the primary section's classId).
   useEffect(() => {
-    if (!activeClassId) { setAssignedCourseIds([]); return; }
-    api.getCourses({ classId: activeClassId })
-      .then(r => setAssignedCourseIds((Array.isArray(r) ? r : []).map((c: any) => c.id)))
-      .catch(() => setAssignedCourseIds([]));
-  }, [activeClassId]);
+    if (!activeClassName) { setAssignedCourseIds([]); return; }
+    const groups = groupClassesByName(classes);
+    const grp = groups.find(g => g.name === activeClassName);
+    if (!grp) { setAssignedCourseIds([]); return; }
+    let cancelled = false;
+    setLoadingAssigned(true);
+    api.getCourses({ classId: grp.primary.id })
+      .then(r => { if (!cancelled) setAssignedCourseIds((Array.isArray(r) ? r : []).map((c: any) => c.id)); })
+      .catch(() => { if (!cancelled) setAssignedCourseIds([]); })
+      .finally(() => { if (!cancelled) setLoadingAssigned(false); });
+    return () => { cancelled = true; };
+  }, [activeClassName, classes]);
+
+  const grouped = groupClassesByName(classes);
+  const activeGroup = grouped.find(g => g.name === activeClassName) || null;
 
   const toggleCourse = (id: string) => {
     setAssignedCourseIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   const saveAssignment = async () => {
-    if (!activeClassId) return;
+    if (!activeGroup) return;
     setSaving(true);
     try {
-      await api.assignClassCourses(activeClassId, assignedCourseIds);
-      toast({ title: 'Courses assigned', description: `${assignedCourseIds.length} course(s) linked to this class` });
+      // Assign to the primary (section A) class row. Sections created later will inherit these courses.
+      await api.assignClassCourses(activeGroup.primary.id, assignedCourseIds);
+      toast({ title: 'Courses assigned', description: `${assignedCourseIds.length} course(s) linked to ${activeGroup.name}` });
+      setShowAssignCourses(false);
     } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
     finally { setSaving(false); }
   };
@@ -373,101 +413,259 @@ function ClassCoursesView({ user }: { user: any }) {
     finally { setCreating(false); }
   };
 
-  const activeClass = classes.find(c => c.id === activeClassId);
+  const createSection = async () => {
+    if (!activeGroup) return;
+    setCreatingSection(true);
+    try {
+      const letter = newSectionLetter.trim().toUpperCase();
+      const res = await api.createClassSection(activeGroup.primary.id, letter || undefined);
+      toast({ title: 'Section created', description: `${activeGroup.name} ${res.section} is now available` });
+      setNewSectionLetter('');
+      setShowAddSection(false);
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setCreatingSection(false); }
+  };
 
-  return (
-    <div className="space-y-6">
-      <ModuleHeader title="Classes & Courses" subtitle="Manage all 12 classes and assign courses to each"
-        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowCreateCourse(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> New Course</Button>} />
+  const deleteSection = async (classId: string, label: string) => {
+    if (!confirm(`Delete section ${label}? This cannot be undone.`)) return;
+    try {
+      await api.deleteClassSection(classId);
+      toast({ title: 'Section deleted', description: `${label} was removed` });
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+  };
 
-      {loading ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">Loading classes…</Card>
-      ) : classes.length === 0 ? (
-        <EmptyState icon={BookOpen} title="No classes found" desc="Classes (Class 1 – Class 12) are auto-created when your branch is provisioned. If you don't see them, ask your Institute Admin." />
-      ) : (
-        <>
-          {/* Class grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {classes.map(cls => {
-              const isActive = cls.id === activeClassId;
-              return (
-                <button key={cls.id} onClick={() => setActiveClassId(cls.id)}
-                  className={`text-left p-4 rounded-xl border transition relative overflow-hidden ${
-                    isActive ? 'border-emerald-500/60 bg-emerald-500/10 shadow-md' : 'border-border bg-card hover:border-emerald-500/30 hover:bg-muted/40'
-                  }`}>
-                  <div className="flex items-center justify-between">
-                    <div className={`h-9 w-9 rounded-lg grid place-items-center ${isActive ? 'bg-emerald-600' : 'bg-muted'}`}>
-                      <BookOpen className={`h-4 w-4 ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
-                    </div>
-                    {isActive && <Badge variant="outline" className="text-emerald-700 bg-emerald-500/10 border-emerald-500/20 text-[10px]">Selected</Badge>}
-                  </div>
-                  <div className="mt-2 font-bold text-sm">{cls.name}</div>
-                  <div className="text-[11px] text-muted-foreground">Section {cls.section || 'A'}</div>
-                </button>
-              );
-            })}
+  const studentsInSection = (className: string, section: string) =>
+    students.filter(s => s.class === className && (s.section || 'A') === (section || 'A'));
+
+  // -------- Detail view (one class selected) --------
+  if (activeGroup) {
+    const assignedCourses = allCourses.filter(c => assignedCourseIds.includes(c.id));
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <button onClick={() => { setActiveClassName(''); setShowAssignCourses(false); setShowCreateCourse(false); setShowAddSection(false); }}
+              className="mt-1 h-9 w-9 grid place-items-center rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition"
+              title="Back to all classes">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            </button>
+            <div>
+              <h1 className="font-display text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-emerald-600" /> {activeGroup.name}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {activeGroup.sections.length} section{activeGroup.sections.length === 1 ? '' : 's'} · {assignedCourses.length} course{assignedCourses.length === 1 ? '' : 's'} assigned
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAssignCourses(v => !v)}><CheckCircle2 className="h-4 w-4 mr-1.5" /> {showAssignCourses ? 'Hide Course List' : 'Assign Courses'}</Button>
+          </div>
+        </div>
+
+        {/* Create course form (collapsible) */}
+        {showCreateCourse && (
+          <Card className="p-5">
+            <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-emerald-600" /><h3 className="font-bold text-base">Create New Course</h3></div>
+            <div className="grid sm:grid-cols-3 gap-3 items-end">
+              <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
+              <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+              <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Assigned courses + assign checklist */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-base flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-600" /> Assigned Courses</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">These courses are taught in {activeGroup.name}. New sections inherit this list automatically.</p>
+            </div>
+            <Badge variant="outline" className="text-emerald-700 bg-emerald-500/10 border-emerald-500/20">{assignedCourseIds.length} assigned</Badge>
           </div>
 
-          {/* Create course form */}
-          {showCreateCourse && (
-            <Card className="p-5">
-              <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-emerald-600" /><h3 className="font-bold text-base">Create New Course</h3></div>
-              <div className="grid sm:grid-cols-3 gap-3 items-end">
-                <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
-                <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
-                <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
-              </div>
-            </Card>
+          {loadingAssigned ? (
+            <div className="text-sm text-muted-foreground py-4 text-center">Loading assigned courses…</div>
+          ) : assignedCourses.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-4 py-4 text-sm text-amber-800 dark:text-amber-200">
+              <strong>No courses assigned yet.</strong> Click <em>Assign Courses</em> above to select the subjects taught in this class. You must assign courses before you can add teachers for this class.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {assignedCourses.map(c => (
+                <Badge key={c.id} variant="secondary" className="px-3 py-1.5 font-normal text-sm bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                  <BookOpen className="h-3.5 w-3.5 mr-1.5" /> {c.name}{c.code ? <span className="ml-1.5 text-[10px] uppercase opacity-70">{c.code}</span> : null}
+                </Badge>
+              ))}
+            </div>
           )}
 
-          {/* Assign courses to active class */}
-          {activeClass && (
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-base flex items-center gap-2"><BookOpen className="h-4 w-4 text-emerald-600" /> {activeClass.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Select which courses are taught in this class. Students in this class will see all selected courses.</p>
-                </div>
-                <Badge variant="outline" className="text-emerald-700 bg-emerald-500/10 border-emerald-500/20">{assignedCourseIds.length} assigned</Badge>
+          {showAssignCourses && (
+            <div className="mt-5 pt-5 border-t border-border/40">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-sm">All branch courses — toggle to assign</h4>
+                <span className="text-xs text-muted-foreground">{assignedCourseIds.length} of {allCourses.length} selected</span>
               </div>
               {allCourses.length === 0 ? (
-                <div className="text-center py-8 text-sm text-muted-foreground">
+                <div className="text-center py-6 text-sm text-muted-foreground">
                   No courses created in this branch yet. <button onClick={() => setShowCreateCourse(true)} className="text-emerald-600 hover:underline font-medium">Create one now</button>.
                 </div>
               ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-80 overflow-y-auto scroll-fancy pr-1">
-                  {allCourses.map(c => {
-                    const checked = assignedCourseIds.includes(c.id);
-                    return (
-                      <button key={c.id} type="button" onClick={() => toggleCourse(c.id)}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition ${
-                          checked ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border bg-background hover:bg-muted/50'
-                        }`}>
-                        <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-emerald-600 border-emerald-600' : 'border-input bg-background'}`}>
-                          {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className={`text-sm font-medium truncate ${checked ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{c.name}</div>
-                          {c.code && <div className="text-[10px] text-muted-foreground uppercase">{c.code}</div>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-80 overflow-y-auto scroll-fancy pr-1">
+                    {allCourses.map(c => {
+                      const checked = assignedCourseIds.includes(c.id);
+                      return (
+                        <button key={c.id} type="button" onClick={() => toggleCourse(c.id)}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition ${
+                            checked ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border bg-background hover:bg-muted/50'
+                          }`}>
+                          <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-emerald-600 border-emerald-600' : 'border-input bg-background'}`}>
+                            {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-sm font-medium truncate ${checked ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{c.name}</div>
+                            {c.code && <div className="text-[10px] text-muted-foreground uppercase">{c.code}</div>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-end mt-4 pt-3 border-t border-border/40 gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setShowAssignCourses(false)}>Cancel</Button>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={saveAssignment}>
+                      {saving ? 'Saving…' : 'Save Assignment'}
+                    </Button>
+                  </div>
+                </>
               )}
-              {allCourses.length > 0 && (
-                <div className="flex justify-end mt-4 pt-3 border-t border-border/40">
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={saveAssignment}>
-                    {saving ? 'Saving…' : 'Save Assignment'}
-                  </Button>
-                </div>
-              )}
-            </Card>
+            </div>
           )}
-        </>
+        </Card>
+
+        {/* Sections */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-base flex items-center gap-2"><Network className="h-4 w-4 text-emerald-600" /> Sections</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Each section can have its own students. New sections inherit this class's course list.</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setShowAddSection(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> Add Section</Button>
+          </div>
+
+          {showAddSection && (
+            <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+              <div className="grid sm:grid-cols-3 gap-3 items-end">
+                <div className="sm:col-span-2">
+                  <Label>Section letter (optional)</Label>
+                  <Input value={newSectionLetter} onChange={e => setNewSectionLetter(e.target.value)} placeholder="e.g. C — leave blank for the next available letter" className="mt-1" maxLength={2} />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={creatingSection} onClick={createSection}>{creatingSection ? 'Creating…' : 'Create Section'}</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddSection(false); setNewSectionLetter(''); }}>Cancel</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {activeGroup.sections.map(sec => {
+              const secStudents = studentsInSection(activeGroup.name, sec.section);
+              const canDelete = activeGroup.sections.length > 1 && secStudents.length === 0;
+              return (
+                <div key={sec.id} className="rounded-xl border border-border bg-card p-4 flex flex-col">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-9 w-9 rounded-lg bg-emerald-600 grid place-items-center text-white font-bold">{(sec.section || 'A').toUpperCase()}</div>
+                      <div>
+                        <div className="font-bold text-sm">{activeGroup.name} {(sec.section || 'A').toUpperCase()}</div>
+                        <div className="text-[11px] text-muted-foreground">{secStudents.length} student{secStudents.length === 1 ? '' : 's'}</div>
+                      </div>
+                    </div>
+                    {canDelete && (
+                      <button onClick={() => deleteSection(sec.id, `${activeGroup.name} ${sec.section}`)} title="Delete this section" className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10">
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-3 flex-1 min-h-0">
+                    {secStudents.length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border/60 rounded-lg">No students assigned</div>
+                    ) : (
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto scroll-fancy">
+                        {secStudents.map(s => (
+                          <div key={s.id} className="flex items-center gap-2 text-xs">
+                            <div className="h-6 w-6 rounded-full bg-emerald-500/15 grid place-items-center text-emerald-600"><GraduationCap className="h-3 w-3" /></div>
+                            <div className="min-w-0 flex-1"><div className="font-medium truncate">{s.name}</div></div>
+                            <div className="font-mono text-[10px] text-muted-foreground">{s.rollNo}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // -------- Grid view (no class selected) --------
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="Classes & Courses" subtitle="Click a class to manage its courses and sections"
+        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>} />
+
+      {showCreateCourse && (
+        <Card className="p-5">
+          <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-emerald-600" /><h3 className="font-bold text-base">Create New Course</h3></div>
+          <div className="grid sm:grid-cols-3 gap-3 items-end">
+            <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
+            <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
+          </div>
+        </Card>
+      )}
+
+      {loading ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">Loading classes…</Card>
+      ) : grouped.length === 0 ? (
+        <EmptyState icon={BookOpen} title="No classes found" desc="Classes (Class 1 – Class 12) are auto-created when your branch is provisioned. If you don't see them, ask your Institute Admin." />
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {grouped.map((g, idx) => {
+            const studentCount = g.sections.reduce((acc: number, s: any) => acc + studentsInSection(g.name, s.section).length, 0);
+            return (
+              <button key={g.name} onClick={() => { setActiveClassName(g.name); setShowCreateCourse(false); }}
+                className="text-left p-4 rounded-xl border border-border bg-card hover:border-emerald-500/40 hover:bg-muted/40 hover:shadow-md transition relative overflow-hidden group">
+                <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-emerald-500/10 blur-2xl opacity-0 group-hover:opacity-100 transition" />
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 grid place-items-center shadow-md text-white font-bold">
+                    {classNumber(g.name) || (idx + 1)}
+                  </div>
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">{g.sections.length} sec{g.sections.length === 1 ? '' : 's'}</Badge>
+                </div>
+                <div className="mt-3 font-bold text-sm">{g.name}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">{studentCount} student{studentCount === 1 ? '' : 's'} enrolled</div>
+                <div className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <BookOpen className="h-3 w-3" /> Click to manage
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

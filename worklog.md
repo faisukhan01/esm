@@ -831,3 +831,88 @@ Stage Summary:
 - No more modal blocking on the login page
 - Settings page available for ALL roles (super-admin, institute-admin, branch-manager, teacher, student)
 - Turso DB connection restored and working
+
+---
+Task ID: BM-RESTRUCTURE
+Agent: full-stack-developer
+Task: Restructure Branch Manager portal
+
+Work Log:
+- Read prior worklog (BM-UPDATE / ALL-PORTALS-UPDATE / PASSWORD-FLOW-FIX) to understand the current Branch Manager portal state: sidebar had separate `add-teacher` and `add-student` modules (redundant with the inline Add buttons), the ClassCoursesView showed class cards not in numeric order and required clicking a separate side panel to assign courses (cards weren't truly expandable), and there was no way to create sections like "Class 1B".
+- Backend additions (mini-services/esm-api/index.js):
+    * POST /api/classes/:id/sections — creates a new section row inside an existing class. Auto-picks the next available section letter (A→B→C…) or accepts a custom letter via `body.section`. The new row inherits the parent class's `name` and `branchId` and copies all `class_courses` rows from the parent so the new section starts with the same curriculum.
+    * DELETE /api/classes/:id — deletes a section row only when (a) it isn't the only section for that class name and (b) no students are currently assigned to it (`users.class = name AND users.section = section`). Cascades to `class_courses` for that row.
+- API client (src/lib/api.ts): Added `createClassSection(classId, section?)` and `deleteClassSection(classId)` next to the existing `assignClassCourses` helper.
+- role-modules.ts: Branch-manager "Branch" group now lists `branch-overview → teachers → branch-students → class-courses → announcements` (removed `add-teacher` and `add-student` modules; moved `class-courses` above `announcements`). Removed the now-unused `UserPlus` import.
+- branch-manager-portal.tsx (route table): Removed `add-teacher` and `add-student` from the `if/else if` router — `teachers` and `branch-students` already open the same AddUserModal via their `onAdd` buttons. Removed the now-unused `Calendar` import.
+- branch-manager-portal.tsx (ClassCoursesView rewrite):
+    * Added two module-level helpers: `classNumber(name)` extracts the leading integer from "Class N" so cards can be sorted 1,2,…,12 (not 1,10,11,2,…); `groupClassesByName(rows)` groups all class rows by `name` (so multiple section rows for the same class name appear as a single card) and returns them sorted by class number.
+    * New state: `activeClassName` (string), `loadingAssigned`, `showAssignCourses`, `showAddSection`, `newSectionLetter`, `creatingSection`, plus the existing `assignedCourseIds`, `showCreateCourse`, `newCourse`, `creating`, `saving`. Also fetches the branch's students up front (one `api.platformUsers({ branchId, role: 'student' })`) so each section card can list its assigned students without an extra round-trip per section.
+    * Grid view (no class selected): responsive 2/3/4-col grid of class cards. Each card shows a gradient tile with the class number, section count badge, student count, and a "Click to manage" hint. Cards are clickable (`onClick` sets `activeClassName`). Includes a top-level "New Course" button that toggles an inline create-course form.
+    * Detail view (class selected): replaces the grid with a back button + class title header, plus three Card sections:
+        1. Assigned Courses — shows chips for each assigned course, or an amber-bordered "No courses assigned yet. Click Assign Courses above… You must assign courses before you can add teachers for this class." warning when empty. "Assign Courses" button toggles a checklist of all branch courses with a Save Assignment action that calls `api.assignClassCourses(activeGroup.primary.id, assignedCourseIds)`.
+        2. Create New Course — same form as before (name + code) → `api.createCourse({ name, code, branchId })`.
+        3. Sections — shows each section as a card (e.g. "Class 5A", "Class 5B") with a colored letter tile, student count, and a scrollable list of assigned students (name + rollNo). Each section card has a trash button if (and only if) there's more than one section AND no students are assigned — clicking calls `api.deleteClassSection`. "Add Section" button toggles an inline form with an optional section-letter input → `api.createClassSection(activeGroup.primary.id, letter || undefined)`.
+    * `useEffect` for active class change refetches `api.getCourses({ classId: activeGroup.primary.id })` whenever `activeClassName` or `classes` change, with cancellation handling.
+- add-user-modal.tsx (kept structure but added the two requested UX pieces):
+    * Class dropdown is now labelled "Class *" for BOTH roles (was "(optional)" for teachers) and is required for both. Selecting a class clears the section field.
+    * `api.getClasses()` call now passes `branchId` so only this branch's classes are listed.
+    * For teachers, after the class is selected, three states render:
+        - Loading — spinner + "Loading courses assigned to this class…"
+        - Empty — amber warning box: "No courses assigned to this class yet. Please assign courses to this class first in Classes & Courses before adding a teacher."
+        - Has courses — same multi-select checklist as before (only courses already linked to the selected class).
+    * Submit now blocks if a teacher has 0 selected courses (with a toast that points the user back to Classes & Courses).
+    * New "Section (optional)" text input shown only for students — accepts a free-text section letter (e.g. "B"). On submit, section is resolved as `form.section.trim() || selectedClass.section || 'A'` and sent in the body so the student is placed in the right section.
+    * Form state extended with `section: ''`; `reset()` clears it too.
+- Verification:
+    * `bun run lint` → exit 0, no errors, no warnings.
+    * Backend `bun --hot` reloaded the new endpoints automatically (verified `curl http://localhost:3001/api/classes` returns 401 — endpoint exists, auth required).
+    * Dev server log shows clean `✓ Compiled in Xms` runs after each save, no errors.
+
+Stage Summary:
+- Branch Manager sidebar simplified to 5 Branch items: Branch Dashboard, Teachers, Students, Classes & Courses, Announcements. The separate Add Teacher / Add Student pages are gone — adding happens via the buttons on the Teachers and Students pages.
+- Classes & Courses page now shows all 12 class cards IN ORDER (1, 2, 3, …, 12 — sorted by the numeric part of the name, not lexicographically). Each card is clickable; clicking replaces the grid with an inline detail view (back button returns to the grid).
+- Inside the detail view: assigned courses chip list, "Assign Courses" toggle that opens a checklist of all branch courses (saves via `api.assignClassCourses`), "Create New Course" form, and a Sections card showing every section of that class with its student list, plus an "Add Section" button that creates a new section row inheriting the parent's courses.
+- AddUserModal: class dropdown is required for both teacher and student; for teachers, picking a class with no courses shows an amber warning that redirects to Classes & Courses; teachers cannot be saved without at least one course. Students get a free-text "Section (optional)" input that is sent in the body.
+- New backend endpoints: POST /api/classes/:id/sections (creates section, inherits parent's courses), DELETE /api/classes/:id (deletes a section only when it has no students and isn't the only one).
+- Lint passes clean. Dev server compiles cleanly.
+
+---
+Task ID: LOGIN-FIX + BM-RESTRUCTURE
+Agent: Main (Z.ai Code) + subagent
+Task: Fix login (3-field for teacher/student) + restructure Branch Manager portal + fix class cards
+
+Work Log:
+- **Backend login updated**: POST /api/auth/login now accepts `name` field. For teacher/student, verifies name matches the user record. Finds user by email OR rollNo, then filters by name if multiple results. Rate limiting key now includes name for uniqueness.
+- **API client updated**: `api.login(email, password, name?)` — sends optional name field.
+- **Login page updated**:
+  - Teacher role: shows 3 fields — "Full Name", "Teacher ID", "Password"
+  - Student role: shows 3 fields — "Full Name", "Roll Number", "Password"
+  - Super Admin/Institute Admin/Branch Manager: 2 fields (email/ID + password) — no name field
+  - Role notes updated: Teacher = "Sign in with your Name, Teacher ID, and Password", Student = "Sign in with your Name, Roll Number, and Password"
+  - Validation: name required for teacher/student roles
+- **Branch Manager portal restructured** (by subagent BM-RESTRUCTURE):
+  - Removed separate "Add Teacher" and "Add Student" sidebar pages — add forms are now buttons/modals ON the Teachers and Students list pages
+  - Classes & Courses page rebuilt:
+    - Class cards sorted numerically (Class 1, 2, 3... 12 — not 1, 10, 11, 2, 3)
+    - Cards are CLICKABLE — opens inline detail view
+    - Inside class detail: assigned courses, assign courses checklist, create new course, sections management (Class 1A, Class 1B)
+  - Teacher add flow: if selected class has NO courses, shows warning "Please assign courses to this class first"
+  - Student add flow: can assign to ANY class (whether it has courses or not)
+  - New backend endpoints: POST /api/classes/:id/sections (create section), DELETE /api/classes/:id (delete section)
+  - New API methods: createClassSection, deleteClassSection
+
+Verification:
+- Backend health: `{"ok": true, "db": "turso", "users": 8}` ✅
+- Login page: Teacher role shows 3 fields (Full Name, Teacher ID, Password) — VLM confirmed ✅
+- Student role shows 3 fields (Full Name, Roll Number, Password) ✅
+- Branch Manager sidebar: no more "Add Teacher"/"Add Student" separate pages ✅
+- Classes & Courses: cards sorted 1-12, clickable, open to detail with courses + sections ✅
+- Teacher add: warns if class has no courses ✅
+- Student add: can assign to any class ✅
+- Lint passes clean
+
+Stage Summary:
+- Login: 3-field authentication for teachers (Name + ID + Pass) and students (Name + RollNo + Pass)
+- Branch Manager portal: cleaner structure, sorted clickable class cards with course/section management inside
+- Course-first flow enforced: teachers can't be added to a class without courses

@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
-  UserPlus, ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning,
+  ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -75,10 +75,8 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'branch-overview', name: 'Branch Dashboard', icon: LayoutDashboard, color: 'from-teal-500 to-cyan-600' },
       { id: 'teachers', name: 'Teachers', icon: Users, color: 'from-violet-500 to-purple-600' },
       { id: 'branch-students', name: 'Students', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },
-      { id: 'add-teacher', name: 'Add Teacher', icon: UserPlus, color: 'from-amber-500 to-yellow-600' },
-      { id: 'add-student', name: 'Add Student', icon: UserPlus, color: 'from-emerald-500 to-teal-600' },
-      { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
       { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-lime-500 to-emerald-600' },
+      { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
     ]},
     { group: 'Academics', items: [
       { id: 'attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-teal-500 to-cyan-600' },
