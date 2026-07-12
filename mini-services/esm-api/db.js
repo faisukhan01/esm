@@ -220,6 +220,83 @@ export async function initDB() {
     }
   }
 
+  // === Drop and recreate tables that have schema conflicts ===
+  // The attendance/results tables may have been created with an older schema
+  // that conflicts with the current code. Drop and recreate them.
+  const dropAndRecreate = [
+    { drop: 'DROP TABLE IF EXISTS attendance', create: `CREATE TABLE attendance (
+      id TEXT PRIMARY KEY,
+      branchId TEXT,
+      classId TEXT,
+      date TEXT NOT NULL,
+      teacherId TEXT,
+      records TEXT NOT NULL,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )` },
+    { drop: 'DROP TABLE IF EXISTS results', create: `CREATE TABLE results (
+      id TEXT PRIMARY KEY,
+      branchId TEXT,
+      exam TEXT NOT NULL,
+      courseId TEXT,
+      classId TEXT,
+      teacherId TEXT,
+      totalMarks INTEGER DEFAULT 100,
+      date TEXT NOT NULL,
+      records TEXT NOT NULL,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )` },
+  ];
+
+  for (const { drop, create } of dropAndRecreate) {
+    try {
+      await db.execute(drop);
+      await db.execute(create);
+      console.log(`Dropped and recreated table`);
+    } catch (e) {
+      // Ignore — table might not exist
+    }
+  }
+
+  // === Migrations: add missing columns to existing tables ===
+  const migrations = [
+    { table: 'attendance', column: 'branchId', sql: 'ALTER TABLE attendance ADD COLUMN branchId TEXT' },
+    { table: 'attendance', column: 'classId', sql: 'ALTER TABLE attendance ADD COLUMN classId TEXT' },
+    { table: 'attendance', column: 'teacherId', sql: 'ALTER TABLE attendance ADD COLUMN teacherId TEXT' },
+    { table: 'attendance', column: 'records', sql: 'ALTER TABLE attendance ADD COLUMN records TEXT' },
+    { table: 'attendance', column: 'date', sql: 'ALTER TABLE attendance ADD COLUMN date TEXT' },
+    { table: 'attendance', column: 'createdAt', sql: 'ALTER TABLE attendance ADD COLUMN createdAt TEXT DEFAULT (datetime(\'now\'))' },
+    { table: 'results', column: 'courseId', sql: 'ALTER TABLE results ADD COLUMN courseId TEXT' },
+    { table: 'results', column: 'classId', sql: 'ALTER TABLE results ADD COLUMN classId TEXT' },
+    { table: 'results', column: 'records', sql: 'ALTER TABLE results ADD COLUMN records TEXT' },
+    { table: 'results', column: 'exam', sql: 'ALTER TABLE results ADD COLUMN exam TEXT' },
+    { table: 'results', column: 'teacherId', sql: 'ALTER TABLE results ADD COLUMN teacherId TEXT' },
+    { table: 'results', column: 'totalMarks', sql: 'ALTER TABLE results ADD COLUMN totalMarks INTEGER DEFAULT 100' },
+    { table: 'results', column: 'date', sql: 'ALTER TABLE results ADD COLUMN date TEXT' },
+    { table: 'results', column: 'createdAt', sql: 'ALTER TABLE results ADD COLUMN createdAt TEXT DEFAULT (datetime(\'now\'))' },
+    { table: 'users', column: 'mustChangePassword', sql: 'ALTER TABLE users ADD COLUMN mustChangePassword INTEGER NOT NULL DEFAULT 0' },
+    { table: 'users', column: 'blocked', sql: 'ALTER TABLE users ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0' },
+    { table: 'users', column: 'blockedReason', sql: 'ALTER TABLE users ADD COLUMN blockedReason TEXT' },
+    { table: 'users', column: 'rollNo', sql: 'ALTER TABLE users ADD COLUMN rollNo TEXT' },
+    { table: 'institutes', column: 'blocked', sql: 'ALTER TABLE institutes ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0' },
+    { table: 'institutes', column: 'blockedReason', sql: 'ALTER TABLE institutes ADD COLUMN blockedReason TEXT' },
+    { table: 'branches', column: 'blocked', sql: 'ALTER TABLE branches ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0' },
+    { table: 'branches', column: 'blockedReason', sql: 'ALTER TABLE branches ADD COLUMN blockedReason TEXT' },
+  ];
+
+  for (const migration of migrations) {
+    try {
+      // Check if column exists first
+      const check = await db.execute({ sql: `PRAGMA table_info(${migration.table})`, args: [] });
+      const columns = check.rows.map(r => r.name);
+      if (!columns.includes(migration.column)) {
+        await db.execute(migration.sql);
+        console.log(`Migration: added ${migration.column} to ${migration.table}`);
+      }
+    } catch (e) {
+      // Column might already exist or table doesn't exist — ignore
+    }
+  }
+
   // Seed super admin if not exists
   const existing = await db.execute({ sql: 'SELECT id FROM users WHERE role = ?', args: ['super-admin'] });
   if (existing.rows.length === 0) {

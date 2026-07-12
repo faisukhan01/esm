@@ -96,13 +96,10 @@ export const ROLE_MODULES: RoleModules = {
   'teacher': [
     { group: 'Teaching', items: [
       { id: 'teacher-overview', name: 'My Classes', icon: LayoutDashboard, color: 'from-violet-500 to-purple-600' },
-      { id: 'mark-attendance', name: 'Take Attendance', icon: CalendarCheck, color: 'from-teal-500 to-cyan-600' },
-      { id: 'post-results', name: 'Post Results', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },
       { id: 'diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-amber-500 to-yellow-600' },
       { id: 'timetable', name: 'My Timetable', icon: Calendar, color: 'from-lime-500 to-emerald-600' },
     ]},
-    { group: 'Students', items: [
-      { id: 'my-students', name: 'My Students', icon: Users, color: 'from-emerald-500 to-teal-700' },
+    { group: 'Communication', items: [
       { id: 'announcements', name: 'Announcements', icon: Bell, color: 'from-rose-500 to-pink-600' },
       { id: 'sms', name: 'Message Parents', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
     ]},
