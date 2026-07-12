@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap, Search, Bell, Menu, LogOut, ChevronDown, ChevronRight,
-  Globe, Sparkles, PanelLeftClose, PanelLeft, Command, Crown, Building2, Users, BookOpen, User, Heart,
+  Globe, Sparkles, PanelLeftClose, PanelLeft, Command, Crown, Building2, Users, BookOpen, User, Heart, Shield,
 } from 'lucide-react';
 
 import { SuperAdminPortal } from './super-admin-portal';
@@ -20,6 +20,7 @@ import { BranchManagerPortal } from './branch-manager-portal';
 import { TeacherPortal } from './teacher-portal';
 import { StudentPortal } from './student-portal';
 import { ParentPortal } from './parent-portal';
+import { SettingsPage } from './settings-page';
 
 const roleIcon: Record<string, any> = {
   'super-admin': Crown, 'institute-admin': Building2, 'branch-manager': Users,
@@ -141,6 +142,7 @@ export function RolePortal() {
   const active = allModules.find((m: any) => m.id === activeModule) || allModules[0] || { id: 'none', name: 'Home', icon: GraduationCap, color: 'from-emerald-500 to-emerald-700' };
 
   const renderPortal = () => {
+    if (activeModule === 'settings') return <SettingsPage user={user} />;
     switch (role) {
       case 'super-admin': return <SuperAdminPortal activeModule={activeModule} user={user} />;
       case 'institute-admin': return <InstituteAdminPortal activeModule={activeModule} user={user} />;
@@ -213,6 +215,27 @@ export function RolePortal() {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+          {/* Must change password banner */}
+          {user?.mustChangePassword && activeModule !== 'settings' && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 rounded-xl bg-amber-50 border border-amber-300 p-4 flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-400/20 grid place-items-center shrink-0">
+                  <Shield className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm text-amber-900">Please change your password</div>
+                  <div className="text-xs text-amber-700">You're using a password assigned by your administrator. Change it now to secure your account.</div>
+                </div>
+              </div>
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white shrink-0" onClick={() => setActiveModule('settings')}>
+                Change now
+              </Button>
+            </motion.div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div key={activeModule} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
               {renderPortal()}

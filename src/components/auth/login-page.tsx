@@ -328,7 +328,6 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingAuth, setPendingAuth] = useState<{ token: string; user: any } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const activeRole = ROLES.find(r => r.id === role)!;
@@ -358,16 +357,11 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
     setIsLoading(true);
     try {
-      const { token, user, mustChangePassword } = await api.login(email, password);
+      const { token, user } = await api.login(email, password);
       setToken(token);
       setUser(user);
-      if (mustChangePassword) {
-        setPendingAuth({ token, user });
-        toast({ title: `Welcome, ${user.name}`, description: 'Please set a new password to continue.' });
-      } else {
-        toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
-        setView('portal');
-      }
+      toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
+      setView('portal');
     } catch (err: any) {
       const msg = err.message.includes('401') ? 'Invalid credentials' : err.message.includes('429') ? 'Too many failed attempts. Account locked.' : err.message;
       toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
@@ -453,12 +447,6 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
           <p className="text-emerald-800 text-[11px]">{activeRole.note}</p>
         </div>
       </div>
-
-      <ChangePasswordModal
-        open={!!pendingAuth}
-        onClose={() => setPendingAuth(null)}
-        onSuccess={() => { setPendingAuth(null); setView('portal'); }}
-      />
     </div>
   );
 }

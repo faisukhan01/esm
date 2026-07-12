@@ -13,6 +13,8 @@ export type AuthUser = {
   roleLabel: string;
   title: string;
   status: string;
+  mustChangePassword?: boolean;
+  blocked?: boolean;
   instituteId?: string | null;
   instituteName?: string | null;
   instituteShort?: string | null;

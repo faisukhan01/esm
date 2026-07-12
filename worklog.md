@@ -791,3 +791,43 @@ Stage Summary:
 - Modal scroll issue FIXED — all modals now scroll properly
 - ALL portals updated: Super Admin (password field, announcements, block/edit), Institute Admin (password field, announcements, block/edit), Branch Manager (Roll No, class/course assignment, announcements, block/edit), Teacher (class cards, course material upload, announcements), Student (course cards, material download, announcements)
 - Turso DB connected and working for all operations
+
+---
+Task ID: PASSWORD-FLOW-FIX
+Agent: Main (Z.ai Code)
+Task: Fix change password flow — remove modal from login, add banner + Settings page in portal
+
+Work Log:
+- **Root cause**: The ChangePasswordModal was blocking users on the LOGIN page before they could enter the portal. Also, the API call was failing because the auth token wasn't in localStorage yet when the modal tried to call `api.changePassword()`.
+- **Login page fix**: Removed the `pendingAuth` state and `ChangePasswordModal` from the login form. Login now ALWAYS routes to the portal (regardless of `mustChangePassword` flag). Removed `mustChangePassword` check from the login handler.
+- **Store update**: Added `mustChangePassword?: boolean` and `blocked?: boolean` to the `AuthUser` type in store.ts so the flag is properly stored and accessible.
+- **Settings page created** (`/src/components/portal/settings-page.tsx`):
+  - Shows user profile info (name, email, role, rollNo, institute, branch)
+  - "Change Password" section with current/new/confirm password fields (all with show/hide toggles)
+  - Calls `api.changePassword(currentPassword, newPassword)` with the auth token (which is now properly in localStorage since the user is in the portal)
+  - On success: updates the user in the store to clear `mustChangePassword`, shows success toast, clears the form
+  - If `mustChangePassword` is true, shows an amber "Action required" badge and a warning message
+- **"Must change password" banner in RolePortal**: Added an amber banner at the top of the main content area when `user.mustChangePassword` is true and the user is NOT on the Settings page. The banner has a "Change now" button that navigates to the Settings page.
+- **Settings module added to ALL roles**: Added `{ id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' }` to an 'Account' group for super-admin, institute-admin, branch-manager, teacher, and student in role-modules.ts.
+- **RolePortal routing**: Added `if (activeModule === 'settings') return <SettingsPage user={user} />;` before the role-specific switch statement, so Settings works for ALL roles.
+- **Backend .env restored**: The Turso DB .env file in mini-services/esm-api was missing (causing 401 errors). Recreated it with the Turso credentials.
+
+Verification (agent-browser + API):
+- Created institute "Test School" with admin testadmin@test.com / TestPass123 via API ✅
+- Login as institute admin → `mustChangePassword: True` ✅
+- Signed in via browser → portal opens directly (NO modal blocking) ✅
+- Amber "Please change your password" banner visible at top of portal ✅
+- Clicked "Change now" → navigates to Settings page ✅
+- Settings page shows profile info + Change Password form ✅
+- Filled form (current: TestPass123, new: NewSecurePass99, confirm: NewSecurePass99) → clicked Update ✅
+- "Password updated!" toast appeared ✅
+- Banner disappeared after password change ✅
+- Old password (TestPass123) no longer works: "Invalid credentials" ✅
+- New password (NewSecurePass99) works: `mustChangePassword: False` ✅
+- Lint passes clean
+
+Stage Summary:
+- Password change flow completely fixed: user signs in → enters portal → sees banner → goes to Settings → changes password → banner disappears
+- No more modal blocking on the login page
+- Settings page available for ALL roles (super-admin, institute-admin, branch-manager, teacher, student)
+- Turso DB connection restored and working

@@ -38,6 +38,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'config', name: 'Platform Config', icon: Settings, color: 'from-slate-500 to-teal-700' },
       { id: 'branding', name: 'Branding', icon: ShieldCheck, color: 'from-rose-500 to-amber-600' },
     ]},
+    { group: 'Account', items: [
+      { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
+    ]},
   ],
   'institute-admin': [
     { group: 'Institute', items: [
@@ -63,6 +66,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'library', name: 'Library', icon: Library, color: 'from-emerald-500 to-teal-700' },
       { id: 'transport', name: 'Transport', icon: Bus, color: 'from-teal-500 to-emerald-700' },
     ]},
+    { group: 'Account', items: [
+      { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
+    ]},
   ],
   'branch-manager': [
     { group: 'Branch', items: [
@@ -85,6 +91,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'events', name: 'Events', icon: Trophy, color: 'from-amber-500 to-rose-600' },
       { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
     ]},
+    { group: 'Account', items: [
+      { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
+    ]},
   ],
   'teacher': [
     { group: 'Teaching', items: [
@@ -99,6 +108,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'announcements', name: 'Announcements', icon: Bell, color: 'from-rose-500 to-pink-600' },
       { id: 'sms', name: 'Message Parents', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
     ]},
+    { group: 'Account', items: [
+      { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
+    ]},
   ],
   'student': [
     { group: 'My Portal', items: [
@@ -108,6 +120,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'my-timetable', name: 'My Timetable', icon: Calendar, color: 'from-lime-500 to-emerald-600' },
       { id: 'my-diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-rose-500 to-amber-600' },
       { id: 'my-announcements', name: 'Announcements', icon: Bell, color: 'from-amber-500 to-rose-600' },
+    ]},
+    { group: 'Account', items: [
+      { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
     ]},
   ],
   'parent': [
