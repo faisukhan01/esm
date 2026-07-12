@@ -20,19 +20,9 @@ export type RoleModules = {
 export const ROLE_MODULES: RoleModules = {
   'super-admin': [
     { group: 'Platform', items: [
-      { id: 'platform-overview', name: 'Platform Overview', icon: LayoutDashboard, color: 'from-amber-500 to-orange-600' },
+      { id: 'platform-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-amber-500 to-orange-600' },
       { id: 'institutes', name: 'Institutes', icon: Building2, color: 'from-emerald-500 to-emerald-700' },
-      { id: 'all-branches', name: 'All Branches', icon: Network, color: 'from-teal-500 to-cyan-600' },
-      { id: 'platform-users', name: 'All Users', icon: Users, color: 'from-violet-500 to-purple-600' },
-      { id: 'revenue', name: 'Revenue & Plans', icon: DollarSign, color: 'from-amber-500 to-yellow-600' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
-    ]},
-    { group: 'Operations', items: [
-      { id: 'students', name: 'All Students', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },
-      { id: 'attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-teal-500 to-cyan-600' },
-      { id: 'fees', name: 'Fee Management', icon: DollarSign, color: 'from-amber-500 to-yellow-600' },
-      { id: 'results', name: 'Results', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-      { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
     ]},
     { group: 'System', items: [
       { id: 'config', name: 'Platform Config', icon: Settings, color: 'from-slate-500 to-teal-700' },

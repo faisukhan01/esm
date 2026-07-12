@@ -561,18 +561,44 @@ app.get('/api/student/courses', requireAuth, requireRole('student'), async (req,
 app.get('/api/announcements', requireAuth, async (req, res) => {
   let sql = 'SELECT * FROM announcements WHERE 1=1';
   let args = [];
-  // Scope: user sees announcements targeted to them
-  if (req.user.role === 'institute-admin') {
-    sql += ' AND (instituteId = ? OR targetScope = ?)';
-    args = [req.user.instituteId, 'all'];
+
+  if (req.user.role === 'super-admin') {
+    // Super admin only sees announcements sent BY super-admin (to institutes)
+    sql += ' AND senderRole = ?';
+    args = ['super-admin'];
+  } else if (req.user.role === 'institute-admin') {
+    // Institute admin sees: announcements from super-admin targeted to their institute + their own
+    sql += ' AND ((senderRole = ? AND (targetScope = ? OR instituteId = ?)) OR senderId = ?)';
+    args = ['super-admin', 'all', req.user.instituteId, req.user.id];
   } else if (req.user.role === 'branch-manager') {
-    sql += ' AND (branchId = ? OR instituteId = ? OR targetScope = ?)';
-    args = [req.user.branchId, req.user.instituteId, 'all'];
-  } else if (req.user.role === 'teacher' || req.user.role === 'student') {
-    // See announcements for their role, branch, or class
-    sql += ' AND (targetRole = ? OR targetRole IS NULL OR branchId = ? OR instituteId = ?)';
-    args = [req.user.role, req.user.branchId, req.user.instituteId];
+    // Branch manager sees: announcements from institute-admin targeted to them + their own
+    sql += ' AND ((senderRole = ? AND (targetScope = ? OR targetRole IN (?, ?) OR branchId = ?)) OR senderId = ?)';
+    args = ['institute-admin', 'all', 'branch-manager', 'all', req.user.branchId, req.user.id];
+  } else if (req.user.role === 'teacher') {
+    // Teacher sees: announcements targeted to teachers in their branch/class + from branch-manager
+    sql += ' AND ((senderRole = ? AND (targetRole = ? OR targetScope = ?)) OR (senderRole = ? AND (branchId = ? OR classId IN (SELECT id FROM classes WHERE branchId = ?))))';
+    args = ['institute-admin', 'teacher', 'all', 'branch-manager', req.user.branchId, req.user.branchId];
+    // Also add class-specific announcements
+    // Get teacher's class IDs from teacher_class_courses
+    const teacherClasses = await db.execute({ sql: 'SELECT DISTINCT classId FROM teacher_class_courses WHERE teacherId = ?', args: [req.user.id] });
+    const classIds = teacherClasses.rows.map(r => r.classId);
+    if (classIds.length > 0) {
+      const placeholders = classIds.map(() => '?').join(',');
+      sql += ` OR classId IN (${placeholders})`;
+      args.push(...classIds);
+    }
+  } else if (req.user.role === 'student') {
+    // Student sees: announcements targeted to students in their branch/class
+    sql += ' AND (targetRole = ? OR (senderRole = ? AND (branchId = ? OR classId = ?)))';
+    args = ['student', 'branch-manager', req.user.branchId, null];
+    // Also get class-specific announcements for the student's class
+    const classR = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [req.user.branchId, req.user.class] });
+    if (classR.rows.length > 0) {
+      sql += ' OR classId = ?';
+      args.push(classR.rows[0].id);
+    }
   }
+
   sql += ' ORDER BY createdAt DESC LIMIT 50';
   const r = await db.execute({ sql, args });
   res.json(r.rows);
