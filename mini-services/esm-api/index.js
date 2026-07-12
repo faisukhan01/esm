@@ -668,7 +668,7 @@ app.get('/api/scoped/stats', requireAuth, async (req, res) => {
 // ===================== ATTENDANCE =====================
 app.post('/api/attendance', requireAuth, requireRole('teacher'), async (req, res) => {
   const { classId, date, records } = req.body || {};
-  if (!date || !records) return res.status(400).json({ error: 'date and records required' });
+  if (!date || !records || !Array.isArray(records)) return res.status(400).json({ error: 'date and records array are required' });
   const id = nextId('ATT');
   await db.execute({
     sql: 'INSERT INTO attendance (id, branchId, classId, date, teacherId, records) VALUES (?, ?, ?, ?, ?, ?)',

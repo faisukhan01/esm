@@ -203,8 +203,16 @@ function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; s
       });
       toast({ title: 'Attendance saved!', description: `${present} present, ${absent} absent, ${late} late` });
       setAttendance({});
-    } catch (e: any) { toast({ title: 'Failed to save', description: e.message, variant: 'destructive' }); }
-    finally { setSaving(false); }
+    } catch (e: any) {
+      const msg = e.message || 'Unknown error';
+      if (msg.includes('Insufficient permissions')) {
+        toast({ title: 'Permission denied', description: 'Only teachers can mark attendance.', variant: 'destructive' });
+      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+        toast({ title: 'Session expired', description: 'Please sign out and sign in again.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
+      }
+    } finally { setSaving(false); }
   };
 
   if (students.length === 0) {
@@ -732,8 +740,16 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
       toast({ title: 'Attendance saved!', description: `${present} present, ${absent} absent, ${late} late` });
       setAttendance({});
       onSaved();
-    } catch (e: any) { toast({ title: 'Failed to save', description: e.message, variant: 'destructive' }); }
-    finally { setSaving(false); }
+    } catch (e: any) {
+      const msg = e.message || 'Unknown error';
+      if (msg.includes('Insufficient permissions')) {
+        toast({ title: 'Permission denied', description: 'Only teachers can mark attendance.', variant: 'destructive' });
+      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+        toast({ title: 'Session expired', description: 'Please sign out and sign in again.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
+      }
+    } finally { setSaving(false); }
   };
 
   return (

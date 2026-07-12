@@ -122,18 +122,27 @@ function EmptyState({ icon: Icon, title, desc }: any) {
 
 // ============== Student Overview (course cards) ==============
 function StudentOverview({ user, attendance, results, courses, announcements, onOpenCourse }: any) {
+  // Normalize results — API returns a flat array, but some code expects {entries, total, avgPercentage}
+  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+  const resultsTotal = resultsArray.length;
+  const avgPercentage = resultsTotal > 0
+    ? Math.round(resultsArray.reduce((a: number, r: any) => a + (r.percentage || (r.marks / r.totalMarks * 100) || 0), 0) / resultsTotal * 10) / 10
+    : null;
+
   const cards = [
     { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
-    { label: 'Avg Score', value: results?.avgPercentage != null ? results.avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-    { label: 'Results', value: results?.total ?? 0, icon: Award, color: 'from-amber-500 to-yellow-600' },
+    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-amber-500 to-yellow-600' },
     { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-teal-500 to-cyan-600' },
   ];
 
   // Group recent results by subject/course so we can show "recent marks" per course card
   const recentByCourse = useMemo(() => {
     const map: Record<string, any> = {};
-    if (results?.entries) {
-      for (const r of results.entries) {
+    // results can be a flat array (from API) or an object with .entries
+    const entries = Array.isArray(results) ? results : (results?.entries || []);
+    if (Array.isArray(entries)) {
+      for (const r of entries) {
         const key = r.courseId || r.subject;
         if (!map[key]) map[key] = r;
       }
@@ -481,25 +490,29 @@ function MyAttendance({ attendance }: any) {
 }
 
 function MyResults({ results }: any) {
+  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
   return (
     <div className="space-y-6">
       <ModuleHeader title="My Results" subtitle="All your test & exam results" />
-      {!results || results.total === 0 ? (
+      {resultsArray.length === 0 ? (
         <EmptyState icon={GraduationCap} title="No results posted yet" desc="Your teachers haven't posted any results yet. Check back after your next exam." />
       ) : (
         <Card className="p-5">
           <div className="space-y-3">
-            {(results.entries || []).map((r: any) => (
+            {resultsArray.map((r: any) => {
+              const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
+              return (
               <div key={r.id} className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${r.percentage}%` }} /></div>
+                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
                   <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
                 </div>
                 <Badge variant="outline" className="font-bold">{r.grade}</Badge>
               </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}

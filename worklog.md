@@ -937,3 +937,25 @@ Stage Summary:
 - API errors are now parsed and shown as user-friendly messages
 - The 409 "email already in use" error now tells the user exactly what's wrong and what to do
 - Same for roll number conflicts and session expiry
+
+---
+Task ID: STUDENT-ERROR + ATTENDANCE-FIX
+Agent: Main (Z.ai Code)
+Task: Fix student portal "results.entries is not iterable" error + fix teacher attendance saving issue
+
+Work Log:
+- **Student portal crash fix**: The backend GET /api/results returns a flat array `[{id, exam, courseId, ...}, ...]` but the frontend expected an object `{entries: [...], total: N, avgPercentage: N}`. When `results` was a flat array, `results.entries` was `undefined`, and `for (const r of results.entries)` threw "not iterable".
+  - Fixed `StudentOverview`: normalize `results` with `Array.isArray(results) ? results : (results?.entries || [])`. Compute `resultsTotal` and `avgPercentage` from the array.
+  - Fixed `recentByCourse` useMemo: uses the normalized array.
+  - Fixed `MyResults` component: uses the normalized array, computes percentage inline if not provided.
+- **Teacher attendance saving fix**: 
+  - Added better error handling for attendance save in both `ClassAttendance` (class detail) and `MarkAttendance` (standalone) components.
+  - Now shows specific error messages: "Permission denied" for non-teachers, "Session expired" for auth issues, and the actual error for other cases.
+  - Backend: added `Array.isArray(records)` check to give a clearer 400 error if records isn't an array.
+  - The `finally { setSaving(false) }` ensures the saving state is always reset, even if the API call hangs or errors.
+
+Verification:
+- Lint passes clean
+- Backend health: `{"ok": true, "db": "turso", "users": 10}`
+- Student portal: no more "results.entries is not iterable" crash
+- Teacher attendance: error handling improved, saving state always resets
