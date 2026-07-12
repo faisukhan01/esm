@@ -959,3 +959,37 @@ Verification:
 - Backend health: `{"ok": true, "db": "turso", "users": 10}`
 - Student portal: no more "results.entries is not iterable" crash
 - Teacher attendance: error handling improved, saving state always resets
+
+---
+Task ID: EXAM-INPUT + TAB-SESSION-FIX
+Agent: Main (Z.ai Code)
+Task: Replace exam dropdown with manual text input + fix multiple tab session conflict
+
+Work Log:
+- **Teacher results exam field**: Replaced the hardcoded dropdown (Weekly Test / Monthly Test / Mid-Term / Final) with a manual text input in BOTH PostResults components:
+  - `ClassResults` (inside class detail tab): exam field is now `<Input>` with placeholder "e.g. Chapter 1 Test"
+  - `PostResults` (standalone page): same text input
+  - Both: validation requires exam name to be non-empty before publishing
+  - Both: Publish button is disabled when exam field is empty
+  - Both: marks are already entered manually per student (this was already working)
+- **Multiple tab session fix**: 
+  - Root cause: Zustand's `persist` middleware was using `localStorage` which is shared across ALL browser tabs. When Tab 2 signed in as Student, it overwrote the shared localStorage, and when Tab 1 (Institute Admin) refreshed, it read the Student session instead.
+  - Fix: Changed Zustand persist storage from `localStorage` to `sessionStorage` (which is per-tab, not shared).
+  - Created a `sessionStorageAdapter` with `getItem`, `setItem`, `removeItem` methods.
+  - Used `createJSONStorage(() => sessionStorageAdapter)` in the persist config.
+  - Updated the API client's `getToken()` function to read from `sessionStorage` instead of `localStorage`.
+  - Verified: `sessionStorage.getItem('esm-app')` → has data ✅, `localStorage.getItem('esm-app')` → empty ✅
+  - Now each tab has its own independent session:
+    - Tab 1: Sign in as Institute Admin → Tab 1's sessionStorage
+    - Tab 2: Sign in as Student → Tab 2's sessionStorage (separate)
+    - Refresh Tab 1 → still Institute Admin ✅
+
+Verification:
+- Lint passes clean
+- Super admin login works with sessionStorage
+- Teacher results: exam field is now a text input (placeholder: "e.g. Chapter 1 Test")
+- Multiple tabs: each tab has its own independent session
+
+Stage Summary:
+- Exam name is now manually entered by the teacher (no dropdown)
+- Multiple tab issue fixed — each browser tab maintains its own independent session via sessionStorage

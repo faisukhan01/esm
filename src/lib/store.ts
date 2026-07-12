@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type View = 'landing' | 'login' | 'portal';
 
@@ -43,6 +43,29 @@ type AppState = {
   logout: () => void;
 };
 
+// Use sessionStorage so each browser tab has its own independent session.
+// This prevents the "multiple tab" issue where signing in as a different user
+// in one tab would overwrite the session in other tabs.
+const sessionStorageAdapter = {
+  getItem: (name: string) => {
+    try {
+      return sessionStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string) => {
+    try {
+      sessionStorage.setItem(name, value);
+    } catch {}
+  },
+  removeItem: (name: string) => {
+    try {
+      sessionStorage.removeItem(name);
+    } catch {}
+  },
+};
+
 export const useApp = create<AppState>()(
   persist(
     (set) => ({
@@ -56,6 +79,9 @@ export const useApp = create<AppState>()(
       setActiveModule: (m) => set({ activeModule: m }),
       logout: () => set({ view: 'landing', user: null, token: null, activeModule: 'dashboard' }),
     }),
-    { name: 'esm-app' }
+    {
+      name: 'esm-app',
+      storage: createJSONStorage(() => sessionStorageAdapter),
+    }
   )
 );

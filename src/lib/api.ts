@@ -6,10 +6,10 @@ function apiUrl(path: string) {
   return `/api/${path.replace(/^\//, '')}${sep}XTransformPort=${API_PORT}`;
 }
 
-// Get the stored auth token (from zustand persist)
+// Get the stored auth token (from zustand persist — uses sessionStorage for per-tab sessions)
 function getToken(): string | null {
   try {
-    const raw = localStorage.getItem('esm-app');
+    const raw = sessionStorage.getItem('esm-app');
     if (raw) {
       const parsed = JSON.parse(raw);
       return parsed?.state?.token || null;

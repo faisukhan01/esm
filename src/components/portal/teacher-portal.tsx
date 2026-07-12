@@ -263,7 +263,7 @@ function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; s
 
 // ============== Results Tab ==============
 function ClassResults({ user, cls, courseId, students }: { user: any; cls: ClassInfo; courseId: string; students: any[] }) {
-  const [exam, setExam] = useState('Weekly Test');
+  const [exam, setExam] = useState('');
   const [totalMarks, setTotalMarks] = useState(100);
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -274,6 +274,7 @@ function ClassResults({ user, cls, courseId, students }: { user: any; cls: Class
   };
 
   const save = async () => {
+    if (!exam.trim()) { toast({ title: 'Enter exam name', description: 'e.g. Chapter 1 Test', variant: 'destructive' }); return; }
     if (!courseId) { toast({ title: 'Select a course first', variant: 'destructive' }); return; }
     if (students.length === 0) { toast({ title: 'No students', variant: 'destructive' }); return; }
     setSaving(true);
@@ -310,13 +311,11 @@ function ClassResults({ user, cls, courseId, students }: { user: any; cls: Class
     <div className="space-y-4">
       <Card className="p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div><Label className="text-xs">Exam</Label>
-            <select value={exam} onChange={e => setExam(e.target.value)} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
-              <option>Weekly Test</option><option>Monthly Test</option><option>Mid-Term</option><option>Final</option>
-            </select>
+          <div><Label className="text-xs">Exam Name *</Label>
+            <Input value={exam} onChange={e => setExam(e.target.value)} placeholder="e.g. Chapter 1 Test" className="mt-1" />
           </div>
           <div><Label className="text-xs">Total Marks</Label><Input type="number" value={totalMarks} onChange={e => setTotalMarks(parseInt(e.target.value) || 100)} className="mt-1" /></div>
-          <div className="flex items-end"><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white w-full" disabled={saving} onClick={save}>
+          <div className="flex items-end"><Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white w-full" disabled={saving || !exam.trim()} onClick={save}>
             {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Posting…</> : 'Publish Results'}</Button></div>
         </div>
       </Card>
@@ -812,7 +811,7 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
 function PostResults({ user, classes, students, onSaved }: any) {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [courseId, setCourseId] = useState<string>('');
-  const [exam, setExam] = useState('Weekly Test');
+  const [exam, setExam] = useState('');
   const [totalMarks, setTotalMarks] = useState(100);
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -828,6 +827,7 @@ function PostResults({ user, classes, students, onSaved }: any) {
   };
 
   const save = async () => {
+    if (!exam.trim()) { toast({ title: 'Enter exam name', description: 'e.g. Chapter 1 Test', variant: 'destructive' }); return; }
     if (!cls) { toast({ title: 'Select a class', variant: 'destructive' }); return; }
     if (!effectiveCourseId) { toast({ title: 'Select a course', variant: 'destructive' }); return; }
     if (classStudents.length === 0) { toast({ title: 'No students', variant: 'destructive' }); return; }
@@ -857,7 +857,7 @@ function PostResults({ user, classes, students, onSaved }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Post Results" subtitle="Enter test scores — parents get notified automatically"
-        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving || classStudents.length === 0} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
+        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving || classStudents.length === 0 || !exam.trim()} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
       {classes.length === 0 ? (
         <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
       ) : (
@@ -874,10 +874,8 @@ function PostResults({ user, classes, students, onSaved }: any) {
                 {cls?.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div><Label className="text-xs">Exam</Label>
-              <select value={exam} onChange={e => setExam(e.target.value)} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
-                <option>Weekly Test</option><option>Monthly Test</option><option>Mid-Term</option><option>Final</option>
-              </select>
+            <div><Label className="text-xs">Exam Name *</Label>
+              <Input value={exam} onChange={e => setExam(e.target.value)} placeholder="e.g. Chapter 1 Test" className="mt-1" />
             </div>
             <div><Label className="text-xs">Total Marks</Label><Input type="number" value={totalMarks} onChange={e => setTotalMarks(parseInt(e.target.value) || 100)} className="mt-1" /></div>
           </div>
