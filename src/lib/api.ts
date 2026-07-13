@@ -74,6 +74,7 @@ export const api = {
   createBranch: (body: any) => request<any>('branches', { method: 'POST', body: JSON.stringify(body) }),
   blockBranch: (id: string, blocked: boolean, reason?: string) =>
     request<any>(`branches/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
+  deleteBranch: (id: string) => request<any>(`branches/${id}`, { method: 'DELETE' }),
   platformUsers: (params?: { role?: string; branchId?: string; instituteId?: string }) => {
     const q = new URLSearchParams();
     if (params?.role) q.set('role', params.role);

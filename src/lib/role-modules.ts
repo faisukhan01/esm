@@ -34,27 +34,9 @@ export const ROLE_MODULES: RoleModules = {
   ],
   'institute-admin': [
     { group: 'Institute', items: [
-      { id: 'institute-overview', name: 'Institute Dashboard', icon: LayoutDashboard, color: 'from-emerald-500 to-emerald-700' },
+      { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-500 to-emerald-700' },
       { id: 'branches', name: 'Branches', icon: Network, color: 'from-teal-500 to-cyan-600' },
-      { id: 'staff', name: 'Staff & Managers', icon: Users, color: 'from-violet-500 to-purple-600' },
-    ]},
-    { group: 'Academics', items: [
-      { id: 'students', name: 'Students', icon: GraduationCap, color: 'from-emerald-600 to-emerald-800' },
-      { id: 'attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-teal-500 to-cyan-600' },
-      { id: 'results', name: 'Results', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-      { id: 'academics', name: 'Academics', icon: BookOpen, color: 'from-lime-500 to-emerald-600' },
-    ]},
-    { group: 'Finance & Comms', items: [
-      { id: 'fees', name: 'Fee Management', icon: DollarSign, color: 'from-amber-500 to-yellow-600' },
-      { id: 'finance', name: 'Finance', icon: Landmark, color: 'from-yellow-600 to-amber-700' },
-      { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-cyan-500 to-teal-600' },
-      { id: 'complaints', name: 'Complaints', icon: MessageCircleWarning, color: 'from-rose-500 to-red-600' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
-    ]},
-    { group: 'Campus', items: [
-      { id: 'events', name: 'Events', icon: Trophy, color: 'from-amber-500 to-rose-600' },
-      { id: 'library', name: 'Library', icon: Library, color: 'from-emerald-500 to-teal-700' },
-      { id: 'transport', name: 'Transport', icon: Bus, color: 'from-teal-500 to-emerald-700' },
     ]},
     { group: 'Account', items: [
       { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },

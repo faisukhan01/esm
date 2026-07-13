@@ -331,6 +331,30 @@ app.patch('/api/branches/:id/block', requireAuth, requireRole('institute-admin',
   res.json({ success: true });
 });
 
+// DELETE branch (cascades — deletes teachers, students, classes, courses, etc.)
+app.delete('/api/branches/:id', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const brId = req.params.id;
+  await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM teacher_class_courses WHERE teacherId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM course_materials WHERE teacherId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM attendance WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM results WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM diary WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId IN (SELECT id FROM classes WHERE branchId = ?)', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM classes WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM courses WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM announcements WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM fees WHERE branchId = ?', args: [brId] });
+  await db.execute({ sql: 'DELETE FROM users WHERE branchId = ?', args: [brId] });
+  // Decrement institute branch count
+  const br = await db.execute({ sql: 'SELECT instituteId FROM branches WHERE id = ?', args: [brId] });
+  if (br.rows.length > 0) {
+    await db.execute({ sql: 'UPDATE institutes SET branches = MAX(branches - 1, 0) WHERE id = ?', args: [br.rows[0].instituteId] });
+  }
+  await db.execute({ sql: 'DELETE FROM branches WHERE id = ?', args: [brId] });
+  res.json({ success: true });
+});
+
 // ===================== PLATFORM USERS =====================
 app.get('/api/platform/users', requireAuth, async (req, res) => {
   const { role, branchId, instituteId } = req.query;
