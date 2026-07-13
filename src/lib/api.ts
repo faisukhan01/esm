@@ -240,6 +240,8 @@ export const api = {
   getTeacherAnalytics: () => request<any>('teacher/analytics'),
   // Student academic + fee analytics
   getStudentAnalytics: () => request<any>('student/analytics'),
+  // Notifications (top bar dropdown)
+  getNotifications: () => request<{ items: any[]; unread: number }>('notifications'),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),

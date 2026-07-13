@@ -1773,12 +1773,250 @@ app.get('/api/fee-invoices/:id/challan', requireAuth, async (req, res) => {
   });
 });
 
+// ===================== DIARY (Teacher homework + notes) =====================
+app.get('/api/diary', requireAuth, async (req, res) => {
+  const { teacherId, branchId, classId, class: className } = req.query;
+  let sql = 'SELECT d.*, c.name as className, co.name as courseName FROM diary d LEFT JOIN classes c ON d.classId = c.id LEFT JOIN courses co ON d.courseId = co.id WHERE 1=1';
+  const args = [];
+  if (teacherId) { sql += ' AND d.teacherId = ?'; args.push(teacherId); }
+  else if (branchId) { sql += ' AND d.branchId = ?'; args.push(branchId); }
+  if (classId) { sql += ' AND d.classId = ?'; args.push(classId); }
+  sql += ' ORDER BY d.createdAt DESC LIMIT 100';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/diary', requireAuth, requireRole('teacher', 'branch-manager'), async (req, res) => {
+  const { teacherId, branchId, classId, courseId, subject, title, description, due } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'title required' });
+  const id = nextId('DR');
+  const tId = teacherId || req.user.id;
+  const brId = branchId || req.user.branchId;
+  await db.execute({
+    sql: 'INSERT INTO diary (id, teacherId, branchId, classId, courseId, subject, title, description, due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, tId, brId, classId || null, courseId || null, subject || '', title, description || '', due || null],
+  });
+  res.status(201).json({ id, success: true });
+});
+
+// ===================== SMS LOG =====================
+app.get('/api/sms', requireAuth, async (req, res) => {
+  const { senderId, instituteId, branchId } = req.query;
+  let sql = 'SELECT * FROM sms_log WHERE 1=1';
+  const args = [];
+  if (senderId) { sql += ' AND senderId = ?'; args.push(senderId); }
+  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  sql += ' ORDER BY createdAt DESC LIMIT 100';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/sms/send', requireAuth, requireRole('teacher', 'branch-manager', 'institute-admin'), async (req, res) => {
+  const { text, recipients, type, classId } = req.body || {};
+  if (!text) return res.status(400).json({ error: 'text required' });
+  const id = nextId('SMS');
+  await db.execute({
+    sql: 'INSERT INTO sms_log (id, senderId, senderRole, text, recipients, type, instituteId, branchId, classId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, req.user.id, req.user.role, text, recipients || 0, type || 'Notice', req.user.instituteId, req.user.branchId, classId || null],
+  });
+  res.status(201).json({ id, success: true });
+});
+
+// ===================== COMPLAINTS =====================
+app.get('/api/complaints', requireAuth, async (req, res) => {
+  const { parentId, instituteId, branchId } = req.query;
+  let sql = 'SELECT * FROM complaints WHERE 1=1';
+  const args = [];
+  if (parentId) { sql += ' AND parentId = ?'; args.push(parentId); }
+  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  sql += ' ORDER BY createdAt DESC LIMIT 100';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/complaints', requireAuth, requireRole('parent', 'student'), async (req, res) => {
+  const { parentId, studentId, instituteId, branchId, subject, message } = req.body || {};
+  if (!subject || !message) return res.status(400).json({ error: 'subject and message required' });
+  const id = nextId('CMP');
+  const pId = parentId || req.user.id;
+  const iId = instituteId || req.user.instituteId;
+  const bId = branchId || req.user.branchId;
+  await db.execute({
+    sql: 'INSERT INTO complaints (id, parentId, studentId, instituteId, branchId, subject, message) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [id, pId, studentId || null, iId, bId, subject, message],
+  });
+  res.status(201).json({ id, success: true });
+});
+
+app.patch('/api/complaints/:id/respond', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { response } = req.body || {};
+  if (!response) return res.status(400).json({ error: 'response required' });
+  await db.execute({
+    sql: 'UPDATE complaints SET response = ?, respondedAt = ?, status = ? WHERE id = ?',
+    args: [response, new Date().toISOString().slice(0, 10), 'Resolved', req.params.id],
+  });
+  res.json({ success: true });
+});
+
+// ===================== EVENTS =====================
+app.get('/api/events', requireAuth, async (req, res) => {
+  const { instituteId, branchId } = req.query;
+  let sql = 'SELECT * FROM events WHERE 1=1';
+  const args = [];
+  if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  sql += ' ORDER BY startDate DESC LIMIT 100';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/events', requireAuth, requireRole('branch-manager', 'institute-admin', 'super-admin'), async (req, res) => {
+  const { title, description, startDate, endDate, location, type, instituteId, branchId } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'title required' });
+  const id = nextId('EVT');
+  const iId = instituteId || req.user.instituteId;
+  const bId = branchId || req.user.branchId;
+  await db.execute({
+    sql: 'INSERT INTO events (id, title, description, startDate, endDate, location, type, instituteId, branchId, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, title, description || '', startDate || null, endDate || null, location || '', type || 'Event', iId, bId, req.user.id],
+  });
+  res.status(201).json({ id, success: true });
+});
+
+// ===================== LIBRARY =====================
+app.get('/api/library/books', requireAuth, async (req, res) => {
+  const { branchId } = req.query;
+  const brId = branchId || req.user.branchId;
+  if (!brId) return res.json([]);
+  const r = await db.execute({ sql: 'SELECT * FROM library_books WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  res.json(r.rows);
+});
+
+app.post('/api/library/books', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { title, author, isbn, category, totalCopies, shelf } = req.body || {};
+  if (!title) return res.status(400).json({ error: 'title required' });
+  const id = nextId('BK');
+  const brId = req.user.branchId;
+  const copies = totalCopies || 1;
+  await db.execute({
+    sql: 'INSERT INTO library_books (id, branchId, title, author, isbn, category, totalCopies, availableCopies, shelf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, brId, title, author || '', isbn || '', category || '', copies, copies, shelf || ''],
+  });
+  res.status(201).json({ id, success: true });
+});
+
+// ===================== TRANSPORT =====================
+app.get('/api/transport/routes', requireAuth, async (req, res) => {
+  const { branchId } = req.query;
+  const brId = branchId || req.user.branchId;
+  if (!brId) return res.json([]);
+  const r = await db.execute({ sql: 'SELECT * FROM transport_routes WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  res.json(r.rows);
+});
+
+app.post('/api/transport/routes', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { routeName, driver, vehicleNo, fare, stops, capacity } = req.body || {};
+  if (!routeName) return res.status(400).json({ error: 'routeName required' });
+  const id = nextId('TR');
+  const brId = req.user.branchId;
+  await db.execute({
+    sql: 'INSERT INTO transport_routes (id, branchId, routeName, driver, vehicleNo, fare, stops, capacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, brId, routeName, driver || '', vehicleNo || '', Number(fare) || 0, stops || '', Number(capacity) || 30],
+  });
+  res.status(201).json({ id, success: true });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     const r = await db.execute('SELECT COUNT(*) as count FROM users');
     res.json({ ok: true, service: 'esm-api', port: PORT, users: r.rows[0].count, db: 'turso' });
   } catch (e) {
     res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===================== NOTIFICATIONS (top bar dropdown) =====================
+// Returns recent announcements + recent complaints (for managers/admins) for the bell icon dropdown.
+app.get('/api/notifications', requireAuth, async (req, res) => {
+  try {
+    const items = [];
+    const now = Date.now();
+
+    // Recent announcements (last 7 days, max 10)
+    let annSql = 'SELECT id, title, message, senderRole, targetRole, createdAt FROM announcements WHERE 1=1';
+    const annArgs = [];
+    if (req.user.role === 'teacher' || req.user.role === 'student' || req.user.role === 'parent') {
+      annSql += ' AND (targetScope = ? OR targetRole = ? OR targetRole = ?)';
+      annArgs.push('all', req.user.role, 'all');
+    } else if (req.user.role === 'branch-manager') {
+      annSql += ' AND (senderRole = ? OR targetRole = ? OR targetScope = ?)';
+      annArgs.push('institute-admin', 'branch-manager', 'all');
+    } else if (req.user.role === 'institute-admin') {
+      annSql += ' AND (senderRole = ? OR senderId = ?)';
+      annArgs.push('super-admin', req.user.id);
+    }
+    annSql += ' ORDER BY createdAt DESC LIMIT 10';
+    const annR = await db.execute({ sql: annSql, args: annArgs });
+    for (const a of annR.rows) {
+      const created = new Date(a.createdAt).getTime();
+      const ageMs = now - created;
+      const ageHrs = Math.floor(ageMs / 3600000);
+      let timeLabel;
+      if (ageHrs < 1) timeLabel = 'Just now';
+      else if (ageHrs < 24) timeLabel = `${ageHrs}h ago`;
+      else timeLabel = `${Math.floor(ageHrs / 24)}d ago`;
+      items.push({
+        id: a.id,
+        type: 'announcement',
+        title: a.title,
+        message: a.message,
+        sender: a.senderRole,
+        timeLabel,
+        createdAt: a.createdAt,
+        read: false,
+      });
+    }
+
+    // For managers/admins: also show recent complaints as notifications
+    if (req.user.role === 'branch-manager' || req.user.role === 'institute-admin') {
+      let cmpSql = 'SELECT id, subject, message, status, createdAt FROM complaints WHERE 1=1';
+      const cmpArgs = [];
+      if (req.user.role === 'branch-manager' && req.user.branchId) {
+        cmpSql += ' AND branchId = ?'; cmpArgs.push(req.user.branchId);
+      } else if (req.user.role === 'institute-admin' && req.user.instituteId) {
+        cmpSql += ' AND instituteId = ?'; cmpArgs.push(req.user.instituteId);
+      }
+      cmpSql += ' ORDER BY createdAt DESC LIMIT 5';
+      const cmpR = await db.execute({ sql: cmpSql, args: cmpArgs });
+      for (const c of cmpR.rows) {
+        const created = new Date(c.createdAt).getTime();
+        const ageMs = now - created;
+        const ageHrs = Math.floor(ageMs / 3600000);
+        let timeLabel;
+        if (ageHrs < 1) timeLabel = 'Just now';
+        else if (ageHrs < 24) timeLabel = `${ageHrs}h ago`;
+        else timeLabel = `${Math.floor(ageHrs / 24)}d ago`;
+        items.push({
+          id: c.id,
+          type: 'complaint',
+          title: `Complaint: ${c.subject}`,
+          message: c.message,
+          sender: 'Parent',
+          timeLabel,
+          createdAt: c.createdAt,
+          read: c.status === 'Resolved',
+        });
+      }
+    }
+
+    // Sort by createdAt desc
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const unread = items.filter(i => !i.read).length;
+    res.json({ items: items.slice(0, 15), unread });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load notifications: ' + e.message });
   }
 });
 

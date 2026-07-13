@@ -274,6 +274,81 @@ export async function initDB() {
       createdAt TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (teacherId) REFERENCES users(id)
     )`,
+
+    // SMS log — messages sent by teachers/managers to parents
+    `CREATE TABLE IF NOT EXISTS sms_log (
+      id TEXT PRIMARY KEY,
+      senderId TEXT NOT NULL,
+      senderRole TEXT,
+      text TEXT NOT NULL,
+      recipients INTEGER DEFAULT 0,
+      type TEXT DEFAULT 'Notice',
+      instituteId TEXT,
+      branchId TEXT,
+      classId TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (senderId) REFERENCES users(id)
+    )`,
+
+    // Complaints — raised by parents, visible to branch managers + institute admins
+    `CREATE TABLE IF NOT EXISTS complaints (
+      id TEXT PRIMARY KEY,
+      parentId TEXT NOT NULL,
+      studentId TEXT,
+      instituteId TEXT,
+      branchId TEXT,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'Open',
+      response TEXT,
+      respondedAt TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (parentId) REFERENCES users(id)
+    )`,
+
+    // Events — institute/branch events
+    `CREATE TABLE IF NOT EXISTS events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      location TEXT,
+      type TEXT DEFAULT 'Event',
+      instituteId TEXT,
+      branchId TEXT,
+      createdBy TEXT,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )`,
+
+    // Library books
+    `CREATE TABLE IF NOT EXISTS library_books (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      author TEXT,
+      isbn TEXT,
+      category TEXT,
+      totalCopies INTEGER DEFAULT 1,
+      availableCopies INTEGER DEFAULT 1,
+      shelf TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (branchId) REFERENCES branches(id)
+    )`,
+
+    // Transport routes
+    `CREATE TABLE IF NOT EXISTS transport_routes (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      routeName TEXT NOT NULL,
+      driver TEXT,
+      vehicleNo TEXT,
+      fare REAL DEFAULT 0,
+      stops TEXT,
+      capacity INTEGER DEFAULT 30,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (branchId) REFERENCES branches(id)
+    )`,
   ];
 
   for (const sql of statements) {
