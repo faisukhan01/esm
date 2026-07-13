@@ -1,9 +1,13 @@
 import { createClient } from '@libsql/client';
 
+// Turso DB credentials — hardcoded as fallback (env file keeps getting deleted)
+const TURSO_URL = process.env.TURSO_DATABASE_URL || 'libsql://campus-prod-faisukhan01.aws-ap-south-1.turso.io';
+const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Nzc4MTM5MTAsImlkIjoiMDE5ZGVkZjUtZjIwMS03ZmFjLWJlYzEtYjlkMDJhYTIwMjJiIiwicmlkIjoiYWRiNGQ0YmItNDg4ZC00ZGU0LTg3MWMtMTZjYzBkMGFkMWM0In0.SPrIFL7Nn3MkKL-u5WOOGifk8U8hcAIGulmXgtGiBdkSqBDyoox-ZGItQiTgRcjGDhgWfMVYnD-eQKcE9IOyAA';
+
 // Turso DB client — production database
 export const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'libsql://campus-prod-faisukhan01.aws-ap-south-1.turso.io',
-  authToken: process.env.TURSO_AUTH_TOKEN,
+  url: TURSO_URL,
+  authToken: TURSO_TOKEN,
 });
 
 // Initialize schema on startup
