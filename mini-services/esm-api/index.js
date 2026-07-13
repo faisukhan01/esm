@@ -621,6 +621,282 @@ app.get('/api/student/courses', requireAuth, requireRole('student'), async (req,
   res.json(r.rows);
 });
 
+// ===================== TEACHER ANALYTICS =====================
+// Comprehensive academic + activity analytics for the Teacher dashboard.
+app.get('/api/teacher/analytics', requireAuth, requireRole('teacher'), async (req, res) => {
+  const teacherId = req.user.id;
+  try {
+    // 1. Teacher's classes + courses
+    const tccR = await db.execute({
+      sql: `SELECT tcc.classId, tcc.courseId, c.name as className, c.section, c.branchId,
+                   co.name as courseName, co.code as courseCode
+            FROM teacher_class_courses tcc
+            LEFT JOIN classes c ON tcc.classId = c.id
+            LEFT JOIN courses co ON tcc.courseId = co.id
+            WHERE tcc.teacherId = ?`,
+      args: [teacherId],
+    });
+    const assignments = tccR.rows;
+    const classIds = [...new Set(assignments.map(a => a.classId))];
+    const courseIds = [...new Set(assignments.map(a => a.courseId))];
+
+    // 2. Total students across all the teacher's classes (unique by classId)
+    let totalStudents = 0;
+    const classStudentCounts = [];
+    for (const cid of classIds) {
+      const cntR = await db.execute({
+        sql: 'SELECT COUNT(*) as count FROM users WHERE role = ? AND branchId = ? AND class = (SELECT name FROM classes WHERE id = ?)',
+        args: ['student', assignments.find(a => a.classId === cid)?.branchId, cid],
+      });
+      const n = cntR.rows[0]?.count || 0;
+      totalStudents += n;
+      const cls = assignments.find(a => a.classId === cid);
+      classStudentCounts.push({ classId: cid, className: cls?.className, section: cls?.section, students: n });
+    }
+
+    // 3. Attendance sessions taken by this teacher
+    const attR = await db.execute({
+      sql: 'SELECT id, date, classId, records FROM attendance WHERE teacherId = ? ORDER BY date DESC LIMIT 50',
+      args: [teacherId],
+    });
+    const attendanceSessions = attR.rows;
+    let attendanceRecords = 0, presentCount = 0, absentCount = 0, lateCount = 0;
+    for (const s of attendanceSessions) {
+      try {
+        const recs = JSON.parse(s.records);
+        for (const r of recs) {
+          attendanceRecords++;
+          if (r.status === 'Present') presentCount++;
+          else if (r.status === 'Absent') absentCount++;
+          else if (r.status === 'Late') lateCount++;
+        }
+      } catch {}
+    }
+    const attendanceRate = attendanceRecords > 0 ? Math.round((presentCount / attendanceRecords) * 100) : 0;
+
+    // 4. Results posted by this teacher
+    const resR = await db.execute({
+      sql: 'SELECT id, exam, courseId, classId, totalMarks, date, records FROM results WHERE teacherId = ? ORDER BY date DESC LIMIT 50',
+      args: [teacherId],
+    });
+    const resultsPosted = resR.rows;
+    let totalResultsRecords = 0;
+    let totalMarksObtained = 0;
+    let totalMaxMarks = 0;
+    const examBreakdown = [];
+    for (const r of resultsPosted) {
+      try {
+        const recs = JSON.parse(r.records);
+        for (const rec of recs) {
+          totalResultsRecords++;
+          totalMarksObtained += Number(rec.marks) || 0;
+          totalMaxMarks += Number(r.totalMarks) || 100;
+        }
+        examBreakdown.push({
+          id: r.id, exam: r.exam, date: r.date,
+          courseId: r.courseId, classId: r.classId,
+          totalMarks: r.totalMarks, students: recs.length,
+          avgMarks: recs.length > 0 ? Math.round((recs.reduce((s, x) => s + (Number(x.marks) || 0), 0) / recs.length) * 10) / 10 : 0,
+        });
+      } catch {}
+    }
+    const avgScore = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+
+    // 5. Diary entries by this teacher
+    const diaryR = await db.execute({
+      sql: 'SELECT id, title, subject, classId, courseId, due, createdAt FROM diary WHERE teacherId = ? ORDER BY createdAt DESC LIMIT 20',
+      args: [teacherId],
+    });
+    const diaryEntries = diaryR.rows;
+
+    // 6. Course materials uploaded
+    const matR = await db.execute({
+      sql: 'SELECT COUNT(*) as count FROM course_materials WHERE teacherId = ?',
+      args: [teacherId],
+    });
+    const materialsCount = matR.rows[0]?.count || 0;
+
+    // 7. Attendance trend (last 8 sessions) for chart
+    const attendanceTrend = attendanceSessions.slice(0, 8).reverse().map((s, i) => {
+      try {
+        const recs = JSON.parse(s.records);
+        const present = recs.filter(r => r.status === 'Present').length;
+        const total = recs.length;
+        return {
+          label: s.date ? s.date.slice(5) : `S${i + 1}`,
+          rate: total > 0 ? Math.round((present / total) * 100) : 0,
+          present, absent: recs.filter(r => r.status === 'Absent').length, total,
+        };
+      } catch {
+        return { label: `S${i + 1}`, rate: 0, present: 0, absent: 0, total: 0 };
+      }
+    });
+
+    // 8. Class performance (avg score per class)
+    const classPerformance = classStudentCounts.map(cs => {
+      const classResults = resultsPosted.filter(r => r.classId === cs.classId);
+      let sum = 0, count = 0;
+      for (const r of classResults) {
+        try {
+          const recs = JSON.parse(r.records);
+          for (const rec of recs) { sum += Number(rec.marks) || 0; count++; }
+        } catch {}
+      }
+      return {
+        classId: cs.classId,
+        className: cs.className,
+        section: cs.section,
+        students: cs.students,
+        avgScore: count > 0 ? Math.round((sum / count / (classResults[0]?.totalMarks || 100)) * 100) : 0,
+        examsConducted: classResults.length,
+      };
+    });
+
+    res.json({
+      kpi: {
+        totalClasses: classIds.length,
+        totalCourses: courseIds.length,
+        totalStudents,
+        attendanceSessions: attendanceSessions.length,
+        attendanceRate,
+        attendanceRecords,
+        presentCount,
+        absentCount,
+        lateCount,
+        resultsPosted: resultsPosted.length,
+        totalResultsRecords,
+        avgScore,
+        diaryEntries: diaryEntries.length,
+        materialsUploaded: materialsCount,
+      },
+      assignments,
+      attendanceTrend,
+      classPerformance,
+      examBreakdown: examBreakdown.slice(0, 10),
+      recentDiary: diaryEntries.slice(0, 5),
+      recentResults: examBreakdown.slice(0, 5),
+    });
+  } catch (e) {
+    console.error('Teacher analytics error:', e);
+    res.status(500).json({ error: 'Failed to load teacher analytics: ' + e.message });
+  }
+});
+
+// ===================== STUDENT ANALYTICS =====================
+// Comprehensive academic + fee analytics for the Student dashboard.
+app.get('/api/student/analytics', requireAuth, requireRole('student'), async (req, res) => {
+  const studentId = req.user.id;
+  try {
+    // 1. Attendance records for this student
+    const attR = await db.execute({
+      sql: 'SELECT id, date, classId, records FROM attendance ORDER BY date DESC LIMIT 100',
+      args: [],
+    });
+    let presentCount = 0, absentCount = 0, lateCount = 0, totalSessions = 0;
+    const attendanceTrend = [];
+    for (const s of attR.rows) {
+      try {
+        const recs = JSON.parse(s.records);
+        const entry = recs.find(r => r.studentId === studentId);
+        if (entry) {
+          totalSessions++;
+          if (entry.status === 'Present') presentCount++;
+          else if (entry.status === 'Absent') absentCount++;
+          else if (entry.status === 'Late') lateCount++;
+          attendanceTrend.push({
+            date: s.date,
+            status: entry.status,
+            label: s.date ? s.date.slice(5) : '',
+          });
+        }
+      } catch {}
+    }
+    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+
+    // 2. Results for this student
+    const resR = await db.execute({
+      sql: 'SELECT id, exam, courseId, classId, totalMarks, date, records FROM results ORDER BY date DESC LIMIT 50',
+      args: [],
+    });
+    const studentResults = [];
+    let totalMarksObtained = 0, totalMaxMarks = 0;
+    for (const r of resR.rows) {
+      try {
+        const recs = JSON.parse(r.records);
+        const entry = recs.find(rec => rec.studentId === studentId);
+        if (entry) {
+          studentResults.push({
+            id: r.id, exam: r.exam, courseId: r.courseId, classId: r.classId,
+            date: r.date, totalMarks: r.totalMarks, marks: entry.marks, grade: entry.grade,
+          });
+          totalMarksObtained += Number(entry.marks) || 0;
+          totalMaxMarks += Number(r.totalMarks) || 100;
+        }
+      } catch {}
+    }
+    const avgScore = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+
+    // 3. Fee invoices
+    const invR = await db.execute({
+      sql: 'SELECT id, month, year, amount, status, paidDate, paidAmount, challanNo, createdAt FROM fee_invoices WHERE studentId = ? ORDER BY year DESC, createdAt DESC',
+      args: [studentId],
+    });
+    const invoices = invR.rows;
+    const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+    const totalPending = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+
+    // 4. Diary entries for student's class
+    const diaryR = await db.execute({
+      sql: 'SELECT id, title, subject, classId, courseId, due, createdAt FROM diary WHERE branchId = ? ORDER BY createdAt DESC LIMIT 10',
+      args: [req.user.branchId],
+    });
+    const diaryEntries = diaryR.rows;
+
+    // 5. Course materials for student's courses
+    const matR = await db.execute({
+      sql: 'SELECT COUNT(*) as count FROM course_materials WHERE classId IN (SELECT id FROM classes WHERE branchId = ? AND name = ?)',
+      args: [req.user.branchId, req.user.class],
+    });
+    const materialsCount = matR.rows[0]?.count || 0;
+
+    // 6. Grade distribution
+    const gradeDistribution = {};
+    for (const r of studentResults) {
+      const grade = r.grade || (r.marks / r.totalMarks >= 0.9 ? 'A+' : r.marks / r.totalMarks >= 0.8 ? 'A' : r.marks / r.totalMarks >= 0.7 ? 'B' : r.marks / r.totalMarks >= 0.6 ? 'C' : r.marks / r.totalMarks >= 0.5 ? 'D' : 'F');
+      gradeDistribution[grade] = (gradeDistribution[grade] || 0) + 1;
+    }
+
+    // 7. Attendance trend (last 10 sessions) for chart
+    const recentAttendanceTrend = attendanceTrend.slice(0, 10).reverse();
+
+    res.json({
+      kpi: {
+        attendanceRate,
+        totalSessions,
+        presentCount,
+        absentCount,
+        lateCount,
+        avgScore,
+        totalResults: studentResults.length,
+        totalInvoices: invoices.length,
+        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+        totalPaid,
+        totalPending,
+        diaryEntries: diaryEntries.length,
+        materialsCount,
+      },
+      attendanceTrend: recentAttendanceTrend,
+      recentResults: studentResults.slice(0, 5),
+      gradeDistribution: Object.entries(gradeDistribution).map(([grade, count]) => ({ grade, count })),
+      recentDiary: diaryEntries.slice(0, 5),
+    });
+  } catch (e) {
+    console.error('Student analytics error:', e);
+    res.status(500).json({ error: 'Failed to load student analytics: ' + e.message });
+  }
+});
+
 // ===================== ANNOUNCEMENTS =====================
 app.get('/api/announcements', requireAuth, async (req, res) => {
   let sql = 'SELECT * FROM announcements WHERE 1=1';

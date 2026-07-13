@@ -236,6 +236,10 @@ export const api = {
   getBranchFinance: (branchId: string) => request<any>(`branch/finance?branchId=${branchId}`),
   // Platform-wide finance & analytics (Super Admin)
   getPlatformFinance: () => request<any>('platform/finance'),
+  // Teacher academic analytics
+  getTeacherAnalytics: () => request<any>('teacher/analytics'),
+  // Student academic + fee analytics
+  getStudentAnalytics: () => request<any>('student/analytics'),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),

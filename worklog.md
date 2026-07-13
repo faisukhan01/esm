@@ -2092,3 +2092,134 @@ Unresolved issues or risks:
 - The `getPlatformFinance` endpoint uses `LIMIT 500` on invoices/salaries to cap memory — if a platform exceeds 500 transactions, older ones won't be in the analytics. Future: add date-range filtering.
 - CSV export is client-side only — for very large datasets (10k+ rows), a server-side streaming export would be better.
 - Next priority: add a date-range filter to the finance dashboards (e.g., "Last 30 days", "This year", "All time"), and add a print/PDF export for the Reports page.
+
+---
+Task ID: STUDENT-DASHBOARD-ENHANCE
+Agent: full-stack-developer
+Task: Enhance the Student dashboard (StudentOverview component in src/components/portal/student-portal.tsx) to add academic + fee analytics using the existing GET /api/student/analytics endpoint — update the 4 KPI cards to real analytics, add an Attendance Trend BarChart, a 2-column Grade Distribution donut + Fee Summary, and a Recent Results table, while keeping the existing welcome banner and My Courses section.
+
+Work Log:
+- Read worklog.md and the current student-portal.tsx (~886 lines) to understand the existing StudentOverview structure (welcome banner + 4 placeholder KPI cards + My Courses list).
+- Verified the analytics data shape against mini-services/esm-api/index.js GET /api/student/analytics (kpi, attendanceTrend, recentResults, gradeDistribution, recentDiary) and confirmed api.getStudentAnalytics() exists in src/lib/api.ts.
+- Confirmed fmtPKR (module-level const, 'PKR ' + localeString) is defined later in the file and is accessible from StudentOverview at runtime; did NOT revert it.
+- Added the recharts import block (BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend) right after the lucide-react import.
+- Added module-level helpers above StudentOverview: ATTENDANCE_COLOR (Present=emerald #059669, Late=amber #d97706, Absent=rose #e11d48), ATTENDANCE_VALUE (P=3/L=2/A=1), GRADE_COLORS (A+ #1a365d → D #63b3ed navy family, F #e11d48 rose), GRADE_ORDER, gradeBadgeClass() (A+/A emerald, B primary, C amber, D muted, F rose), and an AttendanceTrendTooltip component ("Date: {label} · Status: {status}").
+- Rewrote StudentOverview to: (1) fetch analytics via useEffect on mount with loading state; (2) keep the navy gradient welcome banner; (3) render 4 KPI cards driven by analytics.kpi — Attendance (rate% + sessions/present sub), Avg Score (avgScore% + totalResults sub), Results (totalResults + "exams attempted" sub), Fee Status (paid/total paid + fmtPKR(pending) pending / "All cleared" sub) replacing the old "Courses" card; (4) full-width Attendance Trend Card with recharts BarChart (220px, status-colored Cells via <Cell>, custom tooltip, P/L/A Y-axis labels) + friendly empty state; (5) 2-column grid with Grade Distribution donut PieChart (navy palette, custom legend chips with grade+count) on the left and Fee Summary card (Total Paid emerald, Total Pending rose-if>0-else-muted, Invoices row, total-invoices note) on the right; (6) full-width Recent Results Card with shadcn Table (Exam/Date/Marks/Total/Grade columns, grade Badge via gradeBadgeClass); (7) kept the existing My Courses section unchanged. All loading states use animate-pulse skeletons; empty states use icon + friendly copy. Used hsl(var(--border)) / hsl(var(--muted-foreground)) for chart axes per the styling spec.
+- Did NOT touch any other component (MyAttendance, MyResults, MyInvoices, MyTimetable, MyDiary, MyAnnouncements, CourseDetail, etc.).
+- Ran `bun run lint` from /home/z/my-project — passed with 0 errors and 0 warnings.
+- Checked dev.log — dev server recompiled cleanly (✓ Compiled) with no errors after the edits.
+
+Stage Summary:
+- StudentOverview is now a full academic + fee analytics dashboard: navy welcome banner, 4 analytics-driven KPI cards, Attendance Trend BarChart (last 10 sessions, status-colored), Grade Distribution donut PieChart (navy palette) + Fee Summary, Recent Results table, and the original My Courses grid.
+- All data comes from api.getStudentAnalytics(); KPI cards show "—" while loading, charts/tables show animate-pulse skeletons, and each section has a friendly empty state.
+- Color rules respected: navy primary throughout; emerald only for Present/Paid; rose only for Absent/Fail/pending fees; amber only for Late/C grade; grade badges A+/A emerald, B primary, C amber, D muted, F rose. fmtPKR reused for all fee amounts (kept as 'PKR ' + localeString).
+- Lint passes with 0 errors; dev server compiles cleanly. No other components were modified.
+
+---
+Task ID: TEACHER-DASHBOARD-ENHANCE
+Agent: full-stack-developer
+Task: Enhance the Teacher dashboard (`TeacherDashboard` in `src/components/portal/teacher-portal.tsx`) with academic analytics — fetch `/api/teacher/analytics`, replace the 4 basic KPI cards with real analytics values, and add an Attendance Trend chart, a Class Performance table, and a Recent Activity panel below the KPIs (above the existing Quick Links).
+
+Work Log:
+- Read `worklog.md` and the current `teacher-portal.tsx` (1281 lines) to locate the `TeacherDashboard` function (lines 616–742) and confirm the file's imports.
+- Verified `recharts` (^2.15.4) is in `package.json`, `api.getTeacherAnalytics()` exists in `src/lib/api.ts`, and the backend route `/api/teacher/analytics` exists in `mini-services/esm-api/index.js` returning the documented shape.
+- Added recharts import (aliased `Tooltip as ChartTooltip` to avoid future name clashes with shadcn Tooltip): `import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';`
+- Added 3 helper components above `TeacherDashboard`:
+  - `formatShortDate(d)` — formats a date/number/string to `MM-DD` (or `—`).
+  - `InlineEmpty({ icon, title, desc, action })` — compact centered empty state for use inside cards (smaller than the existing `EmptyState`).
+  - `AttendanceTooltip({ active, payload })` — custom recharts tooltip rendering "Date: {label} · Rate: {rate}% · Present: {present}/{total}".
+- Rewrote `TeacherDashboard`:
+  - Added `analytics` + `loading` state and a `useEffect` that calls `api.getTeacherAnalytics()` on mount (catch sets `null`, finally flips `loading` to false).
+  - Derived `kpi`, `trend`, `perf`, `recentDiary` (top 3), `recentResults` (top 3) from `analytics`.
+  - Updated the 4 KPI cards to use analytics values: Total Classes (`kpi.totalClasses`), Total Students (`kpi.totalStudents`), Attendance Rate (`kpi.attendanceRate%`), Avg Score (`kpi.avgScore%`) with sub-text from `kpi.totalCourses / attendanceSessions / resultsPosted`. Cards show `—` while loading and fall back to local `classes.length` / `students.length` if analytics hasn't loaded yet.
+  - Added a full-width "Attendance Trend (Last 8 Sessions)" `Card` with a recharts `AreaChart` (navy `#1a365d` line + gradient fill, `CartesianGrid` dashed `3 3`, Y domain 0–100, custom tooltip). Loading shows a 220px skeleton; empty array shows `InlineEmpty` with a "Take Attendance" CTA.
+  - Added a 2-column row: left = "Class Performance" `Card` with a `Table` (Class, Students, Exams, Avg Score with a colored mini bar — emerald ≥75, amber ≥50, rose <50); right = "Recent Activity" `Card` with two compact lists (Recent Diary top 3, Recent Results top 3), each with a "View all" ghost button. Both have skeleton loaders and friendly `InlineEmpty` states.
+  - Kept the existing Quick Links grid (My Classes, Take Attendance, Post Results, Diary & Homework, My Timetable, Message Parents) below the new sections.
+  - Removed the previous "Recent Diary snippet" and "No results published yet" hint cards since their content is now superseded by the Recent Activity panel (avoids duplication per the new layout spec).
+  - Did NOT touch any other component in the file (TeacherOverview, DiaryView, TimetableView, ClassDetail, SMS, etc.).
+- Color palette respected: navy `bg-primary` / `bg-primary/10` / `text-primary` for icons and accents; emerald/amber/rose ONLY for the score bars/text (emerald = high, amber = mid, rose = low/destructive). No indigo/blue/green for primary accents.
+- Ran `bun run lint` from `/home/z/my-project` — passes with 0 errors (only `$ eslint .` printed, no warnings/issues).
+- Checked `dev.log` — Next.js dev server recompiled successfully multiple times (`✓ Compiled in ...ms`) after the edits, no errors or warnings related to `teacher-portal.tsx`.
+
+Stage Summary:
+- Teacher dashboard now shows live academic analytics from `/api/teacher/analytics` instead of hardcoded/local-only values.
+- New sections (top-to-bottom): welcome banner → 4 analytics-driven KPI cards → Attendance Trend area chart (last 8 sessions, navy) → 2-column grid [Class Performance table | Recent Activity panel] → existing Quick Links.
+- Loading handled with `animate-pulse` skeletons for chart/tables and `—` placeholders for KPI cards; empty states use contextual icons (CalendarCheck / BookOpen / ClipboardList) with CTAs where relevant.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components in the file were modified.
+
+---
+Task ID: TEACHER+STUDENT-ANALYTICS + BUG-FIX
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: QA test Teacher/Student portals, fix Rs.→PKR bug in student invoices, add teacher/student analytics endpoints, enhance Teacher + Student dashboards with academic charts and tables.
+
+Work Log:
+- **QA testing** via agent-browser across Teacher and Student portals:
+  - Found bug: `fmtPKR` in student-portal.tsx line 580 used `'Rs. '` — Student Invoices page showed "Rs. 5,000" instead of "PKR 5,000"
+  - Found gap: Teacher dashboard only had 4 basic KPI cards with hardcoded/fallback values — no attendance trends, no class performance, no recent activity
+  - Found gap: Student dashboard KPI cards showed "—" placeholders — no real attendance/avg score, no grade distribution, no fee summary chart
+- **Bug fix** (Main agent):
+  - Fixed `fmtPKR` in student-portal.tsx → `'PKR ' + Number(n||0).toLocaleString('en-PK')`
+  - Verified Student Invoices page now shows "PKR 5,000" (was "Rs. 5,000")
+- **Backend additions** (Main agent):
+  - Added `GET /api/teacher/analytics` endpoint — comprehensive teacher academic analytics:
+    - kpi: totalClasses, totalCourses, totalStudents, attendanceSessions, attendanceRate, attendanceRecords, presentCount, absentCount, lateCount, resultsPosted, totalResultsRecords, avgScore, diaryEntries, materialsUploaded
+    - assignments[]: teacher's class+course assignments
+    - attendanceTrend[]: last 8 sessions with rate, present, absent, total
+    - classPerformance[]: per-class students, avgScore, examsConducted
+    - examBreakdown[]: last 10 exams with avg marks
+    - recentDiary[]: last 5 diary entries
+    - recentResults[]: last 5 exam entries
+    - Computes attendanceRate from actual attendance records, avgScore from results records
+  - Added `GET /api/student/analytics` endpoint — comprehensive student analytics:
+    - kpi: attendanceRate, totalSessions, presentCount, absentCount, lateCount, avgScore, totalResults, totalInvoices, paidInvoices, unpaidInvoices, totalPaid, totalPending, diaryEntries, materialsCount
+    - attendanceTrend[]: last 10 sessions with status (Present/Absent/Late)
+    - recentResults[]: last 5 results with marks + grade
+    - gradeDistribution[]: grade counts (A+/A/B/C/D/F with auto-grade computation)
+    - recentDiary[]: last 5 diary entries for student's class
+    - Computes attendanceRate by scanning all attendance records for this student, avgScore from results
+  - Added API client methods: `api.getTeacherAnalytics()`, `api.getStudentAnalytics()`
+- **Teacher dashboard enhancement** (subagent TEACHER-DASHBOARD-ENHANCE):
+  - Added recharts import + `formatShortDate`, `InlineEmpty`, `AttendanceTooltip` helpers
+  - Rewrote `TeacherDashboard` component:
+    - Fetches `api.getTeacherAnalytics()` on mount
+    - 4 KPI cards now use real analytics: Total Classes, Total Students, Attendance Rate (%), Avg Score (%)
+    - Attendance Trend AreaChart (last 8 sessions, navy line with gradient fill, custom tooltip, 220px height)
+    - 2-column: Class Performance table (Class, Students, Exams, Avg Score with colored mini-bar) | Recent Activity (Recent Diary top 3 + Recent Results top 3)
+    - Skeleton loaders during fetch, friendly empty states with CTAs
+    - Kept Quick Links section
+- **Student dashboard enhancement** (subagent STUDENT-DASHBOARD-ENHANCE):
+  - Added recharts imports + color constants (ATTENDANCE_COLOR, GRADE_COLORS navy family) + gradeBadgeClass helper
+  - Rewrote `StudentOverview` component:
+    - Fetches `api.getStudentAnalytics()` on mount
+    - 4 KPI cards now use real analytics: Attendance (%), Avg Score (%), Results count, Fee Status (paid/total)
+    - Attendance Trend BarChart (last 10 sessions, colored by status: emerald=Present, amber=Late, rose=Absent, custom tooltip)
+    - 2-column: Grade Distribution donut PieChart (navy family palette, custom legend) | Fee Summary (3 stat rows: Total Paid emerald, Total Pending rose, Invoices paid/unpaid)
+    - Recent Results table (Exam, Date, Marks, Total, Grade badge)
+    - Kept My Courses section
+    - Skeleton loaders during fetch, friendly empty states
+- **Verification with agent-browser**:
+  - Teacher login (Alii): ✅ dashboard shows 4 analytics KPIs + Attendance Trend chart (empty state with CTA) + Class Performance (empty state) + Recent Activity (empty state) + Quick Links
+  - Student login (faisal): ✅ dashboard shows 4 analytics KPIs (Attendance 0%, Avg Score 0%, Results 0, Fee Status "1/1 paid · All cleared") + Attendance Trend (empty state) + Grade Distribution (empty state) + Fee Summary (PKR 5,000 paid, PKR 0 pending, 1 paid/0 unpaid) + Recent Results (empty state) + My Courses
+  - Student Invoices page: ✅ now shows "PKR 5,000" (was "Rs. 5,000")
+  - Institute Admin login: ✅ still works — "Welcome back, Numan" + PKR 5,000 Total Revenue
+  - VLM rated Teacher dashboard 8/10: "Visual cleanliness strong, consistent navy sidebar, information hierarchy works well, empty state messaging clear"
+  - VLM rated Student dashboard 8/10: "Visual cleanliness strong, navy consistency solid, fee summary/KPI cards look professional with bold typography and icons"
+- **Lint**: 0 errors, 0 warnings ✅
+- **Dev log**: all API calls returning 200; `/api/teacher/analytics` and `/api/student/analytics` respond correctly
+
+Stage Summary:
+- **1 bug fixed**: Rs. → PKR in student-portal `fmtPKR` function (Student Invoices page)
+- **2 new backend endpoints**: `GET /api/teacher/analytics` (academic stats with attendance rate, avg score, class performance) + `GET /api/student/analytics` (academic + fee summary with grade distribution)
+- **2 dashboards enhanced**: Teacher dashboard now has 4 analytics KPIs + attendance trend AreaChart + class performance table + recent activity panel (was 4 basic KPIs); Student dashboard now has 4 analytics KPIs + attendance trend BarChart + grade distribution PieChart + fee summary + recent results table (was 4 placeholder KPIs)
+- **All 5 role portals** now have analytics-driven dashboards:
+  - Super Admin: 10 KPIs + 2 charts + institute performance table + transactions
+  - Institute Admin: 6 KPIs + 2 charts + transactions + 4 sub-pages (Fees, Teachers, Students, Reports) with CSV export
+  - Branch Manager: 6 KPIs + 2 charts (revenue + fee status donut) + transactions
+  - Teacher: 4 KPIs + attendance trend chart + class performance table + recent activity
+  - Student: 4 KPIs + attendance trend chart + grade distribution donut + fee summary + recent results
+- Color discipline maintained throughout: navy primary, rose for negative/absent/fail/pending, emerald for positive/present/paid, amber for late
+
+Unresolved issues or risks:
+- The `/api/student/analytics` endpoint scans ALL attendance records (no studentId filter on the attendance table query) — this is O(n) over all attendance sessions. For large schools with thousands of sessions, this could be slow. Future: add a `studentId` index or denormalize student attendance into a separate table.
+- The teacher/student analytics don't have date-range filtering — they show all-time data. Future: add `?from=YYYY-MM-DD&to=YYYY-MM-DD` query params.
+- Next priority: add a date-range filter to the Institute Admin finance dashboard, add print/PDF export for reports, and consider adding a "notifications" dropdown in the top bar showing recent announcements.

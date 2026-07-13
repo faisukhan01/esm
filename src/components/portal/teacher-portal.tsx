@@ -17,6 +17,7 @@ import {
   LayoutDashboard, ArrowRight,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
 
 type ClassInfo = {
   id: string;
@@ -612,32 +613,88 @@ function AnnouncementCard({ a }: { a: Announcement }) {
   );
 }
 
-// ============== Teacher Dashboard (KPIs + Quick Links, NO announcements) ==============
+// ============== Teacher Dashboard helpers ==============
+function formatShortDate(d: any): string {
+  if (!d) return '—';
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return String(d);
+    return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  } catch {
+    return String(d);
+  }
+}
+
+function InlineEmpty({ icon: Icon, title, desc, action }: any) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-8 px-4">
+      <div className="inline-flex h-11 w-11 rounded-xl bg-muted/50 items-center justify-center mb-3">
+        <Icon className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <h4 className="font-semibold text-sm">{title}</h4>
+      {desc && <p className="text-xs text-muted-foreground mt-1 max-w-xs">{desc}</p>}
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
+}
+
+function AttendanceTooltip({ active, payload }: any) {
+  if (!active || !payload || !payload.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-border bg-background p-3 shadow-md text-xs min-w-[160px]">
+      <div className="font-semibold text-foreground">Date: {p.label}</div>
+      <div className="text-muted-foreground mt-1">Rate: <span className="font-bold text-primary tabular-nums">{p.rate}%</span></div>
+      <div className="text-muted-foreground">Present: <span className="font-medium text-foreground tabular-nums">{p.present}/{p.total}</span></div>
+    </div>
+  );
+}
+
+// ============== Teacher Dashboard (KPIs + Analytics + Quick Links) ==============
 function TeacherDashboard({ user, students, diary, myResults, classes, onOpenClass }: any) {
   const setActiveModule = useApp(s => s.setActiveModule);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getTeacherAnalytics()
+      .then(setAnalytics)
+      .catch(() => setAnalytics(null))
+      .finally(() => setLoading(false));
+  }, []);
+
   const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
-  const diaryCount = diary.length;
-  const resultsCount = myResults?.length || 0;
+  const kpi = analytics?.kpi;
+  const trend: any[] = analytics?.attendanceTrend || [];
+  const perf: any[] = analytics?.classPerformance || [];
+  const recentDiary: any[] = (analytics?.recentDiary || []).slice(0, 3);
+  const recentResults: any[] = (analytics?.recentResults || []).slice(0, 3);
 
   const cards = [
-    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-primary to-primary/80', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
-    { label: 'Total Students', value: students.length, icon: Users, color: 'from-primary/80 to-primary', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
-    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-primary/80 to-primary', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
-    { label: 'Diary Entries', value: diaryCount, icon: ClipboardList, color: 'from-primary/80 to-primary', sub: diaryCount === 0 ? 'No entries yet' : diaryCount === 1 ? '1 entry posted' : `${diaryCount} entries posted` },
+    { label: 'Total Classes', value: kpi ? kpi.totalClasses : (loading ? '—' : classes.length), icon: GraduationCap, sub: `${kpi?.totalCourses ?? totalCourses} courses assigned` },
+    { label: 'Total Students', value: kpi ? kpi.totalStudents : (loading ? '—' : students.length), icon: Users, sub: 'across all classes' },
+    { label: 'Attendance Rate', value: kpi ? `${kpi.attendanceRate}%` : '—', icon: CalendarCheck, sub: `${kpi?.attendanceSessions ?? 0} sessions taken` },
+    { label: 'Avg Score', value: kpi ? `${kpi.avgScore}%` : '—', icon: ClipboardList, sub: `${kpi?.resultsPosted ?? 0} results posted` },
   ];
 
   const quickLinks = [
-    { label: 'My Classes', desc: 'View & manage your classes', icon: BookOpen, module: 'teacher-overview', color: 'from-primary to-primary/80' },
-    { label: 'Take Attendance', desc: 'Mark today\'s attendance', icon: CalendarCheck, module: 'mark-attendance', color: 'from-primary/80 to-primary' },
-    { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results', color: 'from-primary/80 to-primary' },
-    { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary', color: 'from-primary/80 to-primary' },
-    { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable', color: 'from-primary/80 to-primary' },
-    { label: 'Message Parents', desc: 'Send SMS to parents', icon: MessageSquare, module: 'sms', color: 'from-primary/80 to-primary' },
+    { label: 'My Classes', desc: 'View & manage your classes', icon: BookOpen, module: 'teacher-overview' },
+    { label: 'Take Attendance', desc: 'Mark today\'s attendance', icon: CalendarCheck, module: 'mark-attendance' },
+    { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results' },
+    { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary' },
+    { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable' },
+    { label: 'Message Parents', desc: 'Send SMS to parents', icon: MessageSquare, module: 'sms' },
   ];
+
+  const scoreTone = (score: number) => {
+    if (score >= 75) return { bar: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' };
+    if (score >= 50) return { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' };
+    return { bar: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' };
+  };
 
   return (
     <div className="space-y-6">
-      {/* Welcome banner — navy blue (already styled) */}
+      {/* Welcome banner — navy gradient */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
@@ -667,7 +724,156 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
         ))}
       </div>
 
-      {/* Quick Links — NO announcements (those live in the Announcements page) */}
+      {/* Attendance Trend chart */}
+      <Card className="p-5 border border-border rounded-lg shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <CalendarCheck className="h-4 w-4 text-primary" />
+            <h3 className="font-bold text-base">Attendance Trend (Last 8 Sessions)</h3>
+          </div>
+        </div>
+        {loading ? (
+          <div className="h-[220px] w-full rounded-lg bg-muted/40 animate-pulse" />
+        ) : trend.length === 0 ? (
+          <InlineEmpty
+            icon={CalendarCheck}
+            title="No attendance sessions yet"
+            desc="Mark attendance from My Classes to see trends here."
+            action={<Button size="sm" variant="outline" onClick={() => setActiveModule('mark-attendance')}>Take Attendance <ArrowRight className="h-3 w-3 ml-1" /></Button>}
+          />
+        ) : (
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trend} margin={{ top: 5, right: 12, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="attTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1a365d" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#1a365d" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={40} unit="%" />
+                <ChartTooltip content={<AttendanceTooltip />} />
+                <Area type="monotone" dataKey="rate" stroke="#1a365d" strokeWidth={2.5} fill="url(#attTrendGrad)" dot={{ r: 3, fill: '#1a365d' }} activeDot={{ r: 5 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      {/* 2-col: Class Performance | Recent Activity */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Class Performance */}
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            <h3 className="font-bold text-base">Class Performance</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-10 rounded-md bg-muted/40 animate-pulse" />)}
+            </div>
+          ) : perf.length === 0 ? (
+            <InlineEmpty icon={BookOpen} title="No class assignments yet" desc="Your Branch Manager will assign classes to you." />
+          ) : (
+            <div className="overflow-x-auto -mx-2">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Class</TableHead>
+                    <TableHead className="text-center">Students</TableHead>
+                    <TableHead className="text-center">Exams</TableHead>
+                    <TableHead className="text-right">Avg Score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {perf.map((p) => {
+                    const score = Number(p.avgScore ?? 0);
+                    const tone = scoreTone(score);
+                    return (
+                      <TableRow key={p.classId}>
+                        <TableCell>
+                          <div className="font-medium">{p.className}</div>
+                          {p.section ? <div className="text-[10px] text-muted-foreground">Section {p.section}</div> : null}
+                        </TableCell>
+                        <TableCell className="text-center tabular-nums">{p.students ?? 0}</TableCell>
+                        <TableCell className="text-center tabular-nums">{p.examsConducted ?? 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`font-bold tabular-nums ${tone.text}`}>{score.toFixed(1)}%</span>
+                            <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
+                              <div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.max(0, score))}%` }} />
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardList className="h-4 w-4 text-primary" />
+            <h3 className="font-bold text-base">Recent Activity</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-14 rounded-md bg-muted/40 animate-pulse" />)}
+            </div>
+          ) : recentDiary.length === 0 && recentResults.length === 0 ? (
+            <InlineEmpty icon={ClipboardList} title="No diary entries or results posted yet" desc="Post homework or publish exam results to see recent activity here." />
+          ) : (
+            <div className="space-y-5">
+              {recentDiary.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Diary</div>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setActiveModule('diary')}>View all</Button>
+                  </div>
+                  <div className="space-y-2">
+                    {recentDiary.map((d) => (
+                      <div key={d.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-muted/30">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{d.title || d.subject || 'Diary entry'}</div>
+                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">{d.subject || d.className || ''}{d.courseName ? ` · ${d.courseName}` : ''}</div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] shrink-0 tabular-nums">{d.due ? `Due ${formatShortDate(d.due)}` : formatShortDate(d.createdAt)}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recentResults.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Results</div>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setActiveModule('post-results')}>View all</Button>
+                  </div>
+                  <div className="space-y-2">
+                    {recentResults.map((r) => (
+                      <div key={r.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-muted/30">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{r.exam || 'Exam'}</div>
+                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">{r.students ?? 0} students · {r.totalMarks ?? 0} marks{r.date ? ` · ${formatShortDate(r.date)}` : ''}</div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] shrink-0 tabular-nums">Avg {Number(r.avgMarks ?? 0).toFixed(1)}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Quick Links */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -699,44 +905,6 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
           ))}
         </div>
       </div>
-
-      {/* Recent Diary snippet (optional, only if entries exist) */}
-      {diaryCount > 0 && (
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-primary" />
-              <h3 className="font-bold text-base">Recent Diary Entries</h3>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setActiveModule('diary')}>View all <ArrowRight className="h-3 w-3 ml-1" /></Button>
-          </div>
-          <div className="space-y-2 max-h-56 overflow-y-auto scroll-fancy">
-            {diary.slice(0, 5).map((d: any) => (
-              <div key={d.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/30 text-sm">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{d.title || d.subject || 'Diary entry'}</div>
-                  <div className="text-xs text-muted-foreground truncate mt-0.5">{d.class || d.className || '—'}{d.dueDate ? ` · Due ${d.dueDate}` : ''}</div>
-                </div>
-                <Badge variant="outline" className="text-[10px] ml-2 shrink-0">{d.date || (d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—')}</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Hint card: results */}
-      {resultsCount === 0 && classes.length > 0 && (
-        <Card className="p-4 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-accent dark:border-[oklch(0.2_0.04_260)]">
-          <div className="flex items-start gap-3">
-            <div className="h-9 w-9 rounded-lg bg-accent0/20 grid place-items-center shrink-0"><GraduationCap className="h-4 w-4 text-primary dark:text-primary/70" /></div>
-            <div className="flex-1">
-              <div className="font-bold text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">No results published yet</div>
-              <p className="text-xs text-muted-foreground mt-1">Publish your first exam results from the Post Results page — students and parents will see them instantly.</p>
-            </div>
-            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shrink-0" onClick={() => setActiveModule('post-results')}>Post Results</Button>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

@@ -1,0 +1,886 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    10→import {
+    11→  CalendarCheck, GraduationCap, Calendar, ClipboardList,
+    12→  CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
+    13→  ArrowLeft, FileText, Link2, Download, Loader2,
+    14→  Wallet, DollarSign,
+    15→} from 'lucide-react';
+    16→import { toast } from '@/hooks/use-toast';
+    17→
+    18→type Course = { id: string; name: string; code?: string };
+    19→
+    20→type MaterialItem = {
+    21→  id: string;
+    22→  title: string;
+    23→  description?: string;
+    24→  fileType?: string;
+    25→  fileName?: string;
+    26→  linkUrl?: string;
+    27→  createdAt?: number | string;
+    28→  classId?: string;
+    29→  courseId?: string;
+    30→};
+    31→
+    32→type Announcement = {
+    33→  id: string;
+    34→  title: string;
+    35→  message: string;
+    36→  senderRole?: string;
+    37→  targetRole?: string;
+    38→  targetScope?: string;
+    39→  classId?: string | null;
+    40→  createdAt?: number | string;
+    41→};
+    42→
+    43→export function StudentPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    44→  const [attendance, setAttendance] = useState<any>(null);
+    45→  const [results, setResults] = useState<any>(null);
+    46→  const [diary, setDiary] = useState<any[]>([]);
+    47→  const [courses, setCourses] = useState<Course[]>([]);
+    48→  const [classId, setClassId] = useState<string>('');
+    49→  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    50→  const [selectedCourse, setSelectedCourse] = useState<{ course: Course; initialTab: 'materials' | 'results' | 'attendance' } | null>(null);
+    51→
+    52→  const refresh = () => {
+    53→    if (user?.id) {
+    54→      api.getAttendance({ studentId: user.id }).then(setAttendance).catch(() => {});
+    55→      api.getResults({ studentId: user.id }).then(setResults).catch(() => {});
+    56→      if (user?.branchId) api.getDiary({ branchId: user.branchId }).then(setDiary).catch(() => {});
+    57→      api.getStudentCourses().then(setCourses).catch(() => setCourses([]));
+    58→      api.getAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]));
+    59→    }
+    60→  };
+    61→
+    62→  // Resolve the student's classId from the branch's classes by matching user.class (class name)
+    63→  useEffect(() => {
+    64→    if (user?.branchId) {
+    65→      api.getClasses(user.branchId)
+    66→        .then((cls: any[]) => {
+    67→          const match = cls.find(c => c.name === user.class);
+    68→          setClassId(match?.id || '');
+    69→        })
+    70→        .catch(() => setClassId(''));
+    71→    }
+    72→  }, [user?.branchId, user?.class]);
+    73→
+    74→  useEffect(() => { refresh(); }, [user?.id, user?.branchId]);
+    75→
+    76→  if (activeModule === 'student-overview' && selectedCourse) {
+    77→    return (
+    78→      <CourseDetail
+    79→        course={selectedCourse.course}
+    80→        classId={classId}
+    81→        studentId={user?.id}
+    82→        initialTab={selectedCourse.initialTab}
+    83→        onBack={() => setSelectedCourse(null)}
+    84→      />
+    85→    );
+    86→  }
+    87→
+    88→  if (activeModule === 'my-attendance') return <MyAttendance attendance={attendance} />;
+    89→  if (activeModule === 'my-results') return <MyResults results={results} />;
+    90→  if (activeModule === 'my-timetable') return <MyTimetable />;
+    91→  if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
+    92→  if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
+    93→  if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
+    94→  return (
+    95→    <StudentOverview
+    96→      user={user}
+    97→      attendance={attendance}
+    98→      results={results}
+    99→      courses={courses}
+   100→      announcements={announcements}
+   101→      onOpenCourse={(course, tab) => setSelectedCourse({ course, initialTab: tab })}
+   102→    />
+   103→  );
+   104→}
+   105→
+   106→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+   107→  return (
+   108→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   109→      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+   110→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+   111→    </div>
+   112→  );
+   113→}
+   114→
+   115→function EmptyState({ icon: Icon, title, desc }: any) {
+   116→  return (
+   117→    <Card className="p-10 text-center">
+   118→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+   119→      <h3 className="font-bold text-lg">{title}</h3>
+   120→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   121→    </Card>
+   122→  );
+   123→}
+   124→
+   125→// ============== Student Overview (course cards) ==============
+   126→function StudentOverview({ user, attendance, results, courses, announcements, onOpenCourse }: any) {
+   127→  // Normalize results — API returns a flat array, but some code expects {entries, total, avgPercentage}
+   128→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   129→  const resultsTotal = resultsArray.length;
+   130→  const avgPercentage = resultsTotal > 0
+   131→    ? Math.round(resultsArray.reduce((a: number, r: any) => a + (r.percentage || (r.marks / r.totalMarks * 100) || 0), 0) / resultsTotal * 10) / 10
+   132→    : null;
+   133→
+   134→  const cards = [
+   135→    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-primary to-primary/80' },
+   136→    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-primary/80 to-primary' },
+   137→    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-primary/80 to-primary' },
+   138→    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-primary to-primary/80' },
+   139→  ];
+   140→
+   141→  // Group recent results by subject/course so we can show "recent marks" per course card
+   142→  const recentByCourse = useMemo(() => {
+   143→    const map: Record<string, any> = {};
+   144→    // results can be a flat array (from API) or an object with .entries
+   145→    const entries = Array.isArray(results) ? results : (results?.entries || []);
+   146→    if (Array.isArray(entries)) {
+   147→      for (const r of entries) {
+   148→        const key = r.courseId || r.subject;
+   149→        if (!map[key]) map[key] = r;
+   150→      }
+   151→    }
+   152→    return map;
+   153→  }, [results]);
+   154→
+   155→  return (
+   156→    <div className="space-y-6">
+   157→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   158→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
+   159→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   160→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   161→        <div className="relative">
+   162→          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-primary/70" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
+   163→          <h1 className="text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
+   164→          <p className="text-white/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
+   165→        </div>
+   166→      </motion.div>
+   167→
+   168→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   169→        {cards.map((c, i) => (
+   170→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   171→            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+   172→              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+   173→              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
+   174→              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   175→            </Card>
+   176→          </motion.div>
+   177→        ))}
+   178→      </div>
+   179→
+   180→      <div>
+   181→        <div className="flex items-center justify-between mb-4">
+   182→          <div>
+   183→            <h2 className="text-lg font-bold">My Courses</h2>
+   184→            <p className="text-xs text-muted-foreground mt-0.5">Click a course to view materials, results, and attendance.</p>
+   185→          </div>
+   186→        </div>
+   187→        {courses.length === 0 ? (
+   188→          <EmptyState icon={BookOpen} title="No courses assigned" desc="Your class doesn't have any courses assigned yet. Check back later." />
+   189→        ) : (
+   190→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   191→            {courses.map((c: Course, i: number) => {
+   192→              const recent = recentByCourse[c.id];
+   193→              return (
+   194→                <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+   195→                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenCourse(c, 'materials')}>
+   196→                    <div className="flex items-start justify-between mb-3">
+   197→                      <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   198→                        <BookOpen className="h-5 w-5 text-primary" />
+   199→                      </div>
+   200→                      {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
+   201→                    </div>
+   202→                    <h3 className="font-bold text-lg">{c.name}</h3>
+   203→                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+   204→                    <div className="grid grid-cols-2 gap-2 mt-4">
+   205→                      <div className="p-2 rounded-md bg-accent0/10">
+   206→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
+   207→                        <div className="text-sm font-bold text-primary mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
+   208→                      </div>
+   209→                      <div className="p-2 rounded-md bg-accent0/10">
+   210→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
+   211→                        <div className="text-sm font-bold text-primary mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
+   212→                      </div>
+   213→                    </div>
+   214→                    <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+   215→                      <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
+   216→                      <span className="text-primary font-medium group-hover:underline">Open →</span>
+   217→                    </div>
+   218→                  </Card>
+   219→                </motion.div>
+   220→              );
+   221→            })}
+   222→          </div>
+   223→        )}
+   224→      </div>
+   225→    </div>
+   226→  );
+   227→}
+   228→
+   229→// ============== Course Detail (Materials / Results / Attendance tabs) ==============
+   230→const COURSE_TABS = [
+   231→  { id: 'materials', label: 'Materials', icon: FileText },
+   232→  { id: 'results', label: 'Results', icon: GraduationCap },
+   233→  { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+   234→] as const;
+   235→
+   236→function CourseDetail({ course, classId, studentId, initialTab, onBack }: {
+   237→  course: Course;
+   238→  classId: string;
+   239→  studentId: string;
+   240→  initialTab: 'materials' | 'results' | 'attendance';
+   241→  onBack: () => void;
+   242→}) {
+   243→  const [tab, setTab] = useState(initialTab);
+   244→
+   245→  return (
+   246→    <div className="space-y-6">
+   247→      <div className="flex items-center gap-3">
+   248→        <button onClick={onBack} className="h-9 w-9 grid place-items-center rounded-lg border border-border hover:bg-accent transition" title="Back to courses">
+   249→          <ArrowLeft className="h-4 w-4" />
+   250→        </button>
+   251→        <div>
+   252→          <h1 className="text-2xl font-extrabold tracking-tight">{course.name}</h1>
+   253→          <p className="text-sm text-muted-foreground mt-0.5">{course.code ? `Code ${course.code} · ` : ''}Course materials, results & attendance</p>
+   254→        </div>
+   255→      </div>
+   256→
+   257→      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy">
+   258→        {COURSE_TABS.map(t => {
+   259→          const active = tab === t.id;
+   260→          return (
+   261→            <button key={t.id} onClick={() => setTab(t.id)}
+   262→              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+   263→              <t.icon className="h-4 w-4" /> {t.label}
+   264→            </button>
+   265→          );
+   266→        })}
+   267→      </div>
+   268→
+   269→      <AnimatePresence mode="wait">
+   270→        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+   271→          {tab === 'materials' && <CourseMaterialsView classId={classId} courseId={course.id} />}
+   272→          {tab === 'results' && <CourseResultsView courseId={course.id} studentId={studentId} />}
+   273→          {tab === 'attendance' && <CourseAttendanceView studentId={studentId} />}
+   274→        </motion.div>
+   275→      </AnimatePresence>
+   276→    </div>
+   277→  );
+   278→}
+   279→
+   280→function CourseMaterialsView({ classId, courseId }: { classId: string; courseId: string }) {
+   281→  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+   282→  const [loading, setLoading] = useState(true);
+   283→
+   284→  useEffect(() => {
+   285→    if (!classId || !courseId) return;
+   286→    api.getCourseMaterials({ classId, courseId })
+   287→      .then(setMaterials)
+   288→      .catch(() => setMaterials([]))
+   289→      .finally(() => setLoading(false));
+   290→  }, [classId, courseId]);
+   291→
+   292→  if (!classId) {
+   293→    return <EmptyState icon={FileText} title="Class not found" desc="We couldn't resolve your class. Please contact your Branch Manager." />;
+   294→  }
+   295→
+   296→  if (loading) {
+   297→    return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   298→  }
+   299→
+   300→  if (materials.length === 0) {
+   301→    return <EmptyState icon={FileText} title="No materials yet" desc="Your teacher hasn't uploaded any materials for this course yet. Check back later." />;
+   302→  }
+   303→
+   304→  return (
+   305→    <div className="space-y-4">
+   306→      <p className="text-sm text-muted-foreground">{materials.length} material{materials.length === 1 ? '' : 's'} available</p>
+   307→      <div className="grid sm:grid-cols-2 gap-3">
+   308→        {materials.map(m => <MaterialCard key={m.id} material={m} />)}
+   309→      </div>
+   310→    </div>
+   311→  );
+   312→}
+   313→
+   314→function MaterialCard({ material }: { material: MaterialItem }) {
+   315→  const [downloading, setDownloading] = useState(false);
+   316→  const isLink = !!material.linkUrl;
+   317→  const Icon = isLink ? Link2 : FileText;
+   318→  const ext = material.fileName?.split('.').pop()?.toUpperCase() || (isLink ? 'LINK' : 'FILE');
+   319→  const createdAt = material.createdAt ? new Date(material.createdAt).toLocaleDateString() : '';
+   320→
+   321→  const handleDownload = async () => {
+   322→    if (isLink && material.linkUrl) {
+   323→      window.open(material.linkUrl, '_blank', 'noopener,noreferrer');
+   324→      return;
+   325→    }
+   326→    setDownloading(true);
+   327→    try {
+   328→      const res = await api.downloadMaterialBlob(material.id);
+   329→      if ('linkUrl' in res) {
+   330→        window.open(res.linkUrl, '_blank', 'noopener,noreferrer');
+   331→      } else {
+   332→        const url = URL.createObjectURL(res.blob);
+   333→        const a = document.createElement('a');
+   334→        a.href = url;
+   335→        a.download = res.fileName || material.fileName || 'download';
+   336→        document.body.appendChild(a);
+   337→        a.click();
+   338→        document.body.removeChild(a);
+   339→        URL.revokeObjectURL(url);
+   340→      }
+   341→    } catch (e: any) {
+   342→      toast({ title: 'Download failed', description: e.message, variant: 'destructive' });
+   343→    } finally { setDownloading(false); }
+   344→  };
+   345→
+   346→  return (
+   347→    <Card className="p-4 hover:shadow-md transition">
+   348→      <div className="flex items-start gap-3">
+   349→        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-accent0/15' : 'bg-accent0/15'}`}>
+   350→          <Icon className={`h-5 w-5 ${isLink ? 'text-primary' : 'text-primary'}`} />
+   351→        </div>
+   352→        <div className="flex-1 min-w-0">
+   353→          <div className="flex items-center gap-2 mb-0.5">
+   354→            <h4 className="font-medium text-sm truncate">{material.title}</h4>
+   355→            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{ext}</Badge>
+   356→          </div>
+   357→          {material.description && <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>}
+   358→          <div className="text-[11px] text-muted-foreground mt-1">{createdAt}{isLink ? ' · External link' : ''}</div>
+   359→        </div>
+   360→      </div>
+   361→      <div className="mt-3 flex justify-end">
+   362→        <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+   363→          {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+   364→          {isLink ? 'Open Link' : 'Download'}
+   365→        </Button>
+   366→      </div>
+   367→    </Card>
+   368→  );
+   369→}
+   370→
+   371→function CourseResultsView({ courseId, studentId }: { courseId: string; studentId: string }) {
+   372→  const [results, setResults] = useState<any[]>([]);
+   373→  const [loading, setLoading] = useState(true);
+   374→
+   375→  useEffect(() => {
+   376→    api.getResults({ studentId })
+   377→      .then((r: any) => {
+   378→        const entries = r?.entries || [];
+   379→        // Filter to this course; backend may not return courseId on student-scoped results, so include all if courseId missing
+   380→        const filtered = entries.filter((e: any) => !e.courseId || e.courseId === courseId);
+   381→        setResults(filtered.length > 0 ? filtered : entries);
+   382→      })
+   383→      .catch(() => setResults([]))
+   384→      .finally(() => setLoading(false));
+   385→  }, [courseId, studentId]);
+   386→
+   387→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   388→  if (results.length === 0) {
+   389→    return <EmptyState icon={GraduationCap} title="No results yet" desc="Your teacher hasn't posted any results for this course yet." />;
+   390→  }
+   391→
+   392→  return (
+   393→    <Card className="p-5">
+   394→      <div className="space-y-3">
+   395→        {results.map((r: any, idx: number) => (
+   396→          <div key={r.id || idx} className="flex items-center gap-3">
+   397→            <div className="h-9 w-9 rounded-lg bg-accent0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
+   398→            <div className="flex-1">
+   399→              <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.exam || 'Exam'}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   400→              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
+   401→              <div className="text-[11px] text-muted-foreground mt-1">{r.date}</div>
+   402→            </div>
+   403→            <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   404→          </div>
+   405→        ))}
+   406→      </div>
+   407→    </Card>
+   408→  );
+   409→}
+   410→
+   411→function CourseAttendanceView({ studentId }: { studentId: string }) {
+   412→  const [attendance, setAttendance] = useState<any>(null);
+   413→  const [loading, setLoading] = useState(true);
+   414→
+   415→  useEffect(() => {
+   416→    api.getAttendance({ studentId })
+   417→      .then(setAttendance)
+   418→      .catch(() => setAttendance(null))
+   419→      .finally(() => setLoading(false));
+   420→  }, [studentId]);
+   421→
+   422→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   423→  if (!attendance || attendance.total === 0) {
+   424→    return <EmptyState icon={CalendarCheck} title="No attendance records" desc="Your teacher hasn't marked any attendance for you yet." />;
+   425→  }
+   426→
+   427→  return (
+   428→    <div className="space-y-4">
+   429→      <div className="grid grid-cols-4 gap-3">
+   430→        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   431→        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   432→        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   433→        <Card className="p-4 text-center bg-accent0/10"><CalendarCheck className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold text-primary">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   434→      </div>
+   435→      <Card className="p-4">
+   436→        <Table>
+   437→          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   438→          <TableBody>
+   439→            {(attendance.entries || []).map((e: any, idx: number) => (
+   440→              <TableRow key={e.id || idx}>
+   441→                <TableCell className="text-sm">{e.date}</TableCell>
+   442→                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+   443→              </TableRow>
+   444→            ))}
+   445→          </TableBody>
+   446→        </Table>
+   447→      </Card>
+   448→    </div>
+   449→  );
+   450→}
+   451→
+   452→// ============== MyAttendance (existing module) ==============
+   453→function MyAttendance({ attendance }: any) {
+   454→  return (
+   455→    <div className="space-y-6">
+   456→      <ModuleHeader title="My Attendance" subtitle="Your attendance record" />
+   457→      {!attendance || attendance.total === 0 ? (
+   458→        <EmptyState icon={CalendarCheck} title="No attendance records yet" desc="Your teachers haven't marked any attendance yet. Check back after your next class." />
+   459→      ) : (
+   460→        <>
+   461→          <div className="grid grid-cols-4 gap-3">
+   462→            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   463→            <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   464→            <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   465→            <Card className="p-4 text-center bg-accent0/10"><CalendarCheck className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold text-primary">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   466→          </div>
+   467→          <Card className="p-4">
+   468→            <Table>
+   469→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   470→              <TableBody>
+   471→                {(attendance.entries || []).map((e: any) => (
+   472→                  <TableRow key={e.id}><TableCell className="text-sm">{e.date}</TableCell><TableCell className="text-sm">{e.class}</TableCell>
+   473→                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+   474→                  </TableRow>
+   475→                ))}
+   476→              </TableBody>
+   477→            </Table>
+   478→          </Card>
+   479→        </>
+   480→      )}
+   481→    </div>
+   482→  );
+   483→}
+   484→
+   485→function MyResults({ results }: any) {
+   486→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   487→  return (
+   488→    <div className="space-y-6">
+   489→      <ModuleHeader title="My Results" subtitle="All your test & exam results" />
+   490→      {resultsArray.length === 0 ? (
+   491→        <EmptyState icon={GraduationCap} title="No results posted yet" desc="Your teachers haven't posted any results yet. Check back after your next exam." />
+   492→      ) : (
+   493→        <Card className="p-5">
+   494→          <div className="space-y-3">
+   495→            {resultsArray.map((r: any) => {
+   496→              const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
+   497→              return (
+   498→              <div key={r.id} className="flex items-center gap-3">
+   499→                <div className="h-9 w-9 rounded-lg bg-accent0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
+   500→                <div className="flex-1">
+   501→                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   502→                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${pct}%` }} /></div>
+   503→                  <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
+   504→                </div>
+   505→                <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   506→              </div>
+   507→              );
+   508→            })}
+   509→          </div>
+   510→        </Card>
+   511→      )}
+   512→    </div>
+   513→  );
+   514→}
+   515→
+   516→function MyTimetable() {
+   517→  return (
+   518→    <div className="space-y-6">
+   519→      <ModuleHeader title="My Timetable" subtitle="Your weekly class schedule" />
+   520→      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager." />
+   521→    </div>
+   522→  );
+   523→}
+   524→
+   525→function MyDiary({ diary }: any) {
+   526→  return (
+   527→    <div className="space-y-6">
+   528→      <ModuleHeader title="Diary & Homework" subtitle="Assignments from your teachers" />
+   529→      {diary.length === 0 ? (
+   530→        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Your teachers haven't posted any homework or assignments yet." />
+   531→      ) : (
+   532→        <div className="space-y-3">
+   533→          {diary.map((d: any) => (
+   534→            <Card key={d.id} className="p-4">
+   535→              <div className="flex items-start justify-between mb-2">
+   536→                <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
+   537→                <Badge variant="outline" className={d.due ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+   538→              </div>
+   539→              {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
+   540→            </Card>
+   541→          ))}
+   542→        </div>
+   543→      )}
+   544→    </div>
+   545→  );
+   546→}
+   547→
+   548→function MyAnnouncements({ announcements, loading }: { announcements: Announcement[]; loading: boolean }) {
+   549→  return (
+   550→    <div className="space-y-6">
+   551→      <ModuleHeader title="Announcements" subtitle="Notices from your teachers, branch & institute" />
+   552→      {loading ? (
+   553→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+   554→      ) : announcements.length === 0 ? (
+   555→        <EmptyState icon={Inbox} title="No announcements" desc="You're all caught up! New announcements will appear here." />
+   556→      ) : (
+   557→        <div className="space-y-3">
+   558→          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+   559→        </div>
+   560→      )}
+   561→    </div>
+   562→  );
+   563→}
+   564→
+   565→function AnnouncementCard({ a }: { a: Announcement }) {
+   566→  const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '';
+   567→  return (
+   568→    <Card className="p-4">
+   569→      <div className="flex items-start justify-between gap-3 mb-1.5">
+   570→        <h4 className="font-semibold text-sm">{a.title}</h4>
+   571→        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{a.targetScope || 'all'}</Badge>
+   572→      </div>
+   573→      <p className="text-sm text-muted-foreground">{a.message}</p>
+   574→      <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
+   575→    </Card>
+   576→  );
+   577→}
+   578→
+   579→// ============== My Invoices (with PDF challan) ==============
+   580→const fmtPKR = (n: number) => 'PKR ' + (Number(n) || 0).toLocaleString('en-PK');
+   581→
+   582→// Generate the challan HTML (used by the html2pdf renderer + the fallback print path)
+   583→function buildChallanHTML(challan: any, instituteName?: string): string {
+   584→  const amount = Number(challan.amount || 0);
+   585→  const status = String(challan.status || 'unpaid').toLowerCase();
+   586→  const isPaid = status === 'paid';
+   587→  const today = new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+   588→  const escape = (v: any) => String(v ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+   589→  const institute = instituteName?.trim() || challan.instituteName?.trim() || '';
+   590→
+   591→  return `<!DOCTYPE html>
+   592→<html lang="en">
+   593→<head>
+   594→<meta charset="utf-8" />
+   595→<title>Fee Challan ${escape(challan.challanNo || '')}</title>
+   596→<style>
+   597→  * { box-sizing: border-box; }
+   598→  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #ffffff; color: #1f2937; }
+   599→  .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #1e3a5f; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+   600→  .header { text-align: center; border-bottom: 2px dashed #b6c5d8; padding-bottom: 18px; margin-bottom: 22px; }
+   601→  .institute { font-size: 20px; font-weight: 800; color: #0f1e3a; letter-spacing: 0.3px; }
+   602→  .brand { font-size: 11px; letter-spacing: 3px; color: #1e3a5f; font-weight: 700; margin-top: 6px; }
+   603→  .title { font-size: 26px; font-weight: 800; margin-top: 8px; color: #0f1e3a; letter-spacing: 0.5px; }
+   604→  .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
+   605→  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 8px 0 18px; }
+   606→  .field { display: flex; flex-direction: column; }
+   607→  .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+   608→  .value { font-size: 14px; font-weight: 600; color: #111827; }
+   609→  .amount-row { display: flex; justify-content: space-between; align-items: center; background: #eef2f8; border: 1px solid #b6c5d8; border-radius: 10px; padding: 16px 22px; margin: 18px 0; }
+   610→  .amount-label { font-size: 12px; color: #1e3a5f; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+   611→  .amount-value { font-size: 22px; font-weight: 800; color: #0f1e3a; }
+   612→  .status-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+   613→  .status { display: inline-block; padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+   614→  .status-paid { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+   615→  .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+   616→  .signature { margin-top: 64px; padding-top: 14px; border-top: 2px dashed #9ca3af; display: flex; justify-content: space-between; gap: 24px; }
+   617→  .sig-label { font-size: 12px; color: #6b7280; padding-top: 6px; }
+   618→  .footer { text-align: center; margin-top: 22px; padding-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; letter-spacing: 0.3px; font-weight: 600; }
+   619→  .footer-brand { color: #1e3a5f; font-weight: 800; }
+   620→  @media print {
+   621→    body { padding: 0; background: #fff; }
+   622→    .challan { box-shadow: none; border: 2px solid #1e3a5f; }
+   623→  }
+   624→</style>
+   625→</head>
+   626→<body>
+   627→  <div class="challan">
+   628→    <div class="header">
+   629→      ${institute ? `<div class="institute">${escape(institute)}</div>` : ''}
+   630→      <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
+   631→      <div class="title">FEE CHALLAN</div>
+   632→      <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
+   633→    </div>
+   634→    <div class="grid">
+   635→      <div class="field"><span class="label">Challan No.</span><span class="value">${escape(challan.challanNo || '—')}</span></div>
+   636→      <div class="field"><span class="label">Date</span><span class="value">${today}</span></div>
+   637→      <div class="field"><span class="label">Student Name</span><span class="value">${escape(challan.studentName || challan.student || '—')}</span></div>
+   638→      <div class="field"><span class="label">Class</span><span class="value">${escape(challan.className || challan.class || '—')}</span></div>
+   639→      <div class="field"><span class="label">Roll No.</span><span class="value">${escape(challan.rollNo || '—')}</span></div>
+   640→      <div class="field"><span class="label">Month / Year</span><span class="value">${escape(challan.month || '—')}${challan.year ? ' ' + escape(challan.year) : ''}</span></div>
+   641→    </div>
+   642→    <div class="amount-row">
+   643→      <span class="amount-label">Amount Payable</span>
+   644→      <span class="amount-value">PKR {amount.toLocaleString('en-PK')}</span>
+   645→    </div>
+   646→    <div class="status-row">
+   647→      <span class="label" style="margin:0">Status</span>
+   648→      <span class="status ${isPaid ? 'status-paid' : 'status-unpaid'}">${status.toUpperCase()}</span>
+   649→      ${challan.paidDate ? `<span class="value" style="font-size:12px;color:#374151;">Paid on ${escape(challan.paidDate)}</span>` : ''}
+   650→      ${challan.paymentMethod ? `<span class="value" style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
+   651→    </div>
+   652→    <div class="signature">
+   653→      <div><div class="sig-label">Student / Parent Signature</div></div>
+   654→      <div><div class="sig-label">Authorized Signature</div></div>
+   655→    </div>
+   656→    <div class="footer">Powered by <span class="footer-brand">ESM — Electronic School Management</span></div>
+   657→  </div>
+   658→</body>
+   659→</html>`;
+   660→}
+   661→
+   662→// Fallback: print the challan via a hidden iframe (only used if html2pdf fails).
+   663→function printChallanInIframe(html: string) {
+   664→  let iframe = document.getElementById('esm-challan-frame') as HTMLIFrameElement | null;
+   665→  if (!iframe) {
+   666→    iframe = document.createElement('iframe');
+   667→    iframe.id = 'esm-challan-frame';
+   668→    iframe.style.position = 'fixed';
+   669→    iframe.style.right = '0';
+   670→    iframe.style.bottom = '0';
+   671→    iframe.style.width = '0';
+   672→    iframe.style.height = '0';
+   673→    iframe.style.border = '0';
+   674→    iframe.setAttribute('aria-hidden', 'true');
+   675→    iframe.setAttribute('title', 'ESM challan print frame');
+   676→    document.body.appendChild(iframe);
+   677→  }
+   678→
+   679→  const doc = iframe.contentWindow?.document;
+   680→  if (!doc) {
+   681→    toast({ title: 'Print unavailable', description: 'Your browser blocked the print frame.', variant: 'destructive' });
+   682→    return;
+   683→  }
+   684→
+   685→  doc.open();
+   686→  doc.write(html);
+   687→  doc.close();
+   688→
+   689→  const win = iframe.contentWindow;
+   690→  setTimeout(() => {
+   691→    try { win?.focus(); win?.print(); }
+   692→    catch {
+   693→      toast({ title: 'Print failed', description: 'Please allow popups / printing for this site.', variant: 'destructive' });
+   694→    }
+   695→  }, 300);
+   696→}
+   697→
+   698→// Generate an actual PDF file using html2pdf.js (no print dialog).
+   699→// Falls back to the iframe print path if the library fails to load or render.
+   700→async function downloadChallanPDF(challan: any, instituteName?: string): Promise<{ via: 'pdf' | 'print' }> {
+   701→  const html = buildChallanHTML(challan, instituteName);
+   702→  const challanNo = String(challan.challanNo || challan.id?.slice?.(-8) || 'challan').replace(/[^A-Za-z0-9_-]/g, '_');
+   703→
+   704→  // Build a temporary off-screen container so html2canvas can render the styled challan.
+   705→  const container = document.createElement('div');
+   706→  container.style.position = 'fixed';
+   707→  container.style.left = '-99999px';
+   708→  container.style.top = '0';
+   709→  container.style.width = '760px';
+   710→  container.style.background = '#ffffff';
+   711→  container.innerHTML = html;
+   712→  // Strip the surrounding <html>/<head>/<body> tags — we only need the inner content
+   713→  // so the PDF renders just the challan card, not the full document chrome.
+   714→  const challanEl = container.querySelector('.challan') as HTMLElement | null;
+   715→  const renderEl: HTMLElement = challanEl || container;
+   716→  document.body.appendChild(container);
+   717→
+   718→  try {
+   719→    const html2pdf = (await import('html2pdf.js')).default;
+   720→    const opt = {
+   721→      margin: [10, 10, 10, 10] as [number, number, number, number],
+   722→      filename: `Challan-${challanNo}.pdf`,
+   723→      image: { type: 'jpeg', quality: 0.98 },
+   724→      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+   725→      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+   726→      pagebreak: { mode: ['css', 'legacy'] as const },
+   727→    };
+   728→    await html2pdf().set(opt).from(renderEl).save();
+   729→    return { via: 'pdf' };
+   730→  } catch (err: any) {
+   731→    // Fall back to the browser print dialog (Save as PDF) if html2pdf fails
+   732→    printChallanInIframe(html);
+   733→    return { via: 'print' };
+   734→  } finally {
+   735→    try { document.body.removeChild(container); } catch {}
+   736→  }
+   737→}
+   738→
+   739→function MyInvoices({ user }: { user: any }) {
+   740→  const [invoices, setInvoices] = useState<any[]>([]);
+   741→  const [loading, setLoading] = useState(true);
+   742→  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+   743→
+   744→  const refresh = () => {
+   745→    setLoading(true);
+   746→    api.getFeeInvoices()
+   747→      .then(r => setInvoices(Array.isArray(r) ? r : []))
+   748→      .catch(() => setInvoices([]))
+   749→      .finally(() => setLoading(false));
+   750→  };
+   751→
+   752→  useEffect(() => { refresh(); }, [user?.id]);
+   753→
+   754→  const stats = useMemo(() => {
+   755→    const total = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+   756→    const paid = invoices.filter(i => String(i.status).toLowerCase() === 'paid').reduce((acc, i) => acc + (Number(i.paidAmount || i.amount) || 0), 0);
+   757→    const pending = total - paid;
+   758→    return { total, paid, pending, count: invoices.length, paidCount: invoices.filter(i => String(i.status).toLowerCase() === 'paid').length };
+   759→  }, [invoices]);
+   760→
+   761→  const downloadChallan = async (inv: any) => {
+   762→    setDownloadingId(inv.id);
+   763→    try {
+   764→      const challan = await api.getChallanData(inv.id);
+   765→      // Merge with invoice data as a fallback so the PDF is complete even if the challan endpoint returns a partial payload
+   766→      const merged = { ...inv, ...challan };
+   767→      const result = await downloadChallanPDF(merged, user?.instituteName);
+   768→      if (result.via === 'pdf') {
+   769→        toast({ title: 'Challan downloaded', description: `Challan-${merged.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
+   770→      } else {
+   771→        toast({ title: 'Preparing challan', description: 'PDF generation unavailable — use the print dialog to save it as a PDF.' });
+   772→      }
+   773→    } catch {
+   774→      // Fallback: generate PDF using the invoice data we already have
+   775→      try {
+   776→        const result = await downloadChallanPDF(inv, user?.instituteName);
+   777→        if (result.via === 'pdf') {
+   778→          toast({ title: 'Challan downloaded', description: `Challan-${inv.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
+   779→        } else {
+   780→          toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — using invoice summary instead.' });
+   781→        }
+   782→      } catch {
+   783→        toast({ title: 'Failed', description: 'Could not generate the challan PDF. Please try again.', variant: 'destructive' });
+   784→      }
+   785→    } finally {
+   786→      setDownloadingId(null);
+   787→    }
+   788→  };
+   789→
+   790→  const cards = [
+   791→    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-primary to-primary/80', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
+   792→    { label: 'Total Pending', value: fmtPKR(stats.pending), icon: Clock, color: 'from-rose-500 to-rose-700', sub: `${stats.count - stats.paidCount} invoice${stats.count - stats.paidCount === 1 ? '' : 's'}` },
+   793→    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-primary/80 to-primary', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
+   794→  ];
+   795→
+   796→  return (
+   797→    <div className="space-y-6">
+   798→      <ModuleHeader title="My Invoices" subtitle="View your monthly fee invoices and download challan PDFs" />
+   799→
+   800→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   801→        {cards.map((c, i) => (
+   802→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   803→            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+   804→              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+   805→              <div className="text-2xl font-extrabold tabular-nums">{c.value}</div>
+   806→              <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
+   807→            </Card>
+   808→          </motion.div>
+   809→        ))}
+   810→      </div>
+   811→
+   812→      <Card className="p-4">
+   813→        <div className="flex items-center justify-between mb-4">
+   814→          <div className="flex items-center gap-2">
+   815→            <FileText className="h-4 w-4 text-primary" />
+   816→            <h3 className="font-bold text-base">Invoice History</h3>
+   817→          </div>
+   818→          <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
+   819→            {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+   820→            Refresh
+   821→          </Button>
+   822→        </div>
+   823→
+   824→        {loading ? (
+   825→          <div className="text-center py-12 text-sm text-muted-foreground flex items-center justify-center gap-2">
+   826→            <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+   827→          </div>
+   828→        ) : invoices.length === 0 ? (
+   829→          <EmptyState icon={DollarSign} title="No invoices yet" desc="Your monthly fee invoices will appear here once your Branch Manager generates them." />
+   830→        ) : (
+   831→          <div className="max-h-[60vh] overflow-y-auto scroll-fancy -mx-4 px-4">
+   832→            <Table>
+   833→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40 sticky top-0">
+   834→                <TableHead>Month</TableHead>
+   835→                <TableHead className="hidden sm:table-cell">Year</TableHead>
+   836→                <TableHead className="hidden md:table-cell">Challan No.</TableHead>
+   837→                <TableHead className="text-right">Amount</TableHead>
+   838→                <TableHead>Status</TableHead>
+   839→                <TableHead className="text-right">Action</TableHead>
+   840→              </TableRow></TableHeader>
+   841→              <TableBody>
+   842→                {invoices.map(inv => {
+   843→                  const isPaid = String(inv.status).toLowerCase() === 'paid';
+   844→                  return (
+   845→                    <TableRow key={inv.id} className="hover:bg-muted/30">
+   846→                      <TableCell className="font-medium text-sm">{inv.month || '—'}</TableCell>
+   847→                      <TableCell className="hidden sm:table-cell text-sm">{inv.year || '—'}</TableCell>
+   848→                      <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">{inv.challanNo || inv.id?.slice(-8)}</TableCell>
+   849→                      <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
+   850→                      <TableCell>
+   851→                        <Badge variant="outline" className={isPaid ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+   852→                          {isPaid ? 'Paid' : 'Unpaid'}
+   853→                        </Badge>
+   854→                        {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
+   855→                      </TableCell>
+   856→                      <TableCell className="text-right">
+   857→                        <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-primary hover:bg-accent0/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
+   858→                          {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Download className="h-3 w-3 mr-1" /> Download Challan</>}
+   859→                        </Button>
+   860→                      </TableCell>
+   861→                    </TableRow>
+   862→                  );
+   863→                })}
+   864→              </TableBody>
+   865→            </Table>
+   866→          </div>
+   867→        )}
+   868→      </Card>
+   869→
+   870→      <Card className="p-4 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-accent dark:border-[oklch(0.2_0.04_260)]">
+   871→        <div className="flex items-start gap-3">
+   872→          <div className="h-9 w-9 rounded-lg bg-accent0/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-primary dark:text-[oklch(0.6_0.04_260)]" /></div>
+   873→          <div>
+   874→            <div className="font-bold text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">Download your challan PDF</div>
+   875→            <p className="text-xs text-primary dark:text-primary/70 mt-1 leading-relaxed">
+   876→              Click <b>Download Challan</b> on any invoice and a real PDF file is generated and saved directly to your
+   877→              downloads folder — no print dialog, no extra steps. The challan includes the institute name, fee details,
+   878→              status, and a <b>"Powered by ESM"</b> footer.
+   879→            </p>
+   880→          </div>
+   881→        </div>
+   882→      </Card>
+   883→    </div>
+   884→  );
+   885→}
+   886→
