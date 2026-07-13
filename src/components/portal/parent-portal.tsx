@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarCheck, GraduationCap, CreditCard, ClipboardList, CheckCircle2, XCircle, Clock, BookOpen, Award, Heart, MessageCircleWarning, Inbox } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const fmtMoney = (n: number) => '$' + n.toLocaleString('en-US');
+const fmtMoney = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
 
 export function ParentPortal({ activeModule, user }: { activeModule: string; user: any }) {
   const [ward, setWard] = useState<any>(null);
@@ -93,7 +93,7 @@ function ParentOverview({ user, ward, attendance, results, fees }: any) {
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
             </Card>
           </motion.div>

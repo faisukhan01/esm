@@ -659,7 +659,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -779,7 +779,7 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>

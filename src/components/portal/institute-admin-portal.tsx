@@ -20,7 +20,7 @@ import {
   Trash2, Megaphone, Send, Loader2, ChevronRight,
   ArrowLeft, BookOpen, GraduationCap, DollarSign,
   Wallet, TrendingUp, TrendingDown, Scale, FileText, AlertCircle,
-  Search, Crown, Calendar,
+  Search, Crown, Calendar, Download,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BranchManagerPortal } from './branch-manager-portal';
@@ -30,6 +30,25 @@ const formatPKR = (n: any) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
 const NAVY = '#1a365d';
 const ROSE = '#e11d48';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// CSV export helper — converts an array of rows to a CSV string and triggers a browser download
+function exportToCSV(filename: string, headers: string[], rows: (string | number)[][]) {
+  const escape = (v: any) => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast({ title: 'CSV exported', description: `${filename} downloaded successfully` });
+}
 
 // ============== Main portal ==============
 export function InstituteAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
@@ -424,7 +443,12 @@ function InstituteFeesView({ finance, loading }: any) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fees & Revenue" subtitle="Institute-wide fee records and revenue analytics" />
+      <PageHeader title="Fees & Revenue" subtitle="Institute-wide fee records and revenue analytics" action={
+        <Button size="sm" variant="outline" onClick={() => {
+          const rows = (finance?.studentFeeSummary || []).map((s: any) => [s.name, s.class, s.branch, s.invoices, s.paid, s.pending, s.total, s.status]);
+          exportToCSV(`fees-revenue-${new Date().toISOString().slice(0, 10)}`, ['Student', 'Class', 'Branch', 'Invoices', 'Paid (PKR)', 'Pending (PKR)', 'Total (PKR)', 'Status'], rows);
+        }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
+      } />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -551,7 +575,12 @@ function InstituteTeachersView({ finance, loading, onRefresh }: any) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Teachers & Salaries" subtitle="Manage teacher monthly salaries and record payouts" />
+      <PageHeader title="Teachers & Salaries" subtitle="Manage teacher monthly salaries and record payouts" action={
+        <Button size="sm" variant="outline" onClick={() => {
+          const rows = (finance?.teacherSalarySummary || []).map((t: any) => [t.name, t.email, t.branch, t.monthlySalary, t.totalPaid, t.lastPaidDate || 'Never', t.paymentsCount, t.status]);
+          exportToCSV(`teachers-salaries-${new Date().toISOString().slice(0, 10)}`, ['Teacher', 'Email', 'Branch', 'Monthly Salary (PKR)', 'Total Paid (PKR)', 'Last Paid Date', 'Payments Count', 'Status'], rows);
+        }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
+      } />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -859,7 +888,12 @@ function InstituteStudentsView({ finance, loading }: any) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Students" subtitle="Institute-wide student records and fee analytics" />
+      <PageHeader title="Students" subtitle="Institute-wide student records and fee analytics" action={
+        <Button size="sm" variant="outline" onClick={() => {
+          const rows = (finance?.studentFeeSummary || []).map((s: any) => [s.name, s.class, s.section, s.branch, s.invoices, s.paid, s.pending, s.total, s.status]);
+          exportToCSV(`students-${new Date().toISOString().slice(0, 10)}`, ['Student', 'Class', 'Section', 'Branch', 'Invoices', 'Paid (PKR)', 'Pending (PKR)', 'Total (PKR)', 'Status'], rows);
+        }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
+      } />
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -991,7 +1025,12 @@ function InstituteReportsView({ finance, branches, loading }: any) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports & Analytics" subtitle="Yearly trends, branch comparison and key insights" />
+      <PageHeader title="Reports & Analytics" subtitle="Yearly trends, branch comparison and key insights" action={
+        <Button size="sm" variant="outline" onClick={() => {
+          const rows = (finance?.branchPerformance || []).map((b: any) => [b.name, b.city, b.manager, b.students, b.teachers, b.revenue, b.pendingFees, b.salaryPaid, b.net, b.status]);
+          exportToCSV(`branch-comparison-${new Date().toISOString().slice(0, 10)}`, ['Branch', 'City', 'Manager', 'Students', 'Teachers', 'Revenue (PKR)', 'Pending Fees (PKR)', 'Salary Paid (PKR)', 'Net Balance (PKR)', 'Status'], rows);
+        }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
+      } />
 
       {/* Yearly revenue vs salary */}
       <Card className="p-5 border border-border rounded-lg shadow-sm">

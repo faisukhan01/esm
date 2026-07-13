@@ -15,16 +15,30 @@ import {
   Server, Building, Lock, Unlock, Edit, Megaphone, Send,
   ChevronDown, ChevronRight, UserCog, Mail, Settings, ShieldCheck, Palette, Loader2,
   Trash2, X,
+  DollarSign, AlertCircle, Wallet, Scale, FileText, TrendingUp,
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
+
+// ---- Format helpers ----
+const formatPKR = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
+const formatCompact = (n: number) => {
+  const v = Number(n || 0);
+  if (Math.abs(v) >= 1_000_000) return 'PKR ' + (v / 1_000_000).toFixed(1) + 'M';
+  if (Math.abs(v) >= 1_000) return 'PKR ' + (v / 1_000).toFixed(0) + 'k';
+  return 'PKR ' + v;
+};
 
 // ---------- Main router ----------
 export function SuperAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
   // Top-level data shared across the dashboard and institutes pages
   const [overview, setOverview] = useState<any>(null);
   const [institutes, setInstitutes] = useState<any[]>([]);
+  const [finance, setFinance] = useState<any>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [institutesLoading, setInstitutesLoading] = useState(true);
+  const [financeLoading, setFinanceLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
   // Loading state defaults to `true` (initial load). On later refreshes we keep the
@@ -42,13 +56,20 @@ export function SuperAdminPortal({ activeModule, user }: { activeModule: string;
       .catch(() => {})
       .finally(() => setInstitutesLoading(false));
   };
+  const refreshFinance = () => {
+    api.getPlatformFinance()
+      .then(setFinance)
+      .catch(() => {})
+      .finally(() => setFinanceLoading(false));
+  };
 
   useEffect(() => {
     refreshOverview();
     refreshInstitutes();
+    refreshFinance();
   }, []);
 
-  const refreshAll = () => { refreshOverview(); refreshInstitutes(); };
+  const refreshAll = () => { refreshOverview(); refreshInstitutes(); refreshFinance(); };
 
   if (activeModule === 'institutes') {
     return (
@@ -77,6 +98,8 @@ export function SuperAdminPortal({ activeModule, user }: { activeModule: string;
       overviewLoading={overviewLoading}
       institutes={institutes}
       institutesLoading={institutesLoading}
+      finance={finance}
+      financeLoading={financeLoading}
       onAddInstitute={() => setShowAdd(true)}
       onRefreshAll={refreshAll}
       user={user}
@@ -132,8 +155,10 @@ function StatPill({ label, value, color = 'text-foreground' }: { label: string; 
 
 // ---------- Dashboard overview (default landing for super admin) ----------
 function PlatformOverview({
-  overview, overviewLoading, institutes, institutesLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
+  overview, overviewLoading, institutes, institutesLoading, finance, financeLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
 }: any) {
+  const finKpis = finance?.kpi;
+  const finLoading = financeLoading || !finance;
   const cards = [
     { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-primary to-primary/80', sub: `${overview?.activeInstitutes ?? 0} active` },
     { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-primary to-primary/80', sub: 'across all institutions' },
@@ -184,7 +209,7 @@ function PlatformOverview({
                   <c.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="mt-4">
-                  <div className="text-2xl sm:text-3xl font-extrabold font-display">
+                  <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">
                     {typeof c.value === 'number' ? c.value.toLocaleString() : c.value}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
@@ -195,6 +220,256 @@ function PlatformOverview({
           ))
         )}
       </div>
+
+      {/* Financial KPI cards (second row — platform-wide finance) */}
+      {finLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="p-5 border border-border rounded-lg shadow-sm">
+              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
+              <div className="mt-4 h-6 w-20 rounded bg-muted/60 animate-pulse" />
+              <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Total Revenue */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-4">
+              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate">{formatPKR(finKpis.totalRevenue)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Total Revenue</div>
+            </div>
+          </Card>
+          {/* Pending Fees */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-rose-500/10 grid place-items-center">
+              <AlertCircle className="h-5 w-5 text-rose-600" />
+            </div>
+            <div className="mt-4">
+              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate text-rose-600">{formatPKR(finKpis.pendingFees)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Pending Fees</div>
+            </div>
+          </Card>
+          {/* Salary Paid */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+              <Wallet className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-4">
+              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate">{formatPKR(finKpis.totalSalaryPaid)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Salary Paid</div>
+            </div>
+          </Card>
+          {/* Net Balance */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className={`h-11 w-11 rounded-xl grid place-items-center ${finKpis.netBalance >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+              <Scale className={`h-5 w-5 ${finKpis.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
+            </div>
+            <div className="mt-4">
+              <div className={`text-base sm:text-lg font-extrabold tabular-nums truncate ${finKpis.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatPKR(finKpis.netBalance)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Net Balance</div>
+            </div>
+          </Card>
+          {/* Total Invoices */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-4">
+              <div className="text-base sm:text-lg font-extrabold tabular-nums">{Number(finKpis.totalInvoices || 0).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Total Invoices</div>
+              <div className="text-[11px] text-muted-foreground mt-1">{finKpis.paidInvoices} paid · {finKpis.unpaidInvoices} unpaid</div>
+            </div>
+          </Card>
+          {/* Active Institutes */}
+          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-4">
+              <div className="text-base sm:text-lg font-extrabold tabular-nums">{Number(finKpis.activeInstitutes || 0).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Active Institutes</div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Charts row — monthly revenue vs salary + yearly trend */}
+      {finLoading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i} className="p-5 border border-border rounded-lg shadow-sm">
+              <div className="h-5 w-56 rounded bg-muted/60 animate-pulse" />
+              <div className="h-3 w-72 mt-1.5 rounded bg-muted/40 animate-pulse" />
+              <div className="mt-6 h-64 rounded bg-muted/40 animate-pulse" />
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="p-5 border border-border rounded-lg shadow-sm">
+            <div>
+              <h3 className="font-bold text-base">Platform Revenue vs Salary (Last 12 Months)</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Monthly fee collection vs salary payouts across all institutes</p>
+            </div>
+            <div className="h-72 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={finance.monthlyRevenue} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={formatCompact} width={72} />
+                  <Tooltip formatter={(v: any) => formatPKR(Number(v))} contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="revenue" name="Revenue" fill="#1a365d" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="salary" name="Salary" fill="#e11d48" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <Card className="p-5 border border-border rounded-lg shadow-sm">
+            <div>
+              <h3 className="font-bold text-base">Yearly Revenue Trend</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">5-year comparison</p>
+            </div>
+            <div className="h-72 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={finance.yearlyRevenue} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1a365d" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#1a365d" stopOpacity={0.05} />
+                    </linearGradient>
+                    <linearGradient id="gradSal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={formatCompact} width={72} />
+                  <Tooltip formatter={(v: any) => formatPKR(Number(v))} contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#1a365d" strokeWidth={2} fill="url(#gradRev)" />
+                  <Area type="monotone" dataKey="salary" name="Salary" stroke="#e11d48" strokeWidth={2} fill="url(#gradSal)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Institute Performance table */}
+      {finLoading ? (
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="h-5 w-44 rounded bg-muted/60 animate-pulse" />
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-9 rounded bg-muted/40 animate-pulse" />
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="mb-4">
+            <h3 className="font-bold text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" /> Institute Performance
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Revenue comparison across all institutes (sorted by revenue, desc)</p>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead>Institute</TableHead>
+                  <TableHead>City</TableHead>
+                  <TableHead>Admin</TableHead>
+                  <TableHead className="text-right">Branches</TableHead>
+                  <TableHead className="text-right">Students</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-right">Pending Fees</TableHead>
+                  <TableHead className="text-right">Salary Paid</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {finance.institutePerformance.map((inst: any) => (
+                  <TableRow key={inst.id}>
+                    <TableCell className="font-medium">{inst.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{inst.city || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{inst.admin}</TableCell>
+                    <TableCell className="text-right tabular-nums">{inst.branches}</TableCell>
+                    <TableCell className="text-right tabular-nums">{Number(inst.students || 0).toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">{formatPKR(inst.revenue)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-rose-600">{formatPKR(inst.pendingFees)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatPKR(inst.salaryPaid)}</TableCell>
+                    <TableCell className={`text-right tabular-nums font-medium ${inst.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatPKR(inst.net)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`text-[10px] font-medium ${
+                        inst.status === 'Blocked' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' :
+                        inst.status === 'Trial' ? 'text-amber-700 bg-amber-500/10 border-amber-500/20' :
+                        'text-primary bg-primary/10 border-primary/20'
+                      }`}>{inst.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {/* Recent Platform Transactions table */}
+      {finLoading ? (
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="h-5 w-48 rounded bg-muted/60 animate-pulse" />
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-9 rounded bg-muted/40 animate-pulse" />
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <Card className="p-5 border border-border rounded-lg shadow-sm">
+          <div className="mb-4">
+            <h3 className="font-bold text-base">Recent Platform Transactions</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Latest fee payments and salary payouts across the platform</p>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Party</TableHead>
+                <TableHead>Method</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {finance.recentTransactions.slice(0, 10).map((tx: any) => (
+                <TableRow key={tx.id}>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">{tx.date ? new Date(tx.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`text-[10px] font-medium ${
+                      tx.type === 'Fee Payment' ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' :
+                      'text-rose-600 bg-rose-500/10 border-rose-500/20'
+                    }`}>{tx.type}</Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{tx.party}</TableCell>
+                  <TableCell className="text-muted-foreground">{tx.method || '—'}</TableCell>
+                  <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap ${
+                    tx.type === 'Fee Payment' ? 'text-emerald-700' : 'text-rose-600'
+                  }`}>{formatPKR(tx.amount)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
 
       {/* Institutes section */}
       {institutesLoading ? (

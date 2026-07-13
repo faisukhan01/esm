@@ -170,7 +170,7 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
             </Card>
           </motion.div>
@@ -641,7 +641,7 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
     </div>
     <div class="amount-row">
       <span class="amount-label">Amount Payable</span>
-      <span class="amount-value">Rs. ${amount.toLocaleString('en-PK')}</span>
+      <span class="amount-value">PKR {amount.toLocaleString('en-PK')}</span>
     </div>
     <div class="status-row">
       <span class="label" style="margin:0">Status</span>
@@ -802,7 +802,7 @@ function MyInvoices({ user }: { user: any }) {
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl font-extrabold font-display">{c.value}</div>
+              <div className="text-2xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
             </Card>
           </motion.div>

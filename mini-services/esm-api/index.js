@@ -961,6 +961,289 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
   }
 });
 
+// ===================== BRANCH FINANCE & ANALYTICS =====================
+// Branch-level finance for the Branch Manager dashboard.
+// Returns: KPIs, monthly revenue, fee status breakdown, recent transactions, salary totals, class performance.
+app.get('/api/branch/finance', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const branchId = req.query.branchId || req.user.branchId;
+  if (!branchId) return res.json({ kpi: {}, monthlyRevenue: [], recentTransactions: [], classPerformance: [] });
+
+  try {
+    // 1. All fee invoices for this branch
+    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, month, year, amount, status, paidDate, paidAmount, paymentMethod, challanNo, createdAt FROM fee_invoices WHERE branchId = ? ORDER BY createdAt DESC', args: [branchId] });
+    const invoices = invR.rows;
+
+    // 2. All salary payments for this branch
+    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments WHERE branchId = ? ORDER BY createdAt DESC', args: [branchId] });
+    const salaries = salR.rows;
+
+    // 3. Teachers + students
+    const tchR = await db.execute({ sql: 'SELECT id, name, email, status, blocked FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'teacher'] });
+    const teachers = tchR.rows;
+    const stuR = await db.execute({ sql: 'SELECT id, name, class, section, rollNo, status, blocked FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'student'] });
+    const students = stuR.rows;
+
+    // 4. Salary structures
+    const salStructR = await db.execute({ sql: 'SELECT teacherId, monthlySalary FROM teacher_salaries WHERE branchId = ?', args: [branchId] });
+    const salaryStruct = salStructR.rows;
+
+    // 5. Attendance records (for attendance rate)
+    const attR = await db.execute({ sql: 'SELECT records FROM attendance WHERE branchId = ? ORDER BY date DESC LIMIT 30', args: [branchId] });
+    let totalAtt = 0, presentAtt = 0;
+    for (const a of attR.rows) {
+      try {
+        const recs = JSON.parse(a.records);
+        for (const r of recs) {
+          totalAtt++;
+          if (r.status === 'Present') presentAtt++;
+        }
+      } catch {}
+    }
+    const attendanceRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : 0;
+
+    // ===== KPIs =====
+    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const monthlySalaryExpense = teachers.reduce((sum, t) => {
+      const ss = salaryStruct.find(s => s.teacherId === t.id);
+      return sum + (ss ? Number(ss.monthlySalary) || 0 : 0);
+    }, 0);
+    const netBalance = totalRevenue - totalSalaryPaid;
+
+    // ===== Monthly revenue (last 12 months) =====
+    const now = new Date();
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
+      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+      months.push({ month: monthName, year, revenue, salary, net: revenue - salary, paid: monthInv.length, unpaid: invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status !== 'Paid').length });
+    }
+
+    // ===== Fee status breakdown =====
+    const feeStatus = {
+      paid: invoices.filter(i => i.status === 'Paid').length,
+      unpaid: invoices.filter(i => i.status !== 'Paid').length,
+      paidAmount: totalRevenue,
+      unpaidAmount: pendingFees,
+    };
+
+    // ===== Class performance =====
+    const classMap = {};
+    for (const s of students) {
+      const c = s.class || 'Unassigned';
+      if (!classMap[c]) classMap[c] = { class: c, students: 0, paid: 0, pending: 0 };
+      classMap[c].students++;
+      const sInv = invoices.filter(i => i.studentId === s.id);
+      classMap[c].paid += sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+      classMap[c].pending += sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    }
+    const classPerformance = Object.values(classMap).sort((a, b) => b.students - a.students);
+
+    // ===== Recent transactions =====
+    const recentPaidInvoices = invoices
+      .filter(i => i.status === 'Paid')
+      .slice(0, 8)
+      .map(i => ({
+        id: i.id, type: 'Fee Payment', date: i.paidDate || i.createdAt,
+        party: i.studentName || 'Student', amount: Number(i.paidAmount) || 0,
+        method: i.paymentMethod || 'Cash', status: 'Paid',
+      }));
+    const recentSalaries = salaries
+      .slice(0, 8)
+      .map(s => ({
+        id: s.id, type: 'Salary Payout', date: s.paidDate || s.createdAt,
+        party: s.teacherName || 'Teacher', amount: Number(s.amount) || 0,
+        method: s.paymentMethod || 'Bank Transfer', status: s.status || 'Paid',
+      }));
+    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
+
+    // ===== Per-student fee summary =====
+    const studentFeeSummary = students.map(s => {
+      const sInv = invoices.filter(i => i.studentId === s.id);
+      const paid = sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+      const pending = sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+      return {
+        id: s.id, name: s.name, class: s.class || '—', section: s.section || 'A', rollNo: s.rollNo || '—',
+        status: s.blocked === 1 ? 'Blocked' : (s.status || 'Active'),
+        invoices: sInv.length, paid, pending, total: paid + pending,
+      };
+    }).sort((a, b) => b.pending - a.pending);
+
+    // ===== Per-teacher salary summary =====
+    const teacherSalarySummary = teachers.map(t => {
+      const ss = salaryStruct.find(s => s.teacherId === t.id);
+      const monthlySalary = ss ? Number(ss.monthlySalary) || 0 : 0;
+      const tPayments = salaries.filter(p => p.teacherId === t.id);
+      const totalPaid = tPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const lastPayment = tPayments[0];
+      return {
+        id: t.id, name: t.name, email: t.email || '—',
+        status: t.blocked === 1 ? 'Blocked' : (t.status || 'Active'),
+        monthlySalary, totalPaid, lastPaidDate: lastPayment?.paidDate || null, paymentsCount: tPayments.length,
+      };
+    }).sort((a, b) => b.monthlySalary - a.monthlySalary);
+
+    res.json({
+      kpi: {
+        students: students.length,
+        teachers: teachers.length,
+        totalRevenue,
+        pendingFees,
+        totalSalaryPaid,
+        monthlySalaryExpense,
+        netBalance,
+        attendanceRate,
+        totalInvoices: invoices.length,
+        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+      },
+      monthlyRevenue: months,
+      feeStatus,
+      classPerformance,
+      recentTransactions,
+      studentFeeSummary,
+      teacherSalarySummary,
+    });
+  } catch (e) {
+    console.error('Branch finance error:', e);
+    res.status(500).json({ error: 'Failed to load branch finance: ' + e.message });
+  }
+});
+
+// ===================== PLATFORM FINANCE (Super Admin) =====================
+// Platform-wide finance across all institutes for the Super Admin dashboard.
+app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async (req, res) => {
+  try {
+    // 1. All fee invoices across all institutes
+    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, branchId, instituteId, month, year, amount, status, paidDate, paidAmount, paymentMethod, createdAt FROM fee_invoices ORDER BY createdAt DESC LIMIT 500' });
+    const invoices = invR.rows;
+
+    // 2. All salary payments
+    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, instituteId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments ORDER BY createdAt DESC LIMIT 500' });
+    const salaries = salR.rows;
+
+    // 3. All institutes
+    const instR = await db.execute({ sql: 'SELECT id, name, city, adminName, adminEmail, branches, students, staff, revenue, status, blocked FROM institutes ORDER BY createdAt DESC' });
+    const institutes = instR.rows;
+
+    // 4. All branches
+    const brR = await db.execute({ sql: 'SELECT id, instituteId, name, city, manager, students, teachers, status, blocked FROM branches' });
+    const branches = brR.rows;
+
+    // 5. Count all users by role
+    const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role = ?', args: ['student'] });
+    const tchR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role = ?', args: ['teacher'] });
+    const totalStudents = stuR.rows[0].count;
+    const totalTeachers = tchR.rows[0].count;
+
+    // ===== KPIs =====
+    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const netBalance = totalRevenue - totalSalaryPaid;
+
+    // ===== Monthly revenue (last 12 months) =====
+    const now = new Date();
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
+      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+      months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
+    }
+
+    // ===== Yearly revenue (last 5 years) =====
+    const currentYear = now.getFullYear();
+    const years = [];
+    for (let y = currentYear - 4; y <= currentYear; y++) {
+      const yearInv = invoices.filter(inv => inv.year === y && inv.status === 'Paid');
+      const revenue = yearInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const yearSal = salaries.filter(sal => sal.year === y);
+      const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+      years.push({ year: y, revenue, salary, net: revenue - salary });
+    }
+
+    // ===== Institute performance =====
+    const institutePerformance = institutes.map(inst => {
+      const instInv = invoices.filter(i => i.instituteId === inst.id);
+      const instSal = salaries.filter(s => s.instituteId === inst.id);
+      const instBranches = branches.filter(b => b.instituteId === inst.id);
+      return {
+        id: inst.id,
+        name: inst.name,
+        city: inst.city || '',
+        admin: inst.adminName || inst.adminEmail || '—',
+        branches: instBranches.length,
+        students: inst.students || 0,
+        staff: inst.staff || 0,
+        revenue: instInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0),
+        pendingFees: instInv.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0),
+        salaryPaid: instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+        net: instInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0) - instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+        status: inst.blocked === 1 ? 'Blocked' : (inst.status || 'Active'),
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+
+    // ===== Recent transactions =====
+    const recentPaidInvoices = invoices
+      .filter(i => i.status === 'Paid')
+      .slice(0, 8)
+      .map(i => ({
+        id: i.id, type: 'Fee Payment', date: i.paidDate || i.createdAt,
+        party: i.studentName || 'Student', instituteId: i.instituteId, branchId: i.branchId,
+        amount: Number(i.paidAmount) || 0, method: i.paymentMethod || 'Cash', status: 'Paid',
+      }));
+    const recentSalaries = salaries
+      .slice(0, 8)
+      .map(s => ({
+        id: s.id, type: 'Salary Payout', date: s.paidDate || s.createdAt,
+        party: s.teacherName || 'Teacher', instituteId: s.instituteId, branchId: s.branchId,
+        amount: Number(s.amount) || 0, method: s.paymentMethod || 'Bank Transfer', status: s.status || 'Paid',
+      }));
+    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 12);
+
+    res.json({
+      kpi: {
+        institutes: institutes.length,
+        activeInstitutes: institutes.filter(i => i.blocked !== 1).length,
+        branches: branches.length,
+        students: totalStudents,
+        teachers: totalTeachers,
+        totalRevenue,
+        pendingFees,
+        totalSalaryPaid,
+        netBalance,
+        totalInvoices: invoices.length,
+        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+      },
+      monthlyRevenue: months,
+      yearlyRevenue: years,
+      institutePerformance,
+      recentTransactions,
+    });
+  } catch (e) {
+    console.error('Platform finance error:', e);
+    res.status(500).json({ error: 'Failed to load platform finance: ' + e.message });
+  }
+});
+
 // ===================== TEACHER SALARIES =====================
 // Set / update a teacher's monthly salary
 app.post('/api/salaries', requireAuth, requireRole('institute-admin', 'branch-manager'), async (req, res) => {

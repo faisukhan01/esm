@@ -14,17 +14,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Users, GraduationCap, DollarSign, CalendarCheck, Plus, CheckCircle2, UserPlus, BookOpen,
   Network, Inbox, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
-  FileText, Wallet, Loader2, Banknote,
+  FileText, Wallet, Loader2, Banknote, AlertCircle, Scale,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
-const fmtMoney = (n: number) => '$' + n.toLocaleString('en-US');
+const fmtMoney = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
+const NAVY = '#1a365d';
+const ROSE = '#e11d48';
+const EMERALD = '#059669';
 
 export function BranchManagerPortal({ activeModule, user }: { activeModule: string; user: any }) {
   const [stats, setStats] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
+  const [finance, setFinance] = useState<any>(null);
+  const [financeLoading, setFinanceLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addRole, setAddRole] = useState<'teacher' | 'student'>('teacher');
 
@@ -33,6 +39,10 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
       api.scopedStats(user.instituteId, user.branchId).then(setStats).catch(() => {});
       api.platformUsers({ branchId: user.branchId, role: 'teacher' }).then(setTeachers).catch(() => {});
       api.platformUsers({ branchId: user.branchId, role: 'student' }).then(setStudents).catch(() => {});
+      api.getBranchFinance(user.branchId)
+        .then((d) => setFinance(d))
+        .catch(() => setFinance(null))
+        .finally(() => setFinanceLoading(false));
     }
   };
   useEffect(() => { refresh(); }, [user?.branchId]);
@@ -46,7 +56,7 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'class-courses') content = <ClassCoursesView user={user} />;
   else if (activeModule === 'fees') content = <FeeManagement user={user} />;
   else if (['attendance','results','timetable','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule activeModule={activeModule} user={user} stats={stats} />;
-  else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
+  else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
 
   return (
     <>
@@ -76,15 +86,37 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   );
 }
 
-function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddStudent }: any) {
-  const cards = [
-    { label: 'Students', value: stats?.students ?? 0, icon: GraduationCap, color: 'from-primary to-primary/80', action: onAddStudent, actionLabel: 'Add Student' },
-    { label: 'Teachers', value: stats?.teachers ?? 0, icon: Users, color: 'from-primary/80 to-primary', action: onAddTeacher, actionLabel: 'Add Teacher' },
-    { label: 'Fee Collected', value: fmtMoney(stats?.feeCollected || 0), icon: DollarSign, color: 'from-primary/80 to-primary' },
-    { label: 'Attendance Rate', value: (stats?.attendance || 0) + '%', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
+function BranchOverview({ user, stats, teachers, students, finance, financeLoading, onAddTeacher, onAddStudent }: any) {
+  const kpi = finance?.kpi || {};
+  const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
+  const recentTx = Array.isArray(finance?.recentTransactions) ? finance.recentTransactions : [];
+  const feeStatus = finance?.feeStatus || { paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0 };
+
+  const feePieData = [
+    { name: 'Paid', value: Number(feeStatus.paid || 0), amount: Number(feeStatus.paidAmount || 0), color: EMERALD },
+    { name: 'Unpaid', value: Number(feeStatus.unpaid || 0), amount: Number(feeStatus.unpaidAmount || 0), color: ROSE },
   ];
+
+  const netPositive = (kpi.netBalance || 0) >= 0;
+  const kpiCards = [
+    { label: 'Total Revenue', value: fmtMoney(kpi.totalRevenue), icon: DollarSign, tone: 'default' as const, iconTone: 'primary' as const },
+    { label: 'Pending Fees', value: fmtMoney(kpi.pendingFees), icon: AlertCircle, tone: 'default' as const, iconTone: 'rose' as const },
+    { label: 'Salary Paid', value: fmtMoney(kpi.totalSalaryPaid), icon: Wallet, tone: 'default' as const, iconTone: 'primary' as const },
+    { label: 'Net Balance', value: fmtMoney(kpi.netBalance), icon: Scale, tone: (netPositive ? 'positive' : 'negative') as const, iconTone: (netPositive ? 'emerald' : 'rose') as const },
+    { label: 'Attendance Rate', value: (kpi.attendanceRate || 0) + '%', icon: CalendarCheck, tone: 'default' as const, iconTone: 'primary' as const },
+    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, sub: `${kpi.paidInvoices || 0} paid · ${kpi.unpaidInvoices || 0} unpaid`, tone: 'default' as const, iconTone: 'primary' as const },
+  ];
+
+  const sCount = kpi.students ?? stats?.students ?? 0;
+  const tCount = kpi.teachers ?? stats?.teachers ?? 0;
+  const totalRev = Number(kpi.totalRevenue ?? 0);
+  const bannerSub = (sCount || tCount || totalRev)
+    ? `${sCount} students · ${tCount} teachers · PKR ${totalRev.toLocaleString('en-PK')} collected`
+    : 'Add your first teacher or student to get started.';
+
   return (
     <div className="space-y-6">
+      {/* Welcome banner */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
@@ -93,9 +125,7 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-primary/70" /> Branch Manager · {user?.branchName}</div>
             <h1 className="text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
-            <p className="text-white/80 text-sm mt-1.5 max-w-lg">
-              {stats?.students || stats?.teachers ? `You have ${stats.students} students and ${stats.teachers} teachers.` : 'Add your first teacher or student to get started.'}
-            </p>
+            <p className="text-white/80 text-sm mt-1.5 max-w-lg">{bannerSub}</p>
           </div>
           <div className="flex gap-2">
             <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
@@ -104,19 +134,130 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
         </div>
       </motion.div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((c, i) => (
-          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold font-display">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
-              {c.action && <Button size="sm" variant="ghost" className="mt-2 h-7 text-xs px-2 -mx-2" onClick={c.action}><Plus className="h-3 w-3 mr-1" /> {c.actionLabel}</Button>}
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* Financial KPI cards / charts / transactions (loading-aware) */}
+      {financeLoading ? (
+        <FinanceSkeleton />
+      ) : !finance ? (
+        <EmptyState icon={Wallet} title="No financial data yet" desc="Branch financial analytics will appear here once fee invoices and salary payouts are recorded." />
+      ) : (
+        <>
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {kpiCards.map((c, i) => (
+              <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+                  <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
+                    <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
+                  </div>
+                  <div className={`text-xl sm:text-2xl font-extrabold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
+                  {c.sub && <div className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</div>}
+                </Card>
+              </motion.div>
+            ))}
+          </div>
 
+          {/* Charts row */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card className="p-5 border border-border rounded-lg shadow-sm">
+              <div className="mb-4">
+                <h3 className="font-bold text-base">Revenue vs Salary (Last 12 Months)</h3>
+                <p className="text-xs text-muted-foreground">Monthly fee collection vs salary payout</p>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={monthly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => (v / 1000) + 'k'} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }}
+                    formatter={(v: any, name: any) => [fmtMoney(v), name === 'revenue' ? 'Revenue' : 'Salary']}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'revenue' ? 'Revenue' : 'Salary')} />
+                  <Bar dataKey="revenue" fill={NAVY} radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="salary" fill={ROSE} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            <Card className="p-5 border border-border rounded-lg shadow-sm">
+              <div className="mb-4">
+                <h3 className="font-bold text-base">Fee Status</h3>
+                <p className="text-xs text-muted-foreground">Paid vs unpaid invoices</p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={feePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
+                      {feePieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any, _n: any, p: any) => [`${v} invoices · ${fmtMoney(p?.payload?.amount)}`, p?.payload?.name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2 flex-1 w-full">
+                  {feePieData.map((d) => (
+                    <div key={d.name} className="rounded-lg border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                        <span className="text-sm font-semibold">{d.name}</span>
+                      </div>
+                      <div className="mt-1 text-lg font-extrabold tabular-nums">{d.value} invoices</div>
+                      <div className="text-xs text-muted-foreground">{fmtMoney(d.amount)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Recent Transactions */}
+          <Card className="p-5 border border-border rounded-lg shadow-sm">
+            <div className="mb-4">
+              <h3 className="font-bold text-base">Recent Transactions</h3>
+              <p className="text-xs text-muted-foreground">Latest fee payments and salary payouts</p>
+            </div>
+            {recentTx.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">No transactions yet.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Party</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentTx.slice(0, 8).map((t: any) => {
+                    const isSalary = t.type === 'Salary Payout';
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {t.date ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] ${isSalary ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'}`}>
+                            {t.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">{t.party}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{t.method}</TableCell>
+                        <TableCell className={`text-sm font-bold tabular-nums text-right ${isSalary ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {isSalary ? '-' : '+'}{fmtMoney(t.amount)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* Compact Teachers + Students lists */}
       <div className="grid lg:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
@@ -124,15 +265,18 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
             <Button size="sm" variant="outline" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add</Button>
           </div>
           {teachers.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">No teachers yet. Click "Add" to create one.</div>
+            <div className="text-center py-6 text-sm text-muted-foreground">No teachers yet. Click "Add" to create one.</div>
           ) : (
             <div className="space-y-2">
-              {teachers.map(t => (
+              {teachers.slice(0, 5).map((t: any) => (
                 <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-accent0/15 grid place-items-center"><Users className="h-4 w-4 text-primary" /></div>
+                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><Users className="h-4 w-4 text-primary" /></div>
                   <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{t.name}</div><div className="text-[11px] text-muted-foreground truncate">{t.subjects?.join(', ') || t.email}</div></div>
                 </div>
               ))}
+              {teachers.length > 5 && (
+                <Button size="sm" variant="ghost" className="w-full text-xs">View all {teachers.length} teachers</Button>
+              )}
             </div>
           )}
         </Card>
@@ -142,19 +286,56 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
             <Button size="sm" variant="outline" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Add</Button>
           </div>
           {students.length === 0 ? (
-            <div className="text-center py-8 text-sm text-muted-foreground">No students yet. Click "Add" to create one.</div>
+            <div className="text-center py-6 text-sm text-muted-foreground">No students yet. Click "Add" to create one.</div>
           ) : (
-            <div className="space-y-2 max-h-72 overflow-y-auto scroll-fancy">
-              {students.map(s => (
+            <div className="space-y-2">
+              {students.slice(0, 5).map((s: any) => (
                 <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-accent0/15 grid place-items-center"><GraduationCap className="h-4 w-4 text-primary" /></div>
+                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><GraduationCap className="h-4 w-4 text-primary" /></div>
                   <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-[11px] text-muted-foreground truncate">{s.class} {s.section} · {s.rollNo}</div></div>
                 </div>
               ))}
+              {students.length > 5 && (
+                <Button size="sm" variant="ghost" className="w-full text-xs">View all {students.length} students</Button>
+              )}
             </div>
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+function FinanceSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i} className="p-4 border border-border rounded-lg">
+            <div className="h-10 w-10 rounded-lg bg-muted animate-pulse mb-3" />
+            <div className="h-5 w-20 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-16 rounded bg-muted animate-pulse mt-2" />
+          </Card>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card className="p-5 border border-border rounded-lg">
+          <div className="h-4 w-48 bg-muted animate-pulse rounded mb-4" />
+          <div className="h-[280px] bg-muted/50 animate-pulse rounded" />
+        </Card>
+        <Card className="p-5 border border-border rounded-lg">
+          <div className="h-4 w-32 bg-muted animate-pulse rounded mb-4" />
+          <div className="h-[280px] bg-muted/50 animate-pulse rounded" />
+        </Card>
+      </div>
+      <Card className="p-5 border border-border rounded-lg">
+        <div className="h-4 w-40 bg-muted animate-pulse rounded mb-4" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-8 bg-muted/50 animate-pulse rounded" />
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

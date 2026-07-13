@@ -1940,3 +1940,155 @@ Unresolved issues or risks:
 - The `getInstituteFinance` endpoint loads ALL fee invoices + salary payments + teachers + students + salary structures in one request. For very large institutes (thousands of students), this could become slow. Future optimization: add server-side pagination and date-range filtering.
 - The Pay Salary modal pre-fills the amount with the teacher's monthly salary. This is intentional UX (admin can just confirm), but users should be aware they can edit the amount for partial payments.
 - Next priority: add CSV/Excel export for fee and salary reports, and consider adding fee invoice generation at the institute level (currently only Branch Managers can generate invoices).
+
+---
+Task ID: SA-DASHBOARD-ENHANCE
+Agent: full-stack-developer
+Task: Enhance the Super Admin dashboard (`PlatformOverview` component in `super-admin-portal.tsx`) by adding platform-wide financial analytics below the existing KPI cards: a second row of 6 financial KPI cards, a 2-column charts row (monthly BarChart + yearly AreaChart), an Institute Performance comparison table, and a Recent Platform Transactions table — all driven by the existing `api.getPlatformFinance()` endpoint.
+
+Work Log:
+- Read worklog.md + the current `super-admin-portal.tsx` (1074 lines) end-to-end to inventory structure. Identified: `SuperAdminPortal` parent fetches `api.platformOverview()` + `api.institutes()`; `PlatformOverview` receives `overview / institutes / loading` props and renders welcome banner → 4 KPI cards → institutes grid → `ProvisionInstituteModal`. Confirmed `api.getPlatformFinance()` already exists in `src/lib/api.ts` (line 238) and the backend handler at `mini-services/esm-api/index.js` (lines 1122–1245) returns the documented `{ kpi, monthlyRevenue, yearlyRevenue, institutePerformance, recentTransactions }` shape.
+- Verified `recharts ^2.15.4` + `lucide-react ^0.525.0` are installed, and that `src/components/ui/table.tsx` exports `Table, TableHeader, TableBody, TableRow, TableHead, TableCell` (used existing shadcn Table — no new component created).
+- **Imports**: appended `DollarSign, AlertCircle, Wallet, Scale, FileText, TrendingUp` to the existing lucide-react import; added a new line for recharts (`BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend`); added a new line for the shadcn Table components. (`Building2` was already imported — reused for the Active Institutes card.)
+- **Helpers**: added `formatPKR(n)` → `PKR 1,250,000` and `formatCompact(n)` → `PKR 1.2M / PKR 500k / PKR 999` (used for compact Y-axis tick labels) at the top of the file, just below the imports.
+- **SuperAdminPortal parent**: added `finance` state (any, default `null`) and `financeLoading` state (default `true`); added a `refreshFinance()` helper that calls `api.getPlatformFinance()` and stores the result; called `refreshFinance()` inside the existing `useEffect`; added it to `refreshAll()` so refreshes cover all three sources; passed `finance` + `financeLoading` as new props on the `<PlatformOverview />` JSX call.
+- **PlatformOverview**: extended the destructured props to include `finance, financeLoading`; computed `finKpis = finance?.kpi` and `finLoading = financeLoading || !finance` once at the top of the component so all four new sections share a single loading gate.
+- **Section 1 — Financial KPI cards (6 cards, second row)**: inserted below the existing 4-KPI grid. Uses `grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4`. Each card: `border border-border rounded-lg shadow-sm hover:shadow-md transition`, icon box `h-11 w-11 rounded-xl bg-primary/10 grid place-items-center` (rose variant `bg-rose-500/10 text-rose-600` for Pending Fees; emerald variant for positive Net Balance, rose for negative), big number `text-base sm:text-lg font-extrabold tabular-nums truncate`, label below. Cards: Total Revenue (DollarSign), Pending Fees (AlertCircle, rose), Salary Paid (Wallet), Net Balance (Scale, emerald/rose by sign + subtitle "{paid} paid · {unpaid} unpaid"), Total Invoices (FileText + subtitle), Active Institutes (Building2). Skeleton: 6 placeholder cards with `animate-pulse` while `finLoading`.
+- **Section 2 — Charts row (2 columns on lg, stacked on mobile)**: inserted below the financial KPIs. Uses `grid-cols-1 lg:grid-cols-2 gap-4`. Both cards are `border border-border rounded-lg shadow-sm` with title + subtitle header and a `h-72` chart container.
+  - Card A "Platform Revenue vs Salary (Last 12 Months)" — recharts `BarChart` driven by `finance.monthlyRevenue[]`. Two grouped bars: revenue navy `#1a365d` + salary rose `#e11d48`, both with `radius={[4,4,0,0]}`. `CartesianGrid` uses `hsl(var(--border))` dashed lines (horizontal only). XAxis shows month short-name, YAxis uses `formatCompact` for ticks. Tooltip formats values with `formatPKR`. `Legend` at bottom for the two series.
+  - Card B "Yearly Revenue Trend" — recharts `AreaChart` driven by `finance.yearlyRevenue[]`. Two areas (revenue navy + salary rose) with vertical gradient fills (`stopOpacity 0.4 → 0.05`), `strokeWidth={2}`. Same axis/tooltip/legend styling as Card A for visual consistency.
+  - Skeleton: 2 placeholder cards each with title-bar skeleton + 64px-tall block while `finLoading`.
+- **Section 3 — Institute Performance table**: inserted below the charts. Card with `TrendingUp`-accented title "Institute Performance" + subtitle "Revenue comparison across all institutes (sorted by revenue, desc)". Wrapped in `max-h-96 overflow-y-auto` container with sticky table header (`bg-background z-10`) so all institutes are browsable without overflowing the page. Columns: Institute, City, Admin, Branches (right), Students (right), Revenue (right, emerald), Pending Fees (right, rose), Salary Paid (right), Net (right, emerald/rose by sign), Status (badge). Status badge: Blocked=rose, Trial=amber, Active=primary tint. Skeleton: 5 placeholder rows while `finLoading`.
+- **Section 4 — Recent Platform Transactions table**: inserted below the Institute Performance card. Card title "Recent Platform Transactions" + subtitle. Columns: Date (locale-formatted `2-digit month year`), Type (badge: Fee Payment=emerald `text-emerald-700 bg-emerald-500/10 border-emerald-500/20`, Salary Payout=rose), Party, Method, Amount (right, emerald for Fee Payment / rose for Salary Payout). Caps at 10 rows via `finance.recentTransactions.slice(0, 10)`. Skeleton: 6 placeholder rows while `finLoading`.
+- **Layout preservation**: the existing welcome banner, the existing 4 KPI cards (Institutions / Branches / Total Students / Total Staff), and the existing institutes grid section with management actions all remain — the new financial sections were inserted BETWEEN the existing KPI cards and the institutes grid section. `ProvisionInstituteModal` still conditionally renders at the bottom of the component. The other components in the file (`InstitutesManager`, `InstituteCard`, `PlatformConfig`, `BrandingPage`, `AnnouncementsView`, `InstituteDetailsModal`, `EditInstituteModal`, `ProvisionInstituteModal`, `DeleteInstituteModal`) were untouched.
+
+Verification:
+- `bun run lint` from `/home/z/my-project` → 0 errors, 0 warnings (exit 0) ✅
+- Dev log shows `✓ Compiled in 2.2s` after the edits — Next.js picked up the changes with no compile errors ✅
+- Re-confirmed via grep that all 4 new sections are present: `finance.institutePerformance.map(...)` (line 400), `finance.recentTransactions.slice(0, 10).map(...)` (line 453), `BarChart data={finance.monthlyRevenue}` (line 321), `AreaChart data={finance.yearlyRevenue}` (line 340) ✅
+- Confirmed `SuperAdminPortal` passes `finance={finance}` + `financeLoading={financeLoading}` to `PlatformOverview` and that `refreshFinance()` is wired into both `useEffect` and `refreshAll()` ✅
+- Color discipline per spec: navy `bg-primary` / `bg-primary/10 text-primary` for revenue & primary accents, rose `#e11d48` / `bg-rose-500/10 text-rose-600` for pending fees / salary / negative net / salary payout rows, emerald `text-emerald-600/700` only for positive net balance + Fee Payment + "Paid/Settled" semantics — no indigo, no blue, no green used as accent colors ✅
+
+Stage Summary:
+- Super Admin dashboard now has 5 distinct vertical layers: welcome banner → 4 operational KPI cards → 6 financial KPI cards → 2 charts (monthly BarChart + yearly AreaChart) → Institute Performance comparison table → Recent Platform Transactions table → existing institutes management grid.
+- All four new sections share a single `finLoading` gate (driven by `finance === null || financeLoading`) and render matching `animate-pulse` skeleton placeholders so the layout never collapses while the finance endpoint responds.
+- All PKR amounts formatted consistently with the new `formatPKR` helper; chart Y-axes use the compact `formatCompact` variant so multi-million values stay readable.
+- Single new data fetch added to the `SuperAdminPortal` parent — `api.getPlatformFinance()` runs in parallel with the existing `platformOverview()` and `institutes()` calls on mount, and is re-run whenever `refreshAll()` fires (e.g. after provisioning a new institute).
+- No changes to other portals or to the backend — leverages the existing `/api/platform/finance` endpoint and its full response contract.
+
+---
+Task ID: BM-DASHBOARD-ENHANCE
+Agent: full-stack-developer
+Task: Enhance the Branch Manager dashboard (`BranchOverview` component in `src/components/portal/branch-manager-portal.tsx`) to be feature-rich and professional, matching the Institute Admin dashboard depth — wired to the new `GET /api/branch/finance?branchId=X` endpoint with 6 financial KPI cards, two charts (Revenue-vs-Salary bar + Fee-Status pie), a Recent Transactions table, skeleton loaders, and compact Teachers/Students lists.
+
+Work Log:
+- Read `/home/z/my-project/worklog.md` (history) and the existing `branch-manager-portal.tsx` (1168 lines) to understand current `BranchOverview` (4 broken KPI cards: Students, Teachers, "Fee Collected: $0", "Attendance Rate: 0%") and the `BranchManagerPortal` parent's data fetching.
+- Cross-referenced `src/lib/api.ts` to confirm `api.getBranchFinance(branchId)` is already exposed (returns `{ kpi, monthlyRevenue, feeStatus, classPerformance, recentTransactions, studentFeeSummary, teacherSalarySummary }`).
+- Cross-referenced `institute-admin-portal.tsx` `InstituteDashboard` to mirror styling patterns (navy `#1a365d`, rose `#e11d48`, emerald `#059669`, `KPICard` shape, `BarChart`/`PieChart` setup, Recent Transactions table with badges).
+- Confirmed the API contract by reading `mini-services/esm-api/index.js` lines 1040-1109 — `recentTransactions` items have `type: 'Fee Payment' | 'Salary Payout'`, plus `id, date, party, amount, method, status`; `kpi` exposes `students, teachers, totalRevenue, pendingFees, totalSalaryPaid, monthlySalaryExpense, netBalance, attendanceRate, totalInvoices, paidInvoices, unpaidInvoices`; `feeStatus` exposes `{ paid, unpaid, paidAmount, unpaidAmount }`; `monthlyRevenue[]` exposes `{ month, year, revenue, salary, net, paid, unpaid }`.
+- Added recharts import (`BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend`) and added `AlertCircle, Scale` to the existing lucide-react import block. Skipped `TrendingUp` to avoid an unused-import lint error (the task spec listed it but I had no slot for it).
+- Added three color constants after the existing `fmtMoney` helper: `NAVY = '#1a365d'`, `ROSE = '#e11d48'`, `EMERALD = '#059669'`.
+- Updated the `BranchManagerPortal` parent component: added `finance` (init `null`) and `financeLoading` (init `true`) state slots; extended the `refresh()` callback to also call `api.getBranchFinance(user.branchId).then(setFinance).catch(() => setFinance(null)).finally(() => setFinanceLoading(false))` alongside the existing `scopedStats` / `platformUsers` calls. Passed `finance={finance} financeLoading={financeLoading}` to `<BranchOverview>`.
+- Rewrote `BranchOverview` to consume the finance payload:
+  1. Kept the navy gradient welcome banner, but updated the subtitle to live data: `"{students} students · {teachers} teachers · PKR {totalRevenue} collected"` (falls back to `stats` if finance is still loading, or to a friendly prompt when no data exists). Kept the "Add Teacher" / "Student" buttons.
+  2. Replaced the 4 broken KPI cards with 6 financial KPI cards in a `grid-cols-2 md:grid-cols-3 lg:grid-cols-6` layout: Total Revenue (DollarSign, primary tint), Pending Fees (AlertCircle, rose tint), Salary Paid (Wallet, primary tint), Net Balance (Scale, emerald tint if ≥0 else rose tint), Attendance Rate (CalendarCheck, primary tint, `%`), Total Invoices (FileText, sub-line `"{paidInvoices} paid · {unpaidInvoices} unpaid"`). Each card is `border border-border rounded-lg shadow-sm hover:shadow-md transition` with a `tabular-nums font-extrabold` value.
+  3. Added a two-column charts row (stacked on mobile): `Revenue vs Salary (Last 12 Months)` `BarChart` from `monthlyRevenue[]` with navy `revenue` bars + rose `salary` bars (CartesianGrid, custom Tooltip formatting to `fmtMoney`, Legend mapping `revenue → "Revenue"`, `salary → "Salary"`); and a `Fee Status` donut `PieChart` from `feeStatus` (emerald paid slice + rose unpaid slice) with a custom side legend showing each segment's invoice count + PKR amount.
+  4. Added a `Recent Transactions` Card with a 5-column `Table` (Date, Type, Party, Method, Amount) rendering up to 8 rows from `recentTransactions[]`. `Type` is rendered as a `Badge` (emerald-tinted for "Fee Payment", rose-tinted for "Salary Payout"); `Amount` is colored emerald with `+` prefix for fee payments and rose with `-` prefix for salary payouts, all formatted with `fmtMoney()`. Empty state is a small inline message.
+  5. Kept the two-column Teachers (left) + Students (right) lists, but compacted them: now shows top 5 of each (was all) with a "View all {N} teachers/students" ghost-button when there are more than 5. Switched avatar backgrounds from the old `bg-accent0/15` to `bg-primary/10` for navy-theme consistency.
+- Added a new `FinanceSkeleton` helper that renders 6 KPI-card skeletons, 2 chart skeletons, and 6 transaction-row skeletons — all with `animate-pulse` — shown while `financeLoading === true`.
+- Added an `EmptyState` (`icon={Wallet} title="No financial data yet" desc="Branch financial analytics will appear here once fee invoices and salary payouts are recorded."`) shown if `finance === null` after loading finishes.
+- The welcome banner and the compact Teachers/Students lists render unconditionally (above and below the loading-aware finance section respectively), so the page never looks empty during the initial load.
+- Encountered one ESLint error on the first pass: `react-hooks/set-state-in-effect` fired because my `refresh()` was calling `setFinanceLoading(false)` synchronously in an `else` branch when `user?.branchId` was falsy. Fixed by removing the `else` branch entirely — when `user?.branchId` is absent, `financeLoading` simply stays `true` until a real branchId triggers the fetch. (The `BranchManagerPortal` is only mounted for branch-manager users who always have a `branchId`, so this is safe.)
+- Ran `bun run lint` from `/home/z/my-project` — passes with **0 errors, 0 warnings**.
+- Verified dev server log (`/home/z/my-project/dev.log`) — latest entries show clean compiles after the edit; the unrelated `GET /api/platform/finance 400` was a Super Admin route call with missing query params, not from my changes.
+
+Stage Summary:
+- `BranchOverview` upgraded from a 4-card basic dashboard (with broken `$0` / `0%` values) to a 6-card financial dashboard with two recharts visualizations, a recent-transactions table, skeleton loading, an empty-state, and compact teacher/student lists — matching the depth of the Institute Admin dashboard.
+- All values now come from the real `api.getBranchFinance(user.branchId)` endpoint via the `BranchManagerPortal` parent's `refresh()` callback (alongside the existing `scopedStats` / `platformUsers` calls).
+- Color palette respected: navy primary throughout, rose only for pending/negative/salary, emerald only for paid status + positive net balance. No indigo/blue/green accent colors used.
+- `bun run lint` passes cleanly. No other components in the file (TeachersView, StudentsView, ClassCoursesView, FeeManagement, AnnouncementsView, ScopedBranchModule, UserRowActions, EditUserModal, AddUserModal) were touched.
+
+---
+Task ID: QA-BUG-FIX + BM/SA-DASHBOARD + CSV-EXPORT
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: QA test all role portals, fix bugs ($ → PKR, font-display), add branch/platform finance endpoints, enhance Branch Manager + Super Admin dashboards with charts, add CSV export to Institute Admin reports.
+
+Work Log:
+- **QA testing via agent-browser** across all 5 roles (Super Admin, Institute Admin, Branch Manager, Teacher, Student):
+  - Found bug: `fmtMoney` in branch-manager-portal.tsx used `'$' + n.toLocaleString('en-US')` — showed "$0 Fee Collected" instead of PKR
+  - Found bug: `fmtMoney` in parent-portal.tsx used `'$'` — showed "$1,500" instead of PKR
+  - Found bug: student-portal.tsx line 644 had `"Rs. $"` — double currency symbol, wrong format
+  - Found bug: `font-display` class still present in 7 places across 5 portal files (was supposedly removed globally by a prior agent but missed these)
+  - Found gap: Branch Manager dashboard only had 4 basic KPI cards (Students, Teachers, "$0 Fee Collected", "0% Attendance Rate") — the $0 and 0% were because `scopedStats` endpoint doesn't return fee/attendance data for branches
+  - Found gap: Super Admin dashboard only had 4 KPI cards (Institutions, Branches, Students, Staff) + institutes list — no financial analytics, no revenue charts
+  - Found gap: No CSV export for any reports
+- **Bug fixes** (done by Main agent):
+  - Fixed `fmtMoney` in branch-manager-portal.tsx → `'PKR ' + Number(n||0).toLocaleString('en-PK')`
+  - Fixed `fmtMoney` in parent-portal.tsx → `'PKR ' + Number(n||0).toLocaleString('en-PK')`
+  - Fixed student-portal.tsx line 644 → `"PKR "` instead of `"Rs. $"`
+  - Removed `font-display` class from all 7 occurrences (branch-manager, super-admin, teacher x2, student x2, parent) → replaced with `tabular-nums` for proper number alignment
+- **Backend additions** (done by Main agent):
+  - Added `GET /api/branch/finance?branchId=X` endpoint — comprehensive branch analytics:
+    - kpi: students, teachers, totalRevenue, pendingFees, totalSalaryPaid, monthlySalaryExpense, netBalance, attendanceRate, totalInvoices, paidInvoices, unpaidInvoices
+    - monthlyRevenue: last 12 months with revenue, salary, net, paid count, unpaid count
+    - feeStatus: { paid, unpaid, paidAmount, unpaidAmount }
+    - classPerformance: per-class students, paid, pending
+    - recentTransactions: last 10 fee payments + salary payouts
+    - studentFeeSummary: per-student fee breakdown
+    - teacherSalarySummary: per-teacher monthly salary, total paid, last payment date
+    - Computes attendanceRate from actual attendance records (last 30 sessions)
+  - Added `GET /api/platform/finance` endpoint — platform-wide analytics for Super Admin:
+    - kpi: institutes, activeInstitutes, branches, students, teachers, totalRevenue, pendingFees, totalSalaryPaid, netBalance, totalInvoices, paidInvoices, unpaidInvoices
+    - monthlyRevenue: last 12 months
+    - yearlyRevenue: last 5 years
+    - institutePerformance: per-institute revenue, pending fees, salary paid, net, branches, students, staff, sorted by revenue desc
+    - recentTransactions: last 12 platform-wide transactions
+  - Added API client methods: `api.getBranchFinance(branchId)`, `api.getPlatformFinance()`
+- **Branch Manager dashboard enhancement** (done by subagent BM-DASHBOARD-ENHANCE):
+  - Added `finance` state to `BranchManagerPortal` parent, fetches `api.getBranchFinance(user.branchId)` alongside existing calls
+  - Rewrote `BranchOverview` component:
+    - Welcome banner subtitle now shows live data: "{students} students · {teachers} teachers · PKR {totalRevenue} collected"
+    - 6 financial KPI cards (Total Revenue, Pending Fees [rose], Salary Paid, Net Balance [emerald/rose], Attendance Rate, Total Invoices)
+    - Revenue vs Salary BarChart (12 months, navy + rose bars)
+    - Fee Status donut PieChart (paid emerald vs unpaid rose, with count + PKR legend)
+    - Recent Transactions table (Date, Type badge, Party, Method, Amount colored)
+    - Compact Teachers + Students lists (top 5 each with "View all" link)
+    - FinanceSkeleton loader with animate-pulse placeholders
+- **Super Admin dashboard enhancement** (done by subagent SA-DASHBOARD-ENHANCE):
+  - Added `finance` + `financeLoading` state to `SuperAdminPortal` parent, fetches `api.getPlatformFinance()`
+  - Added 4 new sections to `PlatformOverview` (below existing 4 KPI cards, above institutes list):
+    - 6 financial KPI cards (Total Revenue, Pending Fees [rose], Salary Paid, Net Balance [emerald/rose], Total Invoices, Active Institutes)
+    - Platform Revenue vs Salary BarChart (12 months) + Yearly Revenue Trend AreaChart (5 years)
+    - Institute Performance table (Institute, City, Admin, Branches, Students, Revenue, Pending, Salary, Net, Status) with max-h-96 scroll
+    - Recent Platform Transactions table (Date, Type badge, Party, Method, Amount)
+    - Skeleton loaders for all 4 sections during loading
+- **CSV export** (done by Main agent):
+  - Added `exportToCSV(filename, headers, rows)` helper to institute-admin-portal.tsx — creates a Blob with BOM, triggers browser download, shows success toast
+  - Added "Export CSV" button to 4 Institute Admin pages:
+    - Fees & Revenue → exports studentFeeSummary (Student, Class, Branch, Invoices, Paid, Pending, Total, Status)
+    - Teachers & Salaries → exports teacherSalarySummary (Teacher, Email, Branch, Monthly Salary, Total Paid, Last Paid Date, Payments Count, Status)
+    - Students → exports studentFeeSummary (Student, Class, Section, Branch, Invoices, Paid, Pending, Total, Status)
+    - Reports → exports branchPerformance (Branch, City, Manager, Students, Teachers, Revenue, Pending Fees, Salary Paid, Net, Status)
+  - Verified: downloaded `/home/z/Downloads/fees-revenue-2026-07-13.csv` with correct content including BOM for Excel compatibility
+- **Verification with agent-browser**:
+  - Super Admin login: ✅ shows 4 original KPIs + 6 new financial KPIs + Revenue vs Salary chart + Yearly Trend chart + Institute Performance table + Recent Transactions table + institutes list
+  - Branch Manager login: ✅ shows welcome banner with "PKR 5,000 collected" (was "$0") + 6 financial KPIs + Revenue vs Salary chart + Fee Status donut + Recent Transactions table + compact teacher/student lists
+  - Institute Admin → Fees & Revenue → Export CSV: ✅ downloaded CSV file with correct headers and data
+  - VLM rated Super Admin dashboard 8/10: "Visual cleanliness is strong, navy consistency excellent, information hierarchy clear"
+  - VLM rated Branch Manager dashboard 8/10: "Visual cleanliness strong, navy consistency good, financial KPIs and fee status donut feel professional"
+- **Lint**: 0 errors, 0 warnings ✅
+- **Dev log**: all API calls returning 200; `/api/branch/finance` and `/api/platform/finance` respond in ~900-950ms
+
+Stage Summary:
+- **3 bugs fixed**: $ → PKR currency formatting in branch-manager/parent/student portals; removed all font-display classes; fixed double-currency "Rs. $" in student challan
+- **2 new backend endpoints**: `GET /api/branch/finance` (branch analytics with attendance rate computation) + `GET /api/platform/finance` (platform-wide analytics with institute performance ranking)
+- **2 dashboards enhanced**: Branch Manager dashboard now has 6 financial KPIs + 2 charts + transactions table (was 4 basic KPIs); Super Admin dashboard now has 6 financial KPIs + 2 charts + institute performance table + transactions table (was 4 basic KPIs)
+- **CSV export added**: 4 export buttons in Institute Admin (Fees & Revenue, Teachers & Salaries, Students, Reports) — downloads properly formatted CSV with BOM for Excel
+- All 3 admin-level portals (Super Admin, Institute Admin, Branch Manager) now have consistent financial analytics depth: KPIs + revenue charts + transaction tables
+- Color discipline maintained: navy primary, rose for negative/pending/salary, emerald for positive/paid — no indigo/blue/green
+
+Unresolved issues or risks:
+- The `getInstituteFinance` and `getBranchFinance` endpoints load ALL fee invoices + salary payments in one request. For very large institutes (thousands of students), this could become slow. Future: add server-side pagination and date-range filtering.
+- The `getPlatformFinance` endpoint uses `LIMIT 500` on invoices/salaries to cap memory — if a platform exceeds 500 transactions, older ones won't be in the analytics. Future: add date-range filtering.
+- CSV export is client-side only — for very large datasets (10k+ rows), a server-side streaming export would be better.
+- Next priority: add a date-range filter to the finance dashboards (e.g., "Last 30 days", "This year", "All time"), and add a print/PDF export for the Reports page.

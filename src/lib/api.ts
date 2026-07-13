@@ -232,6 +232,10 @@ export const api = {
   getChallanData: (id: string) => request<any>(`fee-invoices/${id}/challan`),
   // Institute-level finance & analytics (Institute Admin)
   getInstituteFinance: (instituteId: string) => request<any>(`institute/finance?instituteId=${instituteId}`),
+  // Branch-level finance & analytics (Branch Manager)
+  getBranchFinance: (branchId: string) => request<any>(`branch/finance?branchId=${branchId}`),
+  // Platform-wide finance & analytics (Super Admin)
+  getPlatformFinance: () => request<any>('platform/finance'),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),
