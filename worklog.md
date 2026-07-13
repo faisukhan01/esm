@@ -2223,3 +2223,22 @@ Unresolved issues or risks:
 - The `/api/student/analytics` endpoint scans ALL attendance records (no studentId filter on the attendance table query) — this is O(n) over all attendance sessions. For large schools with thousands of sessions, this could be slow. Future: add a `studentId` index or denormalize student attendance into a separate table.
 - The teacher/student analytics don't have date-range filtering — they show all-time data. Future: add `?from=YYYY-MM-DD&to=YYYY-MM-DD` query params.
 - Next priority: add a date-range filter to the Institute Admin finance dashboard, add print/PDF export for reports, and consider adding a "notifications" dropdown in the top bar showing recent announcements.
+
+---
+Task ID: LOGIN-PASSWORD-RESET
+Agent: Main (Z.ai Code)
+Task: User reported cannot sign in — screenshot showed they were using the original seeded password "QaReLc_61y8" but the DB had "TestPass999" (changed by a previous dev session). Reset the Super Admin password back to the original seeded value.
+
+Work Log:
+- User shared screenshot showing: Super Admin tab selected, email "faisu577277@gmail.com", password "QaReLc_61y8", error "Invalid credentials. 8 attempts left before lockout."
+- VLM analysis confirmed the user was entering the original seeded password "QaReLc_61y8"
+- Checked DB: super admin password was "TestPass999" (changed during a previous development session via the change-password feature)
+- Reset: `UPDATE users SET password = 'QaReLc_61y8', mustChangePassword = 0 WHERE email = 'faisu577277@gmail.com' AND role = 'super-admin'`
+- Verified: `POST /api/auth/login` with email "faisu577277@gmail.com" + password "QaReLc_61y8" returns 200 with valid token
+- Browser-verified: logged in successfully as Super Admin, dashboard renders with "Faisal Khan" + Super Admin portal
+
+Stage Summary:
+- Super Admin password reset to the original seeded value "QaReLc_61y8" (the password the user knows)
+- `mustChangePassword` set to 0 so the user won't be forced to change it on login
+- Login confirmed working end-to-end via agent-browser
+- Root cause: a previous development session changed the super admin password to "TestPass999" during testing, but the user was never informed — they kept using the original password from the seed file
