@@ -30,7 +30,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(apiUrl(path), { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path), { ...options, headers });
+  } catch (networkErr: any) {
+    // Network error — API is down, gateway is down, or CORS issue
+    throw new Error('Cannot connect to server. Please check your connection and try again.');
+  }
   if (!res.ok) {
     const txt = await res.text().catch(() => res.statusText);
     // Parse error message

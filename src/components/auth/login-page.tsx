@@ -356,9 +356,11 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       setView('portal');
     } catch (err: any) {
       const msg = err.message || 'Sign in failed';
-      if (msg.includes('locked') || msg.includes('Too many') || msg.includes('429')) {
-        toast({ title: 'Account Locked', description: msg, variant: 'destructive' });
-      } else if (msg.includes('Invalid') || msg.includes('401')) {
+      if (msg.includes('Cannot connect') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        toast({ title: 'Connection Error', description: 'Cannot reach the server. Please wait a moment and try again.', variant: 'destructive' });
+      } else if (msg.includes('locked') || msg.includes('Too many') || msg.includes('429')) {
+        toast({ title: 'Account Temporarily Locked', description: msg, variant: 'destructive' });
+      } else if (msg.includes('Invalid') || msg.includes('401') || msg.includes('incorrect')) {
         toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
       } else if (msg.includes('blocked') || msg.includes('Blocked')) {
         toast({ title: 'Access Blocked', description: 'Your access has been blocked by your administration. Please contact your administrator.', variant: 'destructive' });

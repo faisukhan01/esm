@@ -20,8 +20,22 @@ const ROLE_LABELS = {
 // ===================== SECURITY =====================
 const SESSION_TTL = 8 * 60 * 60 * 1000;
 const loginAttempts = new Map();
-const MAX_LOGIN_ATTEMPTS = 8;
-const LOCKOUT_DURATION = 5 * 60 * 1000; // 5 min lockout (was 15)
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOCKOUT_DURATION = 2 * 60 * 1000; // 2 min lockout (was 5)
+
+// Auto-clear expired rate-limit locks every 30 seconds so users aren't stuck
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of loginAttempts.entries()) {
+    if (val.lockedUntil && now > val.lockedUntil) {
+      loginAttempts.delete(key);
+    }
+    // Also clear old attempt counts after 10 minutes of inactivity
+    if (!val.lockedUntil && val.count > 0 && now - (val.lastAttempt || 0) > 10 * 60 * 1000) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 30 * 1000);
 
 setInterval(async () => {
   try {
@@ -107,8 +121,9 @@ function nextId(prefix) {
 // ===================== AUTH =====================
 // Helper: register a failed attempt and return the proper error response
 function registerFailedAttempt(rateKey) {
-  const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
+  const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0, lastAttempt: 0 };
   current.count++;
+  current.lastAttempt = Date.now();
   // Lock the account when the threshold is reached
   if (current.count >= MAX_LOGIN_ATTEMPTS) {
     current.lockedUntil = Date.now() + LOCKOUT_DURATION;
