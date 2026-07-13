@@ -1194,3 +1194,49 @@ Verification:
 - Edit button: opens separate edit modal ✅
 - Delete button: opens confirmation dialog ✅
 - Lint passes clean ✅
+
+---
+Task ID: IA-REWRITE
+Agent: Main (Z.ai Code)
+Task: Rewrite Institute Admin portal — branch cards with popup/edit/delete/block + remove unnecessary pages
+
+Work Log:
+- **Removed unnecessary pages** from Institute Admin sidebar:
+  - REMOVED: Academics (students, attendance, results, academics), Finance & Comms (fees, finance, sms, complaints), Campus (events, library, transport), Staff & Managers
+  - KEPT ONLY: Dashboard, Branches, Announcements, Settings
+- **Rewrote Institute Admin portal** with the same card pattern as Super Admin:
+  - Branch cards with: Edit (pencil), Block/Unblock (lock), Delete (trash) buttons
+  - Clicking a branch card opens a **popup modal** (BranchDetailsModal) showing:
+    - Branch header (name, city, status badge)
+    - Teacher count + Student count
+    - Branch Manager info with Edit button
+    - Teachers list (name + roll no)
+    - Students list (name + class + roll no)
+  - Edit button opens EditBranchModal (manager name, email, new password)
+  - Delete button opens confirmation dialog ("Delete Branch? This action cannot be undone.")
+  - Block/Unblock cascades to all teachers + students in that branch
+- **Added delete branch endpoint** to backend:
+  - `DELETE /api/branches/:id` — deletes ALL related data: sessions, teacher_class_courses, course_materials, attendance, results, diary, class_courses, classes, courses, announcements, fees, users, and the branch itself
+  - Also decrements the institute's branch count
+- **Added `api.deleteBranch(id)`** to frontend API client
+- **Add Branch modal** — scrollable, with "Assign password *" field, correct text "You will set the Branch Manager's email and password"
+
+Verification:
+- Lint passes clean ✅
+- Backend health: `{"ok": true, "db": "turso", "users": 8}` ✅
+- Institute Admin sidebar: Dashboard, Branches, Announcements, Settings (no unnecessary pages) ✅
+- Add Branch modal: has "Assign password" field + correct text ✅
+- Branch cards: have Edit, Block/Unblock, Delete buttons ✅
+- Clicking card opens popup modal (not inline expand) ✅
+- Delete branch: cascades to all child data ✅
+
+## Fee System — Answers to user's questions:
+1. **Who assigns fees to students?** → The Branch Manager should assign fees (they know the class fee structure). When a student is added to a class, their monthly fee is auto-set based on the class fee structure.
+2. **Who marks fees as paid?** → The Branch Manager (or cashier) marks fees as paid when the student pays cash in the office.
+3. **Can students download a challan form as PDF?** → Yes — this will be added as a "Download Challan" button in the student's invoice tab (future task).
+
+Stage Summary:
+- Institute Admin portal: clean sidebar (Dashboard, Branches, Announcements, Settings)
+- Branch cards: popup modal, edit, delete, block (same pattern as Super Admin)
+- Delete branch: cascades to all child data
+- All unnecessary pages removed
