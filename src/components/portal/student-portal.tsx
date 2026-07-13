@@ -11,6 +11,7 @@ import {
   CalendarCheck, GraduationCap, Calendar, ClipboardList,
   CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
   ArrowLeft, FileText, Link2, Download, Loader2, Megaphone,
+  Wallet, DollarSign, Printer,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -89,6 +90,7 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-timetable') return <MyTimetable />;
   if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
   if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
+  if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
   return (
     <StudentOverview
       user={user}
@@ -580,5 +582,231 @@ function AnnouncementCard({ a }: { a: Announcement }) {
       <p className="text-sm text-muted-foreground">{a.message}</p>
       <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
     </Card>
+  );
+}
+
+// ============== My Invoices (with PDF challan) ==============
+const fmtPKR = (n: number) => 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK');
+
+function downloadChallanPDF(challan: any) {
+  const w = window.open('', '_blank', 'width=820,height=920');
+  if (!w) {
+    toast({ title: 'Popup blocked', description: 'Please allow popups to download the challan PDF.', variant: 'destructive' });
+    return;
+  }
+  const amount = Number(challan.amount || 0);
+  const status = String(challan.status || 'unpaid').toLowerCase();
+  const isPaid = status === 'paid';
+  const today = new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+  const escape = (v: any) => String(v ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Fee Challan ${escape(challan.challanNo || '')}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #f8fafc; color: #1f2937; }
+  .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #0f766e; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+  .header { text-align: center; border-bottom: 2px dashed #99f6e4; padding-bottom: 18px; margin-bottom: 22px; }
+  .brand { font-size: 11px; letter-spacing: 3px; color: #0f766e; font-weight: 700; }
+  .title { font-size: 26px; font-weight: 800; margin-top: 4px; color: #134e4a; letter-spacing: 0.5px; }
+  .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 8px 0 18px; }
+  .field { display: flex; flex-direction: column; }
+  .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .value { font-size: 14px; font-weight: 600; color: #111827; }
+  .amount-row { display: flex; justify-content: space-between; align-items: center; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 16px 22px; margin: 18px 0; }
+  .amount-label { font-size: 12px; color: #0f766e; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .amount-value { font-size: 22px; font-weight: 800; color: #134e4a; }
+  .status-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .status { display: inline-block; padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .status-paid { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .signature { margin-top: 64px; padding-top: 14px; border-top: 2px dashed #9ca3af; display: flex; justify-content: space-between; gap: 24px; }
+  .sig-label { font-size: 12px; color: #6b7280; padding-top: 6px; }
+  .footer { text-align: center; margin-top: 22px; font-size: 10px; color: #9ca3af; letter-spacing: 0.5px; }
+  @media print {
+    body { padding: 0; background: #fff; }
+    .challan { box-shadow: none; border: 2px solid #0f766e; }
+  }
+</style>
+</head>
+<body>
+  <div class="challan">
+    <div class="header">
+      <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
+      <div class="title">Fee Challan</div>
+      <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
+    </div>
+    <div class="grid">
+      <div class="field"><span class="label">Challan No.</span><span class="value">${escape(challan.challanNo || '—')}</span></div>
+      <div class="field"><span class="label">Date</span><span class="value">${today}</span></div>
+      <div class="field"><span class="label">Student Name</span><span class="value">${escape(challan.studentName || challan.student || '—')}</span></div>
+      <div class="field"><span class="label">Class</span><span class="value">${escape(challan.className || challan.class || '—')}</span></div>
+      <div class="field"><span class="label">Roll No.</span><span class="value">${escape(challan.rollNo || '—')}</span></div>
+      <div class="field"><span class="label">Month / Year</span><span class="value">${escape(challan.month || '—')}${challan.year ? ' ' + escape(challan.year) : ''}</span></div>
+    </div>
+    <div class="amount-row">
+      <span class="amount-label">Amount Payable</span>
+      <span class="amount-value">Rs. ${amount.toLocaleString('en-PK')}</span>
+    </div>
+    <div class="status-row">
+      <span class="label" style="margin:0">Status</span>
+      <span class="status ${isPaid ? 'status-paid' : 'status-unpaid'}">${status.toUpperCase()}</span>
+      ${challan.paidDate ? `<span class="value" style="font-size:12px;color:#374151;">Paid on ${escape(challan.paidDate)}</span>` : ''}
+      ${challan.paymentMethod ? `<span class="value" style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
+    </div>
+    <div class="signature">
+      <div><div class="sig-label">Student / Parent Signature</div></div>
+      <div><div class="sig-label">Authorized Signature</div></div>
+    </div>
+    <div class="footer">This is a system-generated challan from ESM · Electronic School Management. Please retain for your records.</div>
+  </div>
+  <script>
+    window.onload = function() { setTimeout(function() { window.print(); }, 300); };
+  </script>
+</body>
+</html>`;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function MyInvoices({ user }: { user: any }) {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const refresh = () => {
+    setLoading(true);
+    api.getFeeInvoices()
+      .then(r => setInvoices(Array.isArray(r) ? r : []))
+      .catch(() => setInvoices([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refresh(); }, [user?.id]);
+
+  const stats = useMemo(() => {
+    const total = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+    const paid = invoices.filter(i => String(i.status).toLowerCase() === 'paid').reduce((acc, i) => acc + (Number(i.paidAmount || i.amount) || 0), 0);
+    const pending = total - paid;
+    return { total, paid, pending, count: invoices.length, paidCount: invoices.filter(i => String(i.status).toLowerCase() === 'paid').length };
+  }, [invoices]);
+
+  const downloadChallan = async (inv: any) => {
+    setDownloadingId(inv.id);
+    try {
+      const challan = await api.getChallanData(inv.id);
+      // Merge with invoice data as a fallback so the PDF is complete even if the challan endpoint returns a partial payload
+      const merged = { ...inv, ...challan };
+      downloadChallanPDF(merged);
+      toast({ title: 'Challan opened', description: 'Use the print dialog to save it as a PDF.' });
+    } catch (e: any) {
+      // Fallback: open PDF using the invoice data we already have
+      toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — generating PDF from invoice summary.' });
+      downloadChallanPDF(inv);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const cards = [
+    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-emerald-500 to-emerald-700', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
+    { label: 'Total Pending', value: fmtPKR(stats.pending), icon: Clock, color: 'from-rose-500 to-red-600', sub: `${stats.count - stats.paidCount} invoice${stats.count - stats.paidCount === 1 ? '' : 's'}` },
+    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-amber-500 to-yellow-600', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="My Invoices" subtitle="View your monthly fee invoices and download challan PDFs" />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {cards.map((c, i) => (
+          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <Card className="p-5 relative overflow-hidden">
+              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+              <div className="text-2xl font-extrabold font-display">{c.value}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-amber-600" />
+            <h3 className="font-bold text-base">Invoice History</h3>
+          </div>
+          <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
+            {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+            Refresh
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+          </div>
+        ) : invoices.length === 0 ? (
+          <EmptyState icon={DollarSign} title="No invoices yet" desc="Your monthly fee invoices will appear here once your Branch Manager generates them." />
+        ) : (
+          <div className="max-h-[60vh] overflow-y-auto scroll-fancy -mx-4 px-4">
+            <Table>
+              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40 sticky top-0">
+                <TableHead>Month</TableHead>
+                <TableHead className="hidden sm:table-cell">Year</TableHead>
+                <TableHead className="hidden md:table-cell">Challan No.</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {invoices.map(inv => {
+                  const isPaid = String(inv.status).toLowerCase() === 'paid';
+                  return (
+                    <TableRow key={inv.id} className="hover:bg-muted/30">
+                      <TableCell className="font-medium text-sm">{inv.month || '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">{inv.year || '—'}</TableCell>
+                      <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">{inv.challanNo || inv.id?.slice(-8)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={isPaid ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+                          {isPaid ? 'Paid' : 'Unpaid'}
+                        </Badge>
+                        {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" className="h-8 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
+                          {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Printer className="h-3 w-3 mr-1" /> Download Challan</>}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900">
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-lg bg-amber-500/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-amber-700 dark:text-amber-400" /></div>
+          <div>
+            <div className="font-bold text-sm text-amber-900 dark:text-amber-200">How to download your challan PDF</div>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+              Click <b>Download Challan</b> on any invoice. A new tab will open with a printable challan form —
+              in the print dialog, choose <b>"Save as PDF"</b> as the destination to save the file.
+              If a popup blocker prevents the new tab, please allow popups for this site.
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }

@@ -1,0 +1,585 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    10→import {
+    11→  CalendarCheck, GraduationCap, Calendar, ClipboardList,
+    12→  CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
+    13→  ArrowLeft, FileText, Link2, Download, Loader2, Megaphone,
+    14→} from 'lucide-react';
+    15→import { toast } from '@/hooks/use-toast';
+    16→
+    17→type Course = { id: string; name: string; code?: string };
+    18→
+    19→type MaterialItem = {
+    20→  id: string;
+    21→  title: string;
+    22→  description?: string;
+    23→  fileType?: string;
+    24→  fileName?: string;
+    25→  linkUrl?: string;
+    26→  createdAt?: number | string;
+    27→  classId?: string;
+    28→  courseId?: string;
+    29→};
+    30→
+    31→type Announcement = {
+    32→  id: string;
+    33→  title: string;
+    34→  message: string;
+    35→  senderRole?: string;
+    36→  targetRole?: string;
+    37→  targetScope?: string;
+    38→  classId?: string | null;
+    39→  createdAt?: number | string;
+    40→};
+    41→
+    42→export function StudentPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    43→  const [attendance, setAttendance] = useState<any>(null);
+    44→  const [results, setResults] = useState<any>(null);
+    45→  const [diary, setDiary] = useState<any[]>([]);
+    46→  const [courses, setCourses] = useState<Course[]>([]);
+    47→  const [classId, setClassId] = useState<string>('');
+    48→  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    49→  const [selectedCourse, setSelectedCourse] = useState<{ course: Course; initialTab: 'materials' | 'results' | 'attendance' } | null>(null);
+    50→
+    51→  const refresh = () => {
+    52→    if (user?.id) {
+    53→      api.getAttendance({ studentId: user.id }).then(setAttendance).catch(() => {});
+    54→      api.getResults({ studentId: user.id }).then(setResults).catch(() => {});
+    55→      if (user?.branchId) api.getDiary({ branchId: user.branchId }).then(setDiary).catch(() => {});
+    56→      api.getStudentCourses().then(setCourses).catch(() => setCourses([]));
+    57→      api.getAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]));
+    58→    }
+    59→  };
+    60→
+    61→  // Resolve the student's classId from the branch's classes by matching user.class (class name)
+    62→  useEffect(() => {
+    63→    if (user?.branchId) {
+    64→      api.getClasses(user.branchId)
+    65→        .then((cls: any[]) => {
+    66→          const match = cls.find(c => c.name === user.class);
+    67→          setClassId(match?.id || '');
+    68→        })
+    69→        .catch(() => setClassId(''));
+    70→    }
+    71→  }, [user?.branchId, user?.class]);
+    72→
+    73→  useEffect(() => { refresh(); }, [user?.id, user?.branchId]);
+    74→
+    75→  if (activeModule === 'student-overview' && selectedCourse) {
+    76→    return (
+    77→      <CourseDetail
+    78→        course={selectedCourse.course}
+    79→        classId={classId}
+    80→        studentId={user?.id}
+    81→        initialTab={selectedCourse.initialTab}
+    82→        onBack={() => setSelectedCourse(null)}
+    83→      />
+    84→    );
+    85→  }
+    86→
+    87→  if (activeModule === 'my-attendance') return <MyAttendance attendance={attendance} />;
+    88→  if (activeModule === 'my-results') return <MyResults results={results} />;
+    89→  if (activeModule === 'my-timetable') return <MyTimetable />;
+    90→  if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
+    91→  if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
+    92→  return (
+    93→    <StudentOverview
+    94→      user={user}
+    95→      attendance={attendance}
+    96→      results={results}
+    97→      courses={courses}
+    98→      announcements={announcements}
+    99→      onOpenCourse={(course, tab) => setSelectedCourse({ course, initialTab: tab })}
+   100→    />
+   101→  );
+   102→}
+   103→
+   104→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+   105→  return (
+   106→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   107→      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+   108→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+   109→    </div>
+   110→  );
+   111→}
+   112→
+   113→function EmptyState({ icon: Icon, title, desc }: any) {
+   114→  return (
+   115→    <Card className="p-10 text-center">
+   116→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+   117→      <h3 className="font-display font-bold text-lg">{title}</h3>
+   118→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   119→    </Card>
+   120→  );
+   121→}
+   122→
+   123→// ============== Student Overview (course cards) ==============
+   124→function StudentOverview({ user, attendance, results, courses, announcements, onOpenCourse }: any) {
+   125→  // Normalize results — API returns a flat array, but some code expects {entries, total, avgPercentage}
+   126→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   127→  const resultsTotal = resultsArray.length;
+   128→  const avgPercentage = resultsTotal > 0
+   129→    ? Math.round(resultsArray.reduce((a: number, r: any) => a + (r.percentage || (r.marks / r.totalMarks * 100) || 0), 0) / resultsTotal * 10) / 10
+   130→    : null;
+   131→
+   132→  const cards = [
+   133→    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
+   134→    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+   135→    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-amber-500 to-yellow-600' },
+   136→    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-teal-500 to-cyan-600' },
+   137→  ];
+   138→
+   139→  // Group recent results by subject/course so we can show "recent marks" per course card
+   140→  const recentByCourse = useMemo(() => {
+   141→    const map: Record<string, any> = {};
+   142→    // results can be a flat array (from API) or an object with .entries
+   143→    const entries = Array.isArray(results) ? results : (results?.entries || []);
+   144→    if (Array.isArray(entries)) {
+   145→      for (const r of entries) {
+   146→        const key = r.courseId || r.subject;
+   147→        if (!map[key]) map[key] = r;
+   148→      }
+   149→    }
+   150→    return map;
+   151→  }, [results]);
+   152→
+   153→  return (
+   154→    <div className="space-y-6">
+   155→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   156→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-600 via-teal-700 to-cyan-900 p-6 sm:p-8 text-white">
+   157→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   158→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
+   159→        <div className="relative">
+   160→          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-amber-300" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
+   161→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}! 👋</h1>
+   162→          <p className="text-cyan-50/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
+   163→        </div>
+   164→      </motion.div>
+   165→
+   166→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   167→        {cards.map((c, i) => (
+   168→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   169→            <Card className="p-5 relative overflow-hidden">
+   170→              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   171→              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   172→              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+   173→              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   174→            </Card>
+   175→          </motion.div>
+   176→        ))}
+   177→      </div>
+   178→
+   179→      {announcements.length > 0 && (
+   180→        <Card className="p-5">
+   181→          <h3 className="font-bold text-base mb-3 flex items-center gap-2"><Megaphone className="h-4 w-4 text-rose-500" /> Latest Announcement</h3>
+   182→          <AnnouncementCard a={announcements[0]} />
+   183→        </Card>
+   184→      )}
+   185→
+   186→      <div>
+   187→        <div className="flex items-center justify-between mb-4">
+   188→          <div>
+   189→            <h2 className="font-display text-lg font-bold">My Courses</h2>
+   190→            <p className="text-xs text-muted-foreground mt-0.5">Click a course to view materials, results, and attendance.</p>
+   191→          </div>
+   192→        </div>
+   193→        {courses.length === 0 ? (
+   194→          <EmptyState icon={BookOpen} title="No courses assigned" desc="Your class doesn't have any courses assigned yet. Check back later." />
+   195→        ) : (
+   196→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   197→            {courses.map((c: Course, i: number) => {
+   198→              const recent = recentByCourse[c.id];
+   199→              return (
+   200→                <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+   201→                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenCourse(c, 'materials')}>
+   202→                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 opacity-10 blur-2xl group-hover:opacity-20 transition" />
+   203→                    <div className="flex items-start justify-between mb-3">
+   204→                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 grid place-items-center shadow-md">
+   205→                        <BookOpen className="h-5 w-5 text-white" />
+   206→                      </div>
+   207→                      {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
+   208→                    </div>
+   209→                    <h3 className="font-display font-bold text-lg">{c.name}</h3>
+   210→                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+   211→                    <div className="grid grid-cols-2 gap-2 mt-4">
+   212→                      <div className="p-2 rounded-md bg-violet-500/10">
+   213→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
+   214→                        <div className="text-sm font-bold text-violet-700 mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
+   215→                      </div>
+   216→                      <div className="p-2 rounded-md bg-emerald-500/10">
+   217→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
+   218→                        <div className="text-sm font-bold text-emerald-700 mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
+   219→                      </div>
+   220→                    </div>
+   221→                    <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+   222→                      <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
+   223→                      <span className="text-cyan-700 font-medium group-hover:underline">Open →</span>
+   224→                    </div>
+   225→                  </Card>
+   226→                </motion.div>
+   227→              );
+   228→            })}
+   229→          </div>
+   230→        )}
+   231→      </div>
+   232→    </div>
+   233→  );
+   234→}
+   235→
+   236→// ============== Course Detail (Materials / Results / Attendance tabs) ==============
+   237→const COURSE_TABS = [
+   238→  { id: 'materials', label: 'Materials', icon: FileText },
+   239→  { id: 'results', label: 'Results', icon: GraduationCap },
+   240→  { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+   241→] as const;
+   242→
+   243→function CourseDetail({ course, classId, studentId, initialTab, onBack }: {
+   244→  course: Course;
+   245→  classId: string;
+   246→  studentId: string;
+   247→  initialTab: 'materials' | 'results' | 'attendance';
+   248→  onBack: () => void;
+   249→}) {
+   250→  const [tab, setTab] = useState(initialTab);
+   251→
+   252→  return (
+   253→    <div className="space-y-6">
+   254→      <div className="flex items-center gap-3">
+   255→        <button onClick={onBack} className="h-9 w-9 grid place-items-center rounded-lg border border-border hover:bg-accent transition" title="Back to courses">
+   256→          <ArrowLeft className="h-4 w-4" />
+   257→        </button>
+   258→        <div>
+   259→          <h1 className="font-display text-2xl font-extrabold tracking-tight">{course.name}</h1>
+   260→          <p className="text-sm text-muted-foreground mt-0.5">{course.code ? `Code ${course.code} · ` : ''}Course materials, results & attendance</p>
+   261→        </div>
+   262→      </div>
+   263→
+   264→      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy">
+   265→        {COURSE_TABS.map(t => {
+   266→          const active = tab === t.id;
+   267→          return (
+   268→            <button key={t.id} onClick={() => setTab(t.id)}
+   269→              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+   270→              <t.icon className="h-4 w-4" /> {t.label}
+   271→            </button>
+   272→          );
+   273→        })}
+   274→      </div>
+   275→
+   276→      <AnimatePresence mode="wait">
+   277→        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+   278→          {tab === 'materials' && <CourseMaterialsView classId={classId} courseId={course.id} />}
+   279→          {tab === 'results' && <CourseResultsView courseId={course.id} studentId={studentId} />}
+   280→          {tab === 'attendance' && <CourseAttendanceView studentId={studentId} />}
+   281→        </motion.div>
+   282→      </AnimatePresence>
+   283→    </div>
+   284→  );
+   285→}
+   286→
+   287→function CourseMaterialsView({ classId, courseId }: { classId: string; courseId: string }) {
+   288→  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+   289→  const [loading, setLoading] = useState(true);
+   290→
+   291→  useEffect(() => {
+   292→    if (!classId || !courseId) return;
+   293→    api.getCourseMaterials({ classId, courseId })
+   294→      .then(setMaterials)
+   295→      .catch(() => setMaterials([]))
+   296→      .finally(() => setLoading(false));
+   297→  }, [classId, courseId]);
+   298→
+   299→  if (!classId) {
+   300→    return <EmptyState icon={FileText} title="Class not found" desc="We couldn't resolve your class. Please contact your Branch Manager." />;
+   301→  }
+   302→
+   303→  if (loading) {
+   304→    return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   305→  }
+   306→
+   307→  if (materials.length === 0) {
+   308→    return <EmptyState icon={FileText} title="No materials yet" desc="Your teacher hasn't uploaded any materials for this course yet. Check back later." />;
+   309→  }
+   310→
+   311→  return (
+   312→    <div className="space-y-4">
+   313→      <p className="text-sm text-muted-foreground">{materials.length} material{materials.length === 1 ? '' : 's'} available</p>
+   314→      <div className="grid sm:grid-cols-2 gap-3">
+   315→        {materials.map(m => <MaterialCard key={m.id} material={m} />)}
+   316→      </div>
+   317→    </div>
+   318→  );
+   319→}
+   320→
+   321→function MaterialCard({ material }: { material: MaterialItem }) {
+   322→  const [downloading, setDownloading] = useState(false);
+   323→  const isLink = !!material.linkUrl;
+   324→  const Icon = isLink ? Link2 : FileText;
+   325→  const ext = material.fileName?.split('.').pop()?.toUpperCase() || (isLink ? 'LINK' : 'FILE');
+   326→  const createdAt = material.createdAt ? new Date(material.createdAt).toLocaleDateString() : '';
+   327→
+   328→  const handleDownload = async () => {
+   329→    if (isLink && material.linkUrl) {
+   330→      window.open(material.linkUrl, '_blank', 'noopener,noreferrer');
+   331→      return;
+   332→    }
+   333→    setDownloading(true);
+   334→    try {
+   335→      const res = await api.downloadMaterialBlob(material.id);
+   336→      if ('linkUrl' in res) {
+   337→        window.open(res.linkUrl, '_blank', 'noopener,noreferrer');
+   338→      } else {
+   339→        const url = URL.createObjectURL(res.blob);
+   340→        const a = document.createElement('a');
+   341→        a.href = url;
+   342→        a.download = res.fileName || material.fileName || 'download';
+   343→        document.body.appendChild(a);
+   344→        a.click();
+   345→        document.body.removeChild(a);
+   346→        URL.revokeObjectURL(url);
+   347→      }
+   348→    } catch (e: any) {
+   349→      toast({ title: 'Download failed', description: e.message, variant: 'destructive' });
+   350→    } finally { setDownloading(false); }
+   351→  };
+   352→
+   353→  return (
+   354→    <Card className="p-4 hover:shadow-md transition">
+   355→      <div className="flex items-start gap-3">
+   356→        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-cyan-500/15' : 'bg-violet-500/15'}`}>
+   357→          <Icon className={`h-5 w-5 ${isLink ? 'text-cyan-600' : 'text-violet-600'}`} />
+   358→        </div>
+   359→        <div className="flex-1 min-w-0">
+   360→          <div className="flex items-center gap-2 mb-0.5">
+   361→            <h4 className="font-medium text-sm truncate">{material.title}</h4>
+   362→            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{ext}</Badge>
+   363→          </div>
+   364→          {material.description && <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>}
+   365→          <div className="text-[11px] text-muted-foreground mt-1">{createdAt}{isLink ? ' · External link' : ''}</div>
+   366→        </div>
+   367→      </div>
+   368→      <div className="mt-3 flex justify-end">
+   369→        <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+   370→          {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+   371→          {isLink ? 'Open Link' : 'Download'}
+   372→        </Button>
+   373→      </div>
+   374→    </Card>
+   375→  );
+   376→}
+   377→
+   378→function CourseResultsView({ courseId, studentId }: { courseId: string; studentId: string }) {
+   379→  const [results, setResults] = useState<any[]>([]);
+   380→  const [loading, setLoading] = useState(true);
+   381→
+   382→  useEffect(() => {
+   383→    api.getResults({ studentId })
+   384→      .then((r: any) => {
+   385→        const entries = r?.entries || [];
+   386→        // Filter to this course; backend may not return courseId on student-scoped results, so include all if courseId missing
+   387→        const filtered = entries.filter((e: any) => !e.courseId || e.courseId === courseId);
+   388→        setResults(filtered.length > 0 ? filtered : entries);
+   389→      })
+   390→      .catch(() => setResults([]))
+   391→      .finally(() => setLoading(false));
+   392→  }, [courseId, studentId]);
+   393→
+   394→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   395→  if (results.length === 0) {
+   396→    return <EmptyState icon={GraduationCap} title="No results yet" desc="Your teacher hasn't posted any results for this course yet." />;
+   397→  }
+   398→
+   399→  return (
+   400→    <Card className="p-5">
+   401→      <div className="space-y-3">
+   402→        {results.map((r: any, idx: number) => (
+   403→          <div key={r.id || idx} className="flex items-center gap-3">
+   404→            <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+   405→            <div className="flex-1">
+   406→              <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.exam || 'Exam'}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   407→              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
+   408→              <div className="text-[11px] text-muted-foreground mt-1">{r.date}</div>
+   409→            </div>
+   410→            <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   411→          </div>
+   412→        ))}
+   413→      </div>
+   414→    </Card>
+   415→  );
+   416→}
+   417→
+   418→function CourseAttendanceView({ studentId }: { studentId: string }) {
+   419→  const [attendance, setAttendance] = useState<any>(null);
+   420→  const [loading, setLoading] = useState(true);
+   421→
+   422→  useEffect(() => {
+   423→    api.getAttendance({ studentId })
+   424→      .then(setAttendance)
+   425→      .catch(() => setAttendance(null))
+   426→      .finally(() => setLoading(false));
+   427→  }, [studentId]);
+   428→
+   429→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   430→  if (!attendance || attendance.total === 0) {
+   431→    return <EmptyState icon={CalendarCheck} title="No attendance records" desc="Your teacher hasn't marked any attendance for you yet." />;
+   432→  }
+   433→
+   434→  return (
+   435→    <div className="space-y-4">
+   436→      <div className="grid grid-cols-4 gap-3">
+   437→        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   438→        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   439→        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   440→        <Card className="p-4 text-center bg-emerald-500/10"><CalendarCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold text-emerald-600">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   441→      </div>
+   442→      <Card className="p-4">
+   443→        <Table>
+   444→          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   445→          <TableBody>
+   446→            {(attendance.entries || []).map((e: any, idx: number) => (
+   447→              <TableRow key={e.id || idx}>
+   448→                <TableCell className="text-sm">{e.date}</TableCell>
+   449→                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{e.status}</Badge></TableCell>
+   450→              </TableRow>
+   451→            ))}
+   452→          </TableBody>
+   453→        </Table>
+   454→      </Card>
+   455→    </div>
+   456→  );
+   457→}
+   458→
+   459→// ============== MyAttendance (existing module) ==============
+   460→function MyAttendance({ attendance }: any) {
+   461→  return (
+   462→    <div className="space-y-6">
+   463→      <ModuleHeader title="My Attendance" subtitle="Your attendance record" />
+   464→      {!attendance || attendance.total === 0 ? (
+   465→        <EmptyState icon={CalendarCheck} title="No attendance records yet" desc="Your teachers haven't marked any attendance yet. Check back after your next class." />
+   466→      ) : (
+   467→        <>
+   468→          <div className="grid grid-cols-4 gap-3">
+   469→            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   470→            <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   471→            <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   472→            <Card className="p-4 text-center bg-emerald-500/10"><CalendarCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold text-emerald-600">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   473→          </div>
+   474→          <Card className="p-4">
+   475→            <Table>
+   476→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   477→              <TableBody>
+   478→                {(attendance.entries || []).map((e: any) => (
+   479→                  <TableRow key={e.id}><TableCell className="text-sm">{e.date}</TableCell><TableCell className="text-sm">{e.class}</TableCell>
+   480→                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{e.status}</Badge></TableCell>
+   481→                  </TableRow>
+   482→                ))}
+   483→              </TableBody>
+   484→            </Table>
+   485→          </Card>
+   486→        </>
+   487→      )}
+   488→    </div>
+   489→  );
+   490→}
+   491→
+   492→function MyResults({ results }: any) {
+   493→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   494→  return (
+   495→    <div className="space-y-6">
+   496→      <ModuleHeader title="My Results" subtitle="All your test & exam results" />
+   497→      {resultsArray.length === 0 ? (
+   498→        <EmptyState icon={GraduationCap} title="No results posted yet" desc="Your teachers haven't posted any results yet. Check back after your next exam." />
+   499→      ) : (
+   500→        <Card className="p-5">
+   501→          <div className="space-y-3">
+   502→            {resultsArray.map((r: any) => {
+   503→              const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
+   504→              return (
+   505→              <div key={r.id} className="flex items-center gap-3">
+   506→                <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+   507→                <div className="flex-1">
+   508→                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   509→                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
+   510→                  <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
+   511→                </div>
+   512→                <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   513→              </div>
+   514→              );
+   515→            })}
+   516→          </div>
+   517→        </Card>
+   518→      )}
+   519→    </div>
+   520→  );
+   521→}
+   522→
+   523→function MyTimetable() {
+   524→  return (
+   525→    <div className="space-y-6">
+   526→      <ModuleHeader title="My Timetable" subtitle="Your weekly class schedule" />
+   527→      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager." />
+   528→    </div>
+   529→  );
+   530→}
+   531→
+   532→function MyDiary({ diary }: any) {
+   533→  return (
+   534→    <div className="space-y-6">
+   535→      <ModuleHeader title="Diary & Homework" subtitle="Assignments from your teachers" />
+   536→      {diary.length === 0 ? (
+   537→        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Your teachers haven't posted any homework or assignments yet." />
+   538→      ) : (
+   539→        <div className="space-y-3">
+   540→          {diary.map((d: any) => (
+   541→            <Card key={d.id} className="p-4">
+   542→              <div className="flex items-start justify-between mb-2">
+   543→                <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
+   544→                <Badge variant="outline" className={d.due ? 'text-amber-600 bg-amber-500/10 border-amber-500/20' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+   545→              </div>
+   546→              {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
+   547→            </Card>
+   548→          ))}
+   549→        </div>
+   550→      )}
+   551→    </div>
+   552→  );
+   553→}
+   554→
+   555→function MyAnnouncements({ announcements, loading }: { announcements: Announcement[]; loading: boolean }) {
+   556→  return (
+   557→    <div className="space-y-6">
+   558→      <ModuleHeader title="Announcements" subtitle="Notices from your teachers, branch & institute" />
+   559→      {loading ? (
+   560→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+   561→      ) : announcements.length === 0 ? (
+   562→        <EmptyState icon={Inbox} title="No announcements" desc="You're all caught up! New announcements will appear here." />
+   563→      ) : (
+   564→        <div className="space-y-3">
+   565→          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+   566→        </div>
+   567→      )}
+   568→    </div>
+   569→  );
+   570→}
+   571→
+   572→function AnnouncementCard({ a }: { a: Announcement }) {
+   573→  const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '';
+   574→  return (
+   575→    <Card className="p-4">
+   576→      <div className="flex items-start justify-between gap-3 mb-1.5">
+   577→        <h4 className="font-semibold text-sm">{a.title}</h4>
+   578→        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{a.targetScope || 'all'}</Badge>
+   579→      </div>
+   580→      <p className="text-sm text-muted-foreground">{a.message}</p>
+   581→      <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
+   582→    </Card>
+   583→  );
+   584→}
+   585→

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   Users, GraduationCap, DollarSign, CalendarCheck, Plus, CheckCircle2, UserPlus, BookOpen,
   Network, Inbox, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
+  FileText, Wallet, Loader2, Banknote, Sparkles,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
@@ -43,7 +44,8 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'branch-students') content = <StudentsView students={students} onRefresh={refresh} onAdd={() => openAdd('student')} />;
   else if (activeModule === 'announcements') content = <AnnouncementsView user={user} />;
   else if (activeModule === 'class-courses') content = <ClassCoursesView user={user} />;
-  else if (['attendance','results','timetable','fees','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule activeModule={activeModule} user={user} stats={stats} />;
+  else if (activeModule === 'fees') content = <FeeManagement user={user} />;
+  else if (['attendance','results','timetable','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule activeModule={activeModule} user={user} stats={stats} />;
   else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
 
   return (
@@ -775,6 +777,381 @@ function AnnouncementsView({ user }: { user: any }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ============ Fee Management ============
+const FEE_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const fmtPKR = (n: number) => 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK');
+
+function FeeManagement({ user }: { user: any }) {
+  const [tab, setTab] = useState<'structure' | 'invoices'>('structure');
+  const tabs = [
+    { id: 'structure' as const, label: 'Fee Structure', icon: BookOpen },
+    { id: 'invoices' as const, label: 'Invoices', icon: FileText },
+  ];
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="Fee Management" subtitle={`Set class fees and generate monthly invoices · ${user?.branchName || ''}`} />
+      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy max-w-md">
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+              <t.icon className="h-4 w-4" /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+      {tab === 'structure' && <FeeStructureTab user={user} />}
+      {tab === 'invoices' && <FeeInvoicesTab user={user} />}
+    </div>
+  );
+}
+
+function FeeStructureTab({ user }: { user: any }) {
+  const [classes, setClasses] = useState<any[]>([]);
+  const [structure, setStructure] = useState<Record<string, any>>({});
+  const [edits, setEdits] = useState<Record<string, { monthly: string; admission: string }>>({});
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const refresh = () => {
+    setLoading(true);
+    Promise.all([
+      api.getClasses(user.branchId).then(r => Array.isArray(r) ? r : []).catch(() => []),
+      api.getFeeStructure().then(r => Array.isArray(r) ? r : []).catch(() => []),
+    ]).then(([cls, struct]) => {
+      setClasses(cls);
+      const map: Record<string, any> = {};
+      for (const s of struct) map[s.classId] = s;
+      setStructure(map);
+    }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refresh(); }, [user?.branchId]);
+
+  // Group class sections by name — one fee entry per class group (uses the primary section's classId)
+  const grouped = useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const c of classes) {
+      const key = c.name || 'Class';
+      if (!map[key]) map[key] = c; // first section wins (sections are usually sorted A → Z)
+    }
+    return Object.values(map).sort((a: any, b: any) => classNumber(a.name) - classNumber(b.name));
+  }, [classes]);
+
+  const getEdits = (cls: any) => {
+    const existing = structure[cls.id];
+    const e = edits[cls.id];
+    return {
+      monthly: e?.monthly ?? (existing?.monthlyFee != null ? String(existing.monthlyFee) : ''),
+      admission: e?.admission ?? (existing?.admissionFee != null ? String(existing.admissionFee) : ''),
+    };
+  };
+
+  const save = async (cls: any) => {
+    const { monthly, admission } = getEdits(cls);
+    const monthlyNum = Number(monthly);
+    if (!monthlyNum || monthlyNum <= 0) {
+      toast({ title: 'Invalid amount', description: 'Enter a valid monthly fee greater than 0.', variant: 'destructive' });
+      return;
+    }
+    setSavingId(cls.id);
+    try {
+      await api.setFeeStructure(cls.id, monthlyNum, admission ? Number(admission) : undefined);
+      toast({ title: 'Fee saved', description: `${cls.name} monthly fee set to ${fmtPKR(monthlyNum)}` });
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to save', description: e.message, variant: 'destructive' }); }
+    finally { setSavingId(null); }
+  };
+
+  if (loading) {
+    return <Card className="p-10 text-center text-sm text-muted-foreground">Loading fee structure…</Card>;
+  }
+
+  if (grouped.length === 0) {
+    return <EmptyState icon={DollarSign} title="No classes found" desc="Classes (Class 1 – Class 12) are auto-created when your branch is provisioned. Ask your Institute Admin if you don't see them." />;
+  }
+
+  // Summary stats
+  const setCount = grouped.filter(g => structure[g.id]?.monthlyFee != null).length;
+  const avgMonthly = setCount > 0
+    ? Math.round(grouped.reduce((acc, g) => acc + (Number(structure[g.id]?.monthlyFee) || 0), 0) / setCount)
+    : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Total Classes</div>
+          <div className="text-2xl font-extrabold font-display mt-1">{grouped.length}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Fees Configured</div>
+          <div className="text-2xl font-extrabold font-display mt-1 text-emerald-600">{setCount}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Avg Monthly Fee</div>
+          <div className="text-2xl font-extrabold font-display mt-1">{fmtPKR(avgMonthly)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Pending Setup</div>
+          <div className="text-2xl font-extrabold font-display mt-1 text-amber-600">{grouped.length - setCount}</div>
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Wallet className="h-4 w-4 text-amber-600" />
+          <h3 className="font-bold text-base">Monthly Fee Structure</h3>
+          <span className="text-xs text-muted-foreground ml-1">Edit each class's monthly fee and save.</span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {grouped.map((cls: any) => {
+            const e = getEdits(cls);
+            const isSaving = savingId === cls.id;
+            const isSet = structure[cls.id]?.monthlyFee != null;
+            return (
+              <div key={cls.id} className={`p-4 rounded-xl border ${isSet ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-dashed border-border'} hover:shadow-sm transition`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-600 grid place-items-center text-white font-bold text-xs">
+                      {classNumber(cls.name) || '—'}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">{cls.name}</div>
+                      <div className="text-[10px] text-muted-foreground">{isSet ? 'Configured' : 'Not set'}</div>
+                    </div>
+                  </div>
+                  {isSet && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Monthly Fee (Rs.)</Label>
+                    <div className="relative mt-0.5">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rs.</span>
+                      <Input
+                        type="number"
+                        value={e.monthly}
+                        onChange={ev => setEdits(prev => ({ ...prev, [cls.id]: { ...e, monthly: ev.target.value } }))}
+                        placeholder="0"
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Admission Fee (Rs.)</Label>
+                    <div className="relative mt-0.5">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rs.</span>
+                      <Input
+                        type="number"
+                        value={e.admission}
+                        onChange={ev => setEdits(prev => ({ ...prev, [cls.id]: { ...e, admission: ev.target.value } }))}
+                        placeholder="0"
+                        className="pl-9 h-9"
+                      />
+                    </div>
+                  </div>
+                  <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={isSaving} onClick={() => save(cls)}>
+                    {isSaving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Save</>}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function FeeInvoicesTab({ user }: { user: any }) {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [genMonth, setGenMonth] = useState<string>(FEE_MONTHS[new Date().getMonth()]);
+  const [genYear, setGenYear] = useState<string>(String(new Date().getFullYear()));
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+
+  const refresh = () => {
+    setLoading(true);
+    api.getBranchInvoices()
+      .then(r => setInvoices(Array.isArray(r) ? r : []))
+      .catch(() => setInvoices([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const generate = async () => {
+    if (!genMonth || !genYear) { toast({ title: 'Month and year required', variant: 'destructive' }); return; }
+    setGenerating(true);
+    try {
+      const res = await api.generateInvoices(genMonth, Number(genYear));
+      const created = res?.generated ?? res?.created ?? res?.count ?? (Array.isArray(res?.invoices) ? res.invoices.length : null);
+      toast({ title: 'Invoices generated', description: created != null ? `${created} invoice(s) created for ${genMonth} ${genYear}` : (res?.message || `Invoices for ${genMonth} ${genYear} generated`) });
+      setShowGenerate(false);
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to generate', description: e.message, variant: 'destructive' }); }
+    finally { setGenerating(false); }
+  };
+
+  const markPaid = async (inv: any) => {
+    setPayingId(inv.id);
+    try {
+      await api.markInvoicePaid(inv.id, Number(inv.amount) || 0, 'Cash');
+      toast({ title: 'Invoice paid', description: `${inv.studentName}'s ${inv.month} invoice marked as paid` });
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setPayingId(null); }
+  };
+
+  const filtered = invoices.filter(inv => {
+    if (filter === 'paid') return String(inv.status).toLowerCase() === 'paid';
+    if (filter === 'unpaid') return String(inv.status).toLowerCase() !== 'paid';
+    return true;
+  });
+
+  const stats = useMemo(() => {
+    const total = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+    const paid = invoices.filter(i => String(i.status).toLowerCase() === 'paid').reduce((acc, i) => acc + (Number(i.paidAmount || i.amount) || 0), 0);
+    const pending = total - paid;
+    return { total, paid, pending, count: invoices.length };
+  }, [invoices]);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Total Invoices</div>
+          <div className="text-2xl font-extrabold font-display mt-1">{stats.count}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Collected</div>
+          <div className="text-xl font-extrabold font-display mt-1 text-emerald-600">{fmtPKR(stats.paid)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Pending</div>
+          <div className="text-xl font-extrabold font-display mt-1 text-rose-600">{fmtPKR(stats.pending)}</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-xs text-muted-foreground">Total Amount</div>
+          <div className="text-xl font-extrabold font-display mt-1">{fmtPKR(stats.total)}</div>
+        </Card>
+      </div>
+
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-amber-600" />
+            <h3 className="font-bold text-base">Branch Invoices</h3>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1 p-1 rounded-lg bg-muted/60 text-xs">
+              {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid']] as const).map(([id, label]) => (
+                <button key={id} onClick={() => setFilter(id)}
+                  className={`px-2.5 py-1 rounded-md font-medium transition ${filter === id ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white" onClick={() => setShowGenerate(v => !v)}>
+              <Sparkles className="h-4 w-4 mr-1.5" /> Generate Invoices
+            </Button>
+          </div>
+        </div>
+
+        {showGenerate && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden mb-4">
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-center gap-2 mb-3"><Banknote className="h-4 w-4 text-amber-600" /><span className="font-bold text-sm">Generate Monthly Invoices</span></div>
+              <p className="text-xs text-muted-foreground mb-3">This creates one invoice per active student for the selected month and year, based on their class's monthly fee.</p>
+              <div className="grid sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <Label className="text-xs">Month</Label>
+                  <Select value={genMonth} onValueChange={setGenMonth}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select month" /></SelectTrigger>
+                    <SelectContent>
+                      {FEE_MONTHS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Year</Label>
+                  <Input type="number" value={genYear} onChange={e => setGenYear(e.target.value)} className="mt-1" />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={generating} onClick={generate}>
+                    {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</> : 'Generate'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowGenerate(false)}>Cancel</Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-10 text-sm text-muted-foreground flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-10">
+            <div className="inline-flex h-12 w-12 rounded-xl bg-muted/60 items-center justify-center mb-3"><FileText className="h-5 w-5 text-muted-foreground" /></div>
+            <div className="font-bold text-sm">{invoices.length === 0 ? 'No invoices yet' : 'No invoices match this filter'}</div>
+            <div className="text-xs text-muted-foreground mt-1">{invoices.length === 0 ? 'Click "Generate Invoices" to create monthly invoices for all students.' : 'Try changing the filter above.'}</div>
+          </div>
+        ) : (
+          <div className="max-h-[60vh] overflow-y-auto scroll-fancy -mx-4 px-4">
+            <Table>
+              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40 sticky top-0">
+                <TableHead>Student</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Month</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {filtered.map(inv => {
+                  const isPaid = String(inv.status).toLowerCase() === 'paid';
+                  return (
+                    <TableRow key={inv.id} className="hover:bg-muted/30">
+                      <TableCell>
+                        <div className="font-medium text-sm">{inv.studentName || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono">{inv.challanNo || inv.id?.slice(-8)}</div>
+                      </TableCell>
+                      <TableCell><Badge variant="outline" className="font-normal text-[11px]">{inv.className || '—'}</Badge></TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">{inv.month || '—'}{inv.year ? ` ${inv.year}` : ''}</TableCell>
+                      <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={isPaid ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+                          {isPaid ? 'Paid' : 'Unpaid'}
+                        </Badge>
+                        {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {isPaid ? (
+                          <span className="text-[11px] text-emerald-600 inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Settled</span>
+                        ) : (
+                          <Button size="sm" variant="outline" className="h-8 text-xs border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10" disabled={payingId === inv.id} onClick={() => markPaid(inv)}>
+                            {payingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Marking…</> : 'Mark Paid'}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

@@ -1240,3 +1240,75 @@ Stage Summary:
 - Branch cards: popup modal, edit, delete, block (same pattern as Super Admin)
 - Delete branch: cascades to all child data
 - All unnecessary pages removed
+
+---
+Task ID: FEE-SYSTEM
+Agent: full-stack-developer
+Task: Build fee management + student invoices with PDF challan
+
+Work Log:
+- **Branch Manager Fee Management page** (`src/components/portal/branch-manager-portal.tsx`):
+  - Added `FeeManagement` component routed when `activeModule === 'fees'` (removed from the `ScopedBranchModule` fallback list).
+  - Two-tab layout (inline button tabs — matches the existing `COURSE_TABS` pattern in student-portal):
+    - **Fee Structure**: Loads all classes via `api.getClasses()` + the existing fee structure via `api.getFeeStructure()`. Groups class sections by name (one row per Class 1 – Class 12) using the primary section's classId. Each class card has editable Monthly Fee + Admission Fee inputs (with `Rs.` prefix overlay) and a Save button. Saves via `api.setFeeStructure(classId, monthlyFee, admissionFee)`. Includes summary stats (Total Classes, Fees Configured, Avg Monthly Fee, Pending Setup).
+    - **Invoices**: Loads all branch invoices via `api.getBranchInvoices()`. Has a "Generate Invoices" button that expands a small form (Month select + Year input + Generate button) which calls `api.generateInvoices(month, year)`. Shows summary stats (Total Invoices, Collected, Pending, Total Amount) and a filterable invoice table (All/Unpaid/Paid) with columns: Student (with challan no), Class, Month/Year, Amount (PKR), Status badge, and a "Mark Paid" button for unpaid invoices that calls `api.markInvoicePaid(id, amount, 'Cash')`.
+  - PKR currency used throughout via `fmtPKR(n)` = `'Rs. ' + n.toLocaleString('en-PK')`.
+  - Tables wrapped in `max-h-[60vh] overflow-y-auto scroll-fancy` with sticky headers for long lists.
+  - Loading states use `Loader2` spinners; saving/generating states disable buttons.
+
+- **Student My Invoices page with PDF challan** (`src/components/portal/student-portal.tsx`):
+  - Added `MyInvoices` component routed when `activeModule === 'my-invoices'`.
+  - Summary cards at top: Total Paid (emerald), Total Pending (rose), Total Amount (amber) — each with icon + sub-label showing invoice count.
+  - Invoice history table (Month, Year, Challan No., Amount, Status, Action) with the same scroll/sticky-header pattern.
+  - "Download Challan" button per invoice calls `api.getChallanData(invoiceId)`, then opens a new browser tab with a styled fee challan HTML form and auto-triggers `window.print()` (the print dialog lets the student pick "Save as PDF"). Falls back to invoice data if the challan endpoint fails.
+  - The challan PDF includes: ESM branding header, "Fee Challan" title, 2-column grid of fields (Challan No, Date, Student Name, Class, Roll No, Month/Year), highlighted amount row showing "Rs. X,XXX", Paid/Unpaid status pill, paid date + payment method (when paid), dashed signature line at the bottom (Student/Parent + Authorized), and a system-generated footer.
+  - HTML is escaped for safety; @media print rules strip background/padding for clean PDFs.
+  - Added a help card explaining how to save as PDF (yellow/amber notice) so students know to pick "Save as PDF" in the print dialog.
+
+- **Backend wiring verified**: Confirmed the existing endpoints in `mini-services/esm-api/index.js`:
+  - `GET /api/fee-structure` returns `{id, branchId, classId, monthlyFee, admissionFee, className}`
+  - `POST /api/fee-structure` requires `{classId, monthlyFee}` (admissionFee optional, defaults to 0)
+  - `POST /api/fee-invoices/generate` returns `{success, generated, message}` — frontend reads `res.generated` for the toast count
+  - `PATCH /api/fee-invoices/:id/pay` accepts `{paidAmount, paymentMethod}` and defaults to `Cash` / invoice amount
+  - `GET /api/fee-invoices/:id/challan` returns `{challanNo, studentName, studentId, rollNo, className, branch, month, year, amount, status, type, generatedAt}` — frontend merges this with the invoice row so the PDF is complete.
+
+- Lint passes clean. Dev server compiles successfully.
+
+Stage Summary:
+- Branch Manager: Fees module now has a real UI — Fee Structure (12 classes, editable, per-class save) + Invoices (generate, filter, mark paid) with PKR currency throughout.
+- Student: My Invoices module now has summary cards + invoice table + PDF challan download via browser print (no external PDF library needed).
+- Both pages use the existing portal visual language (motion cards, gradient icons, sticky table headers, scroll-fancy lists) and existing API client methods — no backend changes.
+- Currency is consistently PKR ("Rs. 5,000") in the new fee components.
+
+---
+Task ID: FEE-SYSTEM-VERIFY
+Agent: Main (Z.ai Code)
+Task: Verify fee system endpoints work end-to-end
+
+Work Log:
+- Backend: Added fee_structure and fee_invoices tables to Turso DB schema
+- Backend endpoints (all verified working):
+  - GET /api/fee-structure — returns fee structure per class
+  - POST /api/fee-structure — set/update monthly fee for a class
+  - GET /api/fee-invoices — student's own invoices
+  - GET /api/fee-invoices/branch — all invoices for branch
+  - POST /api/fee-invoices/generate — generate monthly invoices for all students (tested: 1 invoice generated for January 2025, Rs. 5,000)
+  - PATCH /api/fee-invoices/:id/pay — mark as paid (tested: status → "Paid", paidDate → "2026-07-13", paymentMethod → "Cash")
+  - GET /api/fee-invoices/:id/challan — challan data for PDF (tested: returns challanNo, studentName, rollNo, className, month, year, amount, status)
+- Frontend (by subagent):
+  - Branch Manager: Fee Management page with Fee Structure tab (set monthly fee per class) + Invoices tab (generate invoices, mark paid)
+  - Student: My Invoices page with summary cards + invoice table + "Download Challan" button that generates a printable PDF challan
+- Currency: PKR (Rs.) used throughout
+- Lint passes clean
+
+Verification:
+- Generate invoices: `{"success":true,"generated":1,"message":"1 invoices generated for January 2025"}` ✅
+- Branch invoices: 1 invoice (faisal | January 2025 | Rs.5000 | Unpaid | challan=CH-202507-0001) ✅
+- Challan data: returns all fields (challanNo, studentName, rollNo, className, month, year, amount, status) ✅
+- Mark paid: `{"success":true,"status":"Paid"}` with paidDate + paymentMethod ✅
+- Student can download challan as PDF via browser print (Save as PDF) ✅
+
+Stage Summary:
+- Fee system fully implemented: Branch Manager sets fees per class → generates monthly invoices → marks paid when student pays cash → student sees invoices + downloads challan PDF
+- Currency: PKR (Rs.)
+- All data persists in Turso DB

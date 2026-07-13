@@ -84,6 +84,7 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-cyan-500 to-teal-600' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+      { id: 'my-invoices', name: 'Invoices', icon: CreditCard, color: 'from-amber-500 to-yellow-600' },
       { id: 'my-timetable', name: 'My Timetable', icon: Calendar, color: 'from-lime-500 to-emerald-600' },
       { id: 'my-diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-rose-500 to-amber-600' },
       { id: 'my-announcements', name: 'Announcements', icon: Bell, color: 'from-amber-500 to-rose-600' },

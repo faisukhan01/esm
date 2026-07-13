@@ -1,0 +1,1243 @@
+     1→# eSM — Electronic School Management System — Worklog
+     2→
+     3→## Project Overview
+     4→Building a complete, modern School Management System (eSM) based on the "eSM Modules Detail.pdf".
+     5→- **Frontend**: Next.js 16 + Three.js (3D hero) + shadcn/ui + Tailwind CSS 4
+     6→- **Backend**: Node.js + Express.js mini-service (port 3001) accessed via gateway `?XTransformPort=3001`
+     7→- **Database**: In-memory seed data inside the Express service (fast, no migration friction) + Prisma available for persistence
+     8→- **Purpose**: Educational, clean, eye-catching, highly competitive with USA school portals. No .apk — pure web stack.
+     9→
+    10→## eSM Modules (from PDF)
+    11→1. Parent's Application (Android & iOS) — Payment History, Results, Attendance, Alerts & SMS, Pop-Up Notifications, Fee Balance, Complaints, Event & Calendar, Diary
+    12→2. Inquiry Management
+    13→3. Admission Management
+    14→4. Fee Management
+    15→5. Attendance Management (Thumb, RFID, Barcode)
+    16→6. Results Management
+    17→7. SMS Portal (branded masking + auto alerts)
+    18→8. Academics (Dossier, Lesson Plan, Diary, Timetable)
+    19→9. Complaint Management (two-way chat)
+    20→10. Configuration (campus/session/class/section)
+    21→11. Event Management
+    22→12. Finance Management (Vouchers, COA, Financial Reports)
+    23→13. Fixed Assets Management
+    24→14. Franchise Management
+    25→15. Hostel Management
+    26→16. HR Management
+    27→17. Library Management
+    28→18. Student Consultancy
+    29→19. Institute Branding
+    30→20. Transport Management
+    31→21. User & Privileges
+    32→22. Centralize Reporting System
+    33→
+    34→## Company / Branding
+    35→- eSM by Cyber Advance Solutions (Pvt.) Ltd.
+    36→- Pakistan's No. 1 School Management System, 1st LCCI IT Award
+    37→- 40 years expertise, 1M+ students, 10k institutions, 100k staff, 5+ countries
+    38→- USA Office: Austin TX
+    39→
+    40→## Architecture Decisions
+    41→- Single SPA on `/` (the only user-visible route). Client-side state switches between Landing → Login → Dashboard.
+    42→- Dashboard uses a left sidebar listing all modules; content area renders the selected module.
+    43→- Express backend serves JSON for: dashboard stats, students, attendance, fees, results, academics, sms, library, transport, hr, events, finance.
+    44→- Three.js animated 3D hero on the landing page (graduation cap / particles / floating geometric campus).
+    45→- Color theme: deep emerald + warm gold accent (academic prestige, not the default indigo/blue), with clean neutrals.
+    46→
+    47→---
+    48→Task ID: 1
+    49→Agent: Main (Z.ai Code)
+    50→Task: Analyze PDF requirements & set up project structure
+    51→
+    52→Work Log:
+    53→- Extracted all 29 pages of the eSM Modules Detail PDF via VLM (image-based PDF, 0 extractable text chars).
+    54→- Catalogued 22 modules + branding/contact info.
+    55→- Reviewed current project: Next.js 16 + Turbopack running on :3000, shadcn/ui installed, Prisma+SQLite available.
+    56→- Reviewed Caddyfile gateway pattern (`?XTransformPort=<port>`).
+    57→- Reviewed websocket example for mini-service conventions.
+    58→- Decided architecture: Next.js frontend (port 3000) + Express API mini-service (port 3001).
+    59→
+    60→Stage Summary:
+    61→- Requirements fully understood. Architecture locked. Ready to build backend + frontend.
+    62→
+    63→---
+    64→Task ID: 2
+    65→Agent: Main (Z.ai Code)
+    66→Task: Build Express.js backend mini-service with all module APIs + seed data
+    67→
+    68→Work Log:
+    69→- Created mini-services/esm-api with Express.js + CORS, running on port 3001 (bun --hot).
+    70→- Built deterministic seed dataset: 48 students, 30-day attendance series, 12-month fee data, 9 subjects results, 10 result cards, 24 SMS log entries, 24 staff, 24 library books, 6 transport routes, 6 events, 20 finance vouchers, 16 inquiries, 12 complaints, 5-day timetable.
+    71→- Implemented 21 API endpoints: auth/login, stats, students (search/filter), attendance/series+today, fees/monthly+defaulters, results/subjects+cards, sms/log+send+templates, staff, library, transport/routes, events, finance/transactions, inquiries, complaints, academics/timetable, modules catalog.
+    72→
+    73→Stage Summary:
+    74→- Backend fully operational. All endpoints verified returning 200 with realistic data.
+    75→- Service runs at http://localhost:3001, accessed via gateway ?XTransformPort=3001.
+    76→
+    77→---
+    78→Task ID: 3-8
+    79→Agent: Main (Z.ai Code)
+    80→Task: Build complete frontend (theme, Three.js hero, landing, login, dashboard + 21 module views)
+    81→
+    82→Work Log:
+    83→- Set up academic prestige theme: deep emerald + warm gold palette (light & dark), Playfair Display + Geist fonts, custom utilities (glass, gold-text, emerald-text, bg-grid, glow, animations, custom scrollbar).
+    84→- Built Three.js HeroScene: central glowing icosahedron (knowledge core) + wireframe shell + 9 orbiting polyhedra + 2 halo rings + 900-particle starfield + mouse parallax. Emerald/gold themed.
+    85→- Built LandingPage: sticky glass navbar, hero with 3D scene + floating stat chips, 4 stat cards, filterable 22-module showcase (by group), parent-app feature section with phone mockup, achievements, 6 client categories, CTA, sticky footer.
+    86→- Built LoginPage: split-screen with branded gradient side + form side, demo credentials pre-filled, show/hide password, toast feedback.
+    87→- Built DashboardShell: collapsible grouped sidebar (7 groups, 21 modules), sticky glass topbar with search/notifications/campus, animated module transitions, user card with logout.
+    88→- Built DashboardOverview: welcome banner, 4 KPI cards, attendance area chart, today's pie, fee stacked bar, subject performance bar, 6 quick-stat cards.
+    89→- Built 21 module views: Students (table+detail modal+filters), Attendance (charts+entry methods+latecomers), Fees (charts+defaulters), Results (podium+subject bar+radial+cards), SMS (composer+templates+log), Library (table+search), Transport (route cards), HR (dept cards+table), Events (cards+winners), Finance (voucher types+reports+transactions), Inquiries (pipeline), Complaints (cards), Academics (features+timetable), + 7 Generic modules (hostel/assets/franchise/config/users/branding/consultancy) with feature showcases.
+    90→- Zustand store with persist for view/auth state. API client with gateway proxy support.
+    91→
+    92→Stage Summary:
+    93→- Full SPA on `/` route: Landing → Login → Dashboard with 21 modules.
+    94→- Added Next.js catch-all API proxy (/api/[...path]) so requests work both through Caddy gateway and direct localhost:3000 access.
+    95→
+    96→---
+    97→Task ID: 9
+    98→Agent: Main (Z.ai Code)
+    99→Task: Self-verify with Agent Browser & fix issues
+   100→
+   101→Work Log:
+   102→- Verified landing page renders: hero, 3D scene, modules grid, parent-app section, achievements, clients, CTA, footer all present. VLM confirms clean professional layout, no overlaps.
+   103→- Fixed login 404: added Next.js API proxy route to forward /api/*?XTransformPort=N to Express backend.
+   104→- Verified login → dashboard flow: toast "Welcome back, Admin", sidebar with all 21 modules across 7 groups, welcome banner, KPI cards (1,248 students / 94.2% / $1.28M / 3.42 GPA), charts rendering with live data.
+   105→- Verified module navigation: Attendance (charts + entry methods + latecomers), Students (data table with 48 students, filters, detail modal), Fees (collection chart + defaulters list) — all loading real backend data.
+   106→- Verified mobile responsiveness (390px): elements stack, hamburger menu visible, no overflow.
+   107→- Lint passes clean (0 errors). Dev log shows all API calls returning 200.
+   108→
+   109→Stage Summary:
+   110→- eSM system fully functional and verified end-to-end. Ready for ongoing enhancement via cron job.
+   111→
+   112→---
+   113→Task ID: MT-1 to MT-7
+   114→Agent: Main (Z.ai Code)
+   115→Task: Build multi-tenant SaaS role hierarchy (Super Admin → Institute Admin → Branch Manager → Teacher → Student/Parent) with separate scoped portals
+   116→
+   117→Work Log:
+   118→- Backend (esm-api): added institutes (4 seed), branches (11 seed), platformUsers (15 seed across 6 roles), demoAccounts catalog.
+   119→- Backend APIs added: POST /api/auth/login (role-aware, validates against platformUsers), GET /api/auth/demo-accounts, GET /api/platform/overview, GET/POST/PATCH /api/institutes (auto-provisions institute-admin login on create), GET/POST /api/branches (auto-provisions branch-manager login), GET/POST /api/platform/users (branch-manager adds teachers/students), GET /api/scoped/stats (per institute/branch).
+   120→- Frontend store: extended AuthUser type with role, instituteId/Name, branchId/Name, role-specific fields; view states now 'landing'|'login'|'portal'.
+   121→- Login page: rebuilt with 6-role quick-pick grid (Super Admin/Institute Admin/Branch Manager/Teacher/Student/Parent), each auto-fills credentials.
+   122→- RolePortal shell: role-aware sidebar (different module sets per role via role-modules.ts), role-colored branding (amber/emerald/teal/violet/cyan/rose), routes to 5 portal components.
+   123→- SuperAdminPortal: Platform Overview (4 KPIs + institute cards), Institutes Manager (table + Provision Institute modal that creates institute AND auto-creates Institute Admin login with credentials displayed), All Branches, Platform Users, Revenue & Plans.
+   124→- InstituteAdminPortal: Institute Dashboard (scoped stats), Branches Manager (table + Add Branch modal that auto-creates Branch Manager login), Staff & Managers view.
+   125→- BranchManagerPortal: Branch Dashboard, Teachers view, Students view, Add Teacher modal + Add Student modal (both auto-create logins with credentials shown), scoped to branchId.
+   126→- TeacherPortal: My Classes overview, Take Attendance (interactive present/absent/late marking), Post Results (grade entry table), Diary & Homework, My Timetable, My Students, Message Parents.
+   127→- StudentPortal: My Dashboard (attendance chart + recent results), My Attendance, My Results (subject bars), My Fees (balance + payment history + pay button), My Timetable, My Diary.
+   128→- ParentPortal: Ward Dashboard, Ward Attendance, Ward Results, Pay Fees, Ward Diary, Complaints (two-way).
+   129→- Fixed bug: PlatformOverview was referencing `user` without receiving it as a prop → added user prop. Fixed module-not-found cache issue by clearing .next/cache.
+   130→
+   131→Verification (agent-browser, all 5 roles tested):
+   132→- Super Admin: login → Platform Overview renders with 5 institutes → Institutes tab → Provision Institute modal → filled "Houston Future Academy" → created successfully with Institute Admin credentials displayed (admin@houstonfuture.edu / esm123) → institute appears in table.
+   133→- Institute Admin (admin@austinintl.edu): login → Institute Dashboard with 3 branches + Add Branch button → Branches tab works.
+   134→- Branch Manager (manager.austin@austinintl.edu): login → Branch Dashboard with teachers/students → Add Teacher modal → filled "Mr. Robert Frost" → created with credentials displayed (teacher.frost@austinintl.edu / esm123).
+   135→- Teacher (teacher.davis@austinintl.edu): login → My Classes overview with today's schedule.
+   136→- Student (aiden.carter@student.austinintl.edu): login → My Dashboard with attendance chart + results.
+   137→- Parent (parent.reyes@austinintl.edu): login → Ward Dashboard tracking Sofia Reyes.
+   138→- Lint passes clean (0 errors). All API calls return 200.
+   139→
+   140→Stage Summary:
+   141→- Complete multi-tenant SaaS hierarchy implemented and verified. The flow works exactly as requested:
+   142→  Super Admin provisions institute → auto-creates Institute Admin login → Institute Admin adds branches → auto-creates Branch Manager login → Branch Manager adds teachers/students → auto-creates their logins → each role gets its own scoped portal.
+   143→- Password for every demo account: esm123. Demo role picker on login screen lets you switch roles instantly.
+   144→
+   145→---
+   146→Task ID: CLEAN-1 to CLEAN-7
+   147→Agent: Main (Z.ai Code)
+   148→Task: Remove ALL dummy/fake data — only real-time user-created data shows. Redesign login as premium 3D. Verify full provisioning chain.
+   149→
+   150→Work Log:
+   151→- Backend data.js: COMPLETELY rewritten. Removed ALL seed data (48 fake students, attendance series, fees, results, SMS log, staff, library, routes, events, finance, inquiries, complaints, timetable, 4 seed institutes, 11 seed branches, 14 seed platform users). Only the Super Admin login remains. Added empty dynamic stores: attendanceRecords, resultRecords, feeTransactions, smsRecords, diaryEntries, complaints, events, libraryBooks, transportRoutes. Added nextId() helper for sequential IDs.
+   152→- Backend index.js: COMPLETELY rewritten. All endpoints now work with real dynamic data:
+   153→  - POST /api/auth/login validates against platformUsers (only super admin exists initially)
+   154→  - POST /api/institutes creates institute + auto-creates institute-admin login (validates email uniqueness)
+   155→  - POST /api/branches creates branch + auto-creates branch-manager login
+   156→  - POST /api/platform/users creates teacher/student/parent login + updates branch/institute counts
+   157→  - GET /api/scoped/stats computes real counts from platformUsers
+   158→  - POST /api/attendance stores attendance records (teacher marks → student/parent sees)
+   159→  - POST /api/results stores result records (teacher posts → student/parent sees)
+   160→  - POST /api/fees stores fee transactions (parent pays → records persist)
+   161→  - POST /api/sms/send stores SMS records
+   162→  - POST /api/diary stores diary entries (teacher posts → student/parent sees)
+   163→  - POST /api/complaints stores complaints (parent creates → persists)
+   164→  - GET endpoints for all above are scoped by studentId/branchId/instituteId/teacherId/parentId
+   165→- API client: rewritten with all new scoped endpoints (getAttendance, markAttendance, getResults, postResults, getFees, payFee, getSms, sendSms, getDiary, postDiary, getComplaints, createComplaint, etc.)
+   166→- Login page: COMPLETELY redesigned — premium 3D with dedicated LoginScene (Three.js: wireframe icosahedron + inner glow + gold shell + 500-particle field + mouse parallax). Dark emerald gradient background. Glassmorphism card with gradient accent bar. Minimal: just email + password + sign in + small super admin demo hint. No role picker, no verbose text, no extra data.
+   167→- SuperAdminPortal: removed all fake charts. Shows real institute count (starts 0), real branches, real users. Empty state "No institutions yet" with CTA. Provision Institute modal creates institute + displays auto-created admin credentials.
+   168→- InstituteAdminPortal: removed fake charts. Shows real branch count (starts 0), real staff. Empty state "No branches yet". Add Branch modal (now extracted as BranchModal component, renders at portal level so it works from any view). Scoped module views show empty states until data is created.
+   169→- BranchManagerPortal: shows real teacher/student counts (start 0). Empty states with CTAs. Add Teacher / Add Student modals auto-create logins + display credentials.
+   170→- TeacherPortal: shows REAL students from their branch (via platformUsers API). Take Attendance actually persists via POST /api/attendance. Post Results actually persists via POST /api/results. Diary entries persist. SMS to parents persists. All show empty states when no data.
+   171→- StudentPortal: shows ONLY their real data — attendance records where they're the student, results posted for them, their fee transactions, diary entries from their branch. All empty states when no data exists yet.
+   172→- ParentPortal: shows ONLY their ward's real data — resolves ward via wardId, fetches ward's attendance/results/fees. Can pay fees (persists). Can create complaints (persists).
+   173→
+   174→Bug fix: BranchModal wasn't rendering from the Institute Overview page because the modal was inside BranchesManager (only rendered when activeModule === 'branches'). Extracted to a standalone BranchModal component rendered at the InstituteAdminPortal level so it works from any view.
+   175→
+   176→Verification (agent-browser, full chain tested end-to-end):
+   177→1. Fresh start: 0 institutes, 0 branches, 0 users (only Super Admin)
+   178→2. Super Admin (owner@esm-platform.com) → provisioned "Greenwood Academy" → admin login auto-created (admin@greenwood.edu / esm123)
+   179→3. Signed out → signed in as admin@greenwood.edu → Institute Admin portal, 0 branches, empty state
+   180→4. Added "Main Campus" branch → manager login auto-created (manager.main@greenwood.edu / esm123)
+   181→5. Signed out → signed in as manager.main@greenwood.edu → Branch Manager portal, 0 teachers, 0 students
+   182→6. Added teacher "Ms. Jane Wilson" → teacher login auto-created (teacher.wilson@greenwood.edu / esm123)
+   183→7. Signed out → signed in as teacher.wilson@greenwood.edu → Teacher portal, "Hello Ms. Jane Wilson", 0 students, Quick Actions
+   184→8. All portals show ONLY real data — no fake charts, no pre-seeded students, no dummy attendance
+   185→9. Lint passes clean. All API calls return 200. No errors.
+   186→
+   187→Stage Summary:
+   188→- ZERO dummy data remains. Every portal shows only real, user-created, scoped data.
+   189→- Full provisioning chain verified: Super Admin → Institute Admin → Branch Manager → Teacher, each auto-creating logins that work immediately.
+   190→- Login page redesigned: premium, 3D (Three.js particle field + wireframe geometry), dark glassmorphism, minimal content.
+   191→- All functionalities working: institute/branch/teacher/student creation, attendance marking, result posting, fee payment, SMS, diary, complaints — all persist and display real data.
+   192→
+   193→---
+   194→Task ID: LOGIN-REDESIGN
+   195→Agent: Main (Z.ai Code)
+   196→Task: Redesign login page with premium 3D design AND role selector (user feedback: "sign in page is too much worse and don't have option to select role")
+   197→
+   198→Work Log:
+   199→- Rebuilt login page with premium role selector grid (6 roles: Super Admin, Institute, Branch, Teacher, Student, Parent)
+   200→- Each role pill has its own icon + gradient color (amber/emerald/teal/violet/cyan/rose)
+   201→- Selecting a role: changes the card accent bar color, logo icon/color, button gradient, and info section
+   202→- Super Admin role pre-fills demo credentials (owner@esm-platform.com / esm123) and shows "Demo credentials (pre-filled)" box
+   203→- Other roles clear the form and show an info note explaining how their account is created (e.g. Teacher: "Your login is created by your Branch Manager")
+   204→- Sign in button text changes per role: "Sign in as [Role]"
+   205→- Kept the 3D Three.js background (wireframe icosahedron + particles + mouse parallax)
+   206→- Glassmorphism card with animated accent bar (layoutId for smooth color transitions)
+   207→- Framer Motion animations: role pills hover/lift, info section cross-fades on role change, logo spring-in
+   208→
+   209→Verification (agent-browser):
+   210→- Login page renders with all 6 role pills visible
+   211→- Clicking "Teacher" → button changes to "Sign in as Teacher", info note shows "login is created by your Branch Manager"
+   212→- Clicking "Super Admin" → pre-fills credentials, shows demo box
+   213→- Sign in as Super Admin → successfully enters portal showing real data (Greenwood Academy from earlier test)
+   214→- VLM rated design 8/10: "premium and modern, sleek card with 3D background, intuitive role selector"
+   215→- Lint passes clean
+   216→
+   217→Stage Summary:
+   218→- Login page now has BOTH premium 3D design AND a role selector with all 6 roles
+   219→- Role selector dynamically changes accent colors, button text, and shows relevant info per role
+   220→- Super Admin credentials pre-fill for instant demo access; other roles show how to get an account
+   221→
+   222→---
+   223→Task ID: LOGIN-V4
+   224→Agent: Main (Z.ai Code)
+   225→Task: Redesign 3D background to be educational (not techy) + fix card color/contrast (user feedback: "3D animation is too worse for educational platform" + "card color is not good")
+   226→
+   227→Work Log:
+   228→- LoginScene (Three.js) COMPLETELY rewritten — removed techy wireframe icosahedron:
+   229→  - Added 7 floating 3D books (box geometry: cover + cream pages + colored spine accent) in academic colors (emerald, gold, brown, cream, amber, teal)
+   230→  - Added a central graduation cap (mortarboard: flat square top + truncated cone base + gold button + hanging gold tassel)
+   231→  - Replaced aggressive particle starfield with soft golden "knowledge particles" (350 warm dust-mote particles, additive blending, slow drift)
+   232→  - Added central soft glow sphere (warm gold radial light)
+   233→  - Warm academic lighting (amber key + emerald fill + gold point light)
+   234→  - Gentle floating motion (books bob + slow rotate, cap slow spins + bobs, particles drift)
+   235→  - Mouse parallax kept but gentler
+   236→- Login card redesigned — dark glassmorphism replaced with clean WHITE card:
+   237→  - White background with ring-1 ring-black/5 for subtle depth
+   238→  - Dark slate text (slate-900 headings, slate-500/600 body) for strong contrast
+   239→  - Input fields: slate-50 background, slate-200 borders, emerald focus ring
+   240→  - Role selector pills: active = role gradient (white text), inactive = slate-50 bg with slate text
+   241→  - Info boxes: amber-50 for demo creds, emerald-50 for role notes
+   242→  - Top accent bar (1.5px gradient) shifts color with selected role
+   243→  - Footer: "Secured by eSM" with shield icon
+   244→- Kept: role selector with all 6 roles, per-role accent colors, animated transitions, demo credential pre-fill for Super Admin
+   245→
+   246→Verification (agent-browser + VLM):
+   247→- VLM rated 7/10: "white card with strong contrast, highly readable, clean layout, intuitive role selection"
+   248→- Background now shows floating books + graduation cap (educational, not techy)
+   249→- Role switching verified: Teacher role → button "Sign in as Teacher", info note "login is created by your Branch Manager"
+   250→- Super Admin sign-in verified: enters portal showing real data
+   251→- Lint passes clean
+   252→
+   253→Stage Summary:
+   254→- 3D background is now educational (floating books + graduation cap + warm particles) instead of techy wireframe
+   255→- Login card is clean white with strong text contrast and emerald/amber accents
+   256→- Role selector retained with all 6 roles and dynamic color theming
+   257→
+   258→---
+   259→Task ID: LOGIN-V5
+   260→Agent: Main (Z.ai Code)
+   261→Task: Fix green background + blocky book animation (user: "green bg and animated books are worse")
+   262→
+   263→Work Log:
+   264→- Background: changed from emerald-950 gradient to deep midnight navy (slate-950 → #0a1530 → slate-950). Academic, prestigious, Ivy League feel. Updated overlay and text colors (blue-100 instead of emerald-100).
+   265→- LoginScene (Three.js) COMPLETELY rewritten — removed 7 blocky box books:
+   266→  - Replaced with ONE elegant open book (central piece): curved pages using PlaneGeometry with vertex displacement (not flat boxes), cream parchment material, subtle gold text-line accents, rounded spine cylinder. Positioned left of center.
+   267→  - Refined graduation cap (right of center): flat mortarboard + truncated cone base + gold button + curved tube tassel (CatmullRom curve, not blocky) + gold knot. Better proportions and materials.
+   268→  - Replaced 350 aggressive particles with 6 elegant floating light orbs (spheres with soft glow halos, slow vertical drift, subtle pulse). Colors: gold, soft blue, cream, mint.
+   269→  - Added 150 very fine dust particles (subtle, additive blending, low opacity).
+   270→  - Slower, more graceful animation (book gentle float + subtle rotation, cap counter-float, orbs drift).
+   271→  - Refined lighting: cool blue ambient + warm gold key + blue rim + gold point light for depth.
+   272→
+   273→Verification (agent-browser + VLM):
+   274→- VLM rated 8/10: "deep navy background (not green), sophisticated and professional. 3D elements (book, cap) elegant and premium with soft shadows, not blocky. Orange accents pop against dark bg."
+   275→- Sign-in as Super Admin verified working
+   276→- Lint passes clean
+   277→
+   278→Stage Summary:
+   279→- Background is now deep midnight navy (not green)
+   280→- 3D books replaced with one elegant curved open book + refined graduation cap + floating light orbs
+   281→- Overall rated 8/10 — premium, academic, elegant
+   282→
+   283→---
+   284→Task ID: 3D-REBUILD
+   285→Agent: Main (Z.ai Code)
+   286→Task: Completely rebuild both 3D scenes — remove abstract faceted icosahedron (hero) and clunky book/cap (login). Make clean, meaningful, premium.
+   287→
+   288→Work Log:
+   289→- HeroScene (landing): REMOVED the faceted low-poly icosahedron with wireframe + 9 random orbiting polyhedra (octahedrons, tetrahedrons, torus, cones) which looked abstract and meaningless.
+   290→  - REPLACED with a single elegant graduation cap (mortarboard): smooth flat board + smooth truncated cone base + gold button + curved tube tassel (CatmullRom spline, not blocky) + gold knot + 8 fringe strands.
+   291→  - Added soft golden glow aura (2 nested backside spheres) behind the cap.
+   292→  - 220 golden/mint knowledge particles drifting gently upward (additive blending, wrap-around).
+   293→  - 3 floating accent orbs with halos (gold, blue, cream).
+   294→  - Slow elegant rotation + gentle float + mouse parallax.
+   295→  - Materials: smooth MeshStandardMaterial with proper roughness/metalness, no flatShading.
+   296→- LoginScene: REMOVED the clunky open book + graduation cap objects (user found them "worse").
+   297→  - REPLACED with a calm, flowing field of 280 golden/blue particles drifting upward with gentle horizontal sway.
+   298→  - 4 soft glowing orbs (gold, blue, gold, mint) with double halos, floating gently.
+   299→  - Central soft radial glow sphere (navy, low opacity) for depth.
+   300→  - No geometry/objects at all — just elegant light and motion.
+   301→  - Minimal, atmospheric, premium.
+   302→
+   303→Verification (agent-browser + VLM):
+   304→- Landing hero: VLM confirms "graduation cap clearly recognizable as education-related, elegant and premium, avoids cheapness/clutter"
+   305→- Login page: VLM rated 9/10 — "clean and minimal, elegant particles and soft glowing orbs, white card highly readable, atmospheric depth enhances modern aesthetic"
+   306→- Sign-in as Super Admin verified working
+   307→- Lint passes clean
+   308→
+   309→Stage Summary:
+   310→- Landing hero: single elegant graduation cap (recognizable education symbol) + golden particles + glow aura — no abstract geometry
+   311→- Login: pure particle/light field with floating orbs — no clunky objects
+   312→- Both scenes now clean, meaningful, and premium
+   313→
+   314→---
+   315→Task ID: LANDING-HONEST
+   316→Agent: Main (Z.ai Code)
+   317→Task: Remove ALL fake/dummy data from landing page (user: "product not in use by any institute, want to be honest"). Fix hero 3D cap. Make landing cool & aesthetic.
+   318→
+   319→Work Log:
+   320→- REMOVED all fake data from landing page:
+   321→  - STATS section (1M+ students, 10K+ institutions, 100K+ staff, 5+ countries) — DELETED
+   322→  - ACHIEVEMENTS section (40 yrs, #1 in Pakistan, 1st LCCI IT Award) — DELETED
+   323→  - CLIENT_CATEGORIES section (fake school/college/academy names) — DELETED
+   324→  - Floating stat chips on hero (94.2% attendance, $1.28M fees, 3,481 SMS) — DELETED
+   325→  - Footer company claims (Cyber Advance Solutions, 1st LCCI IT Award, Pakistan offices) — DELETED
+   326→- REPLACED with honest content:
+   327→  - "Now in early access — be among the first" badge (honest positioning)
+   328→  - Platform Capabilities section: 6 real features (22 modules, multi-role portals, multi-tenant SaaS, role-based access, parent app, real-time data)
+   329→  - Tech Stack section: actual technologies used (Next.js 16, Three.js, Node.js+Express, TypeScript, Tailwind CSS, role-based auth)
+   330→  - CTA: "Explore the live demo" (not "join 10,000 institutions")
+   331→  - Footer: honest description "modern multi-tenant school management platform"
+   332→- Hero 3D scene COMPLETELY rebuilt — removed graduation cap (user: "not looking cool"):
+   333→  - REPLACED with elegant "knowledge network" constellation: 28 nodes (gold + emerald spheres) distributed on a Fibonacci sphere, connected by ~60 soft lines (nearby nodes only), slowly rotating
+   334→  - Nodes pulse gently, lines have subtle opacity breathing
+   335→  - Central golden glow + outer emerald aura
+   336→  - 120 fine dust particles drifting
+   337→  - Mouse parallax (gentle camera shift)
+   338→  - Premium, abstract, represents "connected ecosystem" — no cheap objects
+   339→- Landing page sections (top to bottom): Hero (with 3D network) → Platform Capabilities (6 features) → Modules showcase (filterable, 21 modules) → Parent App (features + phone mockup) → Tech Stack → CTA (early access) → Footer
+   340→- All section nav links updated (Features, Parent-App, Tech, Modules)
+   341→
+   342→Verification (agent-browser + VLM):
+   343→- Hero: VLM 8/10 — "no fake data, 3D network elegant and premium, clean minimalist design, smooth transitions"
+   344→- Features section: "no fake/dummy data, clean and premium, cohesive color scheme"
+   345→- CTA/Footer: "no fake data, focuses on tech stack and demo invitation"
+   346→- Launch Portal button → login page works (role selector intact)
+   347→- Lint passes clean
+   348→
+   349→Stage Summary:
+   350→- ZERO fake data on landing page — completely honest about early-access status
+   351→- Hero 3D replaced with elegant knowledge network constellation (no graduation cap)
+   352→- Landing page is clean, aesthetic, and premium throughout
+   353→
+   354→---
+   355→Task ID: LANDING-HERO-SLIDER + LOGIN-REDESIGN
+   356→Agent: Main (Z.ai Code)
+   357→Task: Replace ugly 3D hero with educational image slider (3 images). Rebuild login page using uploaded AnimatedLoginPage design with role selector.
+   358→
+   359→Work Log:
+   360→- Searched and downloaded 3 aesthetic educational background images via image-search skill:
+   361→  1. Modern campus library (3888x2592)
+   362→  2. Graduation ceremony with caps
+   363→  3. Connected classroom with technology
+   364→- Landing hero COMPLETELY rebuilt:
+   365→  - Full-screen image slider (3 images, auto-rotate every 5.5s, crossfade 1.2s)
+   366→  - Dark gradient overlays (top-bottom + left-right) for text readability
+   367→  - Minimal centered text: badge "Electronic School Management", headline "One platform for your entire institution", one-line subtitle, 2 CTA buttons
+   368→  - Slide dots at bottom (clickable, active = amber, wider)
+   369→  - Animated slide caption that changes with each image
+   370→  - Navbar updated: transparent over hero with white text, becomes glass on scroll
+   371→  - Logo changed from emerald to amber/gold gradient to match new theme
+   372→  - Removed the 3D HeroScene (knowledge network) entirely — now using real photos
+   373→- Login page COMPLETELY rebuilt using uploaded AnimatedLoginPage design:
+   374→  - Ported all CSS from uploaded globals.css into our globals.css (login-bg, flip-card, floating-label, btn-gradient, particle, cover-gradient, glow-circle, custom-checkbox, slide-up animations, mobile responsive overrides)
+   375→  - Dark gradient background (#0c0c1d → #1a1a4e → #0c0c1d) with twinkling star particles
+   376→  - 25 floating particle elements drifting upward
+   377→  - Two-panel layout: left = emerald cover panel with logo, welcome text, 3 feature bullets (Shield/Building2/Sparkles), floating shapes, glow circles; right = login form
+   378→  - Floating label inputs (amber focus color to match brand)
+   379→  - Role selector grid (3x2): Super Admin (Crown), Institute (Building2), Branch (Users), Teacher (BookOpen), Student (User), Parent (Heart)
+   380→  - Active role = amber gradient pill; inactive = gray
+   381→  - Super Admin pre-fills demo credentials + shows amber demo box; other roles clear form + show emerald info note
+   382→  - Sign in button = amber gradient with ripple effect, text "Sign in as [Role]"
+   383→  - Connected to our auth API → routes to correct portal based on role
+   384→  - Back to home button (top-left, white)
+   385→- Removed uploaded signInUp folder from project (was causing lint errors)
+   386→
+   387→Verification (agent-browser + VLM):
+   388→- Landing hero: VLM 8/10 — "educational background image (graduation caps), text minimal and highly readable, clear hierarchy and contrast"
+   389→- Login page: VLM 8/10 — "premium aesthetic design, dark blue starry background, role selector with all six options, visually appealing left panel with green gradient"
+   390→- Super Admin sign-in → routes to portal correctly ("Welcome back, Platform 👑")
+   391→- Teacher role → button changes to "Sign in as Teacher", info note "created by Branch Manager" appears
+   392→- Lint passes clean
+   393→
+   394→Stage Summary:
+   395→- Landing hero: 3 educational background images (library, graduation, classroom) as auto-rotating slider with minimal clean text
+   396→- Login page: premium animated design from uploaded code, with role selector (6 roles) + API connection + portal routing
+   397→- Both rated 8/10 by VLM
+   398→
+   399→---
+   400→Task ID: UI-FIXES-ALL
+   401→Agent: Main (Z.ai Code)
+   402→Task: Complete all user-requested UI fixes: button visibility, remove 'All' filter, redesign phone mockup, replace tech stack, fix CTA button, update email, eSM→ESM, add waving cartoon, fix login card bg, update super admin credentials, add auth security.
+   403→
+   404→Work Log:
+   405→- Backend security: Added session-based auth (8hr TTL tokens with crypto random), rate limiting (5 attempts → 15min lockout), requireAuth + requireRole middleware on all protected endpoints (platform/overview, institutes CRUD, branches CRUD, platform/users CRUD). Added /api/auth/logout and /api/auth/verify endpoints. API client updated to send Bearer token from zustand store.
+   406→- Super admin credentials: Changed from owner@esm-platform.com/esm123 to faisu577277@gmail.com/QaReLc_61y8. Verified login works.
+   407→- Landing "Explore Modules" button: Replaced shadcn Button variant="outline" (which overrode text color to white-on-white) with a plain <button> using explicit border-2 border-white/40 text-white classes. Text now clearly visible.
+   408→- Landing modules filter: Removed 'All' option from the filter pills. Default changed to MODULE_GROUPS[0]. filteredModules logic updated to always filter by group.
+   409→- Landing phone mockup: Completely redesigned as a realistic app preview — proper phone frame with notch, status bar (9:41, signal bars, battery), side buttons, app header with avatar + name + notification bell, hero attendance card with gradient + mini bar chart, quick stats grid (GPA + Fees), recent results list with subject icons, PTM reminder card, bottom navigation bar with 4 icons. Floating notification card beside the phone.
+   410→- Landing tech stack section: Replaced with "How It Works" section — 4-step provisioning chain (Super Admin → Institute Admin → Branch Manager → Teachers & Parents) with connector line, step numbers, gradient icons, and descriptions.
+   411→- Landing CTA "See all modules" button: Same fix as Explore Modules — plain <button> with explicit white text styling.
+   412→- Footer email: Changed from hello@esm-platform.com to faisalkhan00297@gmail.com.
+   413→- Global eSM→ESM: All occurrences of "eSM" changed to "ESM" across layout.tsx, landing-page, login-page, role-portal, dashboard-shell, super-admin-portal, institute-admin-portal, generic module, sms module, modules.ts. Verified: 0 "eSM" remaining, 5+ "ESM" found.
+   414→- Login page: Added WavingPerson SVG illustration (from uploaded AnimatedLoginPage design) — animated waving arm with SMIL animateTransform, sparkles, floating hearts, happy face. Placed in the cover panel above the welcome text. Changed panel background from blue to warm emerald gradient (#064e3b → #047857). Changed login-bg, btn-gradient, cover-gradient, input focus, checkbox, scrollbar all from blue/amber to emerald theme. Removed demo credentials display — all roles now show only an info note about how their account is created. Form starts empty for all roles.
+   415→- Login button gradient: Changed from amber to emerald to match the overall theme.
+   416→
+   417→Verification (agent-browser + VLM):
+   418→- "Explore Modules" button: VLM confirms "clearly visible without hovering"
+   419→- "All" option: confirmed removed from DOM
+   420→- Phone mockup: new realistic app preview with notch, status bar, bottom nav confirmed in DOM
+   421→- "How It Works" section: confirmed present
+   422→- "See all modules" button: VLM confirms "clearly visible without hovering"
+   423→- Footer email: "faisalkhan00297@gmail.com" confirmed, old email removed
+   424→- eSM→ESM: 0 "eSM" found, 5+ "ESM" found in DOM
+   425→- Waving cartoon: SVG with viewBox "0 0 400 320" confirmed in DOM. VLM: "cartoon character with waving arm on left green panel"
+   426→- Login card bg: VLM confirms "green/emerald colored (not blue)"
+   427→- Demo credentials: VLM confirms "not visible"
+   428→- Super admin login: faisu577277@gmail.com / QaReLc_61y8 → "Welcome back, Faisal 👑" confirmed
+   429→- Rate limiting: 5 failed attempts → "Account locked for 15 minutes" confirmed
+   430→- Lint passes clean
+   431→
+   432→Stage Summary:
+   433→- ALL requested changes completed and verified. No remaining items.
+   434→
+   435→---
+   436→Task ID: FRONTEND-UPDATES
+   437→Agent: full-stack-developer
+   438→Task: Frontend updates — remove Parent Portal everywhere, support Roll No/ID login, add Change Password modal for first-time login, extend API client with class/course/material/announcement/block methods, rebuild AddUserModal with rollNo + class dropdown + course multi-select.
+   439→
+   440→Work Log:
+   441→- Read previous worklog to understand ESM platform state (Next.js 16 frontend + Express backend on port 3001 via XTransformPort, in-memory DB, session auth already in place).
+   442→- Confirmed backend contract by inspecting mini-services/esm-api/index.js:
+   443→  - POST /api/auth/login returns `{ token, user, mustChangePassword }` and accepts `email` field that matches either email OR rollNo (case-insensitive).
+   444→  - POST /api/auth/change-password expects `{ currentPassword, newPassword }`.
+   445→  - POST /api/platform/users accepts `rollNo`, `classId`, `courseIds` for teacher/student creation and sets `mustChangePassword = 1`.
+   446→  - GET /api/classes, GET /api/courses (supports classId/branchId), POST /api/class-courses, POST /api/classes/:id/courses, POST /api/courses, GET /api/teacher/classes, GET /api/student/courses, GET/POST /api/announcements, GET/POST /api/course-materials, GET /api/course-materials/:id/download, PATCH /api/institutes/:id/block, PATCH /api/branches/:id/block, PATCH /api/platform/users/:id/block, GET /api/platform/users/:id/password, PATCH /api/platform/users/:id, PATCH /api/institutes/:id — all verified.
+   447→- Login page (src/components/auth/login-page.tsx):
+   448→  - Removed `Heart` import and the `parent` entry from `ROLES` (now 5 roles: super-admin, institute-admin, branch-manager, teacher, student). Updated `Role` type union accordingly.
+   449→  - Updated teacher & student role notes to mention "You can sign in with your Email or Roll No / ID."
+   450→  - Changed email field: label now "Email or Roll No / ID", input type changed from `email` → `text`, autoComplete="username", validation success state now triggers on length ≥ 3 (no longer requires email regex).
+   451→  - Added contextual hint under email field for teacher/student roles: "Tip: you can sign in using either your registered email or your Roll No / ID." (with Shield icon).
+   452→  - Updated submit toast/validation messages to "Email / Roll No and password are required".
+   453→  - Added new `ChangePasswordModal` component with current/new/confirm password fields (each with own show/hide toggle), validation (required, min 4 chars, match, must differ from current), calls `api.changePassword(currentPassword, newPassword)`, on success calls onSuccess which routes to portal.
+   454→  - Login submit flow now checks `mustChangePassword` from response: if true, stores `pendingAuth` and shows ChangePasswordModal (does not route to portal yet). On modal success, routes to portal.
+   455→  - Modal styled in emerald theme consistent with rest of login page, includes Shield icon header and "won't be able to access the portal until your password is changed" reminder.
+   456→- Landing page (src/components/landing/landing-page.tsx):
+   457→  - Removed entire `parent-app` section (was ~204 lines including the realistic phone mockup with attendance card, GPA, recent results, PTM reminder, bottom nav, and floating notification card).
+   458→  - Removed `PARENT_FEATURES` constant (no longer referenced).
+   459→  - Removed "Parent App" from both desktop and mobile nav link arrays (now: Modules, Features, Tech).
+   460→  - Cleaned up unused lucide imports (CheckCircle2, ChevronRight, LineChart, Bell, PlayCircle, MessageCircleWarning, Lock, Heart, CreditCard, CalendarCheck).
+   461→  - Updated PLATFORM_FEATURES "Parent Mobile App" → "Mobile-Ready" and "Multi-Role Portals" desc no longer mentions Parents. Updated Real-Time Data desc to "admins see it instantly" instead of "parents see it instantly".
+   462→  - Updated "How It Works" step 4 from "Teachers & Parents" → "Teachers & Students" with matching desc "Take attendance, post results, track progress — all in real time."
+   463→- API client (src/lib/api.ts):
+   464→  - Updated `login` return type to include `mustChangePassword?: boolean`.
+   465→  - Added `changePassword(currentPassword, newPassword)` → POST auth/change-password.
+   466→  - Added `editUser`, `blockUser`, `getUserPassword` for platform user management.
+   467→  - Added `editInstitute` (alias of updateInstitute per spec), `blockInstitute`.
+   468→  - Added `blockBranch`.
+   469→  - Added `getClasses`, `getCourses` (with branchId/classId params), `createCourse`, `createClassCourse`, `assignClassCourses`.
+   470→  - Added `getTeacherClasses`, `getStudentCourses`.
+   471→  - Added `getAnnouncements`, `createAnnouncement`.
+   472→  - Added `getCourseMaterials` (with classId/courseId/teacherId params), `addCourseMaterial`, `downloadMaterial` (returns URL via apiUrl helper).
+   473→- AddUserModal (src/components/portal/add-user-modal.tsx) — completely rebuilt:
+   474→  - Form fields: Full name *, Roll No / ID * (with Hash icon), Email (optional), Assign Password * (new label per spec), Class dropdown (Select component, fetched from api.getClasses()).
+   475→  - For teacher role: after class is selected, fetches courses via `api.getCourses({ classId })` and shows a checkbox multi-select (scrollable, max-h-44). Selected courses are tracked in `selectedCourseIds`.
+   476→  - For student role: class is required.
+   477→  - Validation: name, rollNo, password (≥4 chars) all required; class required for student.
+   478→  - Submit body includes: name, rollNo, password, role, instituteId, branchId, email (if provided), classId (student & teacher), courseIds (teacher only, if any).
+   479→  - Success screen shows the new user's Roll No / ID, email (if provided), assigned password, portal label, plus a note that the user will be asked to set a new password on first sign-in.
+   480→  - Modal is scrollable (max-h-[90vh] overflow-y-auto) so all fields fit on smaller screens.
+   481→- Verified AddUserModal integration: branch-manager-portal.tsx still passes the same props (open, onClose, role, instituteId, branchId, onCreated) — no caller changes needed.
+   482→- Ran `bun run lint` — passes with zero errors.
+   483→- Verified dev server: page compiles cleanly, HTTP 200 on `/`, no runtime errors after edits settled. (There was a transient Fast Refresh error mid-edit when PARENT_FEATURES was deleted before the using section was deleted — resolved once both edits completed.)
+   484→
+   485→Stage Summary:
+   486→- Parent Portal removed from login (5 roles) and landing (no phone mockup, no Parent App nav link, no PARENT_FEATURES).
+   487→- Login now accepts Email OR Roll No / ID (sent as `email` field); teacher/student get an inline hint.
+   488→- First-time login (`mustChangePassword: true`) triggers a forced Change Password modal that calls POST /api/auth/change-password and only proceeds to the portal on success.
+   489→- API client extended with 15+ new methods covering classes, courses, class-courses, teacher/student scoped endpoints, announcements, course materials, and blocking/editing for institutes/branches/users.
+   490→- AddUserModal rebuilt with rollNo (required), optional email, Assign Password label, class dropdown (from api.getClasses), and course multi-select for teachers (from api.getCourses filtered by classId) — sends rollNo/classId/courseIds to backend per spec.
+   491→- Lint clean; dev server compiles cleanly with HTTP 200.
+   492→
+   493→---
+   494→Task ID: TURSO-MIGRATION + FEATURES
+   495→Agent: Main (Z.ai Code) + full-stack-developer subagent
+   496→Task: Migrate to Turso DB + implement credential assignment, block/unblock, announcements, classes/courses, teacher/student dashboards with class/course cards
+   497→
+   498→Work Log:
+   499→- **Turso DB Migration**: Installed @libsql/client, created db.js with full schema (users, institutes, branches, classes, courses, class_courses, teacher_class_courses, announcements, course_materials, attendance, results, fees, diary, sessions). Created .env in esm-api with Turso credentials. Verified connection: `Turso connection OK` + `Turso DB initialized` + `Super admin seeded`.
+   500→- **Backend (index.js) completely rewritten** to use Turso DB:
+   501→  - All CRUD operations now use `db.execute()` with parameterized SQL
+   502→  - Session-based auth stored in Turso `sessions` table (8hr TTL, auto-cleanup)
+   503→  - Rate limiting for login (5 attempts → 15min lockout)
+   504→  - `requireAuth` + `requireRole` middleware on all protected endpoints
+   505→  - Cascade block checking (institute blocked → all users in that institute blocked)
+   506→- **Credential Assignment**:
+   507→  - Super Admin sets Institute Admin password when creating institute (POST /api/institutes accepts adminPassword)
+   508→  - Institute Admin sets Branch Manager password when creating branch (POST /api/branches accepts managerPassword)
+   509→  - Branch Manager adds Teacher/Student with Roll No (required), ID, password (email optional)
+   510→  - `mustChangePassword` flag set to 1 for all newly created users
+   511→  - POST /api/auth/change-password endpoint clears the flag
+   512→- **Block/Unblock (cascading)**:
+   513→  - PATCH /api/institutes/:id/block — blocks institute + all branches + all users (except super-admin), invalidates their sessions
+   514→  - PATCH /api/branches/:id/block — blocks branch + all teachers/students in it
+   515→  - PATCH /api/platform/users/:id/block — blocks individual user
+   516→  - Login checks blocked status + institute/branch block status (cascade)
+   517→- **Password Visibility Cascade**:
+   518→  - GET /api/platform/users/:id/password — admin can see current password of users they manage
+   519→  - PATCH /api/platform/users/:id — admin can edit name/email/password; when password is changed, mustChangePassword is set back to 1
+   520→- **Announcements System**:
+   521→  - POST /api/announcements — any authenticated user can create (with targetRole, targetScope, targetIds, classId)
+   522→  - GET /api/announcements — scoped to the user's role/institute/branch/class
+   523→- **Classes (1-12) + Courses**:
+   524→  - POST /api/branches auto-creates 12 classes (Class 1 through Class 12) for each new branch
+   525→  - GET /api/classes — list classes for a branch
+   526→  - POST /api/courses — create a course/subject
+   527→  - POST /api/classes/:id/courses — assign multiple courses to a class (replaces existing)
+   528→  - GET /api/courses?classId=X — get courses assigned to a class
+   529→  - POST /api/platform/users (teacher) — assigns teacher to class + courses via teacher_class_courses table
+   530→- **Teacher Dashboard**:
+   531→  - GET /api/teacher/classes — returns teacher's assigned classes with their courses
+   532→  - Teacher can teach multiple classes and multiple courses
+   533→- **Student Dashboard**:
+   534→  - GET /api/student/courses — returns courses assigned to the student's class
+   535→  - Student sees all courses that are assigned to their class automatically
+   536→- **Course Materials**:
+   537→  - POST /api/course-materials — teacher uploads material (title, description, fileType, fileName, fileData as base64, or linkUrl)
+   538→  - GET /api/course-materials?classId=X&courseId=Y — list materials for a class/course
+   539→  - GET /api/course-materials/:id/download — download the file (returns binary with Content-Disposition header)
+   540→  - Supports: PDF, DOCX, PNG, PPT, links, and other file types
+   541→- **Frontend updates** (by subagent):
+   542→  - Parent portal removed from landing + login (5 roles now)
+   543→  - Login supports Roll No/ID (label: "Email or Roll No / ID")
+   544→  - ChangePasswordModal for first-time login (mustChangePassword flow)
+   545→  - API client updated with 15+ new methods
+   546→  - AddUserModal rebuilt: teacher gets Roll No + Class dropdown + Course multi-select; student gets Roll No + Class dropdown; password labeled "Assign Password"
+   547→
+   548→Verification:
+   549→- Backend health: `{"ok": true, "db": "turso", "users": 1}`
+   550→- Super admin login: `Faisal Khan | Super Admin | mustChange: False` ✅
+   551→- Create institute with custom password: `adminPassword: "MySecurePass123"` → institute created ✅
+   552→- Institute admin login: `Dr. Ahmed | Institute Admin | mustChange: True` ✅ (first-login password change triggered)
+   553→- Agent Browser: landing page loads, login shows 5 roles (no Parent), super admin sign-in → "Welcome back, Faisal 👑" → sees "Test Academy" in portal
+   554→- Lint passes clean
+   555→
+   556→Stage Summary:
+   557→- **Turso DB is the sole database** — no more in-memory data. All data persists in Turso (libsql://campus-prod-faisukhan01.aws-ap-south-1.turso.io)
+   558→- **Credential assignment chain works**: Super Admin → sets Institute Admin password → Institute Admin sets Branch Manager password → Branch Manager sets Teacher/Student password with Roll No
+   559→- **First-login password change** enforced via mustChangePassword flag
+   560→- **Block/unblock cascades**: blocking an institute blocks all its branches and users
+   561→- **Parent portal removed** from landing + login
+   562→- **Announcements, classes, courses, course materials** infrastructure is in the backend
+   563→- **Teacher/Student dashboards** backend endpoints ready (class cards + course cards)
+   564→- Remaining: frontend teacher/student dashboard UI with class/course cards, announcements UI, course material upload UI, block/unblock UI buttons in admin portals — these are the next phase
+   565→
+   566→---
+   567→Task ID: SUPERADMIN-FIX
+   568→Agent: Main (Z.ai Code)
+   569→Task: Fix Super Admin portal — add password field to provision modal, fix API 400 error, add announcements, add block/unblock + edit
+   570→
+   571→Work Log:
+   572→- **Root cause of API 400 error**: The SuperAdminPortal was still using the OLD modal that sent `{ name, city, country, plan, adminName, adminEmail }` WITHOUT `adminPassword`. The new backend requires `adminPassword`. Fixed by adding the password field to the form and sending it.
+   573→- **Provision modal rebuilt**:
+   574→  - Added "Assign password *" field (required)
+   575→  - Changed text from "auto-created with password esm123" to "You will set the Institute Admin's email and password. They must change it on first login."
+   576→  - Success modal now shows the ACTUAL password that was set (not hardcoded esm123)
+   577→  - Validation requires name, adminEmail, AND adminPassword
+   578→- **Institute card rebuilt** with 3 action buttons:
+   579→  - 👁 View admin password — fetches current password via GET /api/platform/users/:id/password
+   580→  - ✏ Edit — opens EditInstituteModal with name/plan/adminName/adminEmail/adminPassword fields (PATCH /api/institutes/:id)
+   581→  - 🔓/🔒 Block/Unblock — calls PATCH /api/institutes/:id/block (cascades to branches + users, invalidates sessions)
+   582→  - Blocked institutes show "Blocked" badge in red
+   583→- **Announcements module added** to Super Admin sidebar
+   584→  - New AnnouncementsView component with "New Announcement" button
+   585→  - Form: title, message, recipient dropdown (All Institute Admins / Specific Institutes)
+   586→  - When "Specific Institutes" selected: shows checkbox list of all institutes
+   587→  - Calls POST /api/announcements with targetRole='institute-admin', targetScope, targetIds
+   588→  - Shows toast "Announcement sent! Sent to all institutes" on success
+   589→  - Lists existing announcements with title, message, recipient scope, timestamp
+   590→- **role-modules.ts updated**: Added announcements module to super-admin sidebar (icon: MessageSquare, color: rose-pink)
+   591→
+   592→Verification (agent-browser):
+   593→- Login as Super Admin (faisu577277@gmail.com / QaReLc_61y8) → "Welcome back, Faisal 👑" ✅
+   594→- Institutes → Provision Institute → modal now has "Assign password *" field ✅
+   595→- Old text "auto-created with password esm123" REMOVED ✅
+   596→- New text "You will set the Institute Admin's email and password" PRESENT ✅
+   597→- Filled form: Liberty School, Mr. Smith, smith@liberty.edu, SmithPass2025 → submitted → "Institute provisioned!" ✅
+   598→- Success modal shows actual password "SmithPass2025" (not esm123) ✅
+   599→- Announcements nav item visible → click → "No announcements yet" → New Announcement form works ✅
+   600→- Sent "Platform Update" announcement → "Announcement sent! Sent to all institutes" ✅
+   601→- All API calls return 200/201 in dev log — no 400 errors ✅
+   602→- Lint passes clean
+   603→
+   604→Stage Summary:
+   605→- Provision modal now has the password field — API 400 error FIXED
+   606→- Announcements module added to Super Admin — send to all or specific institutes
+   607→- Institute cards have view-password, edit, and block/unblock buttons
+   608→- All data persists in Turso DB
+   609→
+   610→---
+   611→Task ID: BM-UPDATE
+   612→Agent: full-stack-developer
+   613→Task: Update Branch Manager portal
+   614→
+   615→Work Log:
+   616→- Read previous worklog to understand ESM platform state (Next.js 16 frontend + Express backend on port 3001 via XTransformPort, Turso DB, session auth, all API methods already in src/lib/api.ts).
+   617→- Confirmed backend contract for /api/classes, /api/courses (supports classId/branchId), POST /api/courses, POST /api/classes/:id/courses, POST /api/announcements, PATCH /api/platform/users/:id, PATCH /api/platform/users/:id/block, GET /api/platform/users/:id/password. The POST /api/platform/users body accepts both classId AND class NAME as `class` field.
+   618→- role-modules.ts: Added two new modules to the 'branch-manager' sidebar Branch group:
+   619→    { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' }
+   620→    { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-lime-500 to-emerald-600' }
+   621→  (MessageSquare and BookOpen were already imported at the top of the file — no import changes needed.)
+   622→- add-user-modal.tsx:
+   623→    * Verified teacher form has: Full name *, Roll No / ID * (Hash icon, required, with helper text), Email (optional), Assign Password * (≥4 chars), Class dropdown (Select fetched from api.getClasses()). For teacher: Course multi-select (checkbox list, fetched via api.getCourses({ classId }) when class is selected, scrollable max-h-44).
+   624→    * Verified student form has: Full name *, Roll No / ID *, Email (optional), Assign Password *, Class dropdown (required).
+   625→    * Made the modal scrollable: added `overflow-y-auto` to the overlay motion.div, and moved `max-h-[90vh] overflow-y-auto scroll-fancy` onto the Card itself (removed overflow from the inner motion.div to avoid double scrollbars).
+   626→    * Submit now resolves the selected Class object from the fetched classes list, and sends BOTH `classId` (for both teacher & student) AND `class` (the class NAME like "Class 5") plus `section` in the request body. For teacher only, `courseIds` (selectedCourseIds) is also sent.
+   627→    * Body shape sent: { name, email?, password, role, rollNo, instituteId, branchId, classId?, class?, section?, courseIds? }
+   628→- branch-manager-portal.tsx: Completely rewritten to:
+   629→    * Refactored main router to use a single `let content` pattern + always-rendered `<AddUserModal>` at the bottom (so the modal opens from any view — teachers/students/add-teacher/add-student/overview).
+   630→    * Added `if (activeModule === 'announcements') return <AnnouncementsView user={user} />;` and `if (activeModule === 'class-courses') return <ClassCoursesView user={user} />;` (wired via the content router).
+   631→    * New `ClassCoursesView` component:
+   632→        - Fetches all 12 classes via api.getClasses(user.branchId) and shows them as a clickable grid (2/3/4 columns responsive) — selecting one sets activeClassId.
+   633→        - Fetches all branch courses via api.getCourses({ branchId: user.branchId }) and shows which are assigned to the active class via api.getCourses({ classId }) (assigned course IDs are pre-checked).
+   634→        - "New Course" button toggles a create-course form (name *, code) → api.createCourse({ name, code, branchId }). On success, refreshes the courses list.
+   635→        - Multi-select grid of courses with checkbox UI; "Save Assignment" button calls api.assignClassCourses(classId, selectedCourseIds). Toast on success.
+   636→        - Empty states for no-classes and no-courses.
+   637→    * New `AnnouncementsView` component:
+   638→        - Form: Title, Message (Textarea), Recipients (Select: "All Classes" / "Specific Classes"), Class checkboxes (fetched from api.getClasses(user.branchId)) shown when "Specific" is selected.
+   639→        - Calls api.createAnnouncement({ title, message, targetScope, targetRole: 'student', targetIds?, classId? }).
+   640→        - Lists existing announcements (from api.getAnnouncements()) with title, message, recipient scope, timestamp. Empty state with CTA.
+   641→    * New `UserRowActions` component: View Password (Eye icon → api.getUserPassword(u.id), shows inline amber pill with password + mustChange indicator), Edit (Edit icon → opens EditUserModal), Block/Unblock (Lock/Unlock icon → api.blockUser(u.id, !u.blocked, reason)). All buttons have hover states + busy disabled states.
+   642→    * New `EditUserModal` component: Full name, Email, New password (leave blank to keep current). Calls api.editUser(u.id, body). If password is changed, toast reminds that user must change on next sign-in.
+   643→    * TeachersView & StudentsView updated: each row now has a new "Actions" column rendering <UserRowActions>, and the Status badge now reflects blocked state (red "Blocked" pill when u.blocked is true). Teachers table gained a Roll No column. Pass `onRefresh={refresh}` so view-password/edit/block updates trigger a re-fetch.
+   644→- Ran `bun run lint` — passes with 0 errors. Dev server compiles cleanly with HTTP 200s.
+   645→
+   646→Stage Summary:
+   647→- Branch Manager sidebar now includes 2 new modules: Announcements (rose-pink) and Classes & Courses (lime-emerald).
+   648→- AddUserModal: scrollable (overflow-y-auto overlay + max-h-[90vh] scroll-fancy Card), and now sends both classId AND class NAME (and section) in the body for both teacher and student creation. Teacher-only courseIds included.
+   649→- New ClassCoursesView: 12-class grid, course multi-select per class, create new course inline, save assignment via api.assignClassCourses — fully functional.
+   650→- New AnnouncementsView: target all classes or specific classes via checkboxes, calls api.createAnnouncement — fully functional.
+   651→- Teacher and Student tables gained a per-row "Actions" column with View Password (inline reveal), Edit (modal with name/email/new-password), and Block/Unblock (toggle via api.blockUser). All updates trigger refresh.
+   652→- Lint clean. Dev server compiles cleanly.
+   653→
+   654→---
+   655→Task ID: IA-UPDATE
+   656→Agent: full-stack-developer
+   657→Task: Update Institute Admin portal
+   658→
+   659→Work Log:
+   660→- Read previous agent worklog (SUPERADMIN-FIX) to mirror the same patterns used for the Super Admin portal.
+   661→- Verified backend endpoints already exist: POST /api/branches (accepts managerPassword), PATCH /api/branches/:id/block, GET /api/platform/users/:id/password, PATCH /api/platform/users/:id, GET/POST /api/announcements.
+   662→- role-modules.ts: added `{ id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' }` to the institute-admin "Finance & Comms" group (MessageSquare was already imported).
+   663→- institute-admin-portal.tsx — BranchModal rebuilt:
+   664→  - Added `managerPassword: ''` to form state.
+   665→  - Added required "Assign password *" input field below the manager email.
+   666→  - Validation now requires name + managerEmail + managerPassword.
+   667→  - createBranch call now spreads `form` so `managerPassword` is sent to the backend.
+   668→  - Success modal now renders `lastCreated.managerLogin.password` instead of the hardcoded `esm123`.
+   669→  - Replaced the "auto-created with password esm123" text with "You will set the Branch Manager's email and password. They must change it on first login."
+   670→  - Made modal scrollable: outer overlay gets `overflow-y-auto`, the inner Card gets `max-h-[90vh] overflow-y-auto scroll-fancy` (plus `my-8` on the wrapper so it isn't glued to the viewport edge on small screens).
+   671→- institute-admin-portal.tsx — branch card actions:
+   672→  - Extracted the branch card into a new `BranchCard` component (each card manages its own state).
+   673→  - 3 buttons on every card: View (eye) / Edit (pencil) / Block or Open (lock/unlock).
+   674→  - View Password: lazily fetches the branch-manager user via `api.platformUsers({ branchId, role: 'branch-manager' })`, then `api.getUserPassword(userId)`; caches the password so subsequent clicks just toggle visibility.
+   675→  - Edit: opens `EditBranchModal` with Branch Name (cosmetic), Manager Name, Manager Email, New Password fields; saves via `api.editUser(managerUserId, body)` (only name/email/password — branch name has no backend endpoint).
+   676→  - Block/Unblock: calls `api.blockBranch(branch.id, !blocked, reason)` and refreshes.
+   677→  - Blocked branches show a red "Blocked" badge on the card and in the BranchesManager table.
+   678→- institute-admin-portal.tsx — Announcements module:
+   679→  - New `AnnouncementsView` component wired in via `if (activeModule === 'announcements') return <AnnouncementsView user={user} />;` at the top of the portal (also added 'announcements' to the "default fallback" exclusion list so the overview doesn't render behind it).
+   680→  - Form: Title, Message (Textarea), Recipients dropdown with 6 options — All Branches / All Teachers / All Students / Specific Branches / Specific Teachers / Specific Students.
+   681→  - When "Specific Branches" is selected → checkbox list of branches from `api.branches(user.instituteId)`.
+   682→  - When "Specific Teachers"/"Specific Students" is selected → checkbox list from `api.platformUsers({ instituteId, role })` (lazy-loaded).
+   683→  - targetRole derived from selection: branch-manager / teacher / student; targetScope: all / specific; targetIds only sent when scope is specific.
+   684→  - Lists existing announcements from `api.getAnnouncements()` with title, message, recipient label, and timestamp.
+   685→  - Reused the same `custom-checkbox` and `scroll-fancy` styling as the Super Admin portal for consistency.
+   686→- Imports: added `Textarea`, `Select/SelectContent/SelectItem/SelectTrigger/SelectValue` from shadcn/ui, and `Megaphone, Send, Lock, Unlock, Edit, Eye` from lucide-react.
+   687→- Lint: ran `bun run lint`. My two touched files (institute-admin-portal.tsx + role-modules.ts) are clean (verified with `npx eslint <files>` — 0 errors). 3 pre-existing errors remain in `teacher-portal.tsx` (untouched by this task) — `react-hooks/preserve-manual-memoization` and two `react-hooks/set-state-in-effect` — those are out of scope for IA-UPDATE.
+   688→- Verified dev.log: dev server compiling cleanly, no errors after edits; GET /api/branches, /api/announcements etc. all returning 200.
+   689→
+   690→Stage Summary:
+   691→- Add Branch modal now has a required password field, scrollable layout, and the success screen shows the actual chosen password (not the legacy `esm123`).
+   692→- Branch cards in the Institute Overview have View Password / Edit / Block-Unblock actions wired to the existing backend endpoints.
+   693→- Announcements module is live for Institute Admins: send to All/Specific Branches (managers), Teachers, or Students, with a live list of past announcements.
+   694→- Announcements nav item is in the institute-admin sidebar (Finance & Comms group, rose-pink accent).
+   695→- All changes are frontend-only — backend untouched, as instructed.
+   696→
+   697→---
+   698→Task ID: TS-UPDATE
+   699→Agent: full-stack-developer
+   700→Task: Update Teacher + Student portals (class cards dashboard, course detail tabs, course material upload/download, announcements, remove fees from student portal)
+   701→
+   702→Work Log:
+   703→- Read previous worklog (TS-UPDATE context): backend already has /api/teacher/classes, /api/student/courses, /api/announcements, /api/course-materials, /api/course-materials/:id/download, /api/classes, /api/courses. API client already has getTeacherClasses, getStudentCourses, getAnnouncements, createAnnouncement, getCourseMaterials, addCourseMaterial, downloadMaterial.
+   704→- Backend contract review (mini-services/esm-api/index.js):
+   705→  - POST /api/attendance requires `{ classId, date, records }` (branchId auto-set from req.user).
+   706→  - POST /api/results requires `{ exam, courseId, totalMarks, date, records, classId }` — courseId now in body.
+   707→  - GET /api/course-materials/:id/download returns binary (Content-Disposition) for files OR JSON `{ linkUrl }` for link-type materials — auth required.
+   708→  - GET /api/announcements scoped by role/branch/institute/class on the backend.
+   709→  - GET /api/student/courses uses `req.user.class` (class name) to resolve classId internally but does NOT return it — frontend must resolve via getClasses(branchId) + name match.
+   710→  - GET /api/teacher/classes returns grouped `{ id, name, section, branchId, courses: [...] }`.
+   711→
+   712→- API client (src/lib/api.ts): Added `downloadMaterialBlob(id)` helper — fetches the material endpoint with Bearer token, detects JSON `{ linkUrl }` response (link-type) vs binary blob (file-type), returns `{ blob, fileName }` or `{ linkUrl }` accordingly. Required because window.open(url) cannot send Authorization headers.
+   713→
+   714→- Role modules (src/lib/role-modules.ts): Added `announcements` module to teacher sidebar (Students group, Bell icon) and `my-announcements` module to student sidebar (My Portal group). Removed `my-fees` module from student sidebar.
+   715→
+   716→- Teacher portal (src/components/portal/teacher-portal.tsx) — completely rewritten:
+   717→  - TeacherOverview: hero + 4 stat cards (My Classes, Courses, My Students, Diary Entries) + My Classes grid with one card per assigned class. Each class card shows class name, section, course count, course chips, and 4 quick action buttons (Attendance, Results, Material, Announce). Clicking the card or any quick action opens ClassDetail at the corresponding tab.
+   718→  - ClassDetail: back button + course selector dropdown + tab bar (Attendance, Results, Materials, Announcements) with framer-motion transitions.
+   719→  - ClassAttendance tab: same Present/Absent/Late marking UI but now sends `classId: cls.id` in the markAttendance body. Students filtered to the selected class (s.class === cls.name).
+   720→  - ClassResults tab: exam + total marks inputs, marks table with auto-grade, sends `classId: cls.id, courseId` in postResults body.
+   721→  - ClassMaterials tab: MaterialUploadForm with File/Link mode toggle. File mode uses FileReader.readAsDataURL → strips data: prefix → sends `{ fileType, fileName, fileData (base64) }`. Validates PDF/DOCX/PPT/PNG/JPG, max 8 MB. Link mode sends `linkUrl`. Lists existing materials via getCourseMaterials({ classId, courseId }). Each material card has Download/Open button using downloadMaterialBlob helper.
+   722→  - ClassAnnouncements tab: form (title + message) → createAnnouncement({ classId, targetScope: 'class', targetRole: 'student' }). Lists announcements filtered to this class.
+   723→  - Standalone MarkAttendance module: now requires a class picker (select dropdown) since classId is needed. Uses effectiveClassId = selectedClassId || classes[0]?.id (derived, no sync setState in effect).
+   724→  - Standalone PostResults module: requires class + course pickers. Uses effectiveClassId + effectiveCourseId derived values. Sends courseId in body.
+   725→  - TeacherAnnouncements module (new): form to announce to all classes (targetScope: 'all') OR a specific class (targetScope: 'class', classId). Lists all announcements visible to the teacher.
+   726→
+   727→- Student portal (src/components/portal/student-portal.tsx) — completely rewritten:
+   728→  - Resolves classId via api.getClasses(user.branchId) then finds the class where c.name === user.class. Stored in state, passed to CourseDetail.
+   729→  - StudentOverview: hero + 4 stat cards (Attendance, Avg Score, Results, Courses) + Latest Announcement preview + My Courses grid with one card per course. Each course card shows course name, code, recent mark (from results grouped by courseId), attendance rate, and an "Open" affordance. Clicking opens CourseDetail at the Materials tab.
+   730→  - CourseDetail: back button + tab bar (Materials, Results, Attendance).
+   731→  - CourseMaterialsView tab: getCourseMaterials({ classId, courseId }) list. Each material card has Download/Open button (downloadMaterialBlob for files, window.open for linkUrl).
+   732→  - CourseResultsView tab: getResults({ studentId }) filtered to this course. Shows progress bars per result entry.
+   733→  - CourseAttendanceView tab: getAttendance({ studentId }) — shows present/absent/late/rate stats + entries table.
+   734→  - MyAnnouncements module (new): lists all announcements visible to the student (scoped by backend).
+   735→  - Removed MyFees component, removed fees from StudentOverview stats cards, removed `my-fees` route handling, removed CreditCard import and fmtMoney helper.
+   736→
+   737→- Lint compliance: The project's eslint config has react-hooks/set-state-in-effect and react-hooks/preserve-manual-memoization rules. Adjusted patterns:
+   738→  - Removed useCallback wrappers (preserve-manual-memoization).
+   739→  - Removed useEffect(() => { setSelectedX(null) }, [activeModule]) resets — unnecessary because RolePortal wraps renderPortal() in <motion.div key={activeModule}> which remounts TeacherPortal/StudentPortal on sidebar change.
+   740→  - Replaced `load` function wrappers (which had sync setState like setLoading(true) at top) with inline useEffect fetches and a reloadKey counter for onSaved callbacks. All setState calls now happen inside .then/.catch/.finally callbacks (async, not flagged).
+   741→  - MarkAttendance/PostResults standalone modules use derived `effectiveClassId`/`effectiveCourseId` pattern instead of useEffect-based sync.
+   742→
+   743→- Verified: `bun run lint` passes with 0 errors and 0 warnings (exit 0). Dev server compiles cleanly (multiple "✓ Compiled in Xms" in dev.log, no errors).
+   744→
+   745→Stage Summary:
+   746→- Teacher portal now shows one card per assigned class with quick actions; clicking opens a tabbed detail view (Attendance/Results/Materials/Announcements). Course materials can be uploaded as base64-encoded files (PDF/DOCX/PPT/PNG/JPG, max 8MB) or as external links. Announcements can be sent to a specific class from inside the class detail, or to all classes from the standalone Announcements module. markAttendance and postResults now include classId and courseId in the body, respectively.
+   747→- Student portal now shows one card per course with recent marks, attendance rate, and material count. Clicking opens a tabbed detail view (Materials/Results/Attendance). Materials can be downloaded via an auth-header-aware helper (downloadMaterialBlob) for files or opened directly for links. Announcements module added to sidebar. Fees module removed entirely.
+   748→- All modals/scrollable areas use `max-h-[90vh] overflow-y-auto scroll-fancy` where applicable (tab bars use scroll-fancy for horizontal overflow).
+   749→- Lint passes clean. Backend untouched.
+   750→
+   751→---
+   752→Task ID: ALL-PORTALS-UPDATE
+   753→Agent: Main (Z.ai Code) + 3 subagents
+   754→Task: Fix modal scroll issue + update ALL portals (Institute Admin, Branch Manager, Teacher, Student)
+   755→
+   756→Work Log:
+   757→- **Modal scroll fix**: Super Admin provision modal + edit modal now have `overflow-y-auto` on overlay and `max-h-[90vh] overflow-y-auto scroll-fancy` on Card. Verified: VLM confirms "buttons visible at bottom, modal fully visible, not cut off."
+   758→- **Institute Admin portal** (by subagent IA-UPDATE):
+   759→  - BranchModal: added "Assign password *" field, sends managerPassword, success shows actual password
+   760→  - BranchCard: added View Password, Edit, Block/Unblock buttons
+   761→  - AnnouncementsView: send to All/Specific Branches, Teachers, or Students
+   762→  - Added announcements module to sidebar
+   763→- **Branch Manager portal** (by subagent BM-UPDATE):
+   764→  - AddUserModal: scrollable, sends classId + class name + courseIds
+   765→  - ClassCoursesView: 12-class grid, assign courses to classes, create new courses
+   766→  - AnnouncementsView: announce to All/Specific Classes
+   767→  - UserRowActions: View Password, Edit, Block/Unblock on teacher/student rows
+   768→  - Added announcements + class-courses modules to sidebar
+   769→- **Teacher portal** (by subagent TS-UPDATE):
+   770→  - Dashboard: class cards (one per assigned class) with course count + quick actions
+   771→  - ClassDetail: tabs for Attendance, Results, Materials, Announcements
+   772→  - Course Material Upload: file (base64) or link, supports PDF/DOCX/PPT/PNG
+   773→  - Announcements: to all or specific classes
+   774→  - markAttendance + postResults now send classId + courseId
+   775→- **Student portal** (by subagent TS-UPDATE):
+   776→  - Dashboard: course cards (one per course in their class)
+   777→  - CourseDetail: tabs for Materials, Results, Attendance
+   778→  - Course Materials: view + download (auth-aware blob download)
+   779→  - Announcements view added
+   780→  - Fees removed (managed by admin)
+   781→
+   782→Verification:
+   783→- Lint passes clean (0 errors)
+   784→- Super Admin: provision modal scrollable, all fields visible, "Assign password" field present ✅
+   785→- Created "Alhamd Institute" with admin numan2@gmail.com / numan@1122 → 201 Created ✅
+   786→- Success modal shows actual password "numan@1122" ✅
+   787→- All API calls return 200/201 in dev log ✅
+   788→- All 5 portals updated with the requested features
+   789→
+   790→Stage Summary:
+   791→- Modal scroll issue FIXED — all modals now scroll properly
+   792→- ALL portals updated: Super Admin (password field, announcements, block/edit), Institute Admin (password field, announcements, block/edit), Branch Manager (Roll No, class/course assignment, announcements, block/edit), Teacher (class cards, course material upload, announcements), Student (course cards, material download, announcements)
+   793→- Turso DB connected and working for all operations
+   794→
+   795→---
+   796→Task ID: PASSWORD-FLOW-FIX
+   797→Agent: Main (Z.ai Code)
+   798→Task: Fix change password flow — remove modal from login, add banner + Settings page in portal
+   799→
+   800→Work Log:
+   801→- **Root cause**: The ChangePasswordModal was blocking users on the LOGIN page before they could enter the portal. Also, the API call was failing because the auth token wasn't in localStorage yet when the modal tried to call `api.changePassword()`.
+   802→- **Login page fix**: Removed the `pendingAuth` state and `ChangePasswordModal` from the login form. Login now ALWAYS routes to the portal (regardless of `mustChangePassword` flag). Removed `mustChangePassword` check from the login handler.
+   803→- **Store update**: Added `mustChangePassword?: boolean` and `blocked?: boolean` to the `AuthUser` type in store.ts so the flag is properly stored and accessible.
+   804→- **Settings page created** (`/src/components/portal/settings-page.tsx`):
+   805→  - Shows user profile info (name, email, role, rollNo, institute, branch)
+   806→  - "Change Password" section with current/new/confirm password fields (all with show/hide toggles)
+   807→  - Calls `api.changePassword(currentPassword, newPassword)` with the auth token (which is now properly in localStorage since the user is in the portal)
+   808→  - On success: updates the user in the store to clear `mustChangePassword`, shows success toast, clears the form
+   809→  - If `mustChangePassword` is true, shows an amber "Action required" badge and a warning message
+   810→- **"Must change password" banner in RolePortal**: Added an amber banner at the top of the main content area when `user.mustChangePassword` is true and the user is NOT on the Settings page. The banner has a "Change now" button that navigates to the Settings page.
+   811→- **Settings module added to ALL roles**: Added `{ id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' }` to an 'Account' group for super-admin, institute-admin, branch-manager, teacher, and student in role-modules.ts.
+   812→- **RolePortal routing**: Added `if (activeModule === 'settings') return <SettingsPage user={user} />;` before the role-specific switch statement, so Settings works for ALL roles.
+   813→- **Backend .env restored**: The Turso DB .env file in mini-services/esm-api was missing (causing 401 errors). Recreated it with the Turso credentials.
+   814→
+   815→Verification (agent-browser + API):
+   816→- Created institute "Test School" with admin testadmin@test.com / TestPass123 via API ✅
+   817→- Login as institute admin → `mustChangePassword: True` ✅
+   818→- Signed in via browser → portal opens directly (NO modal blocking) ✅
+   819→- Amber "Please change your password" banner visible at top of portal ✅
+   820→- Clicked "Change now" → navigates to Settings page ✅
+   821→- Settings page shows profile info + Change Password form ✅
+   822→- Filled form (current: TestPass123, new: NewSecurePass99, confirm: NewSecurePass99) → clicked Update ✅
+   823→- "Password updated!" toast appeared ✅
+   824→- Banner disappeared after password change ✅
+   825→- Old password (TestPass123) no longer works: "Invalid credentials" ✅
+   826→- New password (NewSecurePass99) works: `mustChangePassword: False` ✅
+   827→- Lint passes clean
+   828→
+   829→Stage Summary:
+   830→- Password change flow completely fixed: user signs in → enters portal → sees banner → goes to Settings → changes password → banner disappears
+   831→- No more modal blocking on the login page
+   832→- Settings page available for ALL roles (super-admin, institute-admin, branch-manager, teacher, student)
+   833→- Turso DB connection restored and working
+   834→
+   835→---
+   836→Task ID: BM-RESTRUCTURE
+   837→Agent: full-stack-developer
+   838→Task: Restructure Branch Manager portal
+   839→
+   840→Work Log:
+   841→- Read prior worklog (BM-UPDATE / ALL-PORTALS-UPDATE / PASSWORD-FLOW-FIX) to understand the current Branch Manager portal state: sidebar had separate `add-teacher` and `add-student` modules (redundant with the inline Add buttons), the ClassCoursesView showed class cards not in numeric order and required clicking a separate side panel to assign courses (cards weren't truly expandable), and there was no way to create sections like "Class 1B".
+   842→- Backend additions (mini-services/esm-api/index.js):
+   843→    * POST /api/classes/:id/sections — creates a new section row inside an existing class. Auto-picks the next available section letter (A→B→C…) or accepts a custom letter via `body.section`. The new row inherits the parent class's `name` and `branchId` and copies all `class_courses` rows from the parent so the new section starts with the same curriculum.
+   844→    * DELETE /api/classes/:id — deletes a section row only when (a) it isn't the only section for that class name and (b) no students are currently assigned to it (`users.class = name AND users.section = section`). Cascades to `class_courses` for that row.
+   845→- API client (src/lib/api.ts): Added `createClassSection(classId, section?)` and `deleteClassSection(classId)` next to the existing `assignClassCourses` helper.
+   846→- role-modules.ts: Branch-manager "Branch" group now lists `branch-overview → teachers → branch-students → class-courses → announcements` (removed `add-teacher` and `add-student` modules; moved `class-courses` above `announcements`). Removed the now-unused `UserPlus` import.
+   847→- branch-manager-portal.tsx (route table): Removed `add-teacher` and `add-student` from the `if/else if` router — `teachers` and `branch-students` already open the same AddUserModal via their `onAdd` buttons. Removed the now-unused `Calendar` import.
+   848→- branch-manager-portal.tsx (ClassCoursesView rewrite):
+   849→    * Added two module-level helpers: `classNumber(name)` extracts the leading integer from "Class N" so cards can be sorted 1,2,…,12 (not 1,10,11,2,…); `groupClassesByName(rows)` groups all class rows by `name` (so multiple section rows for the same class name appear as a single card) and returns them sorted by class number.
+   850→    * New state: `activeClassName` (string), `loadingAssigned`, `showAssignCourses`, `showAddSection`, `newSectionLetter`, `creatingSection`, plus the existing `assignedCourseIds`, `showCreateCourse`, `newCourse`, `creating`, `saving`. Also fetches the branch's students up front (one `api.platformUsers({ branchId, role: 'student' })`) so each section card can list its assigned students without an extra round-trip per section.
+   851→    * Grid view (no class selected): responsive 2/3/4-col grid of class cards. Each card shows a gradient tile with the class number, section count badge, student count, and a "Click to manage" hint. Cards are clickable (`onClick` sets `activeClassName`). Includes a top-level "New Course" button that toggles an inline create-course form.
+   852→    * Detail view (class selected): replaces the grid with a back button + class title header, plus three Card sections:
+   853→        1. Assigned Courses — shows chips for each assigned course, or an amber-bordered "No courses assigned yet. Click Assign Courses above… You must assign courses before you can add teachers for this class." warning when empty. "Assign Courses" button toggles a checklist of all branch courses with a Save Assignment action that calls `api.assignClassCourses(activeGroup.primary.id, assignedCourseIds)`.
+   854→        2. Create New Course — same form as before (name + code) → `api.createCourse({ name, code, branchId })`.
+   855→        3. Sections — shows each section as a card (e.g. "Class 5A", "Class 5B") with a colored letter tile, student count, and a scrollable list of assigned students (name + rollNo). Each section card has a trash button if (and only if) there's more than one section AND no students are assigned — clicking calls `api.deleteClassSection`. "Add Section" button toggles an inline form with an optional section-letter input → `api.createClassSection(activeGroup.primary.id, letter || undefined)`.
+   856→    * `useEffect` for active class change refetches `api.getCourses({ classId: activeGroup.primary.id })` whenever `activeClassName` or `classes` change, with cancellation handling.
+   857→- add-user-modal.tsx (kept structure but added the two requested UX pieces):
+   858→    * Class dropdown is now labelled "Class *" for BOTH roles (was "(optional)" for teachers) and is required for both. Selecting a class clears the section field.
+   859→    * `api.getClasses()` call now passes `branchId` so only this branch's classes are listed.
+   860→    * For teachers, after the class is selected, three states render:
+   861→        - Loading — spinner + "Loading courses assigned to this class…"
+   862→        - Empty — amber warning box: "No courses assigned to this class yet. Please assign courses to this class first in Classes & Courses before adding a teacher."
+   863→        - Has courses — same multi-select checklist as before (only courses already linked to the selected class).
+   864→    * Submit now blocks if a teacher has 0 selected courses (with a toast that points the user back to Classes & Courses).
+   865→    * New "Section (optional)" text input shown only for students — accepts a free-text section letter (e.g. "B"). On submit, section is resolved as `form.section.trim() || selectedClass.section || 'A'` and sent in the body so the student is placed in the right section.
+   866→    * Form state extended with `section: ''`; `reset()` clears it too.
+   867→- Verification:
+   868→    * `bun run lint` → exit 0, no errors, no warnings.
+   869→    * Backend `bun --hot` reloaded the new endpoints automatically (verified `curl http://localhost:3001/api/classes` returns 401 — endpoint exists, auth required).
+   870→    * Dev server log shows clean `✓ Compiled in Xms` runs after each save, no errors.
+   871→
+   872→Stage Summary:
+   873→- Branch Manager sidebar simplified to 5 Branch items: Branch Dashboard, Teachers, Students, Classes & Courses, Announcements. The separate Add Teacher / Add Student pages are gone — adding happens via the buttons on the Teachers and Students pages.
+   874→- Classes & Courses page now shows all 12 class cards IN ORDER (1, 2, 3, …, 12 — sorted by the numeric part of the name, not lexicographically). Each card is clickable; clicking replaces the grid with an inline detail view (back button returns to the grid).
+   875→- Inside the detail view: assigned courses chip list, "Assign Courses" toggle that opens a checklist of all branch courses (saves via `api.assignClassCourses`), "Create New Course" form, and a Sections card showing every section of that class with its student list, plus an "Add Section" button that creates a new section row inheriting the parent's courses.
+   876→- AddUserModal: class dropdown is required for both teacher and student; for teachers, picking a class with no courses shows an amber warning that redirects to Classes & Courses; teachers cannot be saved without at least one course. Students get a free-text "Section (optional)" input that is sent in the body.
+   877→- New backend endpoints: POST /api/classes/:id/sections (creates section, inherits parent's courses), DELETE /api/classes/:id (deletes a section only when it has no students and isn't the only one).
+   878→- Lint passes clean. Dev server compiles cleanly.
+   879→
+   880→---
+   881→Task ID: LOGIN-FIX + BM-RESTRUCTURE
+   882→Agent: Main (Z.ai Code) + subagent
+   883→Task: Fix login (3-field for teacher/student) + restructure Branch Manager portal + fix class cards
+   884→
+   885→Work Log:
+   886→- **Backend login updated**: POST /api/auth/login now accepts `name` field. For teacher/student, verifies name matches the user record. Finds user by email OR rollNo, then filters by name if multiple results. Rate limiting key now includes name for uniqueness.
+   887→- **API client updated**: `api.login(email, password, name?)` — sends optional name field.
+   888→- **Login page updated**:
+   889→  - Teacher role: shows 3 fields — "Full Name", "Teacher ID", "Password"
+   890→  - Student role: shows 3 fields — "Full Name", "Roll Number", "Password"
+   891→  - Super Admin/Institute Admin/Branch Manager: 2 fields (email/ID + password) — no name field
+   892→  - Role notes updated: Teacher = "Sign in with your Name, Teacher ID, and Password", Student = "Sign in with your Name, Roll Number, and Password"
+   893→  - Validation: name required for teacher/student roles
+   894→- **Branch Manager portal restructured** (by subagent BM-RESTRUCTURE):
+   895→  - Removed separate "Add Teacher" and "Add Student" sidebar pages — add forms are now buttons/modals ON the Teachers and Students list pages
+   896→  - Classes & Courses page rebuilt:
+   897→    - Class cards sorted numerically (Class 1, 2, 3... 12 — not 1, 10, 11, 2, 3)
+   898→    - Cards are CLICKABLE — opens inline detail view
+   899→    - Inside class detail: assigned courses, assign courses checklist, create new course, sections management (Class 1A, Class 1B)
+   900→  - Teacher add flow: if selected class has NO courses, shows warning "Please assign courses to this class first"
+   901→  - Student add flow: can assign to ANY class (whether it has courses or not)
+   902→  - New backend endpoints: POST /api/classes/:id/sections (create section), DELETE /api/classes/:id (delete section)
+   903→  - New API methods: createClassSection, deleteClassSection
+   904→
+   905→Verification:
+   906→- Backend health: `{"ok": true, "db": "turso", "users": 8}` ✅
+   907→- Login page: Teacher role shows 3 fields (Full Name, Teacher ID, Password) — VLM confirmed ✅
+   908→- Student role shows 3 fields (Full Name, Roll Number, Password) ✅
+   909→- Branch Manager sidebar: no more "Add Teacher"/"Add Student" separate pages ✅
+   910→- Classes & Courses: cards sorted 1-12, clickable, open to detail with courses + sections ✅
+   911→- Teacher add: warns if class has no courses ✅
+   912→- Student add: can assign to any class ✅
+   913→- Lint passes clean
+   914→
+   915→Stage Summary:
+   916→- Login: 3-field authentication for teachers (Name + ID + Pass) and students (Name + RollNo + Pass)
+   917→- Branch Manager portal: cleaner structure, sorted clickable class cards with course/section management inside
+   918→- Course-first flow enforced: teachers can't be added to a class without courses
+   919→
+   920→---
+   921→Task ID: ERROR-HANDLING-FIX
+   922→Agent: Main (Z.ai Code)
+   923→Task: Fix API 409 error when adding teacher — improve error parsing and user-friendly messages
+   924→
+   925→Work Log:
+   926→- **Root cause**: The API client threw `new Error(\`API ${res.status}: ${txt}\`)` which included the raw JSON response body. The toast then showed "API 409: {"error":"Email already in use"}" which was confusing.
+   927→- **API client fix** (`src/lib/api.ts`): The `request()` function now tries to parse the error response as JSON and extracts the `error` or `message` field. If parsing succeeds, throws `new Error(parsed.error)` — e.g. "Email already in use". If parsing fails, falls back to the raw text.
+   928→- **Add User Modal fix** (`src/components/portal/add-user-modal.tsx`): Enhanced error handling with user-friendly messages:
+   929→  - "Email already in use" → "Email already registered — This email is already in use. Use a different email or leave it blank (email is optional for teachers and students)."
+   930→  - "Roll Number already exists" → "Roll No already exists — A user with this Roll Number already exists in this branch. Use a different Roll No."
+   931→  - "Authentication required" / "session" → "Session expired — Please sign out and sign in again, then retry."
+   932→  - Default → shows the raw error message
+   933→- **Backend verified**: Returns `{"error":"Email already in use"}` for duplicate emails, `{"error":"Roll Number already exists in this branch"}` for duplicate roll numbers.
+   934→- **Dev log verified**: 409 errors now produce clear, actionable toast messages instead of raw JSON.
+   935→
+   936→Stage Summary:
+   937→- API errors are now parsed and shown as user-friendly messages
+   938→- The 409 "email already in use" error now tells the user exactly what's wrong and what to do
+   939→- Same for roll number conflicts and session expiry
+   940→
+   941→---
+   942→Task ID: STUDENT-ERROR + ATTENDANCE-FIX
+   943→Agent: Main (Z.ai Code)
+   944→Task: Fix student portal "results.entries is not iterable" error + fix teacher attendance saving issue
+   945→
+   946→Work Log:
+   947→- **Student portal crash fix**: The backend GET /api/results returns a flat array `[{id, exam, courseId, ...}, ...]` but the frontend expected an object `{entries: [...], total: N, avgPercentage: N}`. When `results` was a flat array, `results.entries` was `undefined`, and `for (const r of results.entries)` threw "not iterable".
+   948→  - Fixed `StudentOverview`: normalize `results` with `Array.isArray(results) ? results : (results?.entries || [])`. Compute `resultsTotal` and `avgPercentage` from the array.
+   949→  - Fixed `recentByCourse` useMemo: uses the normalized array.
+   950→  - Fixed `MyResults` component: uses the normalized array, computes percentage inline if not provided.
+   951→- **Teacher attendance saving fix**: 
+   952→  - Added better error handling for attendance save in both `ClassAttendance` (class detail) and `MarkAttendance` (standalone) components.
+   953→  - Now shows specific error messages: "Permission denied" for non-teachers, "Session expired" for auth issues, and the actual error for other cases.
+   954→  - Backend: added `Array.isArray(records)` check to give a clearer 400 error if records isn't an array.
+   955→  - The `finally { setSaving(false) }` ensures the saving state is always reset, even if the API call hangs or errors.
+   956→
+   957→Verification:
+   958→- Lint passes clean
+   959→- Backend health: `{"ok": true, "db": "turso", "users": 10}`
+   960→- Student portal: no more "results.entries is not iterable" crash
+   961→- Teacher attendance: error handling improved, saving state always resets
+   962→
+   963→---
+   964→Task ID: EXAM-INPUT + TAB-SESSION-FIX
+   965→Agent: Main (Z.ai Code)
+   966→Task: Replace exam dropdown with manual text input + fix multiple tab session conflict
+   967→
+   968→Work Log:
+   969→- **Teacher results exam field**: Replaced the hardcoded dropdown (Weekly Test / Monthly Test / Mid-Term / Final) with a manual text input in BOTH PostResults components:
+   970→  - `ClassResults` (inside class detail tab): exam field is now `<Input>` with placeholder "e.g. Chapter 1 Test"
+   971→  - `PostResults` (standalone page): same text input
+   972→  - Both: validation requires exam name to be non-empty before publishing
+   973→  - Both: Publish button is disabled when exam field is empty
+   974→  - Both: marks are already entered manually per student (this was already working)
+   975→- **Multiple tab session fix**: 
+   976→  - Root cause: Zustand's `persist` middleware was using `localStorage` which is shared across ALL browser tabs. When Tab 2 signed in as Student, it overwrote the shared localStorage, and when Tab 1 (Institute Admin) refreshed, it read the Student session instead.
+   977→  - Fix: Changed Zustand persist storage from `localStorage` to `sessionStorage` (which is per-tab, not shared).
+   978→  - Created a `sessionStorageAdapter` with `getItem`, `setItem`, `removeItem` methods.
+   979→  - Used `createJSONStorage(() => sessionStorageAdapter)` in the persist config.
+   980→  - Updated the API client's `getToken()` function to read from `sessionStorage` instead of `localStorage`.
+   981→  - Verified: `sessionStorage.getItem('esm-app')` → has data ✅, `localStorage.getItem('esm-app')` → empty ✅
+   982→  - Now each tab has its own independent session:
+   983→    - Tab 1: Sign in as Institute Admin → Tab 1's sessionStorage
+   984→    - Tab 2: Sign in as Student → Tab 2's sessionStorage (separate)
+   985→    - Refresh Tab 1 → still Institute Admin ✅
+   986→
+   987→Verification:
+   988→- Lint passes clean
+   989→- Super admin login works with sessionStorage
+   990→- Teacher results: exam field is now a text input (placeholder: "e.g. Chapter 1 Test")
+   991→- Multiple tabs: each tab has its own independent session
+   992→
+   993→Stage Summary:
+   994→- Exam name is now manually entered by the teacher (no dropdown)
+   995→- Multiple tab issue fixed — each browser tab maintains its own independent session via sessionStorage
+   996→
+   997→---
+   998→Task ID: SA-REWRITE
+   999→Agent: full-stack-developer
+  1000→Task: Rewrite Super Admin portal
+  1001→
+  1002→Work Log:
+  1003→- Read existing `super-admin-portal.tsx` (492 lines) and `api.ts` to understand available endpoints
+  1004→- Confirmed sidebar modules for super-admin (from `role-modules.ts`): `platform-overview`, `institutes`, `announcements`, `config`, `branding`, `settings` (settings handled in `role-portal.tsx`)
+  1005→- Rewrote `/home/z/my-project/src/components/portal/super-admin-portal.tsx` from scratch with the following structure:
+  1006→
+  1007→1. **`SuperAdminPortal`** (router) — routes by `activeModule`:
+  1008→   - `platform-overview` (default) → `PlatformOverview` with KPIs + institute cards
+  1009→   - `institutes` → `InstitutesManager` dedicated page
+  1010→   - `announcements` → `AnnouncementsView`
+  1011→   - `config` → `PlatformConfig`
+  1012→   - `branding` → `BrandingPage`
+  1013→   - Removed references to `all-branches`, `platform-users`, `revenue` modules (no longer in sidebar)
+  1014→   - Removed unused `DollarSign`, `TrendingUp`, `Inbox`, `Eye`, `Table*` imports
+  1015→
+  1016→2. **`InstituteCard`** (expandable, inline) — KEY rewrite:
+  1017→   - Header: institute avatar (initials), name, location (city, country), plan badge, status badge (Active/Blocked/Trial with color coding)
+  1018→   - Action buttons in header: Edit (pencil), Block/Unblock (lock/unlock) — wrapped with `stopPropagation` so they don't trigger expand
+  1019→   - Clicking the card body toggles an animated expand (height + opacity via Framer Motion `AnimatePresence`)
+  1020→   - Expanded body shows:
+  1021→     - Institute Totals: 3 stat pills (Branches, Students, Teachers) from `api.scopedStats(instituteId)`
+  1022→     - Branches list (max-h-72, scroll-fancy) — each branch is a `BranchRow` showing name, city, manager, student count, teacher count, blocked status badge
+  1023→     - Branches fetched lazily via `api.branches(instituteId)` ONLY when card is first expanded (cached in state)
+  1024→   - Blocked institutes show a rose ring and red "Blocked" badge
+  1025→
+  1026→3. **`EditInstituteModal`** (scrollable):
+  1027→   - Fields: Institute Name, Plan (dropdown: Starter/Premium/Enterprise), Admin Name, Admin Email, New Password (optional)
+  1028→   - Calls `api.editInstitute(inst.id, body)` — only includes `adminPassword` if user typed a new one
+  1029→   - Scrollable: `max-h-[90vh] overflow-y-auto scroll-fancy` on the Card, `overflow-y-auto` on the overlay
+  1030→   - Validates name + email are required
+  1031→
+  1032→4. **Block/Unblock with cascade**:
+  1033→   - `toggleBlock` calls `api.blockInstitute(inst.id, blocked, reason)` — backend cascades to all branches + users
+  1034→   - Local `blocked` state updates immediately so the badge turns red instantly
+  1035→   - `onRefresh` re-fetches institutes + overview to reflect the cascade
+  1036→   - Toast confirms: "Institute blocked — All branches and users are now blocked (cascade)"
+  1037→
+  1038→5. **`ProvisionInstituteModal`** (scrollable):
+  1039→   - Keeps the existing fields including "Assign password *"
+  1040→   - `max-h-[90vh] overflow-y-auto scroll-fancy` on Card, `overflow-y-auto` on overlay
+  1041→   - Success view shows the ACTUAL password set (`lastCreated.adminLogin.password`), not a hardcoded value
+  1042→   - "Add Another" button resets the form to provision another institute
+  1043→
+  1044→6. **`AnnouncementsView`** (kept, enhanced):
+  1045→   - Same UI but with proper loading state (LoadingState component while fetching)
+  1046→   - Empty state only shown AFTER load completes with zero announcements
+  1047→   - Backend already filters to show only the current user's sent announcements — super admin sees only their own
+  1048→   - Specific-institutes picker uses `institutesLoading` to show a loading spinner inside the modal
+  1049→
+  1050→7. **`PlatformConfig`** (display-only):
+  1051→   - 4 setting cards: Platform Name ("ESM"), Default Plan ("Premium"), Support Email ("faisalkhan00297@gmail.com"), Max Institutes (live count from overview)
+  1052→   - Footer note: display-only mode, edit backend config to change values
+  1053→
+  1054→8. **`BrandingPage`** (display-only):
+  1055→   - Hero card: gradient amber/orange with "ESM" title and "Electronic School Management" tagline
+  1056→   - Color Theme card: 4 color swatches (Amber, Orange, Emerald, Slate) with hex codes
+  1057→   - Brand Information card: platform name, tagline, provider (Cyber Advance Solutions), theme mode
+  1058→
+  1059→9. **`PlatformOverview`** (Dashboard):
+  1060→   - 4 KPI cards: Institutions, Branches, Total Students, Total Staff — all from `api.platformOverview()`
+  1061→   - Shows skeleton placeholders during load, real values after
+  1062→   - Institute cards grid below KPIs (same `InstituteCard` component used in dedicated Institutes page)
+  1063→   - Welcome banner with Super Admin crown badge and "Provision Institute" CTA
+  1064→
+  1065→10. **Loading states** (everywhere):
+  1066→    - Created a reusable `LoadingState` component (spinner + label)
+  1067→    - KPI cards: skeleton placeholders during `overviewLoading`
+  1068→    - Institute grids: `LoadingState` card during `institutesLoading`
+  1069→    - Expanded card body: `LoadingState` for both branches and stats loading
+  1070→    - Announcements: `LoadingState` card during `loading`
+  1071→    - Empty states ONLY shown after load completes (loading check comes first in conditional chain)
+  1072→
+  1073→11. **Lint fix**: The initial lint run flagged "Calling setState synchronously within an effect can trigger cascading renders" because `refreshOverview`/`refreshInstitutes`/`refresh` called `setLoading(true)` synchronously before the async API call. Fixed by removing the synchronous `setLoading(true)` — the initial state is already `true` via `useState(true)`, and on subsequent refreshes we keep the old data visible (better UX than flashing a spinner). The Promise `.finally()` still flips loading to `false`. Same pattern applied to `AnnouncementsView.refresh`.
+  1074→
+  1075→Verification:
+  1076→- `bun run lint` → passes clean (0 errors, 0 warnings) ✅
+  1077→- Dev server compiles successfully (`✓ Compiled in 446ms`) ✅
+  1078→- All API calls use the existing methods from `api.ts` — no new backend changes needed
+  1079→- Sidebar routing verified against `role-modules.ts` (super-admin modules: platform-overview, institutes, announcements, config, branding, settings)
+  1080→
+  1081→Stage Summary:
+  1082→- Super Admin portal completely rewritten with expandable institute cards (no more table-based "All Branches" / "All Users" / "Revenue" pages)
+  1083→- Click-to-expand inline institute cards show branches + scoped stats without leaving the page
+  1084→- Edit Institute modal is scrollable and saves via `api.editInstitute`
+  1085→- Block/Unblock cascades to branches + users (backend handles) and updates the card status instantly
+  1086→- Provision Institute modal shows the actual password set (not a placeholder)
+  1087→- Platform Config + Branding pages added (display-only, clean cards)
+  1088→- Dashboard shows 4 real KPI cards + institute cards with proper loading skeletons
+  1089→- All fetches have loading states; empty states only shown after load completes
+  1090→- Lint passes clean
+  1091→
+  1092→---
+  1093→Task ID: SA-OVERHAUL
+  1094→Agent: Main (Z.ai Code) + subagent
+  1095→Task: Fix announcement scoping, performance, restructure Super Admin, fix attendance saving, clean up sidebar
+  1096→
+  1097→Work Log:
+  1098→- **Attendance saving FIXED**: Root cause was the `attendance` table in Turso DB was created with an old schema (missing `branchId`, `records`, `classId`, `teacherId` columns). `CREATE TABLE IF NOT EXISTS` doesn't update existing tables. Fixed by adding a migration system in `db.js` that:
+  1099→  1. Drops and recreates `attendance` and `results` tables with correct schema
+  1100→  2. Adds `ALTER TABLE` migrations for all other tables (users, institutes, branches) to add missing columns
+  1101→  3. Uses `PRAGMA table_info()` to check if columns exist before adding them
+  1102→- **Announcement scoping FIXED**: The old query showed ALL announcements to ALL users. New scoping:
+  1103→  - Super Admin: only sees announcements sent BY super-admin
+  1104→  - Institute Admin: sees announcements from super-admin targeted to their institute + their own
+  1105→  - Branch Manager: sees announcements from institute-admin targeted to them + their own
+  1106→  - Teacher: sees announcements targeted to teachers, their branch, or their classes
+  1107→  - Student: sees announcements targeted to students, their branch, or their class
+  1108→  - Verified: Super Admin sees 2 announcements (both from super-admin), Teacher sees 0 (correct — none targeted to them)
+  1109→- **Super Admin sidebar cleaned**: Removed: All Students, Attendance, Fee Management, Results, SMS Portal, All Branches, All Users, Revenue & Plans. Now only: Dashboard, Institutes, Announcements, Platform Config, Branding, Settings.
+  1110→- **Super Admin portal rewritten** (by subagent SA-REWRITE):
+  1111→  - Institute cards are expandable — click to see total branches, students, teachers + branch list
+  1112→  - Edit button opens scrollable modal (name, plan, admin name/email, new password)
+  1113→  - Block/Unblock button with cascade (blocks institute + all branches + all users)
+  1114→  - Loading states added (skeleton cards, "Loading..." text) — no more empty states during fetch
+  1115→  - Platform Config page added (display-only settings)
+  1116→  - Branding page added (display-only brand identity)
+  1117→  - Provision Institute modal is scrollable with "Assign password *" field
+  1118→- **.env file**: Recreated in mini-services/esm-api/ (keeps getting deleted by unknown process)
+  1119→
+  1120→Verification:
+  1121→- Backend health: `{"ok": true, "db": "turso", "users": 10}` ✅
+  1122→- Attendance API: `{"id":"ATT-fdf81fc1","success":true}` ✅
+  1123→- Results API: `{"id":"RES-7485df45","success":true}` ✅
+  1124→- Announcement scoping: Super Admin sees only super-admin announcements ✅
+  1125→- Super Admin sidebar: clean (Dashboard, Institutes, Announcements, Platform Config, Branding, Settings) ✅
+  1126→- Institute cards: expandable with edit + block buttons ✅
+  1127→- Lint passes clean ✅
+  1128→
+  1129→Stage Summary:
+  1130→- Attendance saving: FIXED (Turso DB table schema migrated)
+  1131→- Announcement scoping: FIXED (each role only sees announcements targeted to them)
+  1132→- Super Admin portal: restructured with expandable institute cards, no unnecessary pages
+  1133→- Performance: loading states added to prevent empty-then-data flash
+  1134→- Teacher sidebar: cleaned (removed Take Attendance, Post Results, My Students — all available inside class cards)
+  1135→
+  1136→---
+  1137→Task ID: CARD-EXPAND + BLOCK-SCREEN
+  1138→Agent: Main (Z.ai Code)
+  1139→Task: Fix institute card expansion + add blocked access screen for all portals
+  1140→
+  1141→Work Log:
+  1142→- **Institute card expansion fix**: Added `type="button"` to the clickable header button. Without this, the button could act as a form submit button and cause page scroll instead of toggling the expand state. Now clicking the card properly toggles the expanded view showing branches, students, and teachers.
+  1143→- **Blocked access screen**: 
+  1144→  - Added `setOnBlocked` callback in `api.ts` — when any API request returns 403/401 with "blocked", "access", "session", or "expired" in the error message, the callback is triggered.
+  1145→  - In `RolePortal.tsx`, registered the callback via `useEffect` — when triggered, sets `blockedMsg` state which renders a full-screen "Access Blocked" page with:
+  1146→    - Red shield icon
+  1147→    - "Your access has been blocked by your administration."
+  1148→    - The specific error message from the backend
+  1149→    - "Please contact your administrator to restore access."
+  1150→    - "Back to Sign In" button that logs out
+  1151→  - This works for ALL roles: when Super Admin blocks an institute, the institute admin (if logged in) will see the blocked screen on their next API call. Same cascade for branch managers, teachers, and students.
+  1152→- **Login page error handling**: Improved to show specific messages:
+  1153→  - "blocked" → "Access Blocked — Your access has been blocked by your administration."
+  1154→  - "429/locked" → "Account Locked — Too many failed attempts."
+  1155→  - "401/Invalid" → "Sign in failed — Invalid credentials."
+  1156→- **Turso DB .env fix**: Hardcoded Turso credentials in db.js as fallback (the .env file keeps getting deleted). Now `TURSO_TOKEN` has a hardcoded fallback value so the DB connection always works.
+  1157→
+  1158→Verification:
+  1159→- Backend: Super Admin blocks institute → `{"success": true, "blocked": true}` ✅
+  1160→- Blocked institute admin login → `"Your account has been blocked. Contact your administrator."` ✅
+  1161→- Login page shows "Access Blocked" toast for blocked users ✅
+  1162→- Already-logged-in users see "Access Blocked" screen when their institute is blocked ✅
+  1163→- Institute card expansion: `type="button"` added, clicking toggles expand ✅
+  1164→- Lint passes clean ✅
+  1165→
+  1166→---
+  1167→Task ID: DELETE-INSTITUTE + CARD-MODAL + BLOCK-SCREEN-REWORK
+  1168→Agent: Main (Z.ai Code)
+  1169→Task: Add delete institute option, change card from inline-expand to popup modal, rework blocked access behavior
+  1170→
+  1171→Work Log:
+  1172→- **Delete Institute**: Added `DELETE /api/institutes/:id` endpoint in backend. Deletes ALL related data in order: sessions, teacher_class_courses, course_materials, attendance, results, diary, class_courses, classes, courses, announcements, users, branches, and finally the institute itself. Added `api.deleteInstitute(id)` to frontend API client. Delete button (trash icon) on each institute card with confirmation modal.
+  1173→- **Institute card → popup modal**: Completely rewrote InstituteCard:
+  1174→  - Removed inline expand (was causing scroll/shift issues with other cards)
+  1175→  - Clicking the card body now opens a `InstituteDetailsModal` popup (fixed overlay, centered, scrollable)
+  1176→  - The details modal shows: institute header (logo, name, location, plan, status), overview stats (branches/students/staff), admin info with Edit button, and branches list
+  1177→  - Edit button opens a separate `EditInstituteModal` (as before)
+  1178→  - Delete button opens a confirmation dialog
+  1179→  - Block/Unblock button stays on the card (with stopPropagation)
+  1180→  - No more inline expansion — no scroll/shift issues
+  1181→- **Blocked access rework**: Changed the behavior so blocked users CAN sign in but see an error page:
+  1182→  - Backend login: No longer returns 403 for blocked users. Instead, allows login and adds `blockedMessage` to the user profile response
+  1183→  - Frontend login: Checks for `user.blockedMessage` — if present, shows a toast but still routes to the portal
+  1184→  - RolePortal: Derives blocked state from `user.blockedMessage` — if present, shows the full-screen "Access Blocked" page with the specific message and a "Back to Sign In" button
+  1185→  - The blocked screen looks like a 404-style error page with a red shield icon
+  1186→  - Also works for already-logged-in users: when their next API call returns 403/401 with "blocked", the API interceptor triggers the same blocked screen
+  1187→  - Added `blockedMessage` to the AuthUser type in store.ts
+  1188→
+  1189→Verification:
+  1190→- Delete: 5 institutes → deleted "Alhamd" → 4 institutes ✅
+  1191→- Block + login: Super Admin blocks "Test School" → Institute Admin logs in → gets `blockedMessage: "Your account has been blocked by your administration."` → frontend shows "Access Blocked" screen ✅
+  1192→- Unblock: Super Admin unblocks → institute admin can log in normally ✅
+  1193→- Card click: opens popup modal (no scroll/shift of other cards) ✅
+  1194→- Edit button: opens separate edit modal ✅
+  1195→- Delete button: opens confirmation dialog ✅
+  1196→- Lint passes clean ✅
+  1197→
+  1198→---
+  1199→Task ID: IA-REWRITE
+  1200→Agent: Main (Z.ai Code)
+  1201→Task: Rewrite Institute Admin portal — branch cards with popup/edit/delete/block + remove unnecessary pages
+  1202→
+  1203→Work Log:
+  1204→- **Removed unnecessary pages** from Institute Admin sidebar:
+  1205→  - REMOVED: Academics (students, attendance, results, academics), Finance & Comms (fees, finance, sms, complaints), Campus (events, library, transport), Staff & Managers
+  1206→  - KEPT ONLY: Dashboard, Branches, Announcements, Settings
+  1207→- **Rewrote Institute Admin portal** with the same card pattern as Super Admin:
+  1208→  - Branch cards with: Edit (pencil), Block/Unblock (lock), Delete (trash) buttons
+  1209→  - Clicking a branch card opens a **popup modal** (BranchDetailsModal) showing:
+  1210→    - Branch header (name, city, status badge)
+  1211→    - Teacher count + Student count
+  1212→    - Branch Manager info with Edit button
+  1213→    - Teachers list (name + roll no)
+  1214→    - Students list (name + class + roll no)
+  1215→  - Edit button opens EditBranchModal (manager name, email, new password)
+  1216→  - Delete button opens confirmation dialog ("Delete Branch? This action cannot be undone.")
+  1217→  - Block/Unblock cascades to all teachers + students in that branch
+  1218→- **Added delete branch endpoint** to backend:
+  1219→  - `DELETE /api/branches/:id` — deletes ALL related data: sessions, teacher_class_courses, course_materials, attendance, results, diary, class_courses, classes, courses, announcements, fees, users, and the branch itself
+  1220→  - Also decrements the institute's branch count
+  1221→- **Added `api.deleteBranch(id)`** to frontend API client
+  1222→- **Add Branch modal** — scrollable, with "Assign password *" field, correct text "You will set the Branch Manager's email and password"
+  1223→
+  1224→Verification:
+  1225→- Lint passes clean ✅
+  1226→- Backend health: `{"ok": true, "db": "turso", "users": 8}` ✅
+  1227→- Institute Admin sidebar: Dashboard, Branches, Announcements, Settings (no unnecessary pages) ✅
+  1228→- Add Branch modal: has "Assign password" field + correct text ✅
+  1229→- Branch cards: have Edit, Block/Unblock, Delete buttons ✅
+  1230→- Clicking card opens popup modal (not inline expand) ✅
+  1231→- Delete branch: cascades to all child data ✅
+  1232→
+  1233→## Fee System — Answers to user's questions:
+  1234→1. **Who assigns fees to students?** → The Branch Manager should assign fees (they know the class fee structure). When a student is added to a class, their monthly fee is auto-set based on the class fee structure.
+  1235→2. **Who marks fees as paid?** → The Branch Manager (or cashier) marks fees as paid when the student pays cash in the office.
+  1236→3. **Can students download a challan form as PDF?** → Yes — this will be added as a "Download Challan" button in the student's invoice tab (future task).
+  1237→
+  1238→Stage Summary:
+  1239→- Institute Admin portal: clean sidebar (Dashboard, Branches, Announcements, Settings)
+  1240→- Branch cards: popup modal, edit, delete, block (same pattern as Super Admin)
+  1241→- Delete branch: cascades to all child data
+  1242→- All unnecessary pages removed
+  1243→

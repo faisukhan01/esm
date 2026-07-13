@@ -815,6 +815,123 @@ app.get('/api/results', requireAuth, async (req, res) => {
   res.json(entries);
 });
 
+// ===================== FEE STRUCTURE (Branch Manager) =====================
+// Get fee structure for a branch (or specific class)
+app.get('/api/fee-structure', requireAuth, async (req, res) => {
+  const { branchId, classId } = req.query;
+  const brId = branchId || req.user.branchId;
+  if (!brId) return res.json([]);
+  let sql = 'SELECT fs.*, c.name as className FROM fee_structure fs LEFT JOIN classes c ON fs.classId = c.id WHERE fs.branchId = ?';
+  let args = [brId];
+  if (classId) { sql += ' AND fs.classId = ?'; args.push(classId); }
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+// Set/update fee structure for a class
+app.post('/api/fee-structure', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { classId, monthlyFee, admissionFee } = req.body || {};
+  const brId = req.user.branchId;
+  if (!classId || monthlyFee === undefined) return res.status(400).json({ error: 'classId and monthlyFee required' });
+  // Check if structure already exists for this class
+  const existing = await db.execute({ sql: 'SELECT id FROM fee_structure WHERE branchId = ? AND classId = ?', args: [brId, classId] });
+  if (existing.rows.length > 0) {
+    await db.execute({ sql: 'UPDATE fee_structure SET monthlyFee = ?, admissionFee = ? WHERE id = ?', args: [monthlyFee, admissionFee || 0, existing.rows[0].id] });
+    res.json({ success: true, updated: true });
+  } else {
+    const id = nextId('FS');
+    await db.execute({ sql: 'INSERT INTO fee_structure (id, branchId, classId, monthlyFee, admissionFee) VALUES (?, ?, ?, ?, ?)', args: [id, brId, classId, monthlyFee, admissionFee || 0] });
+    res.status(201).json({ success: true, id });
+  }
+});
+
+// ===================== FEE INVOICES =====================
+// Get invoices for a student (student portal)
+app.get('/api/fee-invoices', requireAuth, async (req, res) => {
+  const { studentId } = req.query;
+  const sid = studentId || req.user.id;
+  let sql = 'SELECT * FROM fee_invoices WHERE studentId = ? ORDER BY year DESC, createdAt DESC';
+  const r = await db.execute({ sql, args: [sid] });
+  res.json(r.rows);
+});
+
+// Get all invoices for a branch (branch manager view)
+app.get('/api/fee-invoices/branch', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const brId = req.user.branchId;
+  const r = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  res.json(r.rows);
+});
+
+// Generate monthly invoices for all students in a branch (Branch Manager clicks "Generate Invoices")
+app.post('/api/fee-invoices/generate', requireAuth, requireRole('branch-manager'), async (req, res) => {
+  const { month, year } = req.body || {};
+  const brId = req.user.branchId;
+  if (!month || !year) return res.status(400).json({ error: 'month and year required' });
+  // Get all students in this branch
+  const students = await db.execute({ sql: 'SELECT id, name, class, branchId, instituteId FROM users WHERE branchId = ? AND role = ?', args: [brId, 'student'] });
+  if (students.rows.length === 0) return res.json({ success: true, generated: 0, message: 'No students found' });
+  let generated = 0;
+  for (const student of students.rows) {
+    // Check if invoice already exists for this student/month/year
+    const existing = await db.execute({ sql: 'SELECT id FROM fee_invoices WHERE studentId = ? AND month = ? AND year = ?', args: [student.id, month, year] });
+    if (existing.rows.length > 0) continue; // Skip if already generated
+    // Get fee structure for the student's class
+    const classR = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [brId, student.class] });
+    let amount = 0;
+    if (classR.rows.length > 0) {
+      const feeR = await db.execute({ sql: 'SELECT monthlyFee FROM fee_structure WHERE branchId = ? AND classId = ?', args: [brId, classR.rows[0].id] });
+      if (feeR.rows.length > 0) amount = feeR.rows[0].monthlyFee;
+    }
+    if (amount === 0) amount = 5000; // Default fee in PKR
+    const id = nextId('INV');
+    const challanNo = 'CH-' + year + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(generated + 1).padStart(4, '0');
+    await db.execute({
+      sql: `INSERT INTO fee_invoices (id, studentId, studentName, className, branchId, instituteId, month, year, amount, type, status, challanNo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, student.id, student.name, student.class || '', brId, student.instituteId, month, year, amount, 'Tuition', 'Unpaid', challanNo],
+    });
+    generated++;
+  }
+  res.json({ success: true, generated, message: `${generated} invoices generated for ${month} ${year}` });
+});
+
+// Mark invoice as paid (Branch Manager)
+app.patch('/api/fee-invoices/:id/pay', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { paidAmount, paymentMethod } = req.body || {};
+  const inv = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE id = ?', args: [req.params.id] });
+  if (inv.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+  const amount = paidAmount || inv.rows[0].amount;
+  await db.execute({
+    sql: 'UPDATE fee_invoices SET status = ?, paidDate = ?, paidAmount = ?, paymentMethod = ? WHERE id = ?',
+    args: ['Paid', new Date().toISOString().slice(0, 10), amount, paymentMethod || 'Cash', req.params.id],
+  });
+  res.json({ success: true, status: 'Paid' });
+});
+
+// Get challan data for PDF
+app.get('/api/fee-invoices/:id/challan', requireAuth, async (req, res) => {
+  const inv = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE id = ?', args: [req.params.id] });
+  if (inv.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+  const invoice = inv.rows[0];
+  // Get student details
+  const stu = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [invoice.studentId] });
+  const student = stu.rows[0] || {};
+  res.json({
+    challanNo: invoice.challanNo,
+    studentName: invoice.studentName || student.name,
+    studentId: invoice.studentId,
+    rollNo: student.rollNo,
+    className: invoice.className || student.class,
+    branch: student.branchId,
+    month: invoice.month,
+    year: invoice.year,
+    amount: invoice.amount,
+    status: invoice.status,
+    type: invoice.type,
+    generatedAt: invoice.createdAt,
+  });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     const r = await db.execute('SELECT COUNT(*) as count FROM users');

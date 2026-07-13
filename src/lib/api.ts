@@ -219,4 +219,15 @@ export const api = {
     const blob = await res.blob();
     return { blob, fileName };
   },
+  // fee system
+  getFeeStructure: (branchId?: string) => request<any[]>(branchId ? `fee-structure?branchId=${branchId}` : 'fee-structure'),
+  setFeeStructure: (classId: string, monthlyFee: number, admissionFee?: number) =>
+    request<any>('fee-structure', { method: 'POST', body: JSON.stringify({ classId, monthlyFee, admissionFee }) }),
+  getFeeInvoices: (studentId?: string) => request<any[]>(studentId ? `fee-invoices?studentId=${studentId}` : 'fee-invoices'),
+  getBranchInvoices: () => request<any[]>('fee-invoices/branch'),
+  generateInvoices: (month: string, year: number) =>
+    request<any>('fee-invoices/generate', { method: 'POST', body: JSON.stringify({ month, year }) }),
+  markInvoicePaid: (id: string, paidAmount?: number, paymentMethod?: string) =>
+    request<any>(`fee-invoices/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ paidAmount, paymentMethod }) }),
+  getChallanData: (id: string) => request<any>(`fee-invoices/${id}/challan`),
 };

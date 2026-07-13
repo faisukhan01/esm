@@ -214,6 +214,36 @@ export async function initDB() {
       expiresAt INTEGER NOT NULL,
       FOREIGN KEY (userId) REFERENCES users(id)
     )`,
+
+    // Fee structure — per class per branch (set by Branch Manager)
+    `CREATE TABLE IF NOT EXISTS fee_structure (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      classId TEXT NOT NULL,
+      monthlyFee REAL NOT NULL DEFAULT 0,
+      admissionFee REAL DEFAULT 0,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )`,
+
+    // Fee invoices — monthly invoices for students
+    `CREATE TABLE IF NOT EXISTS fee_invoices (
+      id TEXT PRIMARY KEY,
+      studentId TEXT NOT NULL,
+      studentName TEXT,
+      className TEXT,
+      branchId TEXT,
+      instituteId TEXT,
+      month TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      type TEXT DEFAULT 'Tuition',
+      status TEXT DEFAULT 'Unpaid',
+      paidDate TEXT,
+      paidAmount REAL DEFAULT 0,
+      paymentMethod TEXT,
+      challanNo TEXT,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )`,
   ];
 
   for (const sql of statements) {
