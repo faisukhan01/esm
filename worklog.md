@@ -1585,3 +1585,93 @@ Stage Summary:
 - Teacher has proper dashboard with KPIs
 - Student challan PDF includes institute name + ESM footer
 - Announcements only in Announcements page (not dashboards)
+
+---
+Task ID: FIXES-ROUND
+Agent: Main (Z.ai Code)
+Task: 1) Teacher Portal — add separate "Dashboard" sidebar item; 2) Student Challan — true PDF download (no print dialog); 3) Institute Admin — replace branch popup with full Branch Management page
+
+Work Log:
+
+**Task 1 — Teacher "Dashboard" sidebar item (`role-modules.ts` + `teacher-portal.tsx`)**
+- Updated `role-modules.ts`:
+  - Added a new `teacher-dashboard` module entry BEFORE `teacher-overview` in the `Teaching` group for the `teacher` role.
+  - The `teacher-dashboard` item uses the `LayoutDashboard` icon with the standard navy module gradient.
+  - Changed the `teacher-overview` (My Classes) icon from `LayoutDashboard` → `BookOpen` so it no longer visually clashes with the new Dashboard entry.
+- Updated `teacher-portal.tsx`:
+  - Imported `useApp` from `@/lib/store` and added `LayoutDashboard`, `ArrowRight` to the lucide imports (removed unused `X` and `Bell`).
+  - Added a new `TeacherDashboard` component (rendered when `activeModule === 'teacher-dashboard'`):
+    - Navy welcome banner ("Teacher Dashboard · {branchName}") mirroring the existing style.
+    - 4 KPI cards exactly per the spec: Total Classes, Total Students, Total Courses, **Diary Entries** (replaced "Today's Schedule").
+    - Quick Links grid (6 cards): My Classes → `teacher-overview`, Take Attendance → `mark-attendance`, Post Results → `post-results`, Diary & Homework → `diary`, My Timetable → `timetable`, Message Parents → `sms`. Each quick link uses `setActiveModule` to navigate.
+    - Optional "Recent Diary Entries" snippet (top 5) when diary entries exist, with a "View all" button → `diary`.
+    - Optional "No results published yet" hint card when no results exist and the teacher has classes, with a "Post Results" button.
+    - NO announcements on the dashboard (announcements live only in the Announcements page, as before).
+  - Routing order: explicit handlers (`mark-attendance`, `post-results`, `diary`, `timetable`, `my-students`, `sms`, `announcements`, `teacher-dashboard`) → default fallback `TeacherOverview` for `teacher-overview` (My Classes).
+  - The `TeacherOverview` (My Classes) component is unchanged — still renders banner + KPIs + class cards grid.
+
+**Task 2 — Student Challan — true PDF download via html2pdf.js (`student-portal.tsx`)**
+- Installed `html2pdf.js` (and its transitive deps `html2canvas` + `jspdf`) via `bun add html2pdf.js`.
+- Refactored `downloadChallanPDF(challan, instituteName)` into an `async` function that returns `{ via: 'pdf' | 'print' }`:
+  - Builds the challan HTML using the existing `buildChallanHTML` helper.
+  - Creates a temporary off-screen `<div>` container (`position: fixed; left: -99999px; width: 760px`) and parses the HTML into it.
+  - Extracts the `.challan` element (or falls back to the whole container) so only the styled challan card is rendered — not the surrounding `<html>/<head>/<body>` chrome.
+  - Dynamically imports `html2pdf.js` (client-side only, no SSR issues): `const html2pdf = (await import('html2pdf.js')).default;`
+  - Configures html2pdf with: 10mm margins, filename `Challan-{challanNo}.pdf`, JPEG quality 0.98, html2canvas scale 2 with white background, A4 portrait jsPDF.
+  - Awaits `html2pdf().set(opt).from(renderEl).save()` — this downloads a real PDF file directly to the browser's downloads folder (no print dialog).
+  - If anything fails (library load error, render error), falls back to `printChallanInIframe(html)` which opens the browser's print dialog with the challan rendered in a hidden iframe (Save as PDF option).
+  - Cleans up the temporary container in a `finally` block.
+- Updated `MyInvoices.downloadChallan(inv)`:
+  - Now `await`s `downloadChallanPDF` and branches on the returned `via`:
+    - `'pdf'` → toast "Challan downloaded" with the filename.
+    - `'print'` → toast "PDF generation unavailable — use the print dialog to save it as a PDF."
+  - The catch block now also tries `downloadChallanPDF(inv, ...)` (using the invoice data we already have) before reporting a hard failure.
+- Updated the challan HTML template:
+  - Body background changed from `#f8fafc` → `#ffffff` (cleaner for PDF rendering).
+  - Institute name font size increased from 18px → 20px for stronger emphasis.
+  - Re-added the `@media print` block (only used by the fallback iframe path).
+- Swapped the "Download Challan" button icon from `Printer` → `Download` (the import was already present; removed the unused `Printer` import).
+- Rewrote the help card text: "Download your challan PDF" — explains that a real PDF is generated and saved directly to downloads (no print dialog, no extra steps), with the institute name + "Powered by ESM" footer.
+
+**Task 3 — Institute Admin Branch Management Page (`role-modules.ts` + `role-portal.tsx` + `institute-admin-portal.tsx`)**
+- Updated `role-modules.ts`:
+  - Removed the entire `Branch Management` group from the `institute-admin` sidebar (previously contained Teachers / Students / Classes & Courses / Fee Management as separate sidebar items).
+  - The institute-admin sidebar now shows only: Dashboard, Branches, Announcements, Settings.
+- Updated `role-portal.tsx`:
+  - Removed the `InstituteBranchWrapper` import (no longer exported).
+  - Removed the special-case routing for `role === 'institute-admin' && ['teachers','branch-students','class-courses','fees'].includes(activeModule)` — these sidebar items no longer exist, so all institute-admin routing flows through the default switch.
+- Rewrote `institute-admin-portal.tsx`:
+  - **Removed** the entire `InstituteBranchWrapper` export and its helper `BRANCH_MODULE_LABELS` map.
+  - **Removed** the `BranchDetailsModal` component entirely (no longer used — clicking a branch card now navigates to a full page).
+  - Replaced `selectedBranch` state with `selectedBranchId: string | null` (just the ID), and derived the actual branch object via `useMemo` from the latest `branches` array — this avoids a `setState`-in-effect lint error and auto-clears the selection if the branch is deleted elsewhere.
+  - Added a new `BranchManagementView` component:
+    - Top bar (Card): "Back to Branches" button (clears `selectedBranchId`), branch avatar (Network icon), branch name (xl/2xl font), Active/Blocked badge, city + manager subtext.
+    - Edit / Block (or Unblock) / Delete buttons in the top-right of the top bar — Block toggles via `api.blockBranch`, Delete opens a confirm modal then calls `api.deleteBranch` and returns to the cards view.
+    - Sub-navigation tab strip (4 tabs): Teachers, Students, Classes & Courses, Fee Management — styled identically to the teacher ClassDetail tabs (rounded bg-muted/60 strip).
+    - Content area: `<BranchManagerPortal activeModule={tab} user={modifiedUser} />` — reuses the existing Branch Manager components (TeachersView, StudentsView, ClassCoursesView, FeeManagement) so the institute admin sees the exact same UI as a Branch Manager.
+    - `modifiedUser` overrides `branchId`/`branchName` from the selected branch via `useMemo`, so all BranchManagerPortal queries are scoped to the selected branch.
+    - EditBranchModal and DeleteBranchModal are rendered when the corresponding buttons are clicked.
+  - Updated `InstituteOverview` to accept an `onSelectBranch(br)` callback and pass it to each `BranchCard`.
+  - Updated `BranchCard`:
+    - Removed `showDetails` state and `BranchDetailsModal` usage.
+    - The card's `onClick` now calls `onSelectBranch(br)` (passed from `InstituteOverview`).
+    - Edit/Block/Delete buttons still work via `stopPropagation` so they don't trigger the navigation.
+  - Updated the "Branches" section header text from "Click a card to view details" → "Click a branch card to open its management page".
+  - Cleaned up unused imports: `X`, `Server`, `Inbox`, `GitBranch` (all were only used by the removed InstituteBranchWrapper / BranchDetailsModal).
+
+Verification:
+- `bun run lint` passes clean (0 errors, 0 warnings) ✅
+- Dev server compiles successfully (multiple "✓ Compiled" entries in dev.log after edits) ✅
+- HTTP 200 on `GET /` ✅
+- Teacher sidebar: Dashboard, My Classes, Diary & Homework, My Timetable, Announcements, Message Parents, Settings ✅
+- Teacher Dashboard: 4 KPIs (Total Classes, Total Students, Total Courses, Diary Entries) + 6 Quick Links + optional Recent Diary + optional "Post Results" hint; NO announcements on the dashboard ✅
+- Student challan: html2pdf.js dynamically imported on click → real PDF downloads directly; falls back to iframe print if library fails; institute name + "Powered by ESM" footer preserved ✅
+- Institute Admin sidebar: Dashboard, Branches, Announcements, Settings (no more Branch Management group) ✅
+- Clicking a branch card → opens full BranchManagementView (NOT a popup modal) with Back button + Edit/Block/Delete + Teachers/Students/Classes/Fees tabs + BranchManagerPortal content ✅
+- "Back to Branches" → returns to the institute overview with branch cards ✅
+- All existing features preserved — only the UX flow changed ✅
+
+Stage Summary:
+- Teacher portal now has a dedicated Dashboard (separate from My Classes) with KPIs and Quick Links, no announcements on the dashboard.
+- Student fee challan downloads as a real PDF file directly to the user's downloads folder (no print dialog) via html2pdf.js — with a graceful fallback to the print iframe if the library fails.
+- Institute Admin branch management is now a full page experience (mirroring the Branch Manager portal) instead of a popup modal — Edit/Block/Delete buttons in the top bar, sub-navigation tabs for Teachers/Students/Classes/Fees, and the full BranchManagerPortal content area.

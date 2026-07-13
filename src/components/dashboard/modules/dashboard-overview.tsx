@@ -45,9 +45,9 @@ export function DashboardOverview({ stats }: { stats: Stats | null }) {
   ];
 
   const pieData = [
-    { name: 'Present', value: 1142, color: '#1d4ed8' },
+    { name: 'Present', value: 1142, color: '#1a365d' },
     { name: 'Absent', value: 58, color: '#f43f5e' },
-    { name: 'Late', value: 48, color: '#0ea5e9' },
+    { name: 'Late', value: 48, color: '#3b82f6' },
   ];
 
   return (
@@ -121,8 +121,8 @@ export function DashboardOverview({ stats }: { stats: Stats | null }) {
             <AreaChart data={attendance} margin={{ top: 5, right: 8, left: -18, bottom: 0 }}>
               <defs>
                 <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0} />
+                  <stop offset="0%" stopColor="#1a365d" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="#1a365d" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.4} />
@@ -133,7 +133,7 @@ export function DashboardOverview({ stats }: { stats: Stats | null }) {
               <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={5} tickFormatter={d => d.slice(5)} />
               <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }} />
-              <Area type="monotone" dataKey="present" stroke="#1d4ed8" strokeWidth={2} fill="url(#gP)" />
+              <Area type="monotone" dataKey="present" stroke="#1a365d" strokeWidth={2} fill="url(#gP)" />
               <Area type="monotone" dataKey="absent" stroke="#f43f5e" strokeWidth={2} fill="url(#gA)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -177,8 +177,8 @@ export function DashboardOverview({ stats }: { stats: Stats | null }) {
               <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
               <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => '$' + (v/1000) + 'k'} />
               <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any) => fmtMoney(v)} />
-              <Bar dataKey="collected" stackId="a" fill="#1d4ed8" radius={[0,0,0,0]} />
-              <Bar dataKey="pending" stackId="a" fill="#0ea5e9" radius={[0,0,0,0]} />
+              <Bar dataKey="collected" stackId="a" fill="#1a365d" radius={[0,0,0,0]} />
+              <Bar dataKey="pending" stackId="a" fill="#3b82f6" radius={[0,0,0,0]} />
               <Bar dataKey="overdue" stackId="a" fill="#f43f5e" radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -197,7 +197,7 @@ export function DashboardOverview({ stats }: { stats: Stats | null }) {
               <XAxis type="number" domain={[0,100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
               <YAxis type="category" dataKey="subject" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={90} />
               <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-              <Bar dataKey="avgScore" fill="#1d4ed8" radius={[0,4,4,0]} />
+              <Bar dataKey="avgScore" fill="#1a365d" radius={[0,4,4,0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>

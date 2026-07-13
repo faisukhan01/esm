@@ -11,7 +11,7 @@ import {
   CalendarCheck, GraduationCap, Calendar, ClipboardList,
   CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
   ArrowLeft, FileText, Link2, Download, Loader2,
-  Wallet, DollarSign, Printer,
+  Wallet, DollarSign,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -132,10 +132,10 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
     : null;
 
   const cards = [
-    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-blue-600 to-blue-800' },
-    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-blue-500 to-blue-700' },
-    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-blue-500 to-blue-700' },
-    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-blue-600 to-blue-800' },
+    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
+    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
   ];
 
   // Group recent results by subject/course so we can show "recent marks" per course card
@@ -155,13 +155,13 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 p-6 sm:p-8 text-white">
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-blue-300" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
-          <p className="text-blue-50/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
+          <p className="text-white/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
         </div>
       </motion.div>
 
@@ -194,9 +194,9 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
               return (
                 <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenCourse(c, 'materials')}>
-                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 opacity-10 blur-2xl group-hover:opacity-20 transition" />
+                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)] opacity-10 blur-2xl group-hover:opacity-20 transition" />
                     <div className="flex items-start justify-between mb-3">
-                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center shadow-md">
+                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md">
                         <BookOpen className="h-5 w-5 text-white" />
                       </div>
                       {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
@@ -204,18 +204,18 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
                     <h3 className="font-display font-bold text-lg">{c.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
                     <div className="grid grid-cols-2 gap-2 mt-4">
-                      <div className="p-2 rounded-md bg-blue-500/10">
+                      <div className="p-2 rounded-md bg-[oklch(0.95_0.01_260)]0/10">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
-                        <div className="text-sm font-bold text-blue-700 mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
+                        <div className="text-sm font-bold text-[oklch(0.22_0.04_260)] mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
                       </div>
-                      <div className="p-2 rounded-md bg-blue-500/10">
+                      <div className="p-2 rounded-md bg-[oklch(0.95_0.01_260)]0/10">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
-                        <div className="text-sm font-bold text-blue-700 mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
+                        <div className="text-sm font-bold text-[oklch(0.22_0.04_260)] mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
-                      <span className="text-blue-700 font-medium group-hover:underline">Open →</span>
+                      <span className="text-[oklch(0.22_0.04_260)] font-medium group-hover:underline">Open →</span>
                     </div>
                   </Card>
                 </motion.div>
@@ -348,8 +348,8 @@ function MaterialCard({ material }: { material: MaterialItem }) {
   return (
     <Card className="p-4 hover:shadow-md transition">
       <div className="flex items-start gap-3">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-blue-500/15' : 'bg-blue-500/15'}`}>
-          <Icon className={`h-5 w-5 ${isLink ? 'text-blue-700' : 'text-blue-700'}`} />
+        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-[oklch(0.95_0.01_260)]0/15' : 'bg-[oklch(0.95_0.01_260)]0/15'}`}>
+          <Icon className={`h-5 w-5 ${isLink ? 'text-[oklch(0.22_0.04_260)]' : 'text-[oklch(0.22_0.04_260)]'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -396,10 +396,10 @@ function CourseResultsView({ courseId, studentId }: { courseId: string; studentI
       <div className="space-y-3">
         {results.map((r: any, idx: number) => (
           <div key={r.id || idx} className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-blue-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-blue-700" /></div>
+            <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.exam || 'Exam'}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-blue-700" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-[oklch(0.22_0.04_260)]" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
               <div className="text-[11px] text-muted-foreground mt-1">{r.date}</div>
             </div>
             <Badge variant="outline" className="font-bold">{r.grade}</Badge>
@@ -429,10 +429,10 @@ function CourseAttendanceView({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
-        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
         <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
         <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
-        <Card className="p-4 text-center bg-blue-500/10"><CalendarCheck className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold text-blue-700">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+        <Card className="p-4 text-center bg-[oklch(0.95_0.01_260)]0/10"><CalendarCheck className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold text-[oklch(0.22_0.04_260)]">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
       </div>
       <Card className="p-4">
         <Table>
@@ -441,7 +441,7 @@ function CourseAttendanceView({ studentId }: { studentId: string }) {
             {(attendance.entries || []).map((e: any, idx: number) => (
               <TableRow key={e.id || idx}>
                 <TableCell className="text-sm">{e.date}</TableCell>
-                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-blue-700 bg-blue-500/10 border-blue-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -461,10 +461,10 @@ function MyAttendance({ attendance }: any) {
       ) : (
         <>
           <div className="grid grid-cols-4 gap-3">
-            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
             <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
             <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
-            <Card className="p-4 text-center bg-blue-500/10"><CalendarCheck className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold text-blue-700">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+            <Card className="p-4 text-center bg-[oklch(0.95_0.01_260)]0/10"><CalendarCheck className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold text-[oklch(0.22_0.04_260)]">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
           </div>
           <Card className="p-4">
             <Table>
@@ -472,7 +472,7 @@ function MyAttendance({ attendance }: any) {
               <TableBody>
                 {(attendance.entries || []).map((e: any) => (
                   <TableRow key={e.id}><TableCell className="text-sm">{e.date}</TableCell><TableCell className="text-sm">{e.class}</TableCell>
-                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-blue-700 bg-blue-500/10 border-blue-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -498,10 +498,10 @@ function MyResults({ results }: any) {
               const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
               return (
               <div key={r.id} className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-blue-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-blue-700" /></div>
+                <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-blue-700" style={{ width: `${pct}%` }} /></div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-[oklch(0.22_0.04_260)]" style={{ width: `${pct}%` }} /></div>
                   <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
                 </div>
                 <Badge variant="outline" className="font-bold">{r.grade}</Badge>
@@ -536,7 +536,7 @@ function MyDiary({ diary }: any) {
             <Card key={d.id} className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
-                <Badge variant="outline" className={d.due ? 'text-blue-700 bg-blue-500/10 border-blue-500/20' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+                <Badge variant="outline" className={d.due ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
               </div>
               {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
             </Card>
@@ -581,7 +581,7 @@ function AnnouncementCard({ a }: { a: Announcement }) {
 // ============== My Invoices (with PDF challan) ==============
 const fmtPKR = (n: number) => 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK');
 
-// Generate the challan HTML (used by both iframe and fallback paths)
+// Generate the challan HTML (used by the html2pdf renderer + the fallback print path)
 function buildChallanHTML(challan: any, instituteName?: string): string {
   const amount = Number(challan.amount || 0);
   const status = String(challan.status || 'unpaid').toLowerCase();
@@ -597,10 +597,10 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
 <title>Fee Challan ${escape(challan.challanNo || '')}</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #f8fafc; color: #1f2937; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #ffffff; color: #1f2937; }
   .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #1e3a5f; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
   .header { text-align: center; border-bottom: 2px dashed #b6c5d8; padding-bottom: 18px; margin-bottom: 22px; }
-  .institute { font-size: 18px; font-weight: 800; color: #0f1e3a; letter-spacing: 0.3px; }
+  .institute { font-size: 20px; font-weight: 800; color: #0f1e3a; letter-spacing: 0.3px; }
   .brand { font-size: 11px; letter-spacing: 3px; color: #1e3a5f; font-weight: 700; margin-top: 6px; }
   .title { font-size: 26px; font-weight: 800; margin-top: 8px; color: #0f1e3a; letter-spacing: 0.5px; }
   .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
@@ -661,10 +661,8 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
 </html>`;
 }
 
-// Print the challan using a hidden iframe — no new tab is opened.
-// The browser's print dialog lets the student pick "Save as PDF" to download the file.
+// Fallback: print the challan via a hidden iframe (only used if html2pdf fails).
 function printChallanInIframe(html: string) {
-  // Reuse an existing hidden iframe if present, otherwise create one.
   let iframe = document.getElementById('esm-challan-frame') as HTMLIFrameElement | null;
   if (!iframe) {
     iframe = document.createElement('iframe');
@@ -682,18 +680,14 @@ function printChallanInIframe(html: string) {
 
   const doc = iframe.contentWindow?.document;
   if (!doc) {
-    toast({ title: 'Print unavailable', description: 'Your browser blocked the print frame. Try the popup version instead.', variant: 'destructive' });
+    toast({ title: 'Print unavailable', description: 'Your browser blocked the print frame.', variant: 'destructive' });
     return;
   }
 
-  // Replace the iframe's document with the fresh challan HTML.
   doc.open();
   doc.write(html);
   doc.close();
 
-  // Defer the print call so the iframe has a tick to lay out its content.
-  // We avoid relying on iframe.onload because reusing the same iframe means
-  // the load event already fired on a prior call and won't fire again.
   const win = iframe.contentWindow;
   setTimeout(() => {
     try { win?.focus(); win?.print(); }
@@ -703,9 +697,45 @@ function printChallanInIframe(html: string) {
   }, 300);
 }
 
-function downloadChallanPDF(challan: any, instituteName?: string) {
+// Generate an actual PDF file using html2pdf.js (no print dialog).
+// Falls back to the iframe print path if the library fails to load or render.
+async function downloadChallanPDF(challan: any, instituteName?: string): Promise<{ via: 'pdf' | 'print' }> {
   const html = buildChallanHTML(challan, instituteName);
-  printChallanInIframe(html);
+  const challanNo = String(challan.challanNo || challan.id?.slice?.(-8) || 'challan').replace(/[^A-Za-z0-9_-]/g, '_');
+
+  // Build a temporary off-screen container so html2canvas can render the styled challan.
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-99999px';
+  container.style.top = '0';
+  container.style.width = '760px';
+  container.style.background = '#ffffff';
+  container.innerHTML = html;
+  // Strip the surrounding <html>/<head>/<body> tags — we only need the inner content
+  // so the PDF renders just the challan card, not the full document chrome.
+  const challanEl = container.querySelector('.challan') as HTMLElement | null;
+  const renderEl: HTMLElement = challanEl || container;
+  document.body.appendChild(container);
+
+  try {
+    const html2pdf = (await import('html2pdf.js')).default;
+    const opt = {
+      margin: [10, 10, 10, 10] as [number, number, number, number],
+      filename: `Challan-${challanNo}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+      pagebreak: { mode: ['css', 'legacy'] as const },
+    };
+    await html2pdf().set(opt).from(renderEl).save();
+    return { via: 'pdf' };
+  } catch (err: any) {
+    // Fall back to the browser print dialog (Save as PDF) if html2pdf fails
+    printChallanInIframe(html);
+    return { via: 'print' };
+  } finally {
+    try { document.body.removeChild(container); } catch {}
+  }
 }
 
 function MyInvoices({ user }: { user: any }) {
@@ -736,21 +766,33 @@ function MyInvoices({ user }: { user: any }) {
       const challan = await api.getChallanData(inv.id);
       // Merge with invoice data as a fallback so the PDF is complete even if the challan endpoint returns a partial payload
       const merged = { ...inv, ...challan };
-      downloadChallanPDF(merged, user?.instituteName);
-      toast({ title: 'Preparing challan', description: 'Use the print dialog to save it as a PDF.' });
+      const result = await downloadChallanPDF(merged, user?.instituteName);
+      if (result.via === 'pdf') {
+        toast({ title: 'Challan downloaded', description: `Challan-${merged.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
+      } else {
+        toast({ title: 'Preparing challan', description: 'PDF generation unavailable — use the print dialog to save it as a PDF.' });
+      }
     } catch {
-      // Fallback: open PDF using the invoice data we already have
-      toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — generating PDF from invoice summary.' });
-      downloadChallanPDF(inv, user?.instituteName);
+      // Fallback: generate PDF using the invoice data we already have
+      try {
+        const result = await downloadChallanPDF(inv, user?.instituteName);
+        if (result.via === 'pdf') {
+          toast({ title: 'Challan downloaded', description: `Challan-${inv.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
+        } else {
+          toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — using invoice summary instead.' });
+        }
+      } catch {
+        toast({ title: 'Failed', description: 'Could not generate the challan PDF. Please try again.', variant: 'destructive' });
+      }
     } finally {
       setDownloadingId(null);
     }
   };
 
   const cards = [
-    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-blue-600 to-blue-800', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
+    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
     { label: 'Total Pending', value: fmtPKR(stats.pending), icon: Clock, color: 'from-rose-500 to-rose-700', sub: `${stats.count - stats.paidCount} invoice${stats.count - stats.paidCount === 1 ? '' : 's'}` },
-    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-blue-500 to-blue-700', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
+    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
   ];
 
   return (
@@ -773,7 +815,7 @@ function MyInvoices({ user }: { user: any }) {
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-blue-700" />
+            <FileText className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
             <h3 className="font-bold text-base">Invoice History</h3>
           </div>
           <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
@@ -809,14 +851,14 @@ function MyInvoices({ user }: { user: any }) {
                       <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">{inv.challanNo || inv.id?.slice(-8)}</TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={isPaid ? 'text-blue-700 bg-blue-500/10 border-blue-500/30' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+                        <Badge variant="outline" className={isPaid ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
                           {isPaid ? 'Paid' : 'Unpaid'}
                         </Badge>
                         {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="outline" className="h-8 text-xs border-blue-500/40 text-blue-700 hover:bg-blue-500/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
-                          {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Printer className="h-3 w-3 mr-1" /> Download Challan</>}
+                        <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
+                          {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Download className="h-3 w-3 mr-1" /> Download Challan</>}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -828,15 +870,15 @@ function MyInvoices({ user }: { user: any }) {
         )}
       </Card>
 
-      <Card className="p-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
+      <Card className="p-4 bg-[oklch(0.95_0.01_260)] dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-[oklch(0.88_0.02_260)] dark:border-[oklch(0.2_0.04_260)]">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg bg-blue-500/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-blue-700 dark:text-blue-400" /></div>
+          <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.6_0.04_260)]" /></div>
           <div>
-            <div className="font-bold text-sm text-blue-900 dark:text-blue-200">How to download your challan PDF</div>
-            <p className="text-xs text-blue-800 dark:text-blue-300 mt-1 leading-relaxed">
-              Click <b>Download Challan</b> on any invoice. Your browser's print dialog will open with the challan —
-              choose <b>"Save as PDF"</b> as the destination to save the file. No new tab is opened; the challan
-              is rendered in a hidden print frame.
+            <div className="font-bold text-sm text-[oklch(0.15_0.03_260)] dark:text-[oklch(0.8_0.03_260)]">Download your challan PDF</div>
+            <p className="text-xs text-[oklch(0.18_0.04_260)] dark:text-[oklch(0.7_0.04_260)] mt-1 leading-relaxed">
+              Click <b>Download Challan</b> on any invoice and a real PDF file is generated and saved directly to your
+              downloads folder — no print dialog, no extra steps. The challan includes the institute name, fee details,
+              status, and a <b>"Powered by ESM"</b> footer.
             </p>
           </div>
         </div>

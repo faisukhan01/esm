@@ -115,7 +115,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
 function LoadingState({ label = 'Loading…', className = '' }: { label?: string; className?: string }) {
   return (
     <div className={`flex items-center justify-center gap-2.5 py-10 text-muted-foreground ${className}`}>
-      <Loader2 className="h-5 w-5 animate-spin text-blue-700" />
+      <Loader2 className="h-5 w-5 animate-spin text-[oklch(0.22_0.04_260)]" />
       <span className="text-sm">{label}</span>
     </div>
   );
@@ -135,32 +135,32 @@ function PlatformOverview({
   overview, overviewLoading, institutes, institutesLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
 }: any) {
   const cards = [
-    { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-blue-600 to-blue-800', sub: `${overview?.activeInstitutes ?? 0} active` },
-    { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-blue-600 to-blue-800', sub: 'across all institutions' },
-    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'from-blue-500 to-blue-700', sub: 'platform-wide' },
-    { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: UserCog, color: 'from-blue-500 to-blue-700', sub: 'teachers & managers' },
+    { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: `${overview?.activeInstitutes ?? 0} active` },
+    { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: 'across all institutions' },
+    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: 'platform-wide' },
+    { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: UserCog, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: 'teachers & managers' },
   ];
 
   return (
     <div className="space-y-6">
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 p-6 sm:p-8 text-white"
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white"
       >
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
-              <Crown className="h-3 w-3 text-blue-300" /> Super Admin · Platform Owner
+              <Crown className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Super Admin · Platform Owner
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold">
               Welcome back, {user?.name?.split(' ')[0] || 'Owner'}
             </h1>
-            <p className="text-blue-50/80 text-sm mt-1.5 max-w-lg">
+            <p className="text-white/80 text-sm mt-1.5 max-w-lg">
               {overviewLoading ? 'Loading platform stats…' : (overview?.institutes ? `${overview.institutes} institutions onboarded.` : 'Provision your first institute to get started.')}
             </p>
           </div>
-          <Button className="bg-white text-blue-800 hover:bg-blue-50" size="sm" onClick={onAddInstitute}>
+          <Button className="bg-white text-[oklch(0.18_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]" size="sm" onClick={onAddInstitute}>
             <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
           </Button>
         </div>
@@ -206,7 +206,7 @@ function PlatformOverview({
           title="No institutions yet"
           desc="Provision your first institute. You'll set the admin's email and password."
           action={
-            <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={onAddInstitute}>
+            <Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAddInstitute}>
               <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
             </Button>
           }
@@ -218,7 +218,7 @@ function PlatformOverview({
               <h3 className="font-bold text-base">Institutions</h3>
               <p className="text-xs text-muted-foreground">Click a card to expand & view branches</p>
             </div>
-            <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" onClick={onAddInstitute}>
+            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAddInstitute}>
               <Plus className="h-4 w-4 mr-1.5" /> Add Institute
             </Button>
           </div>
@@ -248,7 +248,7 @@ function InstitutesManager({ institutes, loading, onRefresh, showAdd, setShowAdd
         title="Institutes"
         subtitle="Provision institutions — click any card to expand and view branches"
         actions={
-          <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowAdd(true)}>
+          <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowAdd(true)}>
             <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
           </Button>
         }
@@ -261,7 +261,7 @@ function InstitutesManager({ institutes, loading, onRefresh, showAdd, setShowAdd
           title="No institutions yet"
           desc="Provision your first institute. You'll set the admin's email and password."
           action={
-            <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowAdd(true)}>
+            <Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowAdd(true)}>
               <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
             </Button>
           }
@@ -296,7 +296,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
     ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
     : inst.status === 'Trial'
       ? 'text-sky-700 bg-sky-500/10 border-sky-500/20'
-      : 'text-blue-700 bg-blue-500/10 border-blue-500/20';
+      : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]';
 
   const toggleBlock = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -332,10 +332,10 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
         className={`p-5 hover:shadow-lg transition relative cursor-pointer ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`}
         onClick={() => setShowDetails(true)}
       >
-        <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
+        <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-[oklch(0.95_0.01_260)]0/10 blur-2xl pointer-events-none" />
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center shadow-md text-white font-display font-extrabold">
+            <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md text-white font-display font-extrabold">
               {initials}
             </div>
             <div className="min-w-0">
@@ -370,7 +370,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
               onClick={toggleBlock}
               title={isBlocked ? 'Unblock' : 'Block (cascades to branches & users)'}
               className={`h-8 w-8 grid place-items-center rounded-lg transition ${
-                isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-blue-700 hover:bg-blue-500/10'
+                isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10'
               }`}
             >
               {isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
@@ -448,7 +448,7 @@ function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: 
           <div className="p-6 border-b border-border/40 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/20 dark:to-slate-900/10">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center shadow-md text-white font-display font-extrabold text-lg">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md text-white font-display font-extrabold text-lg">
                   {(inst.short || inst.name || '').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
@@ -456,7 +456,7 @@ function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: 
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}</div>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="outline" className="text-[10px]">{inst.plan || 'Starter'}</Badge>
-                    <Badge variant="outline" className={`text-[10px] ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-blue-700 bg-blue-500/10 border-blue-500/20'}`}>{isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active')}</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}`}>{isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active')}</Badge>
                   </div>
                 </div>
               </div>
@@ -470,9 +470,9 @@ function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: 
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</div>
               <div className="grid grid-cols-3 gap-3">
-                <StatPill label="Branches" value={loading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-blue-700" />
-                <StatPill label="Students" value={loading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-blue-700" />
-                <StatPill label="Staff" value={loading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-blue-700" />
+                <StatPill label="Branches" value={loading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-[oklch(0.22_0.04_260)]" />
+                <StatPill label="Students" value={loading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-[oklch(0.22_0.04_260)]" />
+                <StatPill label="Staff" value={loading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-[oklch(0.22_0.04_260)]" />
               </div>
             </div>
 
@@ -517,7 +517,7 @@ function BranchRow({ br }: { br: any }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="font-medium text-sm truncate flex items-center gap-1.5">
-            <Building className="h-3.5 w-3.5 text-blue-700 shrink-0" />
+            <Building className="h-3.5 w-3.5 text-[oklch(0.22_0.04_260)] shrink-0" />
             <span className="truncate">{br.name}</span>
           </div>
           <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
@@ -527,7 +527,7 @@ function BranchRow({ br }: { br: any }) {
         </div>
         <Badge
           variant="outline"
-          className={`text-[10px] shrink-0 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-blue-700 bg-blue-500/10 border-blue-500/20'}`}
+          className={`text-[10px] shrink-0 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}`}
         >
           {isBlocked ? 'Blocked' : 'Active'}
         </Badge>
@@ -647,7 +647,7 @@ function EditInstituteModal({ inst, onClose, onSaved }: any) {
           </div>
 
           <div className="flex gap-2 mt-5">
-            <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white flex-1" disabled={saving} onClick={save}>
+            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={saving} onClick={save}>
               {saving ? 'Saving…' : 'Save Changes'}
             </Button>
             <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
@@ -701,32 +701,32 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
           {lastCreated ? (
             <>
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-full bg-blue-500/15 grid place-items-center">
-                  <CheckCircle2 className="h-6 w-6 text-blue-700" />
+                <div className="h-12 w-12 rounded-full bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center">
+                  <CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)]" />
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-lg">Institute provisioned!</h3>
                   <p className="text-sm text-muted-foreground">{lastCreated.institute.name} is ready</p>
                 </div>
               </div>
-              <div className="rounded-xl bg-blue-500/5 border border-blue-500/20 p-4 space-y-2 text-sm">
-                <div className="font-semibold text-blue-700 dark:text-blue-300">Institute Admin login credentials</div>
+              <div className="rounded-xl bg-[oklch(0.95_0.01_260)]0/5 border border-[oklch(0.5_0.04_260)_/_0.2] p-4 space-y-2 text-sm">
+                <div className="font-semibold text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]">Institute Admin login credentials</div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Email</span>
                   <span className="font-mono text-xs sm:text-sm break-all text-right">{lastCreated.adminLogin?.email}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Password</span>
-                  <span className="font-mono text-xs sm:text-sm break-all text-right text-blue-700 dark:text-blue-300">
+                  <span className="font-mono text-xs sm:text-sm break-all text-right text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]">
                     {lastCreated.adminLogin?.password}
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground pt-2 border-t border-blue-500/20">
+                <div className="text-xs text-muted-foreground pt-2 border-t border-[oklch(0.5_0.04_260)_/_0.2]">
                   Share these credentials securely. The admin can change their password after logging in.
                 </div>
               </div>
               <div className="flex gap-2 mt-5">
-                <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white flex-1" onClick={onClose}>Done</Button>
+                <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" onClick={onClose}>Done</Button>
                 <Button size="sm" variant="outline" onClick={() => setLastCreated(null)}>Add Another</Button>
               </div>
             </>
@@ -791,7 +791,7 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
                 </div>
               </div>
               <div className="flex gap-2 mt-5">
-                <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white flex-1" disabled={creating} onClick={create}>
+                <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={creating} onClick={create}>
                   {creating ? 'Provisioning…' : 'Provision Institute'}
                 </Button>
                 <Button size="sm" variant="outline" disabled={creating} onClick={onClose}>Cancel</Button>
@@ -858,7 +858,7 @@ function AnnouncementsView({ user, institutes, institutesLoading }: { user: any;
         title="Announcements"
         subtitle="Send messages to Institute Admins — only your announcements are shown here"
         actions={
-          <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm((v) => !v)}>
+          <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm((v) => !v)}>
             <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
           </Button>
         }
@@ -911,7 +911,7 @@ function AnnouncementsView({ user, institutes, institutesLoading }: { user: any;
                 )}
               </div>
             )}
-            <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={sending} onClick={send}>
+            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>
               {sending ? 'Sending…' : (<><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>)}
             </Button>
           </div>
@@ -926,7 +926,7 @@ function AnnouncementsView({ user, institutes, institutesLoading }: { user: any;
           title="No announcements yet"
           desc="Send messages to all or specific Institute Admins."
           action={
-            <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm(true)}>
+            <Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(true)}>
               <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
             </Button>
           }
@@ -937,7 +937,7 @@ function AnnouncementsView({ user, institutes, institutesLoading }: { user: any;
             <Card key={a.id} className="p-4">
               <div className="flex items-start justify-between mb-2 gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Megaphone className="h-4 w-4 text-blue-700 shrink-0" />
+                  <Megaphone className="h-4 w-4 text-[oklch(0.22_0.04_260)] shrink-0" />
                   <div className="font-medium text-sm truncate">{a.title}</div>
                 </div>
                 <span className="text-[11px] text-muted-foreground shrink-0">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</span>
@@ -970,9 +970,9 @@ function PlatformConfig({ overview, loading }: { overview: any; loading: boolean
         {settings.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="p-5 hover:shadow-md transition relative overflow-hidden">
-              <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-blue-500/10 blur-2xl" />
+              <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-[oklch(0.95_0.01_260)]0/10 blur-2xl" />
               <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center shadow shrink-0">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow shrink-0">
                   <s.icon className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
@@ -1007,11 +1007,11 @@ function BrandingPage() {
     <div className="space-y-6">
       <ModuleHeader title="Branding" subtitle="Platform visual identity" />
       <Card className="p-0 overflow-hidden">
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 p-8 sm:p-10 text-white">
-          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-8 sm:p-10 text-white">
+          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
           <div className="relative">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
-              <ShieldCheck className="h-3 w-3 text-blue-300" /> Platform Identity
+              <ShieldCheck className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Platform Identity
             </div>
             <h2 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">ESM</h2>
             <p className="text-blue-50/90 text-base sm:text-lg mt-1">Electronic School Management</p>
@@ -1025,19 +1025,19 @@ function BrandingPage() {
       <div className="grid sm:grid-cols-2 gap-4">
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Palette className="h-4 w-4 text-blue-700" />
+            <Palette className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
             <h3 className="font-bold text-sm">Color Theme</h3>
           </div>
           <div className="space-y-2.5">
             <ColorRow name="Primary (Navy)" hex="#1e3a5f" className="bg-blue-800" />
-            <ColorRow name="Accent (Blue)" hex="#1d4ed8" className="bg-blue-700" />
+            <ColorRow name="Accent (Blue)" hex="#1d4ed8" className="bg-[oklch(0.22_0.04_260)]" />
             <ColorRow name="Highlight (Sky)" hex="#0284c7" className="bg-sky-600" />
             <ColorRow name="Neutral (Slate)" hex="#475569" className="bg-slate-600" />
           </div>
         </Card>
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Building2 className="h-4 w-4 text-blue-700" />
+            <Building2 className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
             <h3 className="font-bold text-sm">Brand Information</h3>
           </div>
           <div className="space-y-3 text-sm">

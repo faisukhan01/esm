@@ -223,7 +223,7 @@
 /* ===== Animated Login Page Styles (from uploaded design) ===== */
 
 .login-bg {
-  background: linear-gradient(135deg, #0f1e3a 0%, #1a365d 50%, #0f1e3a 100%);
+  background: linear-gradient(135deg, oklch(0.15 0.03 260) 0%, oklch(0.22 0.04 260) 50%, oklch(0.15 0.03 260) 100%);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -353,8 +353,8 @@
 }
 
 .login-input:focus {
-  border-color: #1e3a5f;
-  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
+  border-color: oklch(0.22 0.04 260);
+  box-shadow: 0 0 0 3px oklch(0.22 0.04 260 / 0.15);
 }
 
 .floating-label {
@@ -373,14 +373,14 @@
   top: 0;
   transform: translateY(-50%);
   font-size: 0.75rem;
-  color: #1e3a5f;
+  color: oklch(0.22 0.04 260);
   background: white;
   padding: 0 6px;
   left: 12px;
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #1e3a5f 0%, #163150 100%);
+  background: linear-gradient(135deg, oklch(0.22 0.04 260) 0%, oklch(0.18 0.04 260) 100%);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -388,7 +388,7 @@
 
 .btn-gradient:hover {
   transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(30, 58, 95, 0.4);
+  box-shadow: 0 8px 25px oklch(0.22 0.04 260 / 0.4);
 }
 
 .btn-gradient:active {
@@ -422,7 +422,7 @@
 }
 
 .cover-gradient {
-  background: linear-gradient(135deg, #1e3a5f 0%, #1a365d 100%);
+  background: linear-gradient(135deg, oklch(0.22 0.04 260) 0%, oklch(0.18 0.04 260) 100%);
 }
 
 .social-btn {
@@ -475,11 +475,11 @@
 }
 
 .eye-toggle:hover {
-  color: #1e3a5f;
+  color: oklch(0.22 0.04 260);
 }
 
 .custom-checkbox {
-  accent-color: #1e3a5f;
+  accent-color: oklch(0.22 0.04 260);
 }
 
 @keyframes deskGlow {
@@ -529,3 +529,18 @@
   .flip-card:not(.flipped) .flip-face-back { display: none !important; }
   .flip-card:not(.flipped) .flip-face:not(.flip-face-back) { display: flex !important; }
 }
+
+/* ===== Navy Blue (sidebar-matching) utility classes ===== */
+/* These match the sidebar color (oklch 0.22 0.04 260) exactly */
+.bg-navy { background-color: oklch(0.22 0.04 260); }
+.bg-navy-hover:hover { background-color: oklch(0.28 0.04 260); }
+.text-navy { color: oklch(0.22 0.04 260); }
+.border-navy { border-color: oklch(0.22 0.04 260); }
+.from-navy { --tw-gradient-from: oklch(0.22 0.04 260); }
+.to-navy { --tw-gradient-to: oklch(0.18 0.04 260); }
+.bg-navy-50 { background-color: oklch(0.95 0.01 260); }
+.bg-navy-100 { background-color: oklch(0.9 0.02 260); }
+.text-navy-600 { color: oklch(0.35 0.05 260); }
+.text-navy-700 { color: oklch(0.28 0.04 260); }
+.text-navy-800 { color: oklch(0.22 0.04 260); }
+.border-navy-200 { border-color: oklch(0.88 0.02 260); }

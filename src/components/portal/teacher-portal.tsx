@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import { useApp } from '@/lib/store';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   BookOpen, CalendarCheck, GraduationCap, ClipboardList, Calendar, Users,
   CheckCircle2, XCircle, Clock, Plus, MessageSquare, Inbox, ArrowLeft,
-  FileText, Link2, Download, Megaphone, Paperclip, Loader2, X,
+  FileText, Link2, Download, Megaphone, Paperclip, Loader2,
+  LayoutDashboard, ArrowRight,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -92,6 +94,7 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-students') return <MyStudents students={students} />;
   if (activeModule === 'sms') return <MessageParents user={user} students={students} />;
   if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
+  if (activeModule === 'teacher-dashboard') return <TeacherDashboard user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
   return <TeacherOverview user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
 }
 
@@ -223,12 +226,12 @@ function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; s
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-        <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={saving} onClick={save}>
+        <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving} onClick={save}>
           {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : 'Save Attendance'}
         </Button>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
         <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
         <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
       </div>
@@ -246,7 +249,7 @@ function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; s
                     <div className="flex gap-1 justify-end">
                       {['Present', 'Absent', 'Late'].map(opt => (
                         <Button key={opt} size="sm" variant={st === opt ? 'default' : 'outline'}
-                          className={st === opt ? (opt === 'Present' ? 'bg-blue-700 text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
+                          className={st === opt ? (opt === 'Present' ? 'bg-[oklch(0.22_0.04_260)] text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
                           onClick={() => setStatus(s.id, opt)}>{opt[0]}</Button>
                       ))}
                     </div>
@@ -315,7 +318,7 @@ function ClassResults({ user, cls, courseId, students }: { user: any; cls: Class
             <Input value={exam} onChange={e => setExam(e.target.value)} placeholder="e.g. Chapter 1 Test" className="mt-1" />
           </div>
           <div><Label className="text-xs">Total Marks</Label><Input type="number" value={totalMarks} onChange={e => setTotalMarks(parseInt(e.target.value) || 100)} className="mt-1" /></div>
-          <div className="flex items-end"><Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white w-full" disabled={saving || !exam.trim()} onClick={save}>
+          <div className="flex items-end"><Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white w-full" disabled={saving || !exam.trim()} onClick={save}>
             {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Posting…</> : 'Publish Results'}</Button></div>
         </div>
       </Card>
@@ -361,7 +364,7 @@ function ClassMaterials({ user, cls, courseId }: { user: any; cls: ClassInfo; co
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{materials.length} material{materials.length === 1 ? '' : 's'} for this class</p>
-        <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={!courseId} onClick={() => setShowForm(v => !v)}>
+        <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={!courseId} onClick={() => setShowForm(v => !v)}>
           <Plus className="h-4 w-4 mr-1.5" /> {showForm ? 'Cancel' : 'Upload Material'}
         </Button>
       </div>
@@ -448,7 +451,7 @@ function MaterialUploadForm({ classId, courseId, teacherId, onSaved }: { classId
   return (
     <Card className="p-5 space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <div className="h-8 w-8 rounded-lg bg-blue-500/15 grid place-items-center"><Paperclip className="h-4 w-4 text-blue-700" /></div>
+        <div className="h-8 w-8 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><Paperclip className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
         <h3 className="font-bold text-sm">New Course Material</h3>
       </div>
       <div className="flex gap-1 p-1 rounded-lg bg-muted/60 w-fit">
@@ -464,13 +467,13 @@ function MaterialUploadForm({ classId, courseId, teacherId, onSaved }: { classId
       {mode === 'file' ? (
         <div>
           <Label className="text-xs">File (PDF, DOCX, PPT, PNG, JPG — max 8 MB)</Label>
-          <input type="file" accept=".pdf,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={e => handleFile(e.target.files?.[0] || null)} className="block w-full mt-1 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-blue-500/15 file:text-blue-700 hover:file:bg-blue-500/25 file:font-medium file:text-sm cursor-pointer" />
+          <input type="file" accept=".pdf,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={e => handleFile(e.target.files?.[0] || null)} className="block w-full mt-1 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[oklch(0.95_0.01_260)]0/15 file:text-[oklch(0.22_0.04_260)] hover:file:bg-[oklch(0.95_0.01_260)]0/25 file:font-medium file:text-sm cursor-pointer" />
           {file && <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5"><Paperclip className="h-3 w-3" /> {file.name} · {(file.size / 1024).toFixed(0)} KB</div>}
         </div>
       ) : (
         <div><Label className="text-xs">Link URL *</Label><Input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://docs.google.com/…" className="mt-1" /></div>
       )}
-      <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={saving} onClick={submit}>
+      <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving} onClick={submit}>
         {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Uploading…</> : 'Upload'}
       </Button>
     </Card>
@@ -513,8 +516,8 @@ function MaterialCard({ material, teacherView = false }: { material: MaterialIte
   return (
     <Card className="p-4 hover:shadow-md transition">
       <div className="flex items-start gap-3">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-blue-500/15' : 'bg-blue-500/15'}`}>
-          <Icon className={`h-5 w-5 ${isLink ? 'text-blue-700' : 'text-blue-700'}`} />
+        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-[oklch(0.95_0.01_260)]0/15' : 'bg-[oklch(0.95_0.01_260)]0/15'}`}>
+          <Icon className={`h-5 w-5 ${isLink ? 'text-[oklch(0.22_0.04_260)]' : 'text-[oklch(0.22_0.04_260)]'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -572,12 +575,12 @@ function ClassAnnouncements({ user, cls }: { user: any; cls: ClassInfo }) {
     <div className="space-y-4">
       <Card className="p-5 space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <div className="h-8 w-8 rounded-lg bg-blue-500/15 grid place-items-center"><Megaphone className="h-4 w-4 text-blue-700" /></div>
+          <div className="h-8 w-8 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><Megaphone className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
           <h3 className="font-bold text-sm">Announce to {cls.name}</h3>
         </div>
         <div><Label className="text-xs">Title *</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Tomorrow's class cancelled" className="mt-1" /></div>
         <div><Label className="text-xs">Message *</Label><textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} placeholder="Write your announcement…" className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
-        <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={sending} onClick={send}>
+        <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>
           {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : <><Megaphone className="h-4 w-4 mr-1.5" /> Send to Class</>}
         </Button>
       </Card>
@@ -609,6 +612,137 @@ function AnnouncementCard({ a }: { a: Announcement }) {
   );
 }
 
+// ============== Teacher Dashboard (KPIs + Quick Links, NO announcements) ==============
+function TeacherDashboard({ user, students, diary, myResults, classes, onOpenClass }: any) {
+  const setActiveModule = useApp(s => s.setActiveModule);
+  const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
+  const diaryCount = diary.length;
+  const resultsCount = myResults?.length || 0;
+
+  const cards = [
+    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
+    { label: 'Total Students', value: students.length, icon: Users, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
+    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
+    { label: 'Diary Entries', value: diaryCount, icon: ClipboardList, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: diaryCount === 0 ? 'No entries yet' : diaryCount === 1 ? '1 entry posted' : `${diaryCount} entries posted` },
+  ];
+
+  const quickLinks = [
+    { label: 'My Classes', desc: 'View & manage your classes', icon: BookOpen, module: 'teacher-overview', color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
+    { label: 'Take Attendance', desc: 'Mark today\'s attendance', icon: CalendarCheck, module: 'mark-attendance', color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results', color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary', color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable', color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Message Parents', desc: 'Send SMS to parents', icon: MessageSquare, module: 'sms', color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome banner — navy blue (already styled) */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
+        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+        <div className="relative">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><LayoutDashboard className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Teacher Dashboard · {user?.branchName}</div>
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
+          <p className="text-white/80 text-sm mt-1.5">
+            {classes.length
+              ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.`
+              : 'Your classes will appear here once your Branch Manager assigns them.'}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {cards.map((c, i) => (
+          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <Card className="p-5 relative overflow-hidden">
+              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+              <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Quick Links — NO announcements (those live in the Announcements page) */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-display text-lg font-bold">Quick Links</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Jump straight to a teaching task.</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickLinks.map((q, i) => (
+            <motion.button
+              key={q.label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              onClick={() => setActiveModule(q.module)}
+              className="text-left group"
+            >
+              <Card className="p-5 hover:shadow-lg hover:-translate-y-0.5 transition relative overflow-hidden h-full">
+                <div className={`absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br ${q.color} opacity-10 blur-2xl group-hover:opacity-20 transition`} />
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${q.color} grid place-items-center shadow-md`}>
+                    <q.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
+                </div>
+                <h3 className="font-display font-bold text-base">{q.label}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{q.desc}</p>
+              </Card>
+            </motion.button>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Diary snippet (optional, only if entries exist) */}
+      {diaryCount > 0 && (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
+              <h3 className="font-bold text-base">Recent Diary Entries</h3>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => setActiveModule('diary')}>View all <ArrowRight className="h-3 w-3 ml-1" /></Button>
+          </div>
+          <div className="space-y-2 max-h-56 overflow-y-auto scroll-fancy">
+            {diary.slice(0, 5).map((d: any) => (
+              <div key={d.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{d.title || d.subject || 'Diary entry'}</div>
+                  <div className="text-xs text-muted-foreground truncate mt-0.5">{d.class || d.className || '—'}{d.dueDate ? ` · Due ${d.dueDate}` : ''}</div>
+                </div>
+                <Badge variant="outline" className="text-[10px] ml-2 shrink-0">{d.date || (d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—')}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Hint card: results */}
+      {resultsCount === 0 && classes.length > 0 && (
+        <Card className="p-4 bg-[oklch(0.95_0.01_260)] dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-[oklch(0.88_0.02_260)] dark:border-[oklch(0.2_0.04_260)]">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/20 grid place-items-center shrink-0"><GraduationCap className="h-4 w-4 text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]" /></div>
+            <div className="flex-1">
+              <div className="font-bold text-sm text-[oklch(0.15_0.03_260)] dark:text-[oklch(0.8_0.03_260)]">No results published yet</div>
+              <p className="text-xs text-muted-foreground mt-1">Publish your first exam results from the Post Results page — students and parents will see them instantly.</p>
+            </div>
+            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white shrink-0" onClick={() => setActiveModule('post-results')}>Post Results</Button>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ============== Teacher Overview (class cards) ==============
 function TeacherOverview({ user, students, diary, myResults, classes, onOpenClass }: any) {
   const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
@@ -617,10 +751,10 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
   // until the Branch Manager publishes a weekly timetable.
   const todaySchedule = 0;
   const cards = [
-    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-blue-600 to-blue-800', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
-    { label: 'Total Students', value: students.length, icon: Users, color: 'from-blue-500 to-blue-700', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
-    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-blue-500 to-blue-700', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
-    { label: "Today's Schedule", value: todaySchedule, icon: CalendarCheck, color: 'from-blue-500 to-blue-700', sub: 'No timetable yet' },
+    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
+    { label: 'Total Students', value: students.length, icon: Users, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
+    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
+    { label: "Today's Schedule", value: todaySchedule, icon: CalendarCheck, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: 'No timetable yet' },
   ];
 
   // Per-class student count helper — students are scoped to the teacher's branch,
@@ -630,13 +764,13 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-950 p-6 sm:p-8 text-white">
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-blue-400/15 blur-3xl" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><BookOpen className="h-3 w-3 text-blue-300" /> Teacher · {user?.branchName}</div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><BookOpen className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Teacher · {user?.branchName}</div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name}</h1>
-          <p className="text-blue-50/80 text-sm mt-1.5">
+          <p className="text-white/80 text-sm mt-1.5">
             {classes.length ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.` : 'Your classes will appear here once your Branch Manager assigns them.'}
           </p>
         </div>
@@ -672,9 +806,9 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
               return (
                 <motion.div key={cls.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenClass(cls)}>
-                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 opacity-10 blur-2xl group-hover:opacity-20 transition" />
+                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)] opacity-10 blur-2xl group-hover:opacity-20 transition" />
                     <div className="flex items-start justify-between mb-3">
-                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 grid place-items-center shadow-md">
+                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md">
                         <GraduationCap className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -693,9 +827,9 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-1.5 mt-4">
-                      <QuickAction icon={CalendarCheck} label="Attendance" color="text-blue-700 bg-blue-500/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'attendance'); }} />
-                      <QuickAction icon={GraduationCap} label="Results" color="text-blue-700 bg-blue-500/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'results'); }} />
-                      <QuickAction icon={FileText} label="Material" color="text-blue-700 bg-blue-500/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'materials'); }} />
+                      <QuickAction icon={CalendarCheck} label="Attendance" color="text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'attendance'); }} />
+                      <QuickAction icon={GraduationCap} label="Results" color="text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'results'); }} />
+                      <QuickAction icon={FileText} label="Material" color="text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'materials'); }} />
                     </div>
                   </Card>
                 </motion.div>
@@ -767,7 +901,7 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Take Attendance" subtitle={`${new Date().toLocaleDateString()}`}
-        actions={<Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={saving || classStudents.length === 0} onClick={save}>{saving ? 'Saving…' : 'Save Attendance'}</Button>} />
+        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving || classStudents.length === 0} onClick={save}>{saving ? 'Saving…' : 'Save Attendance'}</Button>} />
       {classes.length === 0 ? (
         <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
       ) : (
@@ -783,7 +917,7 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
           ) : (
             <>
               <div className="grid grid-cols-3 gap-3">
-                <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-blue-700 mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+                <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
                 <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
                 <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
               </div>
@@ -801,7 +935,7 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
                             <div className="flex gap-1 justify-end">
                               {['Present', 'Absent', 'Late'].map(opt => (
                                 <Button key={opt} size="sm" variant={st === opt ? 'default' : 'outline'}
-                                  className={st === opt ? (opt === 'Present' ? 'bg-blue-700 text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
+                                  className={st === opt ? (opt === 'Present' ? 'bg-[oklch(0.22_0.04_260)] text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
                                   onClick={() => setStatus(s.id, opt)}>{opt[0]}</Button>
                               ))}
                             </div>
@@ -870,7 +1004,7 @@ function PostResults({ user, classes, students, onSaved }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Post Results" subtitle="Enter test scores — parents get notified automatically"
-        actions={<Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={saving || classStudents.length === 0 || !exam.trim()} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
+        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving || classStudents.length === 0 || !exam.trim()} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
       {classes.length === 0 ? (
         <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
       ) : (
@@ -941,7 +1075,7 @@ function DiaryView({ user, diary, onSaved }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Diary & Homework" subtitle="Post homework — synced to student & parent apps"
-        actions={<Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
+        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
       {showForm && (
         <Card className="p-5">
           <div className="space-y-3">
@@ -952,20 +1086,20 @@ function DiaryView({ user, diary, onSaved }: any) {
             <div><Label className="text-xs">Title *</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Chapter 5 — Quadratic Equations" className="mt-1" /></div>
             <div><Label className="text-xs">Description</Label><textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} rows={3} placeholder="Solve exercises 5.1 to 5.4..." className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
             <div><Label className="text-xs">Due date</Label><Input value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} placeholder="Tomorrow / 3 days / 2025-01-15" className="mt-1" /></div>
-            <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={saving} onClick={post}>{saving ? 'Posting…' : 'Post Entry'}</Button>
+            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving} onClick={post}>{saving ? 'Posting…' : 'Post Entry'}</Button>
           </div>
         </Card>
       )}
       {diary.length === 0 ? (
         <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Post homework and assignments. They'll appear in student and parent portals instantly."
-          action={<Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
+          action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
       ) : (
         <div className="space-y-3">
           {diary.map((d: any) => (
             <Card key={d.id} className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
-                <Badge variant="outline" className={d.due ? 'text-blue-700 bg-blue-500/10 border-blue-500/20' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+                <Badge variant="outline" className={d.due ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
               </div>
               {d.desc && <p className="text-sm text-muted-foreground mt-2">{d.desc}</p>}
             </Card>
@@ -1041,7 +1175,7 @@ function MessageParents({ user, students }: any) {
             <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Type a message to parents…" rows={4} className="w-full rounded-md border border-border bg-card p-3 text-sm resize-none" />
             <div className="flex items-center justify-between mt-3">
               <span className="text-xs text-muted-foreground">{text.length} chars · {Math.ceil(text.length / 160)} SMS</span>
-              <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><MessageSquare className="h-4 w-4 mr-1.5" /> Send to {students.length} parents</>}</Button>
+              <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><MessageSquare className="h-4 w-4 mr-1.5" /> Send to {students.length} parents</>}</Button>
             </div>
           </Card>
           {sent.length > 0 && (
@@ -1051,7 +1185,7 @@ function MessageParents({ user, students }: any) {
                 {sent.map((s: any) => (
                   <div key={s.id} className="p-3 rounded-lg bg-muted/40">
                     <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-blue-700 bg-blue-500/10 border-blue-500/20">{s.status}</Badge>
+                      <Badge variant="outline" className="text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]">{s.status}</Badge>
                       <span className="text-[11px] text-muted-foreground">{new Date(s.sentAt).toLocaleString()}</span>
                     </div>
                     <p className="text-sm">{s.text}</p>
@@ -1108,12 +1242,12 @@ function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo
   return (
     <div className="space-y-6">
       <ModuleHeader title="Announcements" subtitle="Send notices to your students"
-        actions={<Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> {showForm ? 'Cancel' : 'New Announcement'}</Button>} />
+        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> {showForm ? 'Cancel' : 'New Announcement'}</Button>} />
 
       {showForm && (
         <Card className="p-5 space-y-3">
           <div className="flex items-center gap-2 mb-1">
-            <div className="h-8 w-8 rounded-lg bg-blue-500/15 grid place-items-center"><Megaphone className="h-4 w-4 text-blue-700" /></div>
+            <div className="h-8 w-8 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><Megaphone className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
             <h3 className="font-bold text-sm">New Announcement</h3>
           </div>
           <div className="flex gap-1 p-1 rounded-lg bg-muted/60 w-fit">
@@ -1129,7 +1263,7 @@ function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo
           )}
           <div><Label className="text-xs">Title *</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Tomorrow's class cancelled" className="mt-1" /></div>
           <div><Label className="text-xs">Message *</Label><textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} placeholder="Write your announcement…" className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
-          <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white" disabled={sending} onClick={send}>
+          <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>
             {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : <><Megaphone className="h-4 w-4 mr-1.5" /> Send Announcement</>}
           </Button>
         </Card>
@@ -1139,7 +1273,7 @@ function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo
         <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
       ) : announcements.length === 0 ? (
         <EmptyState icon={Inbox} title="No announcements yet" desc="Send notices to your students. They'll appear in their portal instantly."
-          action={<Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+          action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
       ) : (
         <div className="space-y-3">
           {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}

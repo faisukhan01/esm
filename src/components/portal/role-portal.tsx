@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import { SuperAdminPortal } from './super-admin-portal';
-import { InstituteAdminPortal, InstituteBranchWrapper } from './institute-admin-portal';
+import { InstituteAdminPortal } from './institute-admin-portal';
 import { BranchManagerPortal } from './branch-manager-portal';
 import { TeacherPortal } from './teacher-portal';
 import { StudentPortal } from './student-portal';
@@ -149,11 +149,6 @@ export function RolePortal() {
 
   const renderPortal = () => {
     if (activeModule === 'settings') return <SettingsPage user={user} />;
-    // Institute Admin can access branch-level modules (teachers, students, classes, fees)
-    // — but first they must pick which branch to operate on via the InstituteBranchWrapper.
-    if (role === 'institute-admin' && ['teachers', 'branch-students', 'class-courses', 'fees'].includes(activeModule)) {
-      return <InstituteBranchWrapper user={user} activeModule={activeModule} />;
-    }
     switch (role) {
       case 'super-admin': return <SuperAdminPortal activeModule={activeModule} user={user} />;
       case 'institute-admin': return <InstituteAdminPortal activeModule={activeModule} user={user} />;
@@ -251,18 +246,18 @@ export function RolePortal() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4 rounded-xl bg-blue-50 border border-blue-300 p-4 flex items-center justify-between gap-3"
+              className="mb-4 rounded-xl bg-[oklch(0.95_0.01_260)] border border-[oklch(0.6_0.04_260)] p-4 flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-400/20 grid place-items-center shrink-0">
-                  <Shield className="h-5 w-5 text-blue-700" />
+                <div className="h-10 w-10 rounded-xl bg-[oklch(0.5_0.04_260)_/_0.2] grid place-items-center shrink-0">
+                  <Shield className="h-5 w-5 text-[oklch(0.22_0.04_260)]" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm text-blue-900">Please change your password</div>
-                  <div className="text-xs text-blue-700">You're using a password assigned by your administrator. Change it now to secure your account.</div>
+                  <div className="font-semibold text-sm text-[oklch(0.15_0.03_260)]">Please change your password</div>
+                  <div className="text-xs text-[oklch(0.22_0.04_260)]">You're using a password assigned by your administrator. Change it now to secure your account.</div>
                 </div>
               </div>
-              <Button size="sm" className="bg-blue-700 hover:bg-blue-800 text-white shrink-0" onClick={() => setActiveModule('settings')}>
+              <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white shrink-0" onClick={() => setActiveModule('settings')}>
                 Change now
               </Button>
             </motion.div>

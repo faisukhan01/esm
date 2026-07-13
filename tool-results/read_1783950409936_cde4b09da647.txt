@@ -1,0 +1,630 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useMemo, useState } from 'react';
+     4→import { motion } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Input } from '@/components/ui/input';
+    10→import { Label } from '@/components/ui/label';
+    11→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    12→import { Textarea } from '@/components/ui/textarea';
+    13→import {
+    14→  Building2, Network, Users, Plus, MapPin, CheckCircle2, Lock, Unlock, Edit,
+    15→  Trash2, X, Megaphone, Send, Loader2, Server, Inbox, GitBranch,
+    16→} from 'lucide-react';
+    17→import { toast } from '@/hooks/use-toast';
+    18→import { BranchManagerPortal } from './branch-manager-portal';
+    19→
+    20→export function InstituteAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    21→  const [stats, setStats] = useState<any>(null);
+    22→  const [branches, setBranches] = useState<any[]>([]);
+    23→  const [showAddBranch, setShowAddBranch] = useState(false);
+    24→  const [lastCreated, setLastCreated] = useState<any>(null);
+    25→  const [loading, setLoading] = useState(true);
+    26→
+    27→  const refresh = () => {
+    28→    setLoading(true);
+    29→    if (user?.instituteId) {
+    30→      Promise.all([
+    31→        api.scopedStats(user.instituteId).catch(() => null),
+    32→        api.branches(user.instituteId).catch(() => []),
+    33→      ]).then(([s, b]) => {
+    34→        setStats(s);
+    35→        setBranches(Array.isArray(b) ? b : []);
+    36→        setLoading(false);
+    37→      });
+    38→    } else {
+    39→      setLoading(false);
+    40→    }
+    41→  };
+    42→  useEffect(() => {
+    43→    let active = true;
+    44→    if (user?.instituteId) {
+    45→      Promise.all([
+    46→        api.scopedStats(user.instituteId).catch(() => null),
+    47→        api.branches(user.instituteId).catch(() => []),
+    48→      ]).then(([s, b]) => {
+    49→        if (active) { setStats(s); setBranches(Array.isArray(b) ? b : []); setLoading(false); }
+    50→      });
+    51→    }
+    52→    return () => { active = false; };
+    53→  }, [user?.instituteId]);
+    54→
+    55→  if (activeModule === 'announcements') return <AnnouncementsView user={user} />;
+    56→  if (activeModule === 'settings') return null; // handled by RolePortal
+    57→  // Default: institute overview with branch cards
+    58→  return <InstituteOverview user={user} stats={stats} branches={branches} loading={loading} onAddBranch={() => setShowAddBranch(true)} onRefresh={refresh} showAddBranch={showAddBranch} setShowAddBranch={setShowAddBranch} lastCreated={lastCreated} setLastCreated={setLastCreated} />;
+    59→}
+    60→
+    61→// ============== Institute Branch Wrapper ==============
+    62→// When an Institute Admin opens a branch-level module (teachers, students, classes, fees),
+    63→// they need to first pick which branch to operate on — an institute can have many branches.
+    64→// This wrapper fetches the institute's branches, shows a selector at the top, and renders
+    65→// the BranchManagerPortal with a modified user whose branchId/branchName are overridden.
+    66→const BRANCH_MODULE_LABELS: Record<string, { title: string; subtitle: string }> = {
+    67→  'teachers': { title: 'Teachers', subtitle: 'Manage teachers in the selected branch' },
+    68→  'branch-students': { title: 'Students', subtitle: 'Manage students in the selected branch' },
+    69→  'class-courses': { title: 'Classes & Courses', subtitle: 'Configure classes, sections, and courses' },
+    70→  'fees': { title: 'Fee Management', subtitle: 'Set fee structure and manage invoices' },
+    71→};
+    72→
+    73→export function InstituteBranchWrapper({ user, activeModule }: { user: any; activeModule: string }) {
+    74→  const [branches, setBranches] = useState<any[]>([]);
+    75→  const [loading, setLoading] = useState(true);
+    76→  const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+    77→
+    78→  useEffect(() => {
+    79→    let active = true;
+    80→    const instituteId = user?.instituteId;
+    81→    if (!instituteId) {
+    82→      // No institute — defer the state update to a microtask so we don't
+    83→      // call setState synchronously inside the effect body (avoids cascading renders).
+    84→      Promise.resolve().then(() => { if (active) setLoading(false); });
+    85→      return () => { active = false; };
+    86→    }
+    87→    api.branches(instituteId)
+    88→      .then((list: any[]) => {
+    89→        if (!active) return;
+    90→        const arr = Array.isArray(list) ? list : [];
+    91→        setBranches(arr);
+    92→        // Default to the first branch
+    93→        if (arr.length > 0) setSelectedBranchId(arr[0].id);
+    94→      })
+    95→      .catch(() => { if (active) setBranches([]); })
+    96→      .finally(() => { if (active) setLoading(false); });
+    97→    return () => { active = false; };
+    98→  }, [user?.instituteId]);
+    99→
+   100→  // Build a modified user object that overrides branchId/branchName with the selected branch.
+   101→  // The BranchManagerPortal reads user.branchId to scope all its queries.
+   102→  const modifiedUser = useMemo(() => {
+   103→    const br = branches.find(b => b.id === selectedBranchId);
+   104→    return {
+   105→      ...user,
+   106→      branchId: selectedBranchId || user?.branchId || '',
+   107→      branchName: br?.name || br?.branchName || user?.branchName || '',
+   108→    };
+   109→  }, [user, branches, selectedBranchId]);
+   110→
+   111→  const meta = BRANCH_MODULE_LABELS[activeModule] || { title: 'Branch Management', subtitle: '' };
+   112→
+   113→  if (loading) {
+   114→    return (
+   115→      <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+   116→        <Loader2 className="h-4 w-4 animate-spin" />
+   117→        <span className="text-sm">Loading branches…</span>
+   118→      </div>
+   119→    );
+   120→  }
+   121→
+   122→  if (branches.length === 0) {
+   123→    return (
+   124→      <div className="space-y-6">
+   125→        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   126→          <div>
+   127→            <h1 className="font-display text-2xl font-extrabold tracking-tight">{meta.title}</h1>
+   128→            <p className="text-sm text-muted-foreground mt-1">{meta.subtitle}</p>
+   129→          </div>
+   130→        </div>
+   131→        <EmptyState
+   132→          icon={GitBranch}
+   133→          title="No branches yet"
+   134→          desc="Add your first branch from the Branches page. Once a branch exists, you can manage its teachers, students, classes, and fees here."
+   135→        />
+   136→      </div>
+   137→    );
+   138→  }
+   139→
+   140→  return (
+   141→    <div className="space-y-5">
+   142→      {/* Branch selector bar */}
+   143→      <Card className="p-4 border-[oklch(0.88_0.02_260)] dark:border-[oklch(0.2_0.04_260)] bg-[oklch(0.95_0.01_260)]/60 dark:bg-[oklch(0.12_0.03_260)_/_0.3]">
+   144→        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+   145→          <div className="flex items-center gap-2.5 shrink-0">
+   146→            <div className="h-9 w-9 rounded-lg bg-[oklch(0.22_0.04_260)] grid place-items-center text-white shadow-sm">
+   147→              <GitBranch className="h-4 w-4" />
+   148→            </div>
+   149→            <div className="leading-tight">
+   150→              <div className="text-[11px] font-semibold uppercase tracking-wider text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]">Branch</div>
+   151→              <div className="text-sm font-bold">{meta.title}</div>
+   152→            </div>
+   153→          </div>
+   154→          <div className="flex-1 min-w-0 sm:max-w-xs">
+   155→            <Label className="text-xs text-muted-foreground">Select branch</Label>
+   156→            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+   157→              <SelectTrigger className="mt-1 w-full bg-card">
+   158→                <SelectValue placeholder="Choose a branch" />
+   159→              </SelectTrigger>
+   160→              <SelectContent>
+   161→                {branches.map((br: any) => (
+   162→                  <SelectItem key={br.id} value={br.id}>
+   163→                    {br.name}{br.city ? ` · ${br.city}` : ''}
+   164→                  </SelectItem>
+   165→                ))}
+   166→              </SelectContent>
+   167→            </Select>
+   168→          </div>
+   169→          {modifiedUser.branchName && (
+   170→            <div className="text-xs text-muted-foreground sm:ml-auto">
+   171→              Operating on <span className="font-semibold text-foreground">{modifiedUser.branchName}</span>
+   172→            </div>
+   173→          )}
+   174→        </div>
+   175→      </Card>
+   176→
+   177→      {/* Branch Manager Portal for the selected branch */}
+   178→      <BranchManagerPortal activeModule={activeModule} user={modifiedUser} />
+   179→    </div>
+   180→  );
+   181→}
+   182→
+   183→function LoadingState({ label }: { label: string }) {
+   184→  return (
+   185→    <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+   186→      <Loader2 className="h-4 w-4 animate-spin" />
+   187→      <span className="text-sm">{label}</span>
+   188→    </div>
+   189→  );
+   190→}
+   191→
+   192→function EmptyState({ icon: Icon, title, desc, action }: any) {
+   193→  return (
+   194→    <Card className="p-10 text-center">
+   195→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+   196→      <h3 className="font-display font-bold text-lg">{title}</h3>
+   197→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   198→      {action && <div className="mt-5">{action}</div>}
+   199→    </Card>
+   200→  );
+   201→}
+   202→
+   203→// ============== Institute Overview ==============
+   204→function InstituteOverview({ user, stats, branches, loading, onAddBranch, onRefresh, showAddBranch, setShowAddBranch, lastCreated, setLastCreated }: any) {
+   205→  const cards = [
+   206→    { label: 'Branches', value: stats?.branches ?? 0, icon: Network, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
+   207→    { label: 'Total Students', value: stats?.students ?? 0, icon: Users, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+   208→    { label: 'Staff', value: stats?.staff ?? 0, icon: Building2, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+   209→  ];
+   210→
+   211→  return (
+   212→    <div className="space-y-6">
+   213→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   214→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
+   215→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   216→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   217→        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+   218→          <div>
+   219→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Building2 className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Institute Admin</div>
+   220→            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
+   221→            <p className="text-white/80 text-sm mt-1.5">{stats?.branches ? `${stats.branches} branches · ${stats.students} students` : 'Add your first branch to get started.'}</p>
+   222→          </div>
+   223→          <Button className="bg-white text-[oklch(0.18_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]" size="sm" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+   224→        </div>
+   225→      </motion.div>
+   226→
+   227→      {loading ? (
+   228→        <LoadingState label="Loading institute data…" />
+   229→      ) : (
+   230→        <>
+   231→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   232→            {cards.map((c, i) => (
+   233→              <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   234→                <Card className="p-5 relative overflow-hidden">
+   235→                  <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   236→                  <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   237→                  <div className="text-2xl sm:text-3xl font-extrabold font-display">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
+   238→                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   239→                </Card>
+   240→              </motion.div>
+   241→            ))}
+   242→          </div>
+   243→
+   244→          {branches.length === 0 ? (
+   245→            <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password."
+   246→              action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
+   247→          ) : (
+   248→            <Card className="p-5">
+   249→              <div className="flex items-center justify-between mb-4">
+   250→                <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a card to view details</p></div>
+   251→                <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+   252→              </div>
+   253→              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   254→                {branches.map((br: any) => <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} />)}
+   255→              </div>
+   256→            </Card>
+   257→          )}
+   258→        </>
+   259→      )}
+   260→
+   261→      <BranchModal show={showAddBranch} setShow={setShowAddBranch} instituteId={user?.instituteId} onRefresh={onRefresh} lastCreated={lastCreated} setLastCreated={setLastCreated} />
+   262→    </div>
+   263→  );
+   264→}
+   265→
+   266→// ============== Branch Card (popup modal on click) ==============
+   267→function BranchCard({ br, instituteId, onRefresh }: { br: any; instituteId: string; onRefresh: () => void }) {
+   268→  const [showDetails, setShowDetails] = useState(false);
+   269→  const [showEdit, setShowEdit] = useState(false);
+   270→  const [showDelete, setShowDelete] = useState(false);
+   271→  const [blocked, setBlocked] = useState<boolean>(br.blocked === 1 || br.blocked === true);
+   272→
+   273→  const isBlocked = blocked;
+   274→  const statusLabel = isBlocked ? 'Blocked' : 'Active';
+   275→  const statusClass = isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]';
+   276→
+   277→  const toggleBlock = async (e: React.MouseEvent) => {
+   278→    e.stopPropagation();
+   279→    try {
+   280→      await api.blockBranch(br.id, !blocked, !blocked ? 'Blocked by Institute Admin' : '');
+   281→      setBlocked(!blocked);
+   282→      toast({ title: blocked ? 'Branch unblocked' : 'Branch blocked', description: blocked ? 'Access restored' : 'All teachers and students blocked (cascade)' });
+   283→      onRefresh();
+   284→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   285→  };
+   286→
+   287→  const handleDelete = async () => {
+   288→    try {
+   289→      await api.deleteBranch(br.id);
+   290→      toast({ title: 'Branch deleted', description: `${br.name} and all its data have been removed.` });
+   291→      setShowDelete(false);
+   292→      onRefresh();
+   293→    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+   294→  };
+   295→
+   296→  return (
+   297→    <>
+   298→      <Card className={`p-5 hover:shadow-lg transition relative cursor-pointer ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`} onClick={() => setShowDetails(true)}>
+   299→        <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-[oklch(0.95_0.01_260)]0/10 blur-2xl pointer-events-none" />
+   300→        <div className="flex items-start justify-between">
+   301→          <div className="flex items-start gap-3 min-w-0">
+   302→            <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md text-white">
+   303→              <Network className="h-5 w-5" />
+   304→            </div>
+   305→            <div className="min-w-0">
+   306→              <h3 className="font-bold text-base truncate">{br.name}</h3>
+   307→              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {br.city || '—'}</div>
+   308→              <Badge variant="outline" className={`text-[10px] font-medium mt-1.5 ${statusClass}`}>{statusLabel}</Badge>
+   309→            </div>
+   310→          </div>
+   311→        </div>
+   312→        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+   313→          <div className="text-xs">
+   314→            <div className="text-muted-foreground">Manager</div>
+   315→            <div className="font-medium truncate">{br.manager || '—'}</div>
+   316→          </div>
+   317→          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+   318→            <button type="button" onClick={() => setShowEdit(true)} title="Edit" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"><Edit className="h-4 w-4" /></button>
+   319→            <button type="button" onClick={toggleBlock} title={isBlocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg transition ${isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10'}`}>{isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+   320→            <button type="button" onClick={() => setShowDelete(true)} title="Delete branch" className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"><Trash2 className="h-4 w-4" /></button>
+   321→          </div>
+   322→        </div>
+   323→      </Card>
+   324→
+   325→      {showDetails && <BranchDetailsModal br={br} instituteId={instituteId} onClose={() => setShowDetails(false)} onEdit={() => { setShowDetails(false); setShowEdit(true); }} />}
+   326→      {showEdit && <EditBranchModal br={br} instituteId={instituteId} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
+   327→      {showDelete && (
+   328→        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => setShowDelete(false)}>
+   329→          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+   330→            <Card className="p-6">
+   331→              <div className="flex items-center gap-3 mb-4">
+   332→                <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
+   333→                <div><h3 className="font-display font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+   334→              </div>
+   335→              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
+   336→                This will permanently delete <strong>{br.name}</strong> and ALL its data: teachers, students, classes, courses, attendance, results, and materials.
+   337→              </div>
+   338→              <div className="flex gap-2">
+   339→                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white flex-1" onClick={handleDelete}>Delete Permanently</Button>
+   340→                <Button size="sm" variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+   341→              </div>
+   342→            </Card>
+   343→          </motion.div>
+   344→        </motion.div>
+   345→      )}
+   346→    </>
+   347→  );
+   348→}
+   349→
+   350→// ============== Branch Details Modal ==============
+   351→function BranchDetailsModal({ br, instituteId, onClose, onEdit }: { br: any; instituteId: string; onClose: () => void; onEdit: () => void }) {
+   352→  const [teachers, setTeachers] = useState<any[]>([]);
+   353→  const [students, setStudents] = useState<any[]>([]);
+   354→  const [loading, setLoading] = useState(true);
+   355→
+   356→  useEffect(() => {
+   357→    Promise.all([
+   358→      api.platformUsers({ branchId: br.id, role: 'teacher' }).catch(() => []),
+   359→      api.platformUsers({ branchId: br.id, role: 'student' }).catch(() => []),
+   360→    ]).then(([t, s]) => { setTeachers(Array.isArray(t) ? t : []); setStudents(Array.isArray(s) ? s : []); setLoading(false); });
+   361→  }, [br.id]);
+   362→
+   363→  const isBlocked = br.blocked === 1 || br.blocked === true;
+   364→
+   365→  return (
+   366→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   367→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
+   368→        <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
+   369→          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/20 dark:to-slate-900/10">
+   370→            <div className="flex items-start justify-between">
+   371→              <div className="flex items-start gap-3">
+   372→                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md text-white"><Network className="h-7 w-7" /></div>
+   373→                <div>
+   374→                  <h2 className="font-display text-xl font-extrabold">{br.name}</h2>
+   375→                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {br.city || '—'}</div>
+   376→                  <Badge variant="outline" className={`text-[10px] mt-2 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}`}>{isBlocked ? 'Blocked' : 'Active'}</Badge>
+   377→                </div>
+   378→              </div>
+   379→              <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground"><X className="h-5 w-5" /></button>
+   380→            </div>
+   381→          </div>
+   382→          <div className="p-6 space-y-5">
+   383→            <div className="grid grid-cols-2 gap-3">
+   384→              <div className="rounded-xl bg-muted/40 p-3 text-center"><div className="text-2xl font-bold">{loading ? '…' : teachers.length}</div><div className="text-xs text-muted-foreground">Teachers</div></div>
+   385→              <div className="rounded-xl bg-muted/40 p-3 text-center"><div className="text-2xl font-bold">{loading ? '…' : students.length}</div><div className="text-xs text-muted-foreground">Students</div></div>
+   386→            </div>
+   387→            <div className="rounded-xl bg-muted/40 p-4">
+   388→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Branch Manager</div>
+   389→              <div className="flex items-center justify-between">
+   390→                <div><div className="font-medium text-sm">{br.manager || '—'}</div><div className="text-xs text-muted-foreground">{br.managerEmail || '—'}</div></div>
+   391→                <Button size="sm" variant="outline" onClick={onEdit}><Edit className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+   392→              </div>
+   393→            </div>
+   394→            {!loading && teachers.length > 0 && (
+   395→              <div>
+   396→                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Teachers ({teachers.length})</div>
+   397→                <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-fancy">
+   398→                  {teachers.map((t: any) => <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm"><span>{t.name}</span><span className="text-xs text-muted-foreground">{t.rollNo || '—'}</span></div>)}
+   399→                </div>
+   400→              </div>
+   401→            )}
+   402→            {!loading && students.length > 0 && (
+   403→              <div>
+   404→                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Students ({students.length})</div>
+   405→                <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-fancy">
+   406→                  {students.slice(0, 20).map((s: any) => <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm"><span>{s.name}</span><span className="text-xs text-muted-foreground">{s.class || '—'} · {s.rollNo || '—'}</span></div>)}
+   407→                  {students.length > 20 && <div className="text-xs text-muted-foreground text-center py-1">+{students.length - 20} more…</div>}
+   408→                </div>
+   409→              </div>
+   410→            )}
+   411→          </div>
+   412→        </Card>
+   413→      </motion.div>
+   414→    </motion.div>
+   415→  );
+   416→}
+   417→
+   418→// ============== Edit Branch Modal ==============
+   419→function EditBranchModal({ br, instituteId, onClose, onSaved }: { br: any; instituteId: string; onClose: () => void; onSaved: () => void }) {
+   420→  const [form, setForm] = useState({ name: br.name, managerName: br.manager || '', managerEmail: br.managerEmail || '', managerPassword: '' });
+   421→  const [saving, setSaving] = useState(false);
+   422→
+   423→  const save = async () => {
+   424→    setSaving(true);
+   425→    try {
+   426→      // Find the branch manager user
+   427→      const users = await api.platformUsers({ branchId: br.id, role: 'branch-manager' });
+   428→      if (users.length > 0) {
+   429→        const body: any = {};
+   430→        if (form.managerName) body.name = form.managerName;
+   431→        if (form.managerEmail) body.email = form.managerEmail;
+   432→        if (form.managerPassword) body.password = form.managerPassword;
+   433→        await api.editUser(users[0].id, body);
+   434→      }
+   435→      toast({ title: 'Branch updated!' });
+   436→      onSaved();
+   437→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   438→    finally { setSaving(false); }
+   439→  };
+   440→
+   441→  return (
+   442→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   443→      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-8">
+   444→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   445→          <h3 className="font-display font-bold text-lg mb-4">Edit Branch</h3>
+   446→          <div className="space-y-3">
+   447→            <div><Label>Branch Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" disabled /></div>
+   448→            <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager</div></div>
+   449→            <div><Label>Manager Name</Label><Input value={form.managerName} onChange={e => setForm({...form, managerName: e.target.value})} className="mt-1" /></div>
+   450→            <div><Label>Manager Email</Label><Input value={form.managerEmail} onChange={e => setForm({...form, managerEmail: e.target.value})} className="mt-1" /></div>
+   451→            <div><Label>New Password (leave blank to keep current)</Label><Input type="text" value={form.managerPassword} onChange={e => setForm({...form, managerPassword: e.target.value})} placeholder="Set new password" className="mt-1" /></div>
+   452→          </div>
+   453→          <div className="flex gap-2 mt-5">
+   454→            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+   455→            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+   456→          </div>
+   457→        </Card>
+   458→      </motion.div>
+   459→    </motion.div>
+   460→  );
+   461→}
+   462→
+   463→// ============== Add Branch Modal ==============
+   464→function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLastCreated }: any) {
+   465→  const [form, setForm] = useState({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' });
+   466→  const [creating, setCreating] = useState(false);
+   467→
+   468→  const create = async () => {
+   469→    if (!form.name || !form.managerEmail || !form.managerPassword) { toast({ title: 'Branch name, manager email and password are required', variant: 'destructive' }); return; }
+   470→    setCreating(true);
+   471→    try {
+   472→      const res = await api.createBranch({ ...form, instituteId });
+   473→      toast({ title: 'Branch created!', description: `${res.branch.name} — manager login ready` });
+   474→      setLastCreated(res); setForm({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' }); onRefresh();
+   475→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   476→    finally { setCreating(false); }
+   477→  };
+   478→
+   479→  if (!show && !lastCreated) return null;
+   480→  return (
+   481→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => { setShow(false); setLastCreated(null); }}>
+   482→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-8">
+   483→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   484→          {lastCreated ? (
+   485→            <>
+   486→              <div className="flex items-center gap-3 mb-4">
+   487→                <div className="h-12 w-12 rounded-full bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)]" /></div>
+   488→                <div><h3 className="font-display font-bold text-lg">Branch created!</h3><p className="text-sm text-muted-foreground">{lastCreated.branch.name}</p></div>
+   489→              </div>
+   490→              <div className="rounded-xl bg-[oklch(0.95_0.01_260)]0/5 border border-[oklch(0.5_0.04_260)_/_0.2] p-4 space-y-2 text-sm">
+   491→                <div className="font-semibold text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]">Branch Manager login credentials</div>
+   492→                <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono">{lastCreated.managerLogin.email}</span></div>
+   493→                <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">{lastCreated.managerLogin.password}</span></div>
+   494→                <div className="text-xs text-muted-foreground pt-2 border-t border-[oklch(0.5_0.04_260)_/_0.2]">The manager must change this password on first login. Share these credentials securely.</div>
+   495→              </div>
+   496→              <div className="flex gap-2 mt-5">
+   497→                <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" onClick={() => { setShow(false); setLastCreated(null); }}>Done</Button>
+   498→                <Button size="sm" variant="outline" onClick={() => setLastCreated(null)}>Add Another</Button>
+   499→              </div>
+   500→            </>
+   501→          ) : (
+   502→            <>
+   503→              <h3 className="font-display font-bold text-lg mb-1">Add a new branch</h3>
+   504→              <p className="text-sm text-muted-foreground mb-5">You will set the Branch Manager's email and password. They must change it on first login.</p>
+   505→              <div className="space-y-3">
+   506→                <div><Label>Branch name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. North Campus" className="mt-1" /></div>
+   507→                <div><Label>City</Label><Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="Dallas" className="mt-1" /></div>
+   508→                <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager — You set the credentials</div></div>
+   509→                <div><Label>Manager name</Label><Input value={form.managerName} onChange={e => setForm({...form, managerName: e.target.value})} placeholder="Lisa Chen" className="mt-1" /></div>
+   510→                <div><Label>Manager email *</Label><Input type="email" value={form.managerEmail} onChange={e => setForm({...form, managerEmail: e.target.value})} placeholder="manager@school.edu" className="mt-1" /></div>
+   511→                <div><Label>Assign password *</Label><Input type="text" value={form.managerPassword} onChange={e => setForm({...form, managerPassword: e.target.value})} placeholder="Set a password for the manager" className="mt-1" /></div>
+   512→              </div>
+   513→              <div className="flex gap-2 mt-5">
+   514→                <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={creating} onClick={create}>{creating ? 'Creating…' : 'Create Branch'}</Button>
+   515→                <Button size="sm" variant="outline" onClick={() => setShow(false)}>Cancel</Button>
+   516→              </div>
+   517→            </>
+   518→          )}
+   519→        </Card>
+   520→      </motion.div>
+   521→    </motion.div>
+   522→  );
+   523→}
+   524→
+   525→// ============== Announcements View ==============
+   526→function AnnouncementsView({ user }: { user: any }) {
+   527→  const [announcements, setAnnouncements] = useState<any[]>([]);
+   528→  const [form, setForm] = useState({ title: '', message: '', targetScope: 'all', targetType: 'branch-manager', selectedIds: [] as string[] });
+   529→  const [targets, setTargets] = useState<any[]>([]);
+   530→  const [sending, setSending] = useState(false);
+   531→  const [showForm, setShowForm] = useState(false);
+   532→  const [loading, setLoading] = useState(true);
+   533→
+   534→  const refresh = () => { api.getAnnouncements().then(setAnnouncements).catch(() => {}); };
+   535→  useEffect(() => { refresh(); setLoading(false); }, []);
+   536→
+   537→  const loadTargets = async (type: string) => {
+   538→    if (type === 'all') { setTargets([]); return; }
+   539→    const role = type === 'branch' ? 'branch-manager' : type;
+   540→    const users = await api.platformUsers({ instituteId: user.instituteId, role });
+   541→    setTargets(Array.isArray(users) ? users : []);
+   542→  };
+   543→
+   544→  const send = async () => {
+   545→    if (!form.title || !form.message) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+   546→    setSending(true);
+   547→    try {
+   548→      await api.createAnnouncement({
+   549→        title: form.title, message: form.message,
+   550→        targetRole: form.targetType === 'branch' ? 'branch-manager' : form.targetType,
+   551→        targetScope: form.targetScope,
+   552→        targetIds: form.targetScope === 'specific' ? form.selectedIds : undefined,
+   553→      });
+   554→      toast({ title: 'Announcement sent!' });
+   555→      setForm({ title: '', message: '', targetScope: 'all', targetType: 'branch-manager', selectedIds: [] });
+   556→      setShowForm(false); refresh();
+   557→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   558→    finally { setSending(false); }
+   559→  };
+   560→
+   561→  return (
+   562→    <div className="space-y-6">
+   563→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   564→        <div><h1 className="font-display text-2xl font-extrabold tracking-tight">Announcements</h1><p className="text-sm text-muted-foreground mt-1">Send messages to branches, teachers, or students</p></div>
+   565→        <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>
+   566→      </div>
+   567→      {showForm && (
+   568→        <Card className="p-5">
+   569→          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+   570→          <div className="space-y-3">
+   571→            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Schedule change" className="mt-1" /></div>
+   572→            <div><Label>Message</Label><Textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" /></div>
+   573→            <div className="grid grid-cols-2 gap-3">
+   574→              <div><Label>Recipients</Label>
+   575→                <Select value={form.targetType} onValueChange={v => { setForm({...form, targetType: v, targetScope: 'all', selectedIds: []}); loadTargets(v); }}>
+   576→                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   577→                  <SelectContent>
+   578→                    <SelectItem value="branch-manager">All Branch Managers</SelectItem>
+   579→                    <SelectItem value="teacher">All Teachers</SelectItem>
+   580→                    <SelectItem value="student">All Students</SelectItem>
+   581→                  </SelectContent>
+   582→                </Select>
+   583→              </div>
+   584→              <div><Label>Scope</Label>
+   585→                <Select value={form.targetScope} onValueChange={v => setForm({...form, targetScope: v, selectedIds: []})}>
+   586→                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   587→                  <SelectContent>
+   588→                    <SelectItem value="all">All {form.targetType === 'branch-manager' ? 'Branches' : form.targetType + 's'}</SelectItem>
+   589→                    <SelectItem value="specific">Specific {form.targetType === 'branch-manager' ? 'Branches' : form.targetType + 's'}</SelectItem>
+   590→                  </SelectContent>
+   591→                </Select>
+   592→              </div>
+   593→            </div>
+   594→            {form.targetScope === 'specific' && targets.length > 0 && (
+   595→              <div className="max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+   596→                {targets.map((t: any) => (
+   597→                  <label key={t.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+   598→                    <input type="checkbox" checked={form.selectedIds.includes(t.id)} onChange={e => {
+   599→                      if (e.target.checked) setForm({...form, selectedIds: [...form.selectedIds, t.id]});
+   600→                      else setForm({...form, selectedIds: form.selectedIds.filter((id:string) => id !== t.id)});
+   601→                    }} className="custom-checkbox w-4 h-4 rounded" />
+   602→                    <span className="text-sm">{t.name}</span>
+   603→                  </label>
+   604→                ))}
+   605→              </div>
+   606→            )}
+   607→            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send</>}</Button>
+   608→          </div>
+   609→        </Card>
+   610→      )}
+   611→      {loading ? <LoadingState label="Loading announcements…" /> : announcements.length === 0 ? (
+   612→        <EmptyState icon={Megaphone} title="No announcements yet" desc="Send messages to all or specific branches, teachers, or students." />
+   613→      ) : (
+   614→        <div className="space-y-3">
+   615→          {announcements.map(a => (
+   616→            <Card key={a.id} className="p-4">
+   617→              <div className="flex items-start justify-between mb-2">
+   618→                <div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /><div className="font-medium text-sm">{a.title}</div></div>
+   619→                <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+   620→              </div>
+   621→              <p className="text-sm text-muted-foreground ml-6">{a.message}</p>
+   622→              <div className="text-[11px] text-muted-foreground mt-2 ml-6">To: {a.targetScope === 'all' ? `All ${a.targetRole || 'users'}` : `Specific ${a.targetRole || 'users'}`}</div>
+   623→            </Card>
+   624→          ))}
+   625→        </div>
+   626→      )}
+   627→    </div>
+   628→  );
+   629→}
+   630→
