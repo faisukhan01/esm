@@ -23,6 +23,7 @@ import {
   Search, Crown, Calendar, Download,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useApp } from '@/lib/store';
 import { BranchManagerPortal } from './branch-manager-portal';
 
 // ============== Shared helpers ==============
@@ -52,6 +53,7 @@ function exportToCSV(filename: string, headers: string[], rows: (string | number
 
 // ============== Main portal ==============
 export function InstituteAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
+  const setActiveModule = useApp(s => s.setActiveModule);
   const [finance, setFinance] = useState<any>(null);
   const [branches, setBranches] = useState<any[]>([]);
   const [showAddBranch, setShowAddBranch] = useState(false);
@@ -112,7 +114,16 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
     );
   }
 
-  const viewProps = { finance, branches, loading, user, onRefresh: refresh };
+  const viewProps = {
+    finance,
+    branches,
+    loading,
+    user,
+    onRefresh: refresh,
+    onAddBranch: () => setShowAddBranch(true),
+    onSelectBranch: (br: any) => setSelectedBranchId(br.id),
+    setActiveModule,
+  };
 
   return (
     <div className="space-y-6">
@@ -190,42 +201,34 @@ function PageHeader({ title, subtitle, action }: { title: string; subtitle: stri
 }
 
 // ============== 1. Institute Dashboard ==============
-function InstituteDashboard({ finance, branches, loading, user }: any) {
+function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAddBranch, onSelectBranch, setActiveModule }: any) {
   const kpi = finance?.kpi || {};
-  const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
-  const branchPerf = Array.isArray(finance?.branchPerformance) ? finance.branchPerformance : [];
-  const recentTx = Array.isArray(finance?.recentTransactions) ? finance.recentTransactions : [];
-
-  const branchName = (id: string) =>
-    branchPerf.find((b: any) => b.id === id)?.name ||
-    branches.find((b: any) => b.id === id)?.name ||
-    '—';
 
   if (loading) {
     return (
       <Card className="p-6"><LoadingState label="Loading dashboard…" /></Card>
     );
   }
-  if (!finance) {
-    return (
-      <EmptyState icon={Building2} title="No data yet" desc="Financial data for your institute will appear here once you have branches, students and fee invoices." />
-    );
-  }
 
-  const kpiCards = [
-    { label: 'Total Revenue', value: formatPKR(kpi.totalRevenue), icon: DollarSign, sub: 'All-time collected fees' },
-    { label: 'Pending Fees', value: formatPKR(kpi.pendingFees), icon: AlertCircle, sub: `${kpi.unpaidInvoices || 0} unpaid invoices`, tone: 'negative' as const },
-    { label: 'Salary Paid', value: formatPKR(kpi.totalSalaryPaid), icon: Wallet, sub: 'All-time teacher payouts' },
-    { label: 'Monthly Salary', value: formatPKR(kpi.monthlySalaryExpense), icon: TrendingDown, sub: 'Recurring expense / month' },
-    { label: 'Net Balance', value: formatPKR(kpi.netBalance), icon: Scale, sub: 'Revenue minus salary', tone: (kpi.netBalance >= 0 ? 'positive' : 'negative') as 'positive' | 'negative' },
-    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, sub: `${kpi.paidInvoices || 0} paid · ${kpi.unpaidInvoices || 0} unpaid` },
+  // 4 high-level summary KPI cards (NOT detailed financials — those live on dedicated pages)
+  const summaryCards = [
+    { label: 'Branches', value: String(kpi.branches || branches?.length || 0), icon: Network, sub: 'Active campuses' },
+    { label: 'Students', value: String(kpi.students || 0), icon: GraduationCap, sub: 'Across all branches' },
+    { label: 'Teachers', value: String(kpi.teachers || 0), icon: Users, sub: 'Teaching staff' },
+    { label: 'Total Revenue', value: formatPKR(kpi.totalRevenue), icon: DollarSign, sub: 'All-time collected' },
   ];
 
-  const topBranches = [...branchPerf].sort((a, b) => b.revenue - a.revenue).slice(0, 6);
+  // Quick action shortcuts → deep-link to the detailed management pages
+  const quickActions = [
+    { title: 'Fees & Revenue', sub: 'View fee records & revenue', icon: DollarSign, target: 'institute-fees' },
+    { title: 'Teachers & Salaries', sub: 'Manage salaries & payouts', icon: Users, target: 'institute-teachers' },
+    { title: 'Students', sub: 'Student records & analytics', icon: GraduationCap, target: 'institute-students' },
+    { title: 'Reports', sub: 'Analytics & insights', icon: TrendingUp, target: 'institute-reports' },
+  ];
 
   return (
     <>
-      {/* Welcome banner — only on Dashboard */}
+      {/* Welcome banner — navy gradient */}
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white"
@@ -251,114 +254,70 @@ function InstituteDashboard({ finance, branches, loading, user }: any) {
         </div>
       </motion.div>
 
-      {/* Financial KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {kpiCards.map((c, i) => (
+      {/* Core summary KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <KPICard icon={c.icon} label={c.label} value={c.value} sub={c.sub} tone={c.tone} />
+            <KPICard icon={c.icon} label={c.label} value={c.value} sub={c.sub} />
           </motion.div>
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-base">Revenue vs Salary (Last 12 Months)</h3>
-              <p className="text-xs text-muted-foreground">Monthly fee collection vs salary payout</p>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={monthly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-              <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => (v / 1000) + 'k'} />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }}
-                formatter={(v: any, name: any) => [formatPKR(v), name === 'revenue' ? 'Revenue' : 'Salary']}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'revenue' ? 'Revenue' : 'Salary')} />
-              <Bar dataKey="revenue" fill={NAVY} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="salary" fill={ROSE} radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-base">Branch Revenue</h3>
-              <p className="text-xs text-muted-foreground">Top branches by collected revenue</p>
-            </div>
-          </div>
-          {topBranches.length === 0 ? (
-            <LoadingState label="No branch data" />
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topBranches} layout="vertical" margin={{ top: 5, right: 12, left: 30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => (v / 1000) + 'k'} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={100} />
-                <Tooltip
-                  contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }}
-                  formatter={(v: any) => formatPKR(v)}
-                />
-                <Bar dataKey="revenue" fill={NAVY} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
+      {/* Quick Actions — shortcut cards to detailed pages */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight">Quick Actions</h2>
+          <p className="text-xs text-muted-foreground">Jump straight to the detailed management pages</p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((a, i) => (
+            <motion.div
+              key={a.target}
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
+              onClick={() => setActiveModule?.(a.target)}
+              className="group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center text-primary">
+                  <a.icon className="h-5 w-5" />
+                </div>
+                <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition" />
+              </div>
+              <h3 className="font-bold text-base mt-3">{a.title}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
-      {/* Recent transactions */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      {/* Branches overview — compact */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-base">Recent Transactions</h3>
-            <p className="text-xs text-muted-foreground">Latest fee payments and salary payouts</p>
+            <h2 className="text-lg font-bold tracking-tight">Branches</h2>
+            <p className="text-xs text-muted-foreground">Quick view of all campuses in your institute</p>
           </div>
+          {branches?.length > 0 && (
+            <Button variant="ghost" size="sm" className="text-primary hover:text-primary" onClick={() => setActiveModule?.('branches')}>
+              View all <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          )}
         </div>
-        {recentTx.length === 0 ? (
-          <EmptyState icon={FileText} title="No transactions yet" desc="Recent fee payments and salary payouts will appear here." />
+        {!branches || branches.length === 0 ? (
+          <EmptyState
+            icon={Network}
+            title="No branches yet"
+            desc="Add your first branch. You'll set the Branch Manager's email and password."
+            action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>}
+          />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Date</TableHead>
-                <TableHead className="text-xs">Type</TableHead>
-                <TableHead className="text-xs">Party</TableHead>
-                <TableHead className="text-xs">Branch</TableHead>
-                <TableHead className="text-xs">Method</TableHead>
-                <TableHead className="text-xs text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentTx.map((t: any) => {
-                const isSalary = t.type === 'Salary Payout';
-                return (
-                  <TableRow key={t.id}>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {t.date ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[10px] ${isSalary ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'}`}>
-                        {t.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">{t.party}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{branchName(t.branchId)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{t.method}</TableCell>
-                    <TableCell className={`text-sm font-bold tabular-nums text-right ${isSalary ? 'text-rose-600' : 'text-emerald-700'}`}>
-                      {isSalary ? '-' : '+'}{formatPKR(t.amount)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {branches.slice(0, 6).map((br: any) => (
+              <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} onSelectBranch={onSelectBranch} />
+            ))}
+          </div>
         )}
-      </Card>
+      </div>
     </>
   );
 }

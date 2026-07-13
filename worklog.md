@@ -2242,3 +2242,139 @@ Stage Summary:
 - `mustChangePassword` set to 0 so the user won't be forced to change it on login
 - Login confirmed working end-to-end via agent-browser
 - Root cause: a previous development session changed the super admin password to "TestPass999" during testing, but the user was never informed — they kept using the original password from the seed file
+
+---
+Task ID: IA-DASHBOARD-SIMPLIFY
+Agent: full-stack-developer
+Task: Simplify the Institute Admin Dashboard — remove the 6 financial KPI cards, Revenue vs Salary BarChart, Branch Revenue BarChart, and Recent Transactions table (all already live on the Fees & Revenue / Teachers & Salaries / Reports pages). Replace with a clean 4-section layout: navy welcome banner (kept), 4 summary KPI cards (Branches / Students / Teachers / Total Revenue), a Quick Actions shortcut grid (Fees, Teachers, Students, Reports), and a compact Branches overview reusing the existing BranchCard.
+
+Work Log:
+- Read worklog.md and the current institute-admin-portal.tsx (~1637 lines) to locate the InstituteDashboard function (originally lines 204-375) and the InstituteAdminPortal parent (lines 54-140).
+- Confirmed useApp store (src/lib/store.ts) exposes setActiveModule via `useApp(s => s.setActiveModule)`. Chose Option A from the spec — pull setActiveModule from the store inside InstituteAdminPortal rather than threading it through RolePortal.
+- Added `import { useApp } from '@/lib/store';` immediately after the `use-toast` import.
+- In InstituteAdminPortal:
+  - Added `const setActiveModule = useApp(s => s.setActiveModule);` as the first line inside the component body.
+  - Expanded the `viewProps` object from a single-line literal to a multi-line object that now also carries `onAddBranch: () => setShowAddBranch(true)`, `onSelectBranch: (br: any) => setSelectedBranchId(br.id)`, and `setActiveModule`. These are spread into InstituteDashboard (and the other existing views, which ignore the new keys since they destructure only what they need).
+- Rewrote InstituteDashboard end-to-end. Removed:
+  - `monthly`, `branchPerf`, `recentTx`, `branchName` derivations (no longer rendered)
+  - The `if (!finance) return <EmptyState … />` early-return (dashboard now renders its full skeleton even without finance data; KPIs simply show 0/0/0/PKR 0 — much friendlier than a hard empty state on a dashboard)
+  - The 6-card financial KPI strip (Total Revenue / Pending Fees / Salary Paid / Monthly Salary / Net Balance / Total Invoices)
+  - The 2-card charts row (Revenue vs Salary BarChart + Branch Revenue horizontal BarChart)
+  - The Recent Transactions table Card
+- Added in their place:
+  - 4 summary KPI cards via the existing KPICard component — Branches (Network icon, fallback to `branches?.length`), Students (GraduationCap), Teachers (Users), Total Revenue (DollarSign, formatPKR). Grid is `grid-cols-2 lg:grid-cols-4`.
+  - A "Quick Actions" section with a 4-card grid (`grid-cols-2 lg:grid-cols-4`): Fees & Revenue → institute-fees, Teachers & Salaries → institute-teachers, Students → institute-students, Reports → institute-reports. Each card is `group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5`, icon in `bg-primary/10 text-primary h-11 w-11 rounded-xl`, title `font-bold text-base`, subtitle `text-xs text-muted-foreground mt-0.5`, and a ChevronRight (`text-primary opacity-0 group-hover:opacity-100 transition`) on the right. Clicking calls `setActiveModule?.(a.target)`.
+  - A compact "Branches" overview section with a "View all" ghost button (`text-primary hover:text-primary`) that calls `setActiveModule?.('branches')`. When there are no branches, shows the existing EmptyState (Network icon + "Add Branch" button calling onAddBranch). Otherwise renders up to 6 BranchCard instances in `grid sm:grid-cols-2 lg:grid-cols-3 gap-4`, each wired with `instituteId={user?.instituteId}`, `onRefresh={onRefresh}`, `onSelectBranch={onSelectBranch}` so clicking a card opens BranchManagementView exactly as on the dedicated Branches page.
+- Kept the navy gradient welcome banner exactly as-is (Crown badge, "Welcome back, {name}", branches/students/teachers count, today's date).
+- Did NOT touch BranchesView, InstituteFeesView, InstituteTeachersView, InstituteStudentsView, InstituteReportsView, BranchManagementView, BranchCard, EditBranchModal, BranchModal, or AnnouncementsView — only InstituteDashboard and the InstituteAdminPortal parent's store hook + viewProps were modified.
+- Color discipline preserved: navy `bg-primary/10 text-primary` for all icon boxes; no emerald/rose on the dashboard anymore (those tones now only appear on the dedicated Fees/Teachers/Reports pages where paid/pending distinctions make sense). No indigo/blue/green.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly (`✓ Compiled in 552ms` / `979ms` / `666ms`) after the edits, and the Institute Admin's `/api/branches` + `/api/institute/finance` calls continue to return 200.
+
+Stage Summary:
+- Institute Admin Dashboard is now a clean, simple landing surface: welcome banner → 4 summary KPIs (Branches, Students, Teachers, Total Revenue) → 4 Quick Action shortcuts (deep-links to Fees & Revenue / Teachers & Salaries / Students / Reports) → compact Branches grid (up to 6 BranchCards + "View all" link, with Add-Branch empty state when none exist).
+- Removed from the Dashboard: 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Monthly Salary Expense, Net Balance, Total Invoices), Revenue vs Salary BarChart, Branch Revenue horizontal BarChart, and Recent Transactions table — all of this data remains available on the dedicated Fees & Revenue / Teachers & Salaries / Reports pages, eliminating the duplication the user complained about.
+- `setActiveModule` is now sourced from the useApp store inside InstituteAdminPortal (Option A) and threaded down to InstituteDashboard via viewProps alongside onAddBranch and onSelectBranch — so Quick Actions and the Branches "View all" link can navigate without touching RolePortal.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components in the file were modified.
+
+---
+Task ID: SA-DASHBOARD-SIMPLIFY
+Agent: full-stack-developer
+Task: Simplify the Super Admin dashboard — move all financial KPIs, charts, and tables off the Dashboard page to a new dedicated Analytics sidebar page. Dashboard should only show welcome banner + 4 basic KPIs + Quick Actions.
+
+Work Log:
+- Read worklog.md tail (saw IA-DASHBOARD-SIMPLIFY followed the same Option-A pattern: pull setActiveModule from useApp store inside the component) and the current super-admin-portal.tsx (~1364 lines pre-edit) to locate PlatformOverview (lines 170-529) and the SuperAdminPortal parent router (lines 44-110).
+- Confirmed useApp store (src/lib/store.ts) exposes `setActiveModule: (m) => set({ activeModule: m })` via `useApp(s => s.setActiveModule)`.
+- Step 1 — role-modules.ts: added `{ id: 'platform-analytics', name: 'Analytics', icon: TrendingUp, color: 'from-primary to-primary/80' }` to the super-admin Platform group, positioned between institutes and announcements. TrendingUp was already imported.
+- Step 2 — super-admin-portal.tsx imports/helpers:
+  - Added `import { useApp } from '@/lib/store';` after the toast import.
+  - Relaxed the existing `formatPKR` signature from `(n: number)` to `(n: any)` to match the spec helper (lets us safely pass `undefined`/strings from finance payloads).
+  - Added a new `exportToCSV(filename, headers, rows)` helper at the top of the file (was not present before). It escapes cells containing commas/quotes/newlines, prepends a UTF-8 BOM, builds a Blob, and triggers a synthetic `<a download>` click.
+- Step 3 — SuperAdminPortal parent router:
+  - Added the new branch `if (activeModule === 'platform-analytics') return <PlatformAnalytics finance={finance} financeLoading={financeLoading} institutes={institutes} />;` right after the institutes branch and before announcements.
+  - Kept the existing `api.getPlatformFinance()` fetch in the parent (refreshFinance) so finance is available to both the dashboard (no longer renders it) and the new Analytics page.
+  - Trimmed the PlatformOverview call site to only pass `{ overview, overviewLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd }` — removed `institutes`, `institutesLoading`, `finance`, `financeLoading` since the dashboard no longer renders them.
+- Step 4 — PlatformOverview rewrite (kept lightweight, ~107 lines):
+  - Kept the navy gradient welcome banner verbatim (Crown badge, "Welcome back, {name}", onboarded count, Provision Institute button).
+  - Kept the 4 basic KPI cards verbatim (Institutions / Branches / Total Students / Total Staff) with the existing skeleton-loading block.
+  - Added a new "Quick Actions" section with 3 shortcut cards in `grid sm:grid-cols-2 lg:grid-cols-3 gap-4`:
+    - View Analytics (TrendingUp) → platform-analytics
+    - Manage Institutes (Building2) → institutes
+    - Send Announcement (MessageSquare) → announcements
+    Each card uses the exact spec styling: `group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5`, icon in `h-11 w-11 shrink-0 rounded-xl bg-primary/10` box, title `font-bold text-base`, subtitle `text-xs text-muted-foreground mt-0.5`, and a ChevronRight (`text-primary opacity-0 group-hover:opacity-100 transition shrink-0`) on the right. Clicking calls `setActiveModule(a.target)` sourced from `useApp(s => s.setActiveModule)`.
+  - Kept the `showAdd && <ProvisionInstituteModal …/>` block so the banner's "Provision Institute" button still opens the modal.
+  - Removed: 6 financial KPI cards, Platform Revenue vs Salary BarChart, Yearly Revenue Trend AreaChart, Institute Performance table, Recent Platform Transactions table, and the Institutes grid (which duplicated InstitutesManager and was the user's secondary complaint).
+- Step 5 — new PlatformAnalytics component (~298 lines):
+  - Page header via ModuleHeader with title "Analytics", subtitle "Revenue, salary and institute performance insights", and an Export CSV button in the actions slot (disabled while loading or when no institute performance rows).
+  - 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Net Balance, Total Invoices, Active Institutes) — same styling as the old dashboard: white bg, border-border rounded-lg shadow-sm, h-11 w-11 icon box, tabular-nums font-extrabold values. Navy `bg-primary/10 text-primary` for positive icons; rose `bg-rose-500/10 text-rose-600` for Pending Fees; conditional emerald/rose for Net Balance.
+  - Charts row (lg:grid-cols-2): Platform Revenue vs Salary BarChart (12 months, navy #1a365d revenue bars, rose #e11d48 salary bars) + Yearly Revenue Trend AreaChart (5 years, navy + rose gradient fills). Both use `formatCompact` for Y-axis and `formatPKR` for tooltips.
+  - Institute Performance table with `max-h-96 overflow-y-auto` scroll, sticky header, and an inline Export CSV button on the right side of the card header (in addition to the page-level one). The export handler maps each institute row to `[name, city, admin, branches, students, revenue, pendingFees, salaryPaid, net, status]` and calls `exportToCSV('institute-performance', [...], rows)`, then fires a success toast.
+  - Recent Platform Transactions table (latest 10 rows) — same styling as before with emerald/rose type badges.
+  - Skeleton loaders for each section during `finLoading` (initial fetch or finance === null).
+- Did NOT touch InstituteCard, PlatformConfig, BrandingPage, AnnouncementsView, InstituteDetailsModal, ProvisionInstituteModal, EditInstituteModal, or any other component — only PlatformOverview was rewritten, PlatformAnalytics was added, and the parent router got one new branch + the slimmer PlatformOverview call site.
+- Color discipline preserved throughout: navy `bg-primary/10 text-primary` for all neutral icons; rose only for Pending Fees / negative Net Balance / salary payouts; emerald only for positive Net Balance / Fee Payment badges. No indigo/blue/green accents.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly (`✓ Compiled in 471ms` / `589ms` / `510ms` / `1581ms` / `597ms`) after the edits, with the typical "Fast Refresh had to perform a full reload" note (expected for a structural rewrite of a top-level component), and the page returned `GET / 200 in 426ms` after the reload.
+
+Stage Summary:
+- Super Admin Dashboard is now a clean, simple landing surface: welcome banner → 4 summary KPIs (Institutions, Branches, Total Students, Total Staff) → 3 Quick Action shortcuts (View Analytics, Manage Institutes, Send Announcement). No financial KPIs, no charts, no tables, no institutes grid.
+- New dedicated Analytics sidebar page (`platform-analytics`) hosts ALL of the financial data that was previously crammed onto the Dashboard: 6 financial KPI cards, Platform Revenue vs Salary BarChart (12 months), Yearly Revenue Trend AreaChart (5 years), Institute Performance table (with `max-h-96 overflow-y-auto` scroll), and Recent Platform Transactions table.
+- Added CSV export capability for the Institute Performance table — two entry points (page-header button + table-header button), both call the new `exportToCSV` helper with a UTF-8 BOM and proper RFC-4180 escaping. Success toast confirms the download.
+- The institutes management grid now only renders on the Institutes sidebar page (InstitutesManager component) — removed the duplicate grid that was on the Dashboard.
+- `setActiveModule` sourced from the useApp store inside PlatformOverview (Option A, same pattern as IA-DASHBOARD-SIMPLIFY) — Quick Actions navigate without needing props threaded from the parent.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components in the file were modified.
+
+---
+Task ID: DASHBOARD-SIMPLIFY + MESSAGE-SQUARE-FIX
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: User complained that Super Admin and Institute Admin dashboards had too much data (financial KPIs, charts, transaction tables) crammed onto the Dashboard page. Moved detailed data to separate Analytics/pages, keeping dashboards clean with only banner + core KPIs + Quick Actions. Also fixed a missing MessageSquare import that crashed the Super Admin portal.
+
+Work Log:
+- **IA-DASHBOARD-SIMPLIFY** (subagent):
+  - Rewrote `InstituteDashboard` component in `institute-admin-portal.tsx`:
+    - KEPT: navy welcome banner
+    - REPLACED 6 financial KPIs with 4 summary KPIs: Branches, Students, Teachers, Total Revenue
+    - ADDED: Quick Actions section with 4 shortcut cards (Fees & Revenue, Teachers & Salaries, Students, Reports) that navigate to the respective pages via `setActiveModule`
+    - ADDED: compact Branches overview grid (reusing BranchCard) with "View all" link
+    - REMOVED: Revenue vs Salary BarChart, Branch Revenue BarChart, Recent Transactions table (all already on separate pages)
+    - Added `useApp` import + `setActiveModule` to `InstituteAdminPortal` parent, passed to `InstituteDashboard`
+- **SA-DASHBOARD-SIMPLIFY** (subagent):
+  - Added new `platform-analytics` sidebar item to `role-modules.ts` (Analytics, TrendingUp icon)
+  - Simplified `PlatformOverview` component (the Dashboard):
+    - KEPT: welcome banner + 4 basic KPI cards (Institutions, Branches, Students, Staff)
+    - ADDED: Quick Actions section with 3 shortcut cards (View Analytics, Manage Institutes, Send Announcement)
+    - REMOVED: 6 financial KPI cards, Platform Revenue vs Salary BarChart, Yearly Revenue Trend AreaChart, Institute Performance table, Recent Platform Transactions table
+    - Added `useApp` import + `setActiveModule` for Quick Actions navigation
+  - Created new `PlatformAnalytics` component:
+    - 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Net Balance, Total Invoices, Active Institutes)
+    - Platform Revenue vs Salary BarChart (12 months)
+    - Yearly Revenue Trend AreaChart (5 years)
+    - Institute Performance table (with Export CSV button)
+    - Recent Platform Transactions table
+  - Added routing: `if (activeModule === 'platform-analytics') return <PlatformAnalytics ...>`
+  - Added `formatPKR` and `exportToCSV` helpers
+- **CRITICAL BUG FIX** (Main agent):
+  - Super Admin portal crashed with "Application error: a client-side exception" after the subagent's changes
+  - Root cause: `MessageSquare` icon was used in the Quick Actions (`Send Announcement` card) but was NOT imported from lucide-react
+  - TypeScript check (`npx tsc --noEmit`) revealed: `src/components/portal/super-admin-portal.tsx(181,13): error TS2304: Cannot find name 'MessageSquare'`
+  - ESLint didn't catch this because the icon was used as a component reference (`icon: MessageSquare`) not a JSX tag
+  - Fix: Added `MessageSquare` to the lucide-react import block in `super-admin-portal.tsx`
+  - Verified: Super Admin portal now loads correctly after login
+- **Verification with agent-browser**:
+  - Super Admin login (faisu577277@gmail.com / QaReLc_61y8): ✅ clean dashboard with banner + 4 KPIs + 3 Quick Actions
+  - Super Admin → Analytics page: ✅ shows 6 financial KPIs + revenue chart + yearly chart + institute performance table + transactions table + Export CSV
+  - Institute Admin login (numan2@gmail.com / 1245): ✅ clean dashboard with banner + 4 KPIs + 4 Quick Actions + branch cards grid
+  - VLM rated Super Admin dashboard 8/10: "Clean and uncluttered, clear hierarchy, intuitive Quick Actions"
+  - VLM rated Institute Admin dashboard 8/10: "Clean and uncluttered with clear hierarchy, intuitive Quick Actions"
+- **Lint**: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- **Super Admin Dashboard simplified**: now shows only banner + 4 core KPIs (Institutions, Branches, Students, Staff) + 3 Quick Actions (View Analytics, Manage Institutes, Send Announcement). All financial data (6 KPIs, 2 charts, 2 tables) moved to a new "Analytics" sidebar page.
+- **Institute Admin Dashboard simplified**: now shows only banner + 4 summary KPIs (Branches, Students, Teachers, Total Revenue) + 4 Quick Actions (Fees & Revenue, Teachers & Salaries, Students, Reports) + compact branch cards grid. All financial charts/tables were already on existing separate pages (Fees & Revenue, Reports) — just removed from the dashboard.
+- **Critical bug fixed**: missing `MessageSquare` import caused Super Admin portal to crash on load — now resolved.
+- New sidebar item: Super Admin now has "Analytics" between "Institutes" and "Announcements".
+- Both dashboards are now clean overview pages, with detailed data on dedicated separate pages as the user requested.
+
+Unresolved issues or risks:
+- Pre-existing TS error in `teacher-portal.tsx`: `classStudents` is used in `PostResults` component (line 1144) but defined in `ClassAttendance` component (line 1026) — this would crash if a teacher tries to post results. Should be fixed in a future round by defining `classStudents` inside `PostResults` or passing it as a prop.
+- The old `dashboard/modules/` files have multiple TS errors but are not used by any active portal (they're legacy files from an earlier dashboard design).

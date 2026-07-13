@@ -25,6 +25,7 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Platform', items: [
       { id: 'platform-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'institutes', name: 'Institutes', icon: Building2, color: 'from-primary to-primary/80' },
+      { id: 'platform-analytics', name: 'Analytics', icon: TrendingUp, color: 'from-primary to-primary/80' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'System', items: [

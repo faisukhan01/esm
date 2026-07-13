@@ -1,0 +1,1350 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Input } from '@/components/ui/input';
+    10→import { Label } from '@/components/ui/label';
+    11→import { Textarea } from '@/components/ui/textarea';
+    12→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    13→import {
+    14→  Building2, Users, Network, Plus, Crown, MapPin, CheckCircle2,
+    15→  Server, Building, Lock, Unlock, Edit, Megaphone, Send,
+    16→  ChevronDown, ChevronRight, UserCog, Mail, Settings, ShieldCheck, Palette, Loader2,
+    17→  Trash2, X,
+    18→  DollarSign, AlertCircle, Wallet, Scale, FileText, TrendingUp,
+    19→} from 'lucide-react';
+    20→import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
+    21→import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+    22→import { toast } from '@/hooks/use-toast';
+    23→
+    24→// ---- Format helpers ----
+    25→const formatPKR = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
+    26→const formatCompact = (n: number) => {
+    27→  const v = Number(n || 0);
+    28→  if (Math.abs(v) >= 1_000_000) return 'PKR ' + (v / 1_000_000).toFixed(1) + 'M';
+    29→  if (Math.abs(v) >= 1_000) return 'PKR ' + (v / 1_000).toFixed(0) + 'k';
+    30→  return 'PKR ' + v;
+    31→};
+    32→
+    33→// ---------- Main router ----------
+    34→export function SuperAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    35→  // Top-level data shared across the dashboard and institutes pages
+    36→  const [overview, setOverview] = useState<any>(null);
+    37→  const [institutes, setInstitutes] = useState<any[]>([]);
+    38→  const [finance, setFinance] = useState<any>(null);
+    39→  const [overviewLoading, setOverviewLoading] = useState(true);
+    40→  const [institutesLoading, setInstitutesLoading] = useState(true);
+    41→  const [financeLoading, setFinanceLoading] = useState(true);
+    42→  const [showAdd, setShowAdd] = useState(false);
+    43→
+    44→  // Loading state defaults to `true` (initial load). On later refreshes we keep the
+    45→  // previously-fetched data visible until the new data arrives, which is better UX than
+    46→  // flashing a spinner on every refresh. We therefore only ever flip loading → false here.
+    47→  const refreshOverview = () => {
+    48→    api.platformOverview()
+    49→      .then(setOverview)
+    50→      .catch(() => {})
+    51→      .finally(() => setOverviewLoading(false));
+    52→  };
+    53→  const refreshInstitutes = () => {
+    54→    api.institutes()
+    55→      .then(setInstitutes)
+    56→      .catch(() => {})
+    57→      .finally(() => setInstitutesLoading(false));
+    58→  };
+    59→  const refreshFinance = () => {
+    60→    api.getPlatformFinance()
+    61→      .then(setFinance)
+    62→      .catch(() => {})
+    63→      .finally(() => setFinanceLoading(false));
+    64→  };
+    65→
+    66→  useEffect(() => {
+    67→    refreshOverview();
+    68→    refreshInstitutes();
+    69→    refreshFinance();
+    70→  }, []);
+    71→
+    72→  const refreshAll = () => { refreshOverview(); refreshInstitutes(); refreshFinance(); };
+    73→
+    74→  if (activeModule === 'institutes') {
+    75→    return (
+    76→      <InstitutesManager
+    77→        institutes={institutes}
+    78→        loading={institutesLoading}
+    79→        onRefresh={refreshAll}
+    80→        showAdd={showAdd}
+    81→        setShowAdd={setShowAdd}
+    82→      />
+    83→    );
+    84→  }
+    85→  if (activeModule === 'announcements') {
+    86→    return <AnnouncementsView user={user} institutes={institutes} institutesLoading={institutesLoading} />;
+    87→  }
+    88→  if (activeModule === 'config') {
+    89→    return <PlatformConfig overview={overview} loading={overviewLoading} />;
+    90→  }
+    91→  if (activeModule === 'branding') {
+    92→    return <BrandingPage />;
+    93→  }
+    94→  // Default: dashboard overview
+    95→  return (
+    96→    <PlatformOverview
+    97→      overview={overview}
+    98→      overviewLoading={overviewLoading}
+    99→      institutes={institutes}
+   100→      institutesLoading={institutesLoading}
+   101→      finance={finance}
+   102→      financeLoading={financeLoading}
+   103→      onAddInstitute={() => setShowAdd(true)}
+   104→      onRefreshAll={refreshAll}
+   105→      user={user}
+   106→      showAdd={showAdd}
+   107→      setShowAdd={setShowAdd}
+   108→    />
+   109→  );
+   110→}
+   111→
+   112→// ---------- Shared UI bits ----------
+   113→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+   114→  return (
+   115→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   116→      <div>
+   117→        <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
+   118→        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+   119→      </div>
+   120→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+   121→    </div>
+   122→  );
+   123→}
+   124→
+   125→function EmptyState({ icon: Icon, title, desc, action }: any) {
+   126→  return (
+   127→    <Card className="p-10 text-center">
+   128→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4">
+   129→        <Icon className="h-7 w-7 text-muted-foreground" />
+   130→      </div>
+   131→      <h3 className="font-bold text-lg">{title}</h3>
+   132→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   133→      {action && <div className="mt-5">{action}</div>}
+   134→    </Card>
+   135→  );
+   136→}
+   137→
+   138→function LoadingState({ label = 'Loading…', className = '' }: { label?: string; className?: string }) {
+   139→  return (
+   140→    <div className={`flex items-center justify-center gap-2.5 py-10 text-muted-foreground ${className}`}>
+   141→      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+   142→      <span className="text-sm">{label}</span>
+   143→    </div>
+   144→  );
+   145→}
+   146→
+   147→function StatPill({ label, value, color = 'text-foreground' }: { label: string; value: React.ReactNode; color?: string }) {
+   148→  return (
+   149→    <div className="rounded-lg bg-muted/40 border border-border/60 px-3 py-2 text-center">
+   150→      <div className={`text-lg font-extrabold ${color}`}>{value}</div>
+   151→      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
+   152→    </div>
+   153→  );
+   154→}
+   155→
+   156→// ---------- Dashboard overview (default landing for super admin) ----------
+   157→function PlatformOverview({
+   158→  overview, overviewLoading, institutes, institutesLoading, finance, financeLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
+   159→}: any) {
+   160→  const finKpis = finance?.kpi;
+   161→  const finLoading = financeLoading || !finance;
+   162→  const cards = [
+   163→    { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-primary to-primary/80', sub: `${overview?.activeInstitutes ?? 0} active` },
+   164→    { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-primary to-primary/80', sub: 'across all institutions' },
+   165→    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'from-primary/80 to-primary', sub: 'platform-wide' },
+   166→    { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: UserCog, color: 'from-primary/80 to-primary', sub: 'teachers & managers' },
+   167→  ];
+   168→
+   169→  return (
+   170→    <div className="space-y-6">
+   171→      <motion.div
+   172→        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   173→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white"
+   174→      >
+   175→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   176→        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+   177→          <div>
+   178→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
+   179→              <Crown className="h-3 w-3 text-primary/70" /> Super Admin · Platform Owner
+   180→            </div>
+   181→            <h1 className="text-2xl sm:text-3xl font-extrabold">
+   182→              Welcome back, {user?.name?.split(' ')[0] || 'Owner'}
+   183→            </h1>
+   184→            <p className="text-white/80 text-sm mt-1.5 max-w-lg">
+   185→              {overviewLoading ? 'Loading platform stats…' : (overview?.institutes ? `${overview.institutes} institutions onboarded.` : 'Provision your first institute to get started.')}
+   186→            </p>
+   187→          </div>
+   188→          <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddInstitute}>
+   189→            <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   190→          </Button>
+   191→        </div>
+   192→      </motion.div>
+   193→
+   194→      {/* KPI cards */}
+   195→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   196→        {overviewLoading ? (
+   197→          Array.from({ length: 4 }).map((_, i) => (
+   198→            <Card key={i} className="p-5">
+   199→              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
+   200→              <div className="mt-4 h-7 w-16 rounded bg-muted/60 animate-pulse" />
+   201→              <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
+   202→            </Card>
+   203→          ))
+   204→        ) : (
+   205→          cards.map((c, i) => (
+   206→            <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   207→              <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   208→                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   209→                  <c.icon className="h-5 w-5 text-primary" />
+   210→                </div>
+   211→                <div className="mt-4">
+   212→                  <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">
+   213→                    {typeof c.value === 'number' ? c.value.toLocaleString() : c.value}
+   214→                  </div>
+   215→                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   216→                  <div className="text-[11px] text-muted-foreground mt-1">{c.sub}</div>
+   217→                </div>
+   218→              </Card>
+   219→            </motion.div>
+   220→          ))
+   221→        )}
+   222→      </div>
+   223→
+   224→      {/* Financial KPI cards (second row — platform-wide finance) */}
+   225→      {finLoading ? (
+   226→        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+   227→          {Array.from({ length: 6 }).map((_, i) => (
+   228→            <Card key={i} className="p-5 border border-border rounded-lg shadow-sm">
+   229→              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
+   230→              <div className="mt-4 h-6 w-20 rounded bg-muted/60 animate-pulse" />
+   231→              <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
+   232→            </Card>
+   233→          ))}
+   234→        </div>
+   235→      ) : (
+   236→        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+   237→          {/* Total Revenue */}
+   238→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   239→            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   240→              <DollarSign className="h-5 w-5 text-primary" />
+   241→            </div>
+   242→            <div className="mt-4">
+   243→              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate">{formatPKR(finKpis.totalRevenue)}</div>
+   244→              <div className="text-xs text-muted-foreground mt-0.5">Total Revenue</div>
+   245→            </div>
+   246→          </Card>
+   247→          {/* Pending Fees */}
+   248→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   249→            <div className="h-11 w-11 rounded-xl bg-rose-500/10 grid place-items-center">
+   250→              <AlertCircle className="h-5 w-5 text-rose-600" />
+   251→            </div>
+   252→            <div className="mt-4">
+   253→              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate text-rose-600">{formatPKR(finKpis.pendingFees)}</div>
+   254→              <div className="text-xs text-muted-foreground mt-0.5">Pending Fees</div>
+   255→            </div>
+   256→          </Card>
+   257→          {/* Salary Paid */}
+   258→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   259→            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   260→              <Wallet className="h-5 w-5 text-primary" />
+   261→            </div>
+   262→            <div className="mt-4">
+   263→              <div className="text-base sm:text-lg font-extrabold tabular-nums truncate">{formatPKR(finKpis.totalSalaryPaid)}</div>
+   264→              <div className="text-xs text-muted-foreground mt-0.5">Salary Paid</div>
+   265→            </div>
+   266→          </Card>
+   267→          {/* Net Balance */}
+   268→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   269→            <div className={`h-11 w-11 rounded-xl grid place-items-center ${finKpis.netBalance >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+   270→              <Scale className={`h-5 w-5 ${finKpis.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
+   271→            </div>
+   272→            <div className="mt-4">
+   273→              <div className={`text-base sm:text-lg font-extrabold tabular-nums truncate ${finKpis.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatPKR(finKpis.netBalance)}</div>
+   274→              <div className="text-xs text-muted-foreground mt-0.5">Net Balance</div>
+   275→            </div>
+   276→          </Card>
+   277→          {/* Total Invoices */}
+   278→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   279→            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   280→              <FileText className="h-5 w-5 text-primary" />
+   281→            </div>
+   282→            <div className="mt-4">
+   283→              <div className="text-base sm:text-lg font-extrabold tabular-nums">{Number(finKpis.totalInvoices || 0).toLocaleString()}</div>
+   284→              <div className="text-xs text-muted-foreground mt-0.5">Total Invoices</div>
+   285→              <div className="text-[11px] text-muted-foreground mt-1">{finKpis.paidInvoices} paid · {finKpis.unpaidInvoices} unpaid</div>
+   286→            </div>
+   287→          </Card>
+   288→          {/* Active Institutes */}
+   289→          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+   290→            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+   291→              <Building2 className="h-5 w-5 text-primary" />
+   292→            </div>
+   293→            <div className="mt-4">
+   294→              <div className="text-base sm:text-lg font-extrabold tabular-nums">{Number(finKpis.activeInstitutes || 0).toLocaleString()}</div>
+   295→              <div className="text-xs text-muted-foreground mt-0.5">Active Institutes</div>
+   296→            </div>
+   297→          </Card>
+   298→        </div>
+   299→      )}
+   300→
+   301→      {/* Charts row — monthly revenue vs salary + yearly trend */}
+   302→      {finLoading ? (
+   303→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   304→          {Array.from({ length: 2 }).map((_, i) => (
+   305→            <Card key={i} className="p-5 border border-border rounded-lg shadow-sm">
+   306→              <div className="h-5 w-56 rounded bg-muted/60 animate-pulse" />
+   307→              <div className="h-3 w-72 mt-1.5 rounded bg-muted/40 animate-pulse" />
+   308→              <div className="mt-6 h-64 rounded bg-muted/40 animate-pulse" />
+   309→            </Card>
+   310→          ))}
+   311→        </div>
+   312→      ) : (
+   313→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   314→          <Card className="p-5 border border-border rounded-lg shadow-sm">
+   315→            <div>
+   316→              <h3 className="font-bold text-base">Platform Revenue vs Salary (Last 12 Months)</h3>
+   317→              <p className="text-xs text-muted-foreground mt-0.5">Monthly fee collection vs salary payouts across all institutes</p>
+   318→            </div>
+   319→            <div className="h-72 mt-4">
+   320→              <ResponsiveContainer width="100%" height="100%">
+   321→                <BarChart data={finance.monthlyRevenue} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+   322→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+   323→                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} />
+   324→                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={formatCompact} width={72} />
+   325→                  <Tooltip formatter={(v: any) => formatPKR(Number(v))} contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }} />
+   326→                  <Legend wrapperStyle={{ fontSize: 12 }} />
+   327→                  <Bar dataKey="revenue" name="Revenue" fill="#1a365d" radius={[4, 4, 0, 0]} />
+   328→                  <Bar dataKey="salary" name="Salary" fill="#e11d48" radius={[4, 4, 0, 0]} />
+   329→                </BarChart>
+   330→              </ResponsiveContainer>
+   331→            </div>
+   332→          </Card>
+   333→          <Card className="p-5 border border-border rounded-lg shadow-sm">
+   334→            <div>
+   335→              <h3 className="font-bold text-base">Yearly Revenue Trend</h3>
+   336→              <p className="text-xs text-muted-foreground mt-0.5">5-year comparison</p>
+   337→            </div>
+   338→            <div className="h-72 mt-4">
+   339→              <ResponsiveContainer width="100%" height="100%">
+   340→                <AreaChart data={finance.yearlyRevenue} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+   341→                  <defs>
+   342→                    <linearGradient id="gradRev" x1="0" y1="0" x2="0" y2="1">
+   343→                      <stop offset="5%" stopColor="#1a365d" stopOpacity={0.4} />
+   344→                      <stop offset="95%" stopColor="#1a365d" stopOpacity={0.05} />
+   345→                    </linearGradient>
+   346→                    <linearGradient id="gradSal" x1="0" y1="0" x2="0" y2="1">
+   347→                      <stop offset="5%" stopColor="#e11d48" stopOpacity={0.4} />
+   348→                      <stop offset="95%" stopColor="#e11d48" stopOpacity={0.05} />
+   349→                    </linearGradient>
+   350→                  </defs>
+   351→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+   352→                  <XAxis dataKey="year" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} />
+   353→                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={formatCompact} width={72} />
+   354→                  <Tooltip formatter={(v: any) => formatPKR(Number(v))} contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12 }} />
+   355→                  <Legend wrapperStyle={{ fontSize: 12 }} />
+   356→                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#1a365d" strokeWidth={2} fill="url(#gradRev)" />
+   357→                  <Area type="monotone" dataKey="salary" name="Salary" stroke="#e11d48" strokeWidth={2} fill="url(#gradSal)" />
+   358→                </AreaChart>
+   359→              </ResponsiveContainer>
+   360→            </div>
+   361→          </Card>
+   362→        </div>
+   363→      )}
+   364→
+   365→      {/* Institute Performance table */}
+   366→      {finLoading ? (
+   367→        <Card className="p-5 border border-border rounded-lg shadow-sm">
+   368→          <div className="h-5 w-44 rounded bg-muted/60 animate-pulse" />
+   369→          <div className="mt-4 space-y-2">
+   370→            {Array.from({ length: 5 }).map((_, i) => (
+   371→              <div key={i} className="h-9 rounded bg-muted/40 animate-pulse" />
+   372→            ))}
+   373→          </div>
+   374→        </Card>
+   375→      ) : (
+   376→        <Card className="p-5 border border-border rounded-lg shadow-sm">
+   377→          <div className="mb-4">
+   378→            <h3 className="font-bold text-base flex items-center gap-2">
+   379→              <TrendingUp className="h-4 w-4 text-primary" /> Institute Performance
+   380→            </h3>
+   381→            <p className="text-xs text-muted-foreground mt-0.5">Revenue comparison across all institutes (sorted by revenue, desc)</p>
+   382→          </div>
+   383→          <div className="max-h-96 overflow-y-auto">
+   384→            <Table>
+   385→              <TableHeader className="sticky top-0 bg-background z-10">
+   386→                <TableRow>
+   387→                  <TableHead>Institute</TableHead>
+   388→                  <TableHead>City</TableHead>
+   389→                  <TableHead>Admin</TableHead>
+   390→                  <TableHead className="text-right">Branches</TableHead>
+   391→                  <TableHead className="text-right">Students</TableHead>
+   392→                  <TableHead className="text-right">Revenue</TableHead>
+   393→                  <TableHead className="text-right">Pending Fees</TableHead>
+   394→                  <TableHead className="text-right">Salary Paid</TableHead>
+   395→                  <TableHead className="text-right">Net</TableHead>
+   396→                  <TableHead>Status</TableHead>
+   397→                </TableRow>
+   398→              </TableHeader>
+   399→              <TableBody>
+   400→                {finance.institutePerformance.map((inst: any) => (
+   401→                  <TableRow key={inst.id}>
+   402→                    <TableCell className="font-medium">{inst.name}</TableCell>
+   403→                    <TableCell className="text-muted-foreground">{inst.city || '—'}</TableCell>
+   404→                    <TableCell className="text-muted-foreground">{inst.admin}</TableCell>
+   405→                    <TableCell className="text-right tabular-nums">{inst.branches}</TableCell>
+   406→                    <TableCell className="text-right tabular-nums">{Number(inst.students || 0).toLocaleString()}</TableCell>
+   407→                    <TableCell className="text-right tabular-nums font-medium">{formatPKR(inst.revenue)}</TableCell>
+   408→                    <TableCell className="text-right tabular-nums text-rose-600">{formatPKR(inst.pendingFees)}</TableCell>
+   409→                    <TableCell className="text-right tabular-nums">{formatPKR(inst.salaryPaid)}</TableCell>
+   410→                    <TableCell className={`text-right tabular-nums font-medium ${inst.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatPKR(inst.net)}</TableCell>
+   411→                    <TableCell>
+   412→                      <Badge variant="outline" className={`text-[10px] font-medium ${
+   413→                        inst.status === 'Blocked' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' :
+   414→                        inst.status === 'Trial' ? 'text-amber-700 bg-amber-500/10 border-amber-500/20' :
+   415→                        'text-primary bg-primary/10 border-primary/20'
+   416→                      }`}>{inst.status}</Badge>
+   417→                    </TableCell>
+   418→                  </TableRow>
+   419→                ))}
+   420→              </TableBody>
+   421→            </Table>
+   422→          </div>
+   423→        </Card>
+   424→      )}
+   425→
+   426→      {/* Recent Platform Transactions table */}
+   427→      {finLoading ? (
+   428→        <Card className="p-5 border border-border rounded-lg shadow-sm">
+   429→          <div className="h-5 w-48 rounded bg-muted/60 animate-pulse" />
+   430→          <div className="mt-4 space-y-2">
+   431→            {Array.from({ length: 6 }).map((_, i) => (
+   432→              <div key={i} className="h-9 rounded bg-muted/40 animate-pulse" />
+   433→            ))}
+   434→          </div>
+   435→        </Card>
+   436→      ) : (
+   437→        <Card className="p-5 border border-border rounded-lg shadow-sm">
+   438→          <div className="mb-4">
+   439→            <h3 className="font-bold text-base">Recent Platform Transactions</h3>
+   440→            <p className="text-xs text-muted-foreground mt-0.5">Latest fee payments and salary payouts across the platform</p>
+   441→          </div>
+   442→          <Table>
+   443→            <TableHeader>
+   444→              <TableRow>
+   445→                <TableHead>Date</TableHead>
+   446→                <TableHead>Type</TableHead>
+   447→                <TableHead>Party</TableHead>
+   448→                <TableHead>Method</TableHead>
+   449→                <TableHead className="text-right">Amount</TableHead>
+   450→              </TableRow>
+   451→            </TableHeader>
+   452→            <TableBody>
+   453→              {finance.recentTransactions.slice(0, 10).map((tx: any) => (
+   454→                <TableRow key={tx.id}>
+   455→                  <TableCell className="text-muted-foreground whitespace-nowrap">{tx.date ? new Date(tx.date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+   456→                  <TableCell>
+   457→                    <Badge variant="outline" className={`text-[10px] font-medium ${
+   458→                      tx.type === 'Fee Payment' ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' :
+   459→                      'text-rose-600 bg-rose-500/10 border-rose-500/20'
+   460→                    }`}>{tx.type}</Badge>
+   461→                  </TableCell>
+   462→                  <TableCell className="font-medium">{tx.party}</TableCell>
+   463→                  <TableCell className="text-muted-foreground">{tx.method || '—'}</TableCell>
+   464→                  <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap ${
+   465→                    tx.type === 'Fee Payment' ? 'text-emerald-700' : 'text-rose-600'
+   466→                  }`}>{formatPKR(tx.amount)}</TableCell>
+   467→                </TableRow>
+   468→              ))}
+   469→            </TableBody>
+   470→          </Table>
+   471→        </Card>
+   472→      )}
+   473→
+   474→      {/* Institutes section */}
+   475→      {institutesLoading ? (
+   476→        <Card className="p-5"><LoadingState label="Loading institutes…" /></Card>
+   477→      ) : institutes.length === 0 ? (
+   478→        <EmptyState
+   479→          icon={Building}
+   480→          title="No institutions yet"
+   481→          desc="Provision your first institute. You'll set the admin's email and password."
+   482→          action={
+   483→            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddInstitute}>
+   484→              <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   485→            </Button>
+   486→          }
+   487→        />
+   488→      ) : (
+   489→        <Card className="p-5">
+   490→          <div className="flex items-center justify-between mb-4">
+   491→            <div>
+   492→              <h3 className="font-bold text-base">Institutions</h3>
+   493→              <p className="text-xs text-muted-foreground">Click a card to expand & view branches</p>
+   494→            </div>
+   495→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAddInstitute}>
+   496→              <Plus className="h-4 w-4 mr-1.5" /> Add Institute
+   497→            </Button>
+   498→          </div>
+   499→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   500→            {institutes.map((inst: any) => (
+   501→              <InstituteCard key={inst.id} inst={inst} onRefresh={onRefreshAll} />
+   502→            ))}
+   503→          </div>
+   504→        </Card>
+   505→      )}
+   506→
+   507→      {showAdd && (
+   508→        <ProvisionInstituteModal
+   509→          onClose={() => setShowAdd(false)}
+   510→          onSaved={() => { setShowAdd(false); onRefreshAll(); }}
+   511→        />
+   512→      )}
+   513→    </div>
+   514→  );
+   515→}
+   516→
+   517→// ---------- Institutes manager (dedicated page) ----------
+   518→function InstitutesManager({ institutes, loading, onRefresh, showAdd, setShowAdd }: any) {
+   519→  return (
+   520→    <div className="space-y-6">
+   521→      <ModuleHeader
+   522→        title="Institutes"
+   523→        subtitle="Provision institutions — click any card to expand and view branches"
+   524→        actions={
+   525→          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowAdd(true)}>
+   526→            <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   527→          </Button>
+   528→        }
+   529→      />
+   530→      {loading ? (
+   531→        <Card className="p-5"><LoadingState label="Loading institutes…" /></Card>
+   532→      ) : institutes.length === 0 ? (
+   533→        <EmptyState
+   534→          icon={Building}
+   535→          title="No institutions yet"
+   536→          desc="Provision your first institute. You'll set the admin's email and password."
+   537→          action={
+   538→            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowAdd(true)}>
+   539→              <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   540→            </Button>
+   541→          }
+   542→        />
+   543→      ) : (
+   544→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   545→          {institutes.map((inst: any) => (
+   546→            <InstituteCard key={inst.id} inst={inst} onRefresh={onRefresh} />
+   547→          ))}
+   548→        </div>
+   549→      )}
+   550→      {showAdd && (
+   551→        <ProvisionInstituteModal
+   552→          onClose={() => setShowAdd(false)}
+   553→          onSaved={() => { setShowAdd(false); onRefresh(); }}
+   554→        />
+   555→      )}
+   556→    </div>
+   557→  );
+   558→}
+   559→
+   560→// ---------- Institute card (opens modal popup on click) ----------
+   561→function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }) {
+   562→  const [showDetails, setShowDetails] = useState(false);
+   563→  const [showEdit, setShowEdit] = useState(false);
+   564→  const [showDelete, setShowDelete] = useState(false);
+   565→  const [blocked, setBlocked] = useState<boolean>(inst.blocked === 1 || inst.blocked === true);
+   566→
+   567→  const isBlocked = blocked || inst.status === 'Blocked';
+   568→  const statusLabel = isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active');
+   569→  const statusClass = isBlocked
+   570→    ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
+   571→    : inst.status === 'Trial'
+   572→      ? 'text-sky-700 bg-sky-500/10 border-sky-500/20'
+   573→      : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]';
+   574→
+   575→  const toggleBlock = async (e: React.MouseEvent) => {
+   576→    e.stopPropagation();
+   577→    try {
+   578→      await api.blockInstitute(inst.id, !blocked, !blocked ? 'Blocked by Super Admin' : '');
+   579→      setBlocked(!blocked);
+   580→      toast({
+   581→        title: blocked ? 'Institute unblocked' : 'Institute blocked',
+   582→        description: blocked ? 'Access restored to all branches & users' : 'All branches and users are now blocked (cascade)',
+   583→      });
+   584→      onRefresh();
+   585→    } catch (e: any) {
+   586→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   587→    }
+   588→  };
+   589→
+   590→  const handleDelete = async () => {
+   591→    try {
+   592→      await api.deleteInstitute(inst.id);
+   593→      toast({ title: 'Institute deleted', description: `${inst.name} and all its data have been removed.` });
+   594→      setShowDelete(false);
+   595→      onRefresh();
+   596→    } catch (e: any) {
+   597→      toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' });
+   598→    }
+   599→  };
+   600→
+   601→  const initials = (inst.short || inst.name || '').slice(0, 2).toUpperCase();
+   602→
+   603→  return (
+   604→    <>
+   605→      <Card
+   606→        className={`p-5 hover:shadow-md transition relative cursor-pointer border border-border rounded-lg shadow-sm ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`}
+   607→        onClick={() => setShowDetails(true)}
+   608→      >
+   609→        <div className="flex items-start justify-between">
+   610→          <div className="flex items-start gap-3 min-w-0">
+   611→            <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 grid place-items-center text-primary font-extrabold">
+   612→              {initials}
+   613→            </div>
+   614→            <div className="min-w-0">
+   615→              <h3 className="font-bold text-base truncate">{inst.name}</h3>
+   616→              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+   617→                <MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}
+   618→              </div>
+   619→              <div className="flex items-center gap-2 mt-1.5">
+   620→                <Badge variant="outline" className="text-[10px] font-normal border-border/60">{inst.plan || 'Starter'}</Badge>
+   621→                <Badge variant="outline" className={`text-[10px] font-medium ${statusClass}`}>{statusLabel}</Badge>
+   622→              </div>
+   623→            </div>
+   624→          </div>
+   625→        </div>
+   626→        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+   627→          <div className="text-xs min-w-0">
+   628→            <div className="text-muted-foreground">Admin</div>
+   629→            <div className="font-medium truncate">{inst.adminName || '—'}</div>
+   630→          </div>
+   631→          {/* Action buttons — stop propagation so they don't open the details modal */}
+   632→          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+   633→            <button
+   634→              type="button"
+   635→              onClick={() => setShowEdit(true)}
+   636→              title="Edit"
+   637→              className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"
+   638→            >
+   639→              <Edit className="h-4 w-4" />
+   640→            </button>
+   641→            <button
+   642→              type="button"
+   643→              onClick={toggleBlock}
+   644→              title={isBlocked ? 'Unblock' : 'Block (cascades to branches & users)'}
+   645→              className={`h-8 w-8 grid place-items-center rounded-lg transition ${
+   646→                isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-primary hover:bg-accent0/10'
+   647→              }`}
+   648→            >
+   649→              {isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+   650→            </button>
+   651→            <button
+   652→              type="button"
+   653→              onClick={() => setShowDelete(true)}
+   654→              title="Delete institute"
+   655→              className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"
+   656→            >
+   657→              <Trash2 className="h-4 w-4" />
+   658→            </button>
+   659→          </div>
+   660→        </div>
+   661→      </Card>
+   662→
+   663→      {/* Details modal — opens when clicking the card */}
+   664→      {showDetails && (
+   665→        <InstituteDetailsModal inst={inst} onClose={() => setShowDetails(false)} onEdit={() => { setShowDetails(false); setShowEdit(true); }} />
+   666→      )}
+   667→
+   668→      {/* Edit modal */}
+   669→      {showEdit && (
+   670→        <EditInstituteModal inst={inst} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />
+   671→      )}
+   672→
+   673→      {/* Delete confirmation */}
+   674→      {showDelete && (
+   675→        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => setShowDelete(false)}>
+   676→          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+   677→            <Card className="p-6">
+   678→              <div className="flex items-center gap-3 mb-4">
+   679→                <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
+   680→                <div><h3 className="font-bold text-lg">Delete Institute?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+   681→              </div>
+   682→              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
+   683→                This will permanently delete <strong>{inst.name}</strong> and ALL its data: branches, teachers, students, classes, courses, attendance, results, and materials.
+   684→              </div>
+   685→              <div className="flex gap-2">
+   686→                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white flex-1" onClick={handleDelete}>Delete Permanently</Button>
+   687→                <Button size="sm" variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+   688→              </div>
+   689→            </Card>
+   690→          </motion.div>
+   691→        </motion.div>
+   692→      )}
+   693→    </>
+   694→  );
+   695→}
+   696→
+   697→// ---------- Institute Details Modal (popup) ----------
+   698→function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: () => void; onEdit: () => void }) {
+   699→  const [branches, setBranches] = useState<any[]>([]);
+   700→  const [stats, setStats] = useState<any>(null);
+   701→  const [loading, setLoading] = useState(true);
+   702→
+   703→  useEffect(() => {
+   704→    Promise.all([
+   705→      api.branches(inst.id).catch(() => []),
+   706→      api.scopedStats(inst.id).catch(() => null),
+   707→    ]).then(([b, s]) => {
+   708→      setBranches(Array.isArray(b) ? b : []);
+   709→      setStats(s);
+   710→      setLoading(false);
+   711→    });
+   712→  }, [inst.id]);
+   713→
+   714→  const isBlocked = inst.blocked === 1 || inst.blocked === true;
+   715→
+   716→  return (
+   717→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   718→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
+   719→        <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
+   720→          {/* Header */}
+   721→          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/20 dark:to-slate-900/10">
+   722→            <div className="flex items-start justify-between">
+   723→              <div className="flex items-start gap-3">
+   724→                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-md text-white font-extrabold text-lg">
+   725→                  {(inst.short || inst.name || '').slice(0, 2).toUpperCase()}
+   726→                </div>
+   727→                <div>
+   728→                  <h2 className="text-xl font-extrabold">{inst.name}</h2>
+   729→                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}</div>
+   730→                  <div className="flex items-center gap-2 mt-2">
+   731→                    <Badge variant="outline" className="text-[10px]">{inst.plan || 'Starter'}</Badge>
+   732→                    <Badge variant="outline" className={`text-[10px] ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}`}>{isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active')}</Badge>
+   733→                  </div>
+   734→                </div>
+   735→              </div>
+   736→              <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground"><X className="h-5 w-5" /></button>
+   737→            </div>
+   738→          </div>
+   739→
+   740→          {/* Body */}
+   741→          <div className="p-6 space-y-5">
+   742→            {/* Stats */}
+   743→            <div>
+   744→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</div>
+   745→              <div className="grid grid-cols-3 gap-3">
+   746→                <StatPill label="Branches" value={loading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-primary" />
+   747→                <StatPill label="Students" value={loading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-primary" />
+   748→                <StatPill label="Staff" value={loading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-primary" />
+   749→              </div>
+   750→            </div>
+   751→
+   752→            {/* Admin info */}
+   753→            <div className="rounded-xl bg-muted/40 p-4">
+   754→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Institute Admin</div>
+   755→              <div className="flex items-center justify-between">
+   756→                <div>
+   757→                  <div className="font-medium text-sm">{inst.adminName || '—'}</div>
+   758→                  <div className="text-xs text-muted-foreground">{inst.adminEmail || '—'}</div>
+   759→                </div>
+   760→                <Button size="sm" variant="outline" onClick={onEdit}><Edit className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+   761→              </div>
+   762→            </div>
+   763→
+   764→            {/* Branches list */}
+   765→            <div>
+   766→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between">
+   767→                <span>Branches ({branches.length})</span>
+   768→              </div>
+   769→              {loading ? (
+   770→                <LoadingState label="Loading branches…" className="py-4" />
+   771→              ) : branches.length === 0 ? (
+   772→                <div className="text-xs text-muted-foreground py-3 text-center bg-muted/30 rounded-lg">No branches yet.</div>
+   773→              ) : (
+   774→                <div className="space-y-2 max-h-60 overflow-y-auto scroll-fancy">
+   775→                  {branches.map((br: any) => <BranchRow key={br.id} br={br} />)}
+   776→                </div>
+   777→              )}
+   778→            </div>
+   779→          </div>
+   780→        </Card>
+   781→      </motion.div>
+   782→    </motion.div>
+   783→  );
+   784→}
+   785→
+   786→function BranchRow({ br }: { br: any }) {
+   787→  const isBlocked = br.blocked === 1 || br.blocked === true;
+   788→  return (
+   789→    <div className="rounded-lg border border-border/60 bg-background p-3 hover:bg-accent/40 transition">
+   790→      <div className="flex items-start justify-between gap-2">
+   791→        <div className="min-w-0">
+   792→          <div className="font-medium text-sm truncate flex items-center gap-1.5">
+   793→            <Building className="h-3.5 w-3.5 text-primary shrink-0" />
+   794→            <span className="truncate">{br.name}</span>
+   795→          </div>
+   796→          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+   797→            <MapPin className="h-3 w-3" /> {br.city || '—'}
+   798→            {br.manager && (<><span className="mx-1">·</span><UserCog className="h-3 w-3" /> {br.manager}</>)}
+   799→          </div>
+   800→        </div>
+   801→        <Badge
+   802→          variant="outline"
+   803→          className={`text-[10px] shrink-0 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}`}
+   804→        >
+   805→          {isBlocked ? 'Blocked' : 'Active'}
+   806→        </Badge>
+   807→      </div>
+   808→      <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-border/40 text-center">
+   809→        <div>
+   810→          <div className="font-bold text-sm">{br.students ?? 0}</div>
+   811→          <div className="text-[10px] text-muted-foreground">Students</div>
+   812→        </div>
+   813→        <div>
+   814→          <div className="font-bold text-sm">{br.teachers ?? 0}</div>
+   815→          <div className="text-[10px] text-muted-foreground">Teachers</div>
+   816→        </div>
+   817→      </div>
+   818→    </div>
+   819→  );
+   820→}
+   821→
+   822→// ---------- Edit Institute modal (scrollable) ----------
+   823→function EditInstituteModal({ inst, onClose, onSaved }: any) {
+   824→  const [form, setForm] = useState({
+   825→    name: inst.name || '',
+   826→    plan: inst.plan || 'Starter',
+   827→    adminName: inst.adminName || '',
+   828→    adminEmail: inst.adminEmail || '',
+   829→    adminPassword: '',
+   830→  });
+   831→  const [saving, setSaving] = useState(false);
+   832→
+   833→  const save = async () => {
+   834→    if (!form.name || !form.adminEmail) {
+   835→      toast({ title: 'Institute name and admin email are required', variant: 'destructive' });
+   836→      return;
+   837→    }
+   838→    setSaving(true);
+   839→    try {
+   840→      // Only include adminPassword if the user typed a new one
+   841→      const body: any = {
+   842→        name: form.name,
+   843→        plan: form.plan,
+   844→        adminName: form.adminName,
+   845→        adminEmail: form.adminEmail,
+   846→      };
+   847→      if (form.adminPassword.trim()) body.adminPassword = form.adminPassword.trim();
+   848→      await api.editInstitute(inst.id, body);
+   849→      toast({
+   850→        title: 'Institute updated',
+   851→        description: form.adminPassword ? 'Admin password updated — they will need to use the new one.' : 'Changes saved.',
+   852→      });
+   853→      onSaved();
+   854→    } catch (e: any) {
+   855→      toast({ title: 'Failed to save', description: e.message, variant: 'destructive' });
+   856→    } finally {
+   857→      setSaving(false);
+   858→    }
+   859→  };
+   860→
+   861→  return (
+   862→    <motion.div
+   863→      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   864→      className="fixed inset-0 z-[60] grid place-items-start sm:place-items-center p-4 bg-black/50 overflow-y-auto"
+   865→      onClick={onClose}
+   866→    >
+   867→      <motion.div
+   868→        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+   869→        onClick={(e) => e.stopPropagation()}
+   870→        className="w-full max-w-md my-8"
+   871→      >
+   872→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   873→          <div className="flex items-center justify-between mb-4">
+   874→            <div>
+   875→              <h3 className="font-bold text-lg">Edit Institute</h3>
+   876→              <p className="text-xs text-muted-foreground mt-0.5">Update institute info and admin credentials</p>
+   877→            </div>
+   878→            <Edit className="h-5 w-5 text-muted-foreground" />
+   879→          </div>
+   880→
+   881→          <div className="space-y-3">
+   882→            <div>
+   883→              <Label>Institute Name</Label>
+   884→              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+   885→            </div>
+   886→            <div>
+   887→              <Label>Plan</Label>
+   888→              <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+   889→                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   890→                <SelectContent>
+   891→                  <SelectItem value="Starter">Starter</SelectItem>
+   892→                  <SelectItem value="Premium">Premium</SelectItem>
+   893→                  <SelectItem value="Enterprise">Enterprise</SelectItem>
+   894→                </SelectContent>
+   895→              </Select>
+   896→            </div>
+   897→
+   898→            <div className="pt-2 border-t border-border/40">
+   899→              <div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Institute Admin</div>
+   900→            </div>
+   901→            <div>
+   902→              <Label>Admin Name</Label>
+   903→              <Input value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} className="mt-1" />
+   904→            </div>
+   905→            <div>
+   906→              <Label>Admin Email</Label>
+   907→              <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} className="mt-1" />
+   908→            </div>
+   909→            <div>
+   910→              <Label>New Password (optional)</Label>
+   911→              <Input
+   912→                type="text"
+   913→                value={form.adminPassword}
+   914→                onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+   915→                placeholder="Leave blank to keep current"
+   916→                className="mt-1 font-mono"
+   917→              />
+   918→              <p className="text-[11px] text-muted-foreground mt-1">If set, the admin must use this password to log in.</p>
+   919→            </div>
+   920→          </div>
+   921→
+   922→          <div className="flex gap-2 mt-5">
+   923→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={saving} onClick={save}>
+   924→              {saving ? 'Saving…' : 'Save Changes'}
+   925→            </Button>
+   926→            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+   927→          </div>
+   928→        </Card>
+   929→      </motion.div>
+   930→    </motion.div>
+   931→  );
+   932→}
+   933→
+   934→// ---------- Provision Institute modal (scrollable, shows actual password) ----------
+   935→function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+   936→  const [form, setForm] = useState({
+   937→    name: '', city: '', country: 'USA', plan: 'Premium',
+   938→    adminName: '', adminEmail: '', adminPassword: '',
+   939→  });
+   940→  const [creating, setCreating] = useState(false);
+   941→  const [lastCreated, setLastCreated] = useState<any>(null);
+   942→
+   943→  const create = async () => {
+   944→    if (!form.name || !form.adminEmail || !form.adminPassword) {
+   945→      toast({ title: 'Institute name, admin email and password are required', variant: 'destructive' });
+   946→      return;
+   947→    }
+   948→    setCreating(true);
+   949→    try {
+   950→      const res = await api.createInstitute(form);
+   951→      toast({ title: 'Institute provisioned!', description: `${res.institute.name} — admin login created` });
+   952→      setLastCreated(res);
+   953→      setForm({ name: '', city: '', country: 'USA', plan: 'Premium', adminName: '', adminEmail: '', adminPassword: '' });
+   954→      onSaved();
+   955→    } catch (e: any) {
+   956→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   957→    } finally {
+   958→      setCreating(false);
+   959→    }
+   960→  };
+   961→
+   962→  return (
+   963→    <motion.div
+   964→      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   965→      className="fixed inset-0 z-[60] grid place-items-start sm:place-items-center p-4 bg-black/50 overflow-y-auto"
+   966→      onClick={() => { if (!creating) onClose(); }}
+   967→    >
+   968→      <motion.div
+   969→        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+   970→        onClick={(e) => e.stopPropagation()}
+   971→        className="w-full max-w-lg my-8"
+   972→      >
+   973→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   974→          {lastCreated ? (
+   975→            <>
+   976→              <div className="flex items-center gap-3 mb-4">
+   977→                <div className="h-12 w-12 rounded-full bg-accent0/15 grid place-items-center">
+   978→                  <CheckCircle2 className="h-6 w-6 text-primary" />
+   979→                </div>
+   980→                <div>
+   981→                  <h3 className="font-bold text-lg">Institute provisioned!</h3>
+   982→                  <p className="text-sm text-muted-foreground">{lastCreated.institute.name} is ready</p>
+   983→                </div>
+   984→              </div>
+   985→              <div className="rounded-xl bg-accent0/5 border border-[oklch(0.5_0.04_260)_/_0.2] p-4 space-y-2 text-sm">
+   986→                <div className="font-semibold text-primary dark:text-primary/70">Institute Admin login credentials</div>
+   987→                <div className="flex items-center justify-between gap-3">
+   988→                  <span className="text-muted-foreground">Email</span>
+   989→                  <span className="font-mono text-xs sm:text-sm break-all text-right">{lastCreated.adminLogin?.email}</span>
+   990→                </div>
+   991→                <div className="flex items-center justify-between gap-3">
+   992→                  <span className="text-muted-foreground">Password</span>
+   993→                  <span className="font-mono text-xs sm:text-sm break-all text-right text-primary dark:text-primary/70">
+   994→                    {lastCreated.adminLogin?.password}
+   995→                  </span>
+   996→                </div>
+   997→                <div className="text-xs text-muted-foreground pt-2 border-t border-[oklch(0.5_0.04_260)_/_0.2]">
+   998→                  Share these credentials securely. The admin can change their password after logging in.
+   999→                </div>
+  1000→              </div>
+  1001→              <div className="flex gap-2 mt-5">
+  1002→                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" onClick={onClose}>Done</Button>
+  1003→                <Button size="sm" variant="outline" onClick={() => setLastCreated(null)}>Add Another</Button>
+  1004→              </div>
+  1005→            </>
+  1006→          ) : (
+  1007→            <>
+  1008→              <div className="flex items-center justify-between mb-1">
+  1009→                <h3 className="font-bold text-lg">Provision a new institute</h3>
+  1010→                <Plus className="h-5 w-5 text-muted-foreground" />
+  1011→              </div>
+  1012→              <p className="text-sm text-muted-foreground mb-5">
+  1013→                You will set the Institute Admin's email and password. They can change it after first login.
+  1014→              </p>
+  1015→              <div className="space-y-3">
+  1016→                <div>
+  1017→                  <Label>Institute name *</Label>
+  1018→                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Dallas Modern School" className="mt-1" />
+  1019→                </div>
+  1020→                <div className="grid grid-cols-2 gap-3">
+  1021→                  <div>
+  1022→                    <Label>City</Label>
+  1023→                    <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Dallas" className="mt-1" />
+  1024→                  </div>
+  1025→                  <div>
+  1026→                    <Label>Country</Label>
+  1027→                    <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1" />
+  1028→                  </div>
+  1029→                </div>
+  1030→                <div>
+  1031→                  <Label>Plan</Label>
+  1032→                  <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+  1033→                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+  1034→                    <SelectContent>
+  1035→                      <SelectItem value="Starter">Starter — 1 branch, basic modules</SelectItem>
+  1036→                      <SelectItem value="Premium">Premium — multi-branch, all modules</SelectItem>
+  1037→                      <SelectItem value="Enterprise">Enterprise — unlimited, white-label</SelectItem>
+  1038→                    </SelectContent>
+  1039→                  </Select>
+  1040→                </div>
+  1041→                <div className="pt-2 border-t border-border/40">
+  1042→                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+  1043→                    Institute Admin — You set the credentials
+  1044→                  </div>
+  1045→                </div>
+  1046→                <div>
+  1047→                  <Label>Admin name</Label>
+  1048→                  <Input value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} placeholder="Dr. Jane Doe" className="mt-1" />
+  1049→                </div>
+  1050→                <div>
+  1051→                  <Label>Admin email *</Label>
+  1052→                  <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} placeholder="admin@school.edu" className="mt-1" />
+  1053→                </div>
+  1054→                <div>
+  1055→                  <Label>Assign password *</Label>
+  1056→                  <Input
+  1057→                    type="text"
+  1058→                    value={form.adminPassword}
+  1059→                    onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+  1060→                    placeholder="Set a password for the admin"
+  1061→                    className="mt-1 font-mono"
+  1062→                  />
+  1063→                  <p className="text-[11px] text-muted-foreground mt-1">This is the actual password the admin will use to log in.</p>
+  1064→                </div>
+  1065→              </div>
+  1066→              <div className="flex gap-2 mt-5">
+  1067→                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={creating} onClick={create}>
+  1068→                  {creating ? 'Provisioning…' : 'Provision Institute'}
+  1069→                </Button>
+  1070→                <Button size="sm" variant="outline" disabled={creating} onClick={onClose}>Cancel</Button>
+  1071→              </div>
+  1072→            </>
+  1073→          )}
+  1074→        </Card>
+  1075→      </motion.div>
+  1076→    </motion.div>
+  1077→  );
+  1078→}
+  1079→
+  1080→// ---------- Announcements view (super admin only sees their own) ----------
+  1081→function AnnouncementsView({ user, institutes, institutesLoading }: { user: any; institutes: any[]; institutesLoading: boolean }) {
+  1082→  const [announcements, setAnnouncements] = useState<any[]>([]);
+  1083→  const [loading, setLoading] = useState(true);
+  1084→  const [form, setForm] = useState({ title: '', message: '', targetScope: 'all', selectedInstitutes: [] as string[] });
+  1085→  const [sending, setSending] = useState(false);
+  1086→  const [showForm, setShowForm] = useState(false);
+  1087→
+  1088→  const refresh = () => {
+  1089→    api.getAnnouncements()
+  1090→      .then((a) => setAnnouncements(Array.isArray(a) ? a : []))
+  1091→      .catch(() => {})
+  1092→      .finally(() => setLoading(false));
+  1093→  };
+  1094→  useEffect(() => { refresh(); }, []);
+  1095→
+  1096→  const send = async () => {
+  1097→    if (!form.title || !form.message) {
+  1098→      toast({ title: 'Title and message required', variant: 'destructive' });
+  1099→      return;
+  1100→    }
+  1101→    if (form.targetScope === 'specific' && form.selectedInstitutes.length === 0) {
+  1102→      toast({ title: 'Select at least one institute', variant: 'destructive' });
+  1103→      return;
+  1104→    }
+  1105→    setSending(true);
+  1106→    try {
+  1107→      await api.createAnnouncement({
+  1108→        title: form.title,
+  1109→        message: form.message,
+  1110→        targetRole: 'institute-admin',
+  1111→        targetScope: form.targetScope,
+  1112→        targetIds: form.targetScope === 'specific' ? form.selectedInstitutes : undefined,
+  1113→      });
+  1114→      toast({
+  1115→        title: 'Announcement sent!',
+  1116→        description: form.targetScope === 'all' ? 'Sent to all institutes' : `Sent to ${form.selectedInstitutes.length} institute(s)`,
+  1117→      });
+  1118→      setForm({ title: '', message: '', targetScope: 'all', selectedInstitutes: [] });
+  1119→      setShowForm(false);
+  1120→      refresh();
+  1121→    } catch (e: any) {
+  1122→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+  1123→    } finally {
+  1124→      setSending(false);
+  1125→    }
+  1126→  };
+  1127→
+  1128→  return (
+  1129→    <div className="space-y-6">
+  1130→      <ModuleHeader
+  1131→        title="Announcements"
+  1132→        subtitle="Send messages to Institute Admins — only your announcements are shown here"
+  1133→        actions={
+  1134→          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm((v) => !v)}>
+  1135→            <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
+  1136→          </Button>
+  1137→        }
+  1138→      />
+  1139→
+  1140→      {showForm && (
+  1141→        <Card className="p-5">
+  1142→          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+  1143→          <div className="space-y-3">
+  1144→            <div>
+  1145→              <Label>Title</Label>
+  1146→              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Platform maintenance scheduled" className="mt-1" />
+  1147→            </div>
+  1148→            <div>
+  1149→              <Label>Message</Label>
+  1150→              <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" />
+  1151→            </div>
+  1152→            <div>
+  1153→              <Label>Recipients</Label>
+  1154→              <Select value={form.targetScope} onValueChange={(v) => setForm({ ...form, targetScope: v })}>
+  1155→                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+  1156→                <SelectContent>
+  1157→                  <SelectItem value="all">All Institute Admins</SelectItem>
+  1158→                  <SelectItem value="specific">Specific Institutes</SelectItem>
+  1159→                </SelectContent>
+  1160→              </Select>
+  1161→            </div>
+  1162→            {form.targetScope === 'specific' && (
+  1163→              <div>
+  1164→                <Label>Select Institutes</Label>
+  1165→                {institutesLoading ? (
+  1166→                  <LoadingState label="Loading institutes…" className="py-4 border border-border/60 rounded-lg" />
+  1167→                ) : (
+  1168→                  <div className="mt-2 max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+  1169→                    {institutes.map((inst) => (
+  1170→                      <label key={inst.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+  1171→                        <input
+  1172→                          type="checkbox"
+  1173→                          checked={form.selectedInstitutes.includes(inst.id)}
+  1174→                          onChange={(e) => {
+  1175→                            if (e.target.checked) setForm({ ...form, selectedInstitutes: [...form.selectedInstitutes, inst.id] });
+  1176→                            else setForm({ ...form, selectedInstitutes: form.selectedInstitutes.filter((id) => id !== inst.id) });
+  1177→                          }}
+  1178→                          className="custom-checkbox w-4 h-4 rounded"
+  1179→                        />
+  1180→                        <span className="text-sm">{inst.name}</span>
+  1181→                      </label>
+  1182→                    ))}
+  1183→                  </div>
+  1184→                )}
+  1185→              </div>
+  1186→            )}
+  1187→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>
+  1188→              {sending ? 'Sending…' : (<><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>)}
+  1189→            </Button>
+  1190→          </div>
+  1191→        </Card>
+  1192→      )}
+  1193→
+  1194→      {loading ? (
+  1195→        <Card className="p-5"><LoadingState label="Loading announcements…" /></Card>
+  1196→      ) : announcements.length === 0 ? (
+  1197→        <EmptyState
+  1198→          icon={Megaphone}
+  1199→          title="No announcements yet"
+  1200→          desc="Send messages to all or specific Institute Admins."
+  1201→          action={
+  1202→            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}>
+  1203→              <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
+  1204→            </Button>
+  1205→          }
+  1206→        />
+  1207→      ) : (
+  1208→        <div className="space-y-3">
+  1209→          {announcements.map((a) => (
+  1210→            <Card key={a.id} className="p-4">
+  1211→              <div className="flex items-start justify-between mb-2 gap-2">
+  1212→                <div className="flex items-center gap-2 min-w-0">
+  1213→                  <Megaphone className="h-4 w-4 text-primary shrink-0" />
+  1214→                  <div className="font-medium text-sm truncate">{a.title}</div>
+  1215→                </div>
+  1216→                <span className="text-[11px] text-muted-foreground shrink-0">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</span>
+  1217→              </div>
+  1218→              <p className="text-sm text-muted-foreground ml-6 whitespace-pre-wrap">{a.message}</p>
+  1219→              <div className="text-[11px] text-muted-foreground mt-2 ml-6">
+  1220→                To: {a.targetScope === 'all' ? 'All Institute Admins' : 'Specific Institutes'}
+  1221→              </div>
+  1222→            </Card>
+  1223→          ))}
+  1224→        </div>
+  1225→      )}
+  1226→    </div>
+  1227→  );
+  1228→}
+  1229→
+  1230→// ---------- Platform Config (display-only) ----------
+  1231→function PlatformConfig({ overview, loading }: { overview: any; loading: boolean }) {
+  1232→  const settings = [
+  1233→    { icon: Building2, label: 'Platform Name', value: 'ESM', desc: 'Shown across the platform UI' },
+  1234→    { icon: ShieldCheck, label: 'Default Plan for New Institutes', value: 'Premium', desc: 'Pre-selected when provisioning' },
+  1235→    { icon: Mail, label: 'Support Email', value: 'faisalkhan00297@gmail.com', desc: 'For all support requests' },
+  1236→    { icon: Building, label: 'Max Institutes Allowed', value: loading ? '…' : (overview?.institutes ? `${overview.institutes} active` : 'Unlimited'), desc: 'Current platform cap' },
+  1237→  ];
+  1238→
+  1239→  return (
+  1240→    <div className="space-y-6">
+  1241→      <ModuleHeader title="Platform Configuration" subtitle="Display-only platform settings — edit backend config to change values" />
+  1242→      <div className="grid sm:grid-cols-2 gap-4">
+  1243→        {settings.map((s, i) => (
+  1244→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+  1245→            <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+  1246→              <div className="flex items-start gap-3">
+  1247→                <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center shrink-0">
+  1248→                  <s.icon className="h-5 w-5 text-primary" />
+  1249→                </div>
+  1250→                <div className="min-w-0">
+  1251→                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</div>
+  1252→                  <div className="font-bold text-base break-all mt-0.5">{s.value}</div>
+  1253→                  <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
+  1254→                </div>
+  1255→              </div>
+  1256→            </Card>
+  1257→          </motion.div>
+  1258→        ))}
+  1259→      </div>
+  1260→      <Card className="p-5 border-dashed">
+  1261→        <div className="flex items-start gap-3">
+  1262→          <Settings className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+  1263→          <div>
+  1264→            <div className="font-medium text-sm">Display-only mode</div>
+  1265→            <p className="text-xs text-muted-foreground mt-1">
+  1266→              These settings are read from the backend configuration. To change platform name, default plan, support email, or institute caps,
+  1267→              update the backend config file. This page reflects the live values for visibility.
+  1268→            </p>
+  1269→          </div>
+  1270→        </div>
+  1271→      </Card>
+  1272→    </div>
+  1273→  );
+  1274→}
+  1275→
+  1276→// ---------- Branding page (display-only) ----------
+  1277→function BrandingPage() {
+  1278→  return (
+  1279→    <div className="space-y-6">
+  1280→      <ModuleHeader title="Branding" subtitle="Platform visual identity" />
+  1281→      <Card className="p-0 overflow-hidden">
+  1282→        <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/80 p-8 sm:p-10 text-white">
+  1283→          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+  1284→          <div className="relative">
+  1285→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
+  1286→              <ShieldCheck className="h-3 w-3 text-primary/70" /> Platform Identity
+  1287→            </div>
+  1288→            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">ESM</h2>
+  1289→            <p className="text-blue-50/90 text-base sm:text-lg mt-1">Electronic School Management</p>
+  1290→            <p className="text-blue-50/70 text-sm mt-3 max-w-md">
+  1291→              Modern school management for institutions worldwide — by Cyber Advance Solutions.
+  1292→            </p>
+  1293→          </div>
+  1294→        </div>
+  1295→      </Card>
+  1296→
+  1297→      <div className="grid sm:grid-cols-2 gap-4">
+  1298→        <Card className="p-5">
+  1299→          <div className="flex items-center gap-2 mb-3">
+  1300→            <Palette className="h-4 w-4 text-primary" />
+  1301→            <h3 className="font-bold text-sm">Color Theme</h3>
+  1302→          </div>
+  1303→          <div className="space-y-2.5">
+  1304→            <ColorRow name="Primary (Navy)" hex="#1e3a5f" className="bg-blue-800" />
+  1305→            <ColorRow name="Accent (Blue)" hex="#1d4ed8" className="bg-primary" />
+  1306→            <ColorRow name="Highlight (Sky)" hex="#0284c7" className="bg-sky-600" />
+  1307→            <ColorRow name="Neutral (Slate)" hex="#475569" className="bg-slate-600" />
+  1308→          </div>
+  1309→        </Card>
+  1310→        <Card className="p-5">
+  1311→          <div className="flex items-center gap-2 mb-3">
+  1312→            <Building2 className="h-4 w-4 text-primary" />
+  1313→            <h3 className="font-bold text-sm">Brand Information</h3>
+  1314→          </div>
+  1315→          <div className="space-y-3 text-sm">
+  1316→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Platform Name</span><span className="font-medium">ESM</span></div>
+  1317→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Tagline</span><span className="font-medium text-right">Electronic School Management</span></div>
+  1318→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Provider</span><span className="font-medium text-right">Cyber Advance Solutions</span></div>
+  1319→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Theme Mode</span><span className="font-medium">Light / Dark</span></div>
+  1320→          </div>
+  1321→        </Card>
+  1322→      </div>
+  1323→
+  1324→      <Card className="p-5 border-dashed">
+  1325→        <div className="flex items-start gap-3">
+  1326→          <Settings className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+  1327→          <div>
+  1328→            <div className="font-medium text-sm">Display-only</div>
+  1329→            <p className="text-xs text-muted-foreground mt-1">
+  1330→              Branding assets (logo, tagline, color palette) are defined in the platform theme configuration. Update the theme tokens to change the look.
+  1331→            </p>
+  1332→          </div>
+  1333→        </div>
+  1334→      </Card>
+  1335→    </div>
+  1336→  );
+  1337→}
+  1338→
+  1339→function ColorRow({ name, hex, className }: { name: string; hex: string; className: string }) {
+  1340→  return (
+  1341→    <div className="flex items-center gap-3">
+  1342→      <div className={`h-7 w-7 rounded-md ${className} ring-1 ring-black/10`} />
+  1343→      <div className="flex-1 min-w-0">
+  1344→        <div className="text-sm font-medium">{name}</div>
+  1345→        <div className="text-[11px] text-muted-foreground font-mono">{hex}</div>
+  1346→      </div>
+  1347→    </div>
+  1348→  );
+  1349→}
+  1350→

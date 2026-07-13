@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Building2, Users, Network, Plus, Crown, MapPin, CheckCircle2,
-  Server, Building, Lock, Unlock, Edit, Megaphone, Send,
+  Server, Building, Lock, Unlock, Edit, Megaphone, Send, MessageSquare,
   ChevronDown, ChevronRight, UserCog, Mail, Settings, ShieldCheck, Palette, Loader2,
   Trash2, X,
   DollarSign, AlertCircle, Wallet, Scale, FileText, TrendingUp,
@@ -20,15 +20,26 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Legend } from 'recharts';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
+import { useApp } from '@/lib/store';
 
 // ---- Format helpers ----
-const formatPKR = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
+const formatPKR = (n: any) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
 const formatCompact = (n: number) => {
   const v = Number(n || 0);
   if (Math.abs(v) >= 1_000_000) return 'PKR ' + (v / 1_000_000).toFixed(1) + 'M';
   if (Math.abs(v) >= 1_000) return 'PKR ' + (v / 1_000).toFixed(0) + 'k';
   return 'PKR ' + v;
 };
+
+// ---- CSV export helper ----
+function exportToCSV(filename: string, headers: string[], rows: (string | number)[][]) {
+  const escape = (v: any) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
 
 // ---------- Main router ----------
 export function SuperAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
@@ -82,6 +93,9 @@ export function SuperAdminPortal({ activeModule, user }: { activeModule: string;
       />
     );
   }
+  if (activeModule === 'platform-analytics') {
+    return <PlatformAnalytics finance={finance} financeLoading={financeLoading} institutes={institutes} />;
+  }
   if (activeModule === 'announcements') {
     return <AnnouncementsView user={user} institutes={institutes} institutesLoading={institutesLoading} />;
   }
@@ -96,10 +110,6 @@ export function SuperAdminPortal({ activeModule, user }: { activeModule: string;
     <PlatformOverview
       overview={overview}
       overviewLoading={overviewLoading}
-      institutes={institutes}
-      institutesLoading={institutesLoading}
-      finance={finance}
-      financeLoading={financeLoading}
       onAddInstitute={() => setShowAdd(true)}
       onRefreshAll={refreshAll}
       user={user}
@@ -155,15 +165,20 @@ function StatPill({ label, value, color = 'text-foreground' }: { label: string; 
 
 // ---------- Dashboard overview (default landing for super admin) ----------
 function PlatformOverview({
-  overview, overviewLoading, institutes, institutesLoading, finance, financeLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
+  overview, overviewLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
 }: any) {
-  const finKpis = finance?.kpi;
-  const finLoading = financeLoading || !finance;
+  const setActiveModule = useApp(s => s.setActiveModule);
   const cards = [
     { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-primary to-primary/80', sub: `${overview?.activeInstitutes ?? 0} active` },
     { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-primary to-primary/80', sub: 'across all institutions' },
     { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'from-primary/80 to-primary', sub: 'platform-wide' },
     { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: UserCog, color: 'from-primary/80 to-primary', sub: 'teachers & managers' },
+  ];
+
+  const quickActions = [
+    { icon: TrendingUp, title: 'View Analytics', subtitle: 'Revenue, salary, institute performance & transactions', target: 'platform-analytics' as const },
+    { icon: Building2, title: 'Manage Institutes', subtitle: 'Provision, edit, block or remove institutions', target: 'institutes' as const },
+    { icon: MessageSquare, title: 'Send Announcement', subtitle: 'Broadcast messages to institutes & branches', target: 'announcements' as const },
   ];
 
   return (
@@ -221,7 +236,84 @@ function PlatformOverview({
         )}
       </div>
 
-      {/* Financial KPI cards (second row — platform-wide finance) */}
+      {/* Quick Actions */}
+      <div>
+        <div className="mb-3">
+          <h2 className="font-bold text-base">Quick Actions</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Jump straight to common platform workflows</p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((a) => (
+            <div
+              key={a.target}
+              onClick={() => setActiveModule(a.target)}
+              className="group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5 flex items-center gap-4"
+            >
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 grid place-items-center">
+                <a.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-base">{a.title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{a.subtitle}</div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {showAdd && (
+        <ProvisionInstituteModal
+          onClose={() => setShowAdd(false)}
+          onSaved={() => { setShowAdd(false); onRefreshAll(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------- Platform Analytics (dedicated financial analytics page) ----------
+function PlatformAnalytics({ finance, financeLoading }: any) {
+  const finKpis = finance?.kpi;
+  const finLoading = financeLoading || !finance;
+
+  const handleExportInstitutePerformance = () => {
+    if (!finance?.institutePerformance) return;
+    const rows: (string | number)[][] = finance.institutePerformance.map((inst: any) => [
+      inst.name || '',
+      inst.city || '',
+      inst.admin || '',
+      Number(inst.branches || 0),
+      Number(inst.students || 0),
+      Number(inst.revenue || 0),
+      Number(inst.pendingFees || 0),
+      Number(inst.salaryPaid || 0),
+      Number(inst.net || 0),
+      inst.status || '',
+    ]);
+    exportToCSV('institute-performance', ['Institute', 'City', 'Admin', 'Branches', 'Students', 'Revenue', 'Pending Fees', 'Salary Paid', 'Net', 'Status'], rows);
+    toast({ title: 'CSV exported', description: 'Institute performance downloaded as institute-performance.csv' });
+  };
+
+  return (
+    <div className="space-y-6">
+      <ModuleHeader
+        title="Analytics"
+        subtitle="Revenue, salary and institute performance insights"
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-border"
+            onClick={handleExportInstitutePerformance}
+            disabled={finLoading || !finance?.institutePerformance?.length}
+          >
+            <FileText className="h-4 w-4 mr-1.5" /> Export CSV
+          </Button>
+        }
+      />
+
+      {/* Financial KPI cards (platform-wide finance) */}
       {finLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -374,11 +466,16 @@ function PlatformOverview({
         </Card>
       ) : (
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="mb-4">
-            <h3 className="font-bold text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Institute Performance
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Revenue comparison across all institutes (sorted by revenue, desc)</p>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" /> Institute Performance
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Revenue comparison across all institutes (sorted by revenue, desc)</p>
+            </div>
+            <Button size="sm" variant="outline" className="border-border shrink-0" onClick={handleExportInstitutePerformance}>
+              <FileText className="h-4 w-4 mr-1.5" /> Export CSV
+            </Button>
           </div>
           <div className="max-h-96 overflow-y-auto">
             <Table>
@@ -469,46 +566,6 @@ function PlatformOverview({
             </TableBody>
           </Table>
         </Card>
-      )}
-
-      {/* Institutes section */}
-      {institutesLoading ? (
-        <Card className="p-5"><LoadingState label="Loading institutes…" /></Card>
-      ) : institutes.length === 0 ? (
-        <EmptyState
-          icon={Building}
-          title="No institutions yet"
-          desc="Provision your first institute. You'll set the admin's email and password."
-          action={
-            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddInstitute}>
-              <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
-            </Button>
-          }
-        />
-      ) : (
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-base">Institutions</h3>
-              <p className="text-xs text-muted-foreground">Click a card to expand & view branches</p>
-            </div>
-            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAddInstitute}>
-              <Plus className="h-4 w-4 mr-1.5" /> Add Institute
-            </Button>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {institutes.map((inst: any) => (
-              <InstituteCard key={inst.id} inst={inst} onRefresh={onRefreshAll} />
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {showAdd && (
-        <ProvisionInstituteModal
-          onClose={() => setShowAdd(false)}
-          onSaved={() => { setShowAdd(false); onRefreshAll(); }}
-        />
       )}
     </div>
   );
