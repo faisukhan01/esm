@@ -1359,3 +1359,67 @@ Stage Summary:
 - Fee system fully functional in both Branch Manager and Institute Admin portals
 - Student portal has Invoices tab with PDF challan download
 - All features preserved — only UI/theme updated
+
+---
+Task ID: UI-DEEP-OVERHAUL
+Agent: Main (Z.ai Code)
+Task: Deep UI overhaul matching UCP/Odoo reference — sidebar, topbar, cards, colors, typography
+
+Work Log:
+- **Deeply analyzed ALL 10 pages** of the reference PDF:
+  - Pages 1-2: Mobile dashboard — clean light gray bg, white cards, dark navy section headers, green/teal status badges
+  - Page 3: Mobile sidebar — dark navy header with avatar, white menu items, red active highlight
+  - Pages 4-7: Course pages — green active tabs, dark blue table headers, alternating row colors, breadcrumb navigation
+  - Page 8: Web dashboard — dark navy sidebar, 4-column grid, card headers with dark blue bg, profile section with avatar
+  - Page 9: Web course details — tabs (green active), dark blue table headers, clean white content area
+  - Page 10: Invoices page — dark blue table header, green "Paid" badges, red "Draft" badges, clean table layout
+- **Key design patterns extracted**:
+  - Sidebar: Deep navy blue, icon+text menu items, active = lighter blue bg
+  - Background: Light gray (#f8f9fa), not pure white
+  - Cards: White with thin gray border, subtle shadow, 8px radius
+  - Top bar: Solid white (not glass), minimal, clean
+  - Table headers: Dark blue bg with white text
+  - Status badges: Green for active/paid, red for draft/unpaid
+  - Active tabs: Green background with white text
+  - Typography: Clean sans-serif, semibold headings, regular body
+- **Updated globals.css**:
+  - `--background`: light gray (oklch 0.97) — matches #f8f9fa
+  - `--sidebar`: deep navy (oklch 0.22 0.04 260) — matches #1a365d
+  - `--card`: pure white
+  - `--border`: light gray-blue
+  - `--primary`: dark blue
+  - `--radius`: 0.5rem (8px) — matches reference
+  - Dark mode updated to match
+- **Updated RolePortal sidebar**:
+  - Logo: simple white/10 bg with graduation cap (no gradient)
+  - Menu items: clean icon+text, active = lighter blue bg (bg-sidebar-accent), no gradient
+  - Group headers: small uppercase text, no collapsible buttons (always visible)
+  - User card: simpler avatar, no gradient bg
+  - Removed framer-motion expand/collapse (simpler, always-visible groups)
+  - Removed ChevronDown/ChevronRight indicators (cleaner)
+- **Updated RolePortal topbar**:
+  - Solid white bg (bg-card), no glass effect
+  - Height: 14 (56px), was 16 (64px) — more compact
+  - Removed gradient icon in topbar
+  - Removed subtitle (role + campus)
+  - Search: borderless, muted bg
+  - Removed Globe icon, Command kbd
+  - Simpler, more minimal
+- **Updated footer**: removed "Powered by" text, just copyright
+- **Updated roleAccent**: all blue-based (no more emerald/amber mix)
+
+Verification:
+- VLM comparison with UCP reference: 8/10
+  - "sidebar is deep navy with clean menu items" ✅
+  - "background is light gray" ✅
+  - "cards are clean white with subtle borders" ✅
+  - "top bar is clean and minimal (solid white, no glass effect)" ✅
+- Lint passes clean ✅
+- Institute Admin still has branch-level access (teachers, students, classes, fees) ✅
+- Fee system fully functional (generate, mark paid, challan PDF) ✅
+
+Stage Summary:
+- UI deeply overhauled to match UCP/Odoo reference: deep navy sidebar, light gray bg, clean white cards, solid white topbar, minimal design
+- All features preserved — only visual design changed
+- Institute Admin has full branch-level access
+- Fee system with PKR currency and PDF challan download working
