@@ -21,6 +21,7 @@ import { TeacherPortal } from './teacher-portal';
 import { StudentPortal } from './student-portal';
 import { ParentPortal } from './parent-portal';
 import { SettingsPage } from './settings-page';
+import { setOnBlocked } from '@/lib/api';
 
 const roleIcon: Record<string, any> = {
   'super-admin': Crown, 'institute-admin': Building2, 'branch-manager': Users,
@@ -122,6 +123,7 @@ export function RolePortal() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
   const role = user?.role || 'student';
   const groups = ROLE_MODULES[role] || [];
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>(
@@ -129,6 +131,15 @@ export function RolePortal() {
   );
   const accent = roleAccent[role];
   const RoleIcon = roleIcon[role] || GraduationCap;
+
+  // Register global blocked handler — when API returns 403/401 with "blocked",
+  // show the blocked screen instead of silent errors
+  useEffect(() => {
+    setOnBlocked((msg: string) => {
+      setBlockedMsg(msg);
+    });
+    return () => setOnBlocked(() => {});
+  }, []);
 
   // Reset active module when role changes (e.g. on login)
   useEffect(() => {
@@ -155,6 +166,35 @@ export function RolePortal() {
   };
 
   const sidebarProps = { role, collapsed, groupOpen, setGroupOpen, activeModule, setActiveModule, setMobileOpen, user, logout };
+
+  // Blocked screen — shown when Super Admin or Institute Admin blocks access
+  if (blockedMsg) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-950 via-slate-950 to-rose-950 p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full"
+        >
+          <div className="rounded-3xl bg-white shadow-2xl p-8 text-center">
+            <div className="inline-flex h-16 w-16 rounded-2xl bg-rose-100 items-center justify-center mb-5">
+              <Shield className="h-8 w-8 text-rose-600" />
+            </div>
+            <h1 className="font-display text-2xl font-extrabold text-slate-900 mb-2">Access Blocked</h1>
+            <p className="text-sm text-slate-600 mb-1">Your access has been blocked by your administration.</p>
+            <p className="text-xs text-slate-400 mb-6">{blockedMsg}</p>
+            <p className="text-xs text-slate-500 mb-6">Please contact your administrator to restore access.</p>
+            <Button
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={() => { logout(); setBlockedMsg(null); }}
+            >
+              <LogOut className="h-4 w-4 mr-2" /> Back to Sign In
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-muted/30">

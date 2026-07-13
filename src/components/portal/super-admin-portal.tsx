@@ -349,6 +349,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
     >
       {/* Clickable header area */}
       <button
+        type="button"
         onClick={toggleExpand}
         className="w-full text-left p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
       >

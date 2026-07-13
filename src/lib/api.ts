@@ -18,6 +18,10 @@ function getToken(): string | null {
   return null;
 }
 
+// Global blocked-state callback — set by the RolePortal to detect access revocation
+let onBlockedCallback: ((msg: string) => void) | null = null;
+export function setOnBlocked(cb: (msg: string) => void) { onBlockedCallback = cb; }
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -29,17 +33,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) {
     const txt = await res.text().catch(() => res.statusText);
-    // Try to parse the error as JSON and extract the message
+    // Parse error message
+    let errorMsg = txt;
     try {
       const parsed = JSON.parse(txt);
-      throw new Error(parsed.error || parsed.message || `Request failed (${res.status})`);
-    } catch (parseErr) {
-      // If it's not JSON, check if the error is already parsed
-      if (parseErr instanceof Error && parseErr.message !== txt) {
-        throw parseErr; // Re-throw the parsed error
+      errorMsg = parsed.error || parsed.message || `Request failed (${res.status})`;
+    } catch {}
+
+    // Detect blocked/access-revoked errors and trigger global handler
+    if (res.status === 403 || res.status === 401) {
+      const lowerMsg = errorMsg.toLowerCase();
+      if (lowerMsg.includes('blocked') || lowerMsg.includes('access') || lowerMsg.includes('session') || lowerMsg.includes('expired')) {
+        if (onBlockedCallback) {
+          onBlockedCallback(errorMsg);
+        }
       }
-      throw new Error(txt || `Request failed (${res.status})`);
     }
+
+    throw new Error(errorMsg);
   }
   return res.json() as Promise<T>;
 }

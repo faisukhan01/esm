@@ -367,8 +367,16 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
       setView('portal');
     } catch (err: any) {
-      const msg = err.message.includes('401') ? 'Invalid credentials' : err.message.includes('429') ? 'Too many failed attempts. Account locked.' : err.message;
-      toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
+      const msg = err.message || 'Sign in failed';
+      if (msg.includes('blocked') || msg.includes('Blocked')) {
+        toast({ title: 'Access Blocked', description: 'Your access has been blocked by your administration. Please contact your administrator.', variant: 'destructive' });
+      } else if (msg.includes('429') || msg.includes('locked') || msg.includes('Too many')) {
+        toast({ title: 'Account Locked', description: 'Too many failed attempts. Please try again later.', variant: 'destructive' });
+      } else if (msg.includes('401') || msg.includes('Invalid')) {
+        toast({ title: 'Sign in failed', description: 'Invalid credentials. Please check your email/ID and password.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
+      }
     } finally {
       setIsLoading(false);
     }
