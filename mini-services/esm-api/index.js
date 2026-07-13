@@ -20,8 +20,8 @@ const ROLE_LABELS = {
 // ===================== SECURITY =====================
 const SESSION_TTL = 8 * 60 * 60 * 1000;
 const loginAttempts = new Map();
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000;
+const MAX_LOGIN_ATTEMPTS = 8;
+const LOCKOUT_DURATION = 5 * 60 * 1000; // 5 min lockout (was 15)
 
 setInterval(async () => {
   try {
@@ -105,6 +105,23 @@ function nextId(prefix) {
 }
 
 // ===================== AUTH =====================
+// Helper: register a failed attempt and return the proper error response
+function registerFailedAttempt(rateKey) {
+  const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
+  current.count++;
+  // Lock the account when the threshold is reached
+  if (current.count >= MAX_LOGIN_ATTEMPTS) {
+    current.lockedUntil = Date.now() + LOCKOUT_DURATION;
+    current.count = 0; // reset count so after lockout expires they get a fresh slate
+    loginAttempts.set(rateKey, current);
+    const mins = Math.ceil(LOCKOUT_DURATION / 60000);
+    return { status: 429, error: `Too many failed attempts. Account locked for ${mins} min. Please try again later.` };
+  }
+  loginAttempts.set(rateKey, current);
+  const remaining = MAX_LOGIN_ATTEMPTS - current.count;
+  return { status: 401, error: `Invalid credentials. ${remaining} attempt${remaining === 1 ? '' : 's'} left before lockout.` };
+}
+
 app.post('/api/auth/login', async (req, res) => {
   const { email, password, loginId, name, role: requestedRole } = req.body || {};
   const identifier = (email || loginId || '').toLowerCase().trim();
@@ -116,7 +133,7 @@ app.post('/api/auth/login', async (req, res) => {
   const attempts = loginAttempts.get(rateKey);
   if (attempts && attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
     const remaining = Math.ceil((attempts.lockedUntil - Date.now()) / 60000);
-    return res.status(429).json({ error: `Too many failed attempts. Locked for ${remaining} min.` });
+    return res.status(429).json({ error: `Too many failed attempts. Account locked for ${remaining} min. Please try again later.` });
   }
 
   try {
@@ -124,11 +141,8 @@ app.post('/api/auth/login', async (req, res) => {
     let result = await db.execute({ sql: 'SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(rollNo) = ?', args: [identifier, identifier.toLowerCase()] });
 
     if (result.rows.length === 0) {
-      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
-      current.count++;
-      if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
-      loginAttempts.set(rateKey, current);
-      return res.status(401).json({ error: `Invalid credentials. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
+      const r = registerFailedAttempt(rateKey);
+      return res.status(r.status).json({ error: r.error });
     }
 
     // If multiple results (e.g. same rollNo across branches), filter by name if provided
@@ -139,19 +153,13 @@ app.post('/api/auth/login', async (req, res) => {
     }
     // If name provided, verify it matches
     if (userName && String(u.name).toLowerCase().trim() !== userName) {
-      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
-      current.count++;
-      if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
-      loginAttempts.set(rateKey, current);
-      return res.status(401).json({ error: `Name does not match. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
+      const r = registerFailedAttempt(rateKey);
+      return res.status(r.status).json({ error: r.error });
     }
 
     if (u.password !== password) {
-      const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0 };
-      current.count++;
-      if (current.count >= MAX_LOGIN_ATTEMPTS) { current.lockedUntil = Date.now() + LOCKOUT_DURATION; current.count = 0; }
-      loginAttempts.set(rateKey, current);
-      return res.status(401).json({ error: `Invalid credentials. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
+      const r = registerFailedAttempt(rateKey);
+      return res.status(r.status).json({ error: r.error });
     }
     if (u.status !== 'Active') return res.status(403).json({ error: 'Account is ' + u.status });
 
@@ -745,6 +753,280 @@ app.get('/api/scoped/stats', requireAuth, async (req, res) => {
   } else {
     res.json({ students: 0, staff: 0, branches: 0 });
   }
+});
+
+// ===================== INSTITUTE FINANCE & ANALYTICS =====================
+// Comprehensive finance + analytics for the Institute Admin dashboard.
+// Returns: KPIs, monthly revenue, yearly revenue, branch performance, recent transactions, salary totals.
+app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const instituteId = req.query.instituteId || req.user.instituteId;
+  if (!instituteId) return res.json({ kpi: {}, monthlyRevenue: [], branchPerformance: [], recentTransactions: [] });
+
+  try {
+    // 1. All fee invoices for this institute (paid + unpaid)
+    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, branchId, month, year, amount, status, paidDate, paidAmount, paymentMethod, challanNo, createdAt FROM fee_invoices WHERE instituteId = ? ORDER BY createdAt DESC', args: [instituteId] });
+    const invoices = invR.rows;
+
+    // 2. All salary payments for this institute
+    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments WHERE instituteId = ? ORDER BY createdAt DESC', args: [instituteId] });
+    const salaries = salR.rows;
+
+    // 3. Branches with student/teacher counts
+    const brR = await db.execute({ sql: 'SELECT id, name, city, manager, students, teachers, status, blocked FROM branches WHERE instituteId = ?', args: [instituteId] });
+    const branches = brR.rows;
+
+    // 4. All teachers (for salary structure lookup)
+    const tchR = await db.execute({ sql: 'SELECT id, name, email, branchId, status, blocked FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'teacher'] });
+    const teachers = tchR.rows;
+
+    // 5. Salary structures (latest monthly salary per teacher)
+    const salStructR = await db.execute({ sql: 'SELECT teacherId, monthlySalary FROM teacher_salaries WHERE instituteId = ?', args: [instituteId] });
+    const salaryStruct = salStructR.rows;
+
+    // 6. All students (count + class distribution)
+    const stuR = await db.execute({ sql: 'SELECT id, name, class, section, branchId, status, blocked FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'student'] });
+    const students = stuR.rows;
+
+    // ===== Compute KPIs =====
+    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const monthlySalaryExpense = teachers.reduce((sum, t) => {
+      const ss = salaryStruct.find(s => s.teacherId === t.id);
+      return sum + (ss ? Number(ss.monthlySalary) || 0 : 0);
+    }, 0);
+    const netBalance = totalRevenue - totalSalaryPaid;
+
+    // ===== Monthly revenue (last 12 months) =====
+    const now = new Date();
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
+      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+      months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
+    }
+
+    // ===== Yearly revenue (last 5 years) =====
+    const currentYear = now.getFullYear();
+    const years = [];
+    for (let y = currentYear - 4; y <= currentYear; y++) {
+      const yearInv = invoices.filter(inv => inv.year === y && inv.status === 'Paid');
+      const revenue = yearInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const yearSal = salaries.filter(sal => sal.year === y);
+      const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+      years.push({ year: y, revenue, salary, net: revenue - salary });
+    }
+
+    // ===== Branch performance =====
+    const branchPerformance = await Promise.all(branches.map(async (br) => {
+      const brInv = invoices.filter(i => i.branchId === br.id);
+      const brRevenue = brInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+      const brPending = brInv.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const brSal = salaries.filter(s => s.branchId === br.id).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      // Get fresh student/teacher counts
+      const stuCount = students.filter(s => s.branchId === br.id).length;
+      const tchCount = teachers.filter(t => t.branchId === br.id).length;
+      return {
+        id: br.id,
+        name: br.name,
+        city: br.city || '',
+        manager: br.manager || '—',
+        status: br.blocked === 1 ? 'Blocked' : (br.status || 'Active'),
+        students: stuCount,
+        teachers: tchCount,
+        revenue: brRevenue,
+        pendingFees: brPending,
+        salaryPaid: brSal,
+        net: brRevenue - brSal,
+        invoices: brInv.length,
+      };
+    }));
+
+    // ===== Recent transactions (last 10) =====
+    const recentPaidInvoices = invoices
+      .filter(i => i.status === 'Paid')
+      .slice(0, 10)
+      .map(i => ({
+        id: i.id,
+        type: 'Fee Payment',
+        date: i.paidDate || i.createdAt,
+        party: i.studentName || 'Student',
+        branchId: i.branchId,
+        amount: Number(i.paidAmount) || 0,
+        method: i.paymentMethod || 'Cash',
+        status: 'Paid',
+      }));
+    const recentSalaries = salaries
+      .slice(0, 10)
+      .map(s => ({
+        id: s.id,
+        type: 'Salary Payout',
+        date: s.paidDate || s.createdAt,
+        party: s.teacherName || 'Teacher',
+        branchId: s.branchId,
+        amount: Number(s.amount) || 0,
+        method: s.paymentMethod || 'Bank Transfer',
+        status: s.status || 'Paid',
+      }));
+    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 12);
+
+    // ===== Class distribution (for students analytics) =====
+    const classMap = {};
+    for (const s of students) {
+      const c = s.class || 'Unassigned';
+      if (!classMap[c]) classMap[c] = { class: c, students: 0, paid: 0, pending: 0 };
+      classMap[c].students++;
+      const sInv = invoices.filter(i => i.studentId === s.id);
+      classMap[c].paid += sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+      classMap[c].pending += sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    }
+    const classDistribution = Object.values(classMap).sort((a, b) => b.students - a.students);
+
+    // ===== Per-student fee summary =====
+    const studentFeeSummary = students.map(s => {
+      const sInv = invoices.filter(i => i.studentId === s.id);
+      const paid = sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+      const pending = sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+      const branch = branches.find(b => b.id === s.branchId);
+      return {
+        id: s.id,
+        name: s.name,
+        class: s.class || '—',
+        section: s.section || 'A',
+        branch: branch?.name || '—',
+        branchId: s.branchId,
+        status: s.blocked === 1 ? 'Blocked' : (s.status || 'Active'),
+        invoices: sInv.length,
+        paid,
+        pending,
+        total: paid + pending,
+      };
+    }).sort((a, b) => b.pending - a.pending);
+
+    // ===== Per-teacher salary summary =====
+    const teacherSalarySummary = teachers.map(t => {
+      const ss = salaryStruct.find(s => s.teacherId === t.id);
+      const monthlySalary = ss ? Number(ss.monthlySalary) || 0 : 0;
+      const tPayments = salaries.filter(p => p.teacherId === t.id);
+      const totalPaid = tPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      const lastPayment = tPayments[0];
+      const branch = branches.find(b => b.id === t.branchId);
+      return {
+        id: t.id,
+        name: t.name,
+        email: t.email || '—',
+        branch: branch?.name || '—',
+        branchId: t.branchId,
+        status: t.blocked === 1 ? 'Blocked' : (t.status || 'Active'),
+        monthlySalary,
+        totalPaid,
+        lastPaidDate: lastPayment?.paidDate || null,
+        paymentsCount: tPayments.length,
+      };
+    }).sort((a, b) => b.monthlySalary - a.monthlySalary);
+
+    res.json({
+      kpi: {
+        branches: branches.length,
+        students: students.length,
+        teachers: teachers.length,
+        totalRevenue,
+        pendingFees,
+        totalSalaryPaid,
+        monthlySalaryExpense,
+        netBalance,
+        totalInvoices: invoices.length,
+        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+      },
+      monthlyRevenue: months,
+      yearlyRevenue: years,
+      branchPerformance,
+      recentTransactions,
+      classDistribution,
+      studentFeeSummary,
+      teacherSalarySummary,
+    });
+  } catch (e) {
+    console.error('Institute finance error:', e);
+    res.status(500).json({ error: 'Failed to load finance data: ' + e.message });
+  }
+});
+
+// ===================== TEACHER SALARIES =====================
+// Set / update a teacher's monthly salary
+app.post('/api/salaries', requireAuth, requireRole('institute-admin', 'branch-manager'), async (req, res) => {
+  const { teacherId, monthlySalary, effectiveFrom } = req.body || {};
+  if (!teacherId || monthlySalary === undefined) return res.status(400).json({ error: 'teacherId and monthlySalary required' });
+  // Look up the teacher
+  const tchR = await db.execute({ sql: 'SELECT id, instituteId, branchId FROM users WHERE id = ? AND role = ?', args: [teacherId, 'teacher'] });
+  if (tchR.rows.length === 0) return res.status(404).json({ error: 'Teacher not found' });
+  const t = tchR.rows[0];
+  // Authorization: institute admin can only set salaries for teachers in their institute; branch manager only for their branch
+  if (req.user.role === 'institute-admin' && t.instituteId !== req.user.instituteId) {
+    return res.status(403).json({ error: 'Not authorized to set salary for this teacher' });
+  }
+  if (req.user.role === 'branch-manager' && t.branchId !== req.user.branchId) {
+    return res.status(403).json({ error: 'Not authorized to set salary for this teacher' });
+  }
+  // Upsert: if a salary record exists, update it; otherwise insert
+  const existing = await db.execute({ sql: 'SELECT id FROM teacher_salaries WHERE teacherId = ?', args: [teacherId] });
+  const effDate = effectiveFrom || new Date().toISOString().slice(0, 10);
+  if (existing.rows.length > 0) {
+    await db.execute({ sql: 'UPDATE teacher_salaries SET monthlySalary = ?, effectiveFrom = ? WHERE id = ?', args: [Number(monthlySalary), effDate, existing.rows[0].id] });
+    res.json({ success: true, updated: true });
+  } else {
+    const id = nextId('TS');
+    await db.execute({
+      sql: 'INSERT INTO teacher_salaries (id, teacherId, instituteId, branchId, monthlySalary, effectiveFrom) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [id, teacherId, t.instituteId, t.branchId, Number(monthlySalary), effDate],
+    });
+    res.status(201).json({ success: true, id });
+  }
+});
+
+// Record a salary payment (pay a teacher for a month)
+app.post('/api/salaries/pay', requireAuth, requireRole('institute-admin', 'branch-manager'), async (req, res) => {
+  const { teacherId, month, year, amount, paymentMethod, notes } = req.body || {};
+  if (!teacherId || !month || !year || amount === undefined) return res.status(400).json({ error: 'teacherId, month, year and amount required' });
+  const tchR = await db.execute({ sql: 'SELECT id, name, instituteId, branchId FROM users WHERE id = ? AND role = ?', args: [teacherId, 'teacher'] });
+  if (tchR.rows.length === 0) return res.status(404).json({ error: 'Teacher not found' });
+  const t = tchR.rows[0];
+  if (req.user.role === 'institute-admin' && t.instituteId !== req.user.instituteId) {
+    return res.status(403).json({ error: 'Not authorized to pay this teacher' });
+  }
+  if (req.user.role === 'branch-manager' && t.branchId !== req.user.branchId) {
+    return res.status(403).json({ error: 'Not authorized to pay this teacher' });
+  }
+  const id = nextId('SAL');
+  const paidDate = new Date().toISOString().slice(0, 10);
+  await db.execute({
+    sql: `INSERT INTO salary_payments (id, teacherId, teacherName, instituteId, branchId, month, year, amount, status, paidDate, paymentMethod, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, teacherId, t.name, t.instituteId, t.branchId, month, year, Number(amount), 'Paid', paidDate, paymentMethod || 'Bank Transfer', notes || ''],
+  });
+  res.status(201).json({ success: true, id, paidDate });
+});
+
+// List salary payments (filterable by instituteId / branchId / teacherId)
+app.get('/api/salaries', requireAuth, async (req, res) => {
+  const { instituteId, branchId, teacherId } = req.query;
+  let sql = 'SELECT * FROM salary_payments WHERE 1=1';
+  const args = [];
+  if (teacherId) { sql += ' AND teacherId = ?'; args.push(teacherId); }
+  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  sql += ' ORDER BY createdAt DESC LIMIT 200';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
 });
 
 // ===================== ATTENDANCE =====================

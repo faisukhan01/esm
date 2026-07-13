@@ -207,7 +207,13 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
       toast({ title: 'Password updated', description: 'You can now continue to your portal.' });
       onSuccess();
     } catch (err: any) {
-      const msg = err.message.includes('401') ? 'Current password is incorrect' : err.message;
+      const raw = err.message || '';
+      let msg = raw;
+      if (raw.includes('401') || raw.toLowerCase().includes('current password') || raw.toLowerCase().includes('incorrect')) {
+        msg = 'The current password you entered is incorrect. Please try again.';
+      } else if (raw.toLowerCase().includes('short')) {
+        msg = 'New password must be at least 4 characters.';
+      }
       toast({ title: 'Could not update password', description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -350,12 +356,12 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       setView('portal');
     } catch (err: any) {
       const msg = err.message || 'Sign in failed';
-      if (msg.includes('blocked') || msg.includes('Blocked')) {
+      if (msg.includes('locked') || msg.includes('Too many') || msg.includes('429')) {
+        toast({ title: 'Account Locked', description: msg, variant: 'destructive' });
+      } else if (msg.includes('Invalid') || msg.includes('401')) {
+        toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
+      } else if (msg.includes('blocked') || msg.includes('Blocked')) {
         toast({ title: 'Access Blocked', description: 'Your access has been blocked by your administration. Please contact your administrator.', variant: 'destructive' });
-      } else if (msg.includes('429') || msg.includes('locked') || msg.includes('Too many')) {
-        toast({ title: 'Account Locked', description: 'Too many failed attempts. Please try again later.', variant: 'destructive' });
-      } else if (msg.includes('401') || msg.includes('Invalid')) {
-        toast({ title: 'Sign in failed', description: 'Invalid credentials. Please check your email/ID and password.', variant: 'destructive' });
       } else {
         toast({ title: 'Sign in failed', description: msg, variant: 'destructive' });
       }

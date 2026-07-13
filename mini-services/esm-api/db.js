@@ -244,6 +244,36 @@ export async function initDB() {
       challanNo TEXT,
       createdAt TEXT DEFAULT (datetime('now'))
     )`,
+
+    // Teacher salaries — monthly salary structure per teacher (set by Institute Admin / Branch Manager)
+    `CREATE TABLE IF NOT EXISTS teacher_salaries (
+      id TEXT PRIMARY KEY,
+      teacherId TEXT NOT NULL,
+      instituteId TEXT,
+      branchId TEXT,
+      monthlySalary REAL NOT NULL DEFAULT 0,
+      effectiveFrom TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (teacherId) REFERENCES users(id)
+    )`,
+
+    // Salary payments — actual monthly payouts (recorded when salary is paid)
+    `CREATE TABLE IF NOT EXISTS salary_payments (
+      id TEXT PRIMARY KEY,
+      teacherId TEXT NOT NULL,
+      teacherName TEXT,
+      instituteId TEXT,
+      branchId TEXT,
+      month TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      amount REAL NOT NULL,
+      status TEXT DEFAULT 'Paid',
+      paidDate TEXT,
+      paymentMethod TEXT DEFAULT 'Bank Transfer',
+      notes TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (teacherId) REFERENCES users(id)
+    )`,
   ];
 
   for (const sql of statements) {

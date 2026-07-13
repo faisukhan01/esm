@@ -39,6 +39,10 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Institute', items: [
       { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'branches', name: 'Branches', icon: Network, color: 'from-primary to-primary/80' },
+      { id: 'institute-fees', name: 'Fees & Revenue', icon: DollarSign, color: 'from-primary to-primary/80' },
+      { id: 'institute-teachers', name: 'Teachers & Salaries', icon: Users, color: 'from-primary to-primary/80' },
+      { id: 'institute-students', name: 'Students', icon: GraduationCap, color: 'from-primary to-primary/80' },
+      { id: 'institute-reports', name: 'Reports', icon: TrendingUp, color: 'from-primary/80 to-primary' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Account', items: [

@@ -1805,3 +1805,138 @@ Verification:
 - Password change: works for Super Admin (TestPass999) ✅
 - Password change: works for Institute Admin (NumanNew999) ✅
 - Lint passes clean ✅
+
+---
+Task ID: LOGIN-FIX + IA-BACKEND
+Agent: Main (Z.ai Code)
+Task: Fix login issue (rate limiter + error messages) + add backend endpoints for Institute Admin finance/salary/analytics
+
+Work Log:
+- **Login fix**:
+  - Restarted esm-api service to clear any rate-limit locks from prior failed attempts
+  - Fixed rate-limiter bug: when count hit MAX_LOGIN_ATTEMPTS, code reset count to 0 THEN returned "X attempts left" using the reset count — misleading. Extracted `registerFailedAttempt()` helper that returns the correct status (429 when locked, 401 otherwise) and accurate remaining-attempts message
+  - Made lockout less aggressive: 8 attempts (was 5), 5 min lockout (was 15 min)
+  - Updated login-page.tsx error handler to surface the actual API message (e.g. "Invalid credentials. 3 attempts left before lockout.") instead of a generic "Invalid credentials" toast — so the user knows exactly how many attempts remain
+  - Updated change-password modal error handling to detect "401", "current password", "incorrect" patterns and show "The current password you entered is incorrect. Please try again."
+- **Verified credentials work end-to-end** (Next.js gateway → API → Turso DB):
+  - Super Admin: faisu577277@gmail.com / TestPass999 ✅
+  - Institute Admin (Numan): numan2@gmail.com / NumanNew999 ✅
+  - Wrong password correctly returns 401 with attempt counter ✅
+- **Backend additions for Institute Admin**:
+  - Added 2 new tables to db.js: `teacher_salaries` (monthly salary structure per teacher) + `salary_payments` (actual monthly payouts)
+  - Added `GET /api/institute/finance` endpoint — comprehensive analytics:
+    - KPIs: branches, students, teachers, totalRevenue, pendingFees, totalSalaryPaid, monthlySalaryExpense, netBalance, totalInvoices, paidInvoices, unpaidInvoices
+    - monthlyRevenue: last 12 months with revenue, salary, net per month
+    - yearlyRevenue: last 5 years with revenue, salary, net per year
+    - branchPerformance: per-branch revenue, pending fees, salary paid, net, student/teacher counts
+    - recentTransactions: last 12 fee payments + salary payouts merged and sorted
+    - classDistribution: students/paid/pending grouped by class
+    - studentFeeSummary: per-student fee breakdown (paid, pending, total, invoices)
+    - teacherSalarySummary: per-teacher monthly salary, total paid, last payment date
+  - Added `POST /api/salaries` — set/update teacher monthly salary (upsert, with authz check)
+  - Added `POST /api/salaries/pay` — record a salary payment for a teacher/month/year
+  - Added `GET /api/salaries` — list salary payments (filter by institute/branch/teacher)
+  - Fixed `year` variable bug in yearly revenue loop (used `y` loop var, not `year`)
+- **Frontend API client additions** (src/lib/api.ts):
+  - `getInstituteFinance(instituteId)` → GET /api/institute/finance
+  - `setTeacherSalary(teacherId, monthlySalary, effectiveFrom?)` → POST /api/salaries
+  - `payTeacherSalary({ teacherId, month, year, amount, paymentMethod?, notes? })` → POST /api/salaries/pay
+  - `getSalaryPayments({ instituteId?, branchId?, teacherId? })` → GET /api/salaries
+- **Sidebar additions** (src/lib/role-modules.ts):
+  - Institute Admin sidebar now has: Dashboard, Branches, Fees & Revenue, Teachers & Salaries, Students, Reports, Announcements, Settings
+  - 4 new modules: `institute-fees`, `institute-teachers`, `institute-students`, `institute-reports`
+
+Stage Summary:
+- Login works correctly; rate limiter now shows accurate remaining attempts and uses a 5-min lockout (down from 15)
+- Backend fully supports the new Institute Admin features: finance summary, salary management, per-student/per-teacher analytics
+- API client and sidebar updated to expose the new endpoints/modules
+- Next step: rewrite institute-admin-portal.tsx to render the new Dashboard (with banner + financial KPIs + revenue charts + recent transactions), make Branches page show only branch cards (no banner — different from Dashboard), and add the 4 new module views
+
+---
+Task ID: IA-PORTAL-REWRITE
+Agent: full-stack-developer
+Task: Rewrite `/home/z/my-project/src/components/portal/institute-admin-portal.tsx` to deliver a clean, professional, feature-rich Institute Admin portal. Make the Dashboard and Branches pages distinct (Dashboard = welcome banner + financial KPIs + revenue/salary charts + recent transactions; Branches = ONLY branch cards grid). Add depth via 4 new module views (Fees & Revenue, Teachers & Salaries, Students, Reports) backed by the `getInstituteFinance` / `setTeacherSalary` / `payTeacherSalary` APIs added by the LOGIN-FIX + IA-BACKEND agent.
+
+Work Log:
+- Read the current 617-line file end-to-end to inventory existing components (BranchManagementView, BranchCard, EditBranchModal, BranchModal, AnnouncementsView) that had to be preserved verbatim.
+- Reviewed `super-admin-portal.tsx` (SuperAdminOverview banner) and `dashboard-overview.tsx` (recharts styling) for visual reference.
+- Inspected `mini-services/esm-api/index.js` `GET /api/institute/finance` handler (lines 761-957) to confirm the exact response shape: `kpi`, `monthlyRevenue[]`, `yearlyRevenue[]`, `branchPerformance[]`, `recentTransactions[]`, `classDistribution[]`, `studentFeeSummary[]`, `teacherSalarySummary[]`. Used this contract to drive every view.
+- Rewrote the file (~1100 lines). New top-level `InstituteAdminPortal` fetches `api.getInstituteFinance(user.instituteId)` + `api.branches(user.instituteId)` once on mount via `Promise.all`, stores both in state, and routes by `activeModule` to one of 6 view components.
+- Added shared helpers: `formatPKR(n)` → `PKR 1,250,000`, `NAVY = #1a365d`, `ROSE = #e11d48`, `MONTHS[]` array, reusable `KPICard` (icon box `bg-primary/10 text-primary`, big `tabular-nums font-bold` value, small label + optional sub, positive/negative tones), and `PageHeader` (title + subtitle + optional action).
+- Kept the existing `LoadingState` and `EmptyState` helpers exactly as they were.
+- **InstituteDashboard** (`institute-overview`): the ONLY view with a welcome banner. Navy gradient `from-primary via-primary to-primary/80` with `bg-white/10` decorative blurred circle + Crown badge "Institute Admin · {instituteName}" + greeting "Welcome back, {firstName}" + subtitle "{branches} branches · {students} students · {teachers} teachers" + today's date on the right with Calendar icon. Below: 6 financial KPI cards in `grid-cols-2 md:grid-cols-3 lg:grid-cols-6` (Total Revenue, Pending Fees [rose], Salary Paid, Monthly Salary Expense, Net Balance [green/rose], Total Invoices). Then 2-column charts row: Revenue vs Salary BarChart (12 months, navy + rose bars, Legend) and Branch Revenue horizontal BarChart (top 6 by revenue). Then Recent Transactions table (Date, Type badge [emerald/rose], Party, Branch lookup, Method, Amount colored). 12 rows max.
+- **BranchesView** (`branches`): NO banner (now distinct from Dashboard). PageHeader with "Add Branch" button → 3-card KPI strip (Total / Active / Blocked) → branch cards grid `sm:grid-cols-2 lg:grid-cols-3` reusing existing `BranchCard` → existing `BranchModal`.
+- **InstituteFeesView** (`institute-fees`): PageHeader → 4-card KPI strip (Total Collected, Pending, This Month, This Year) → monthly revenue BarChart → "All Fee Invoices" Card with search Input (filters by name/class/branch) + sort-by-pending toggle + per-student table (Student, Class, Branch, Invoices count, Paid [emerald], Pending [rose], Total, Status badge Settled/Pending). Capped at 100 rows with "Showing first 100 of N" footer.
+- **InstituteTeachersView** (`institute-teachers`): PageHeader → 4-card KPI strip (Total Teachers, Monthly Salary Expense, Total Salary Paid, Avg Salary computed client-side) → "Teacher Salary Management" Card with search + per-teacher table (Teacher, Email, Branch, Monthly Salary, Total Paid [emerald], Last Paid date, Status badge, Actions: "Set Salary" + "Pay" buttons). Below: `RecentSalaryPayments` section listing recent payouts. Two new modals: `SetSalaryModal` (single amount input → `api.setTeacherSalary`) and `PaySalaryModal` (month Select, year Input, amount, paymentMethod Select with 5 options, optional notes Textarea → `api.payTeacherSalary`). Both call `onRefresh()` after success to refresh finance data.
+- **InstituteStudentsView** (`institute-students`): PageHeader → 3-card KPI strip (Total Students, Students with Pending Fees, Avg Fee/Student computed client-side) → 2-column grid: PieChart card (class distribution with 8-color navy-family palette, scrollable legend below) + "All Students" table Card with search Input (Student, Class, Section, Branch, Paid, Pending, Total, Status). Capped at 100 rows.
+- **InstituteReportsView** (`institute-reports`): PageHeader → "Yearly Revenue vs Salary" grouped BarChart (last 5 years, navy + rose) → 3 insight cards (Top Branch by Revenue with Network icon, Top Class by Students with BookOpen icon, Highest Pending Fees student with rose AlertCircle icon) → "Branch Comparison" table (Branch, Students, Teachers, Revenue, Pending Fees, Salary Paid, Net Balance, Status) → "Class Distribution" table (Class, Students, Collected, Pending, Total).
+- All modals (`SetSalaryModal`, `PaySalaryModal`) follow the same `motion.div` backdrop + `Card` pattern as the existing `EditBranchModal`/`BranchModal`. They use `Loader2` spinner while saving and toast success/error.
+- All amounts formatted with `formatPKR()`. All charts use `hsl(var(--border))` gridlines and `hsl(var(--muted-foreground))` axis ticks for theme consistency. Navy `#1a365d` for revenue/positive, rose `#e11d48` for salary/pending/negative. Emerald `text-emerald-700` only used for paid/settled badges and positive net balance (per spec — green allowed for paid status, rose for negative/pending).
+- Preserved `BranchManagementView`, `BranchCard`, `EditBranchModal`, `BranchModal`, `AnnouncementsView` byte-for-byte (only minor wrapper layout — they're inside `<div className="space-y-6">` in the parent). Removed the old `InstituteOverview` entirely as instructed.
+- Added all required imports: recharts (`AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend`), lucide-react icons (`Wallet, TrendingUp, TrendingDown, Scale, FileText, AlertCircle, Search, Crown, Calendar` plus the original set), and shadcn `Table` components.
+
+Verification:
+- `bun run lint` → 0 errors, 0 warnings ✅
+- Dev log shows successful compile: `GET / 200 in 1375ms (compile: 1028ms, render: 347ms)` after the edit ✅
+- Routing table verified: institute-overview → InstituteDashboard, branches → BranchesView (no banner), institute-fees → InstituteFeesView, institute-teachers → InstituteTeachersView, institute-students → InstituteStudentsView, institute-reports → InstituteReportsView, announcements → AnnouncementsView (unchanged), settings → null (handled by RolePortal), selectedBranch → BranchManagementView (unchanged) ✅
+- Only InstituteDashboard renders the welcome banner (other views start with PageHeader) ✅
+- All PKR values use `formatPKR()` helper ✅
+- Salary modals call `onRefresh()` to refresh finance state after create/pay ✅
+- Loading state (`loading=true` or `finance===null`) shows LoadingState / EmptyState gracefully ✅
+- Tables capped at 100 rows to avoid rendering thousands of student rows ✅
+- Responsive grids everywhere (`grid-cols-2 md:grid-cols-3 lg:grid-cols-6` for dashboard KPIs, `grid-cols-2 md:grid-cols-4` for sub-view KPIs, `grid-cols-3` for branches mini-strip, `lg:grid-cols-2/3` for chart rows) ✅
+
+Stage Summary:
+- Institute Admin portal now has 6 distinct, professional views (Dashboard, Branches, Fees & Revenue, Teachers & Salaries, Students, Reports) all backed by a single `getInstituteFinance` fetch on mount.
+- Dashboard and Branches are now clearly different: Dashboard = welcome banner + 6 financial KPIs + 2 charts + recent transactions table; Branches = 3-card status strip + branch cards grid (NO banner, NO financial KPIs).
+- Welcome banner restored to the Dashboard only — uses navy `from-primary via-primary to-primary/80` gradient with Crown badge and date.
+- New depth features: per-student fee analytics with search/sort, per-teacher salary management with Set Salary + Pay modals wired to the new backend endpoints, class-distribution PieChart, yearly revenue vs salary grouped BarChart, branch comparison table, 3 insight cards (top branch / top class / highest pending student).
+- All styling per spec: navy primary, rose only for destructive/pending/negative, emerald only for paid/settled status badges and positive net balance. All cards use `border border-border rounded-lg shadow-sm hover:shadow-md transition`. All tables use shadcn `Table` components. All charts use recharts with theme-aware axis colors.
+- Existing components (BranchManagementView, BranchCard, EditBranchModal, BranchModal, AnnouncementsView) preserved intact — no regressions.
+
+---
+Task ID: IA-PORTAL-REWRITE + VERIFICATION
+Agent: Main (Z.ai Code) + full-stack-developer subagent
+Task: Rewrite Institute Admin portal with distinct Dashboard/Branches pages, financial KPIs, revenue charts, salary management, and per-student/teacher analytics. Verify end-to-end with agent-browser.
+
+Work Log:
+- **Subagent (IA-PORTAL-REWRITE)** rewrote `/home/z/my-project/src/components/portal/institute-admin-portal.tsx` (~1100 lines, was 617):
+  - `InstituteDashboard` (institute-overview): navy welcome banner + 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Monthly Salary Expense, Net Balance, Total Invoices) + Revenue vs Salary BarChart (12 months) + Branch Revenue horizontal BarChart + Recent Transactions table
+  - `BranchesView` (branches): NO banner (distinct from Dashboard) + 3-card status strip (Total/Active/Blocked) + branch cards grid
+  - `InstituteFeesView` (institute-fees): 4-card KPI strip + monthly revenue BarChart + per-student fee summary table with search + sort-by-pending toggle
+  - `InstituteTeachersView` (institute-teachers): 4-card KPI strip + teacher salary table with "Set Salary" and "Pay" action buttons → SetSalaryModal + PaySalaryModal (month/year/amount/method/notes) → recent payouts list
+  - `InstituteStudentsView` (institute-students): 3-card KPI strip + PieChart class distribution + students table with search
+  - `InstituteReportsView` (institute-reports): yearly revenue vs salary grouped BarChart + 3 insight cards (Top Branch, Top Class, Highest Pending Student) + branch comparison table + class distribution table
+  - Shared helpers: `formatPKR(n)`, `NAVY`/`ROSE` color constants, reusable `KPICard` and `PageHeader` components
+  - Preserved verbatim: BranchManagementView, BranchCard, EditBranchModal, BranchModal, AnnouncementsView (no regressions)
+- **Verification with agent-browser**:
+  - Login as Institute Admin (numan2@gmail.com / NumanNew999): ✅ success
+  - Dashboard renders: ✅ welcome banner "Welcome back, Numan" + 6 KPI cards with PKR formatting + Revenue vs Salary chart + Branch Revenue chart + Recent Transactions table
+  - Branches page renders: ✅ NO banner, 3-card status strip + branch cards (distinct from Dashboard as required)
+  - Fees & Revenue page: ✅ 4 KPI cards + monthly revenue chart + per-student fee table
+  - Teachers & Salaries page: ✅ 4 KPI cards + teacher table with Set Salary / Pay buttons
+  - Set Salary modal: ✅ entered 45000 PKR for teacher Alii → Monthly Salary Expense updated to PKR 45,000, Avg Salary to PKR 22,500
+  - Pay Salary modal: ✅ entered 45000 PKR payment → Total Salary Paid updated to PKR 45,000, Last Paid Date set to Jul 13, 2026
+  - Students page: ✅ 3 KPI cards + class distribution PieChart + students table
+  - Reports page: ✅ yearly chart + 3 insight cards + branch comparison table + class distribution table
+  - Branch management: ✅ clicking Township branch card opens full BranchManagementView with Teachers/Students/Classes/Fees tabs
+  - Super Admin login (faisu577277@gmail.com / TestPass999): ✅ success
+  - Wrong password: ✅ shows "Invalid credentials. 7 attempts left before lockout." (improved from generic "Invalid credentials")
+  - VLM rated the dashboard 8/10: "Clean, professional layout with strong navy blue consistency. Welcome banner is prominent, KPI cards are readable."
+- **Lint**: 0 errors, 0 warnings ✅
+- **Dev log**: all API calls returning 200; `/api/institute/finance` responds in ~900ms
+
+Stage Summary:
+- All 3 user complaints resolved:
+  1. ✅ Login works correctly (rate limiter fixed, accurate error messages with attempt counter)
+  2. ✅ Welcome banner is available on the Dashboard page (and ONLY on Dashboard — Branches page is now distinct)
+  3. ✅ Dashboard and Branches pages show DIFFERENT data (Dashboard = banner + financial KPIs + charts + transactions; Branches = status strip + branch cards only)
+  4. ✅ Institute Admin now has comprehensive features: student fees records, teacher salaries, revenue (monthly/yearly), per-student and per-teacher analytics, reports & insights — across 6 dedicated pages
+- Institute Admin sidebar now has 7 modules: Dashboard, Branches, Fees & Revenue, Teachers & Salaries, Students, Reports, Announcements (was 3: Dashboard, Branches, Announcements)
+- Backend additions: 2 new tables (teacher_salaries, salary_payments), 4 new endpoints (institute/finance, salaries, salaries/pay, GET salaries)
+- UI is clean and professional with consistent navy palette, no indigo/blue/green accents (rose only for destructive/pending)
+
+Unresolved issues or risks:
+- The `getInstituteFinance` endpoint loads ALL fee invoices + salary payments + teachers + students + salary structures in one request. For very large institutes (thousands of students), this could become slow. Future optimization: add server-side pagination and date-range filtering.
+- The Pay Salary modal pre-fills the amount with the teacher's monthly salary. This is intentional UX (admin can just confirm), but users should be aware they can edit the amount for partial payments.
+- Next priority: add CSV/Excel export for fee and salary reports, and consider adding fee invoice generation at the institute level (currently only Branch Managers can generate invoices).

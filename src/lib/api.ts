@@ -230,4 +230,18 @@ export const api = {
   markInvoicePaid: (id: string, paidAmount?: number, paymentMethod?: string) =>
     request<any>(`fee-invoices/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ paidAmount, paymentMethod }) }),
   getChallanData: (id: string) => request<any>(`fee-invoices/${id}/challan`),
+  // Institute-level finance & analytics (Institute Admin)
+  getInstituteFinance: (instituteId: string) => request<any>(`institute/finance?instituteId=${instituteId}`),
+  // Teacher salaries
+  setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
+    request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),
+  payTeacherSalary: (body: { teacherId: string; month: string; year: number; amount: number; paymentMethod?: string; notes?: string }) =>
+    request<any>('salaries/pay', { method: 'POST', body: JSON.stringify(body) }),
+  getSalaryPayments: (params?: { instituteId?: string; branchId?: string; teacherId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    return request<any[]>(q.toString() ? `salaries?${q.toString()}` : 'salaries');
+  },
 };
