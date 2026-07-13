@@ -223,7 +223,7 @@
 /* ===== Animated Login Page Styles (from uploaded design) ===== */
 
 .login-bg {
-  background: linear-gradient(135deg, #064e3b 0%, #065f46 30%, #0a1a14 70%, #064e3b 100%);
+  background: linear-gradient(135deg, #0f1e3a 0%, #1a365d 50%, #0f1e3a 100%);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -353,8 +353,8 @@
 }
 
 .login-input:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  border-color: #1e3a5f;
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.15);
 }
 
 .floating-label {
@@ -373,14 +373,14 @@
   top: 0;
   transform: translateY(-50%);
   font-size: 0.75rem;
-  color: #10b981;
+  color: #1e3a5f;
   background: white;
   padding: 0 6px;
   left: 12px;
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #163150 100%);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -388,7 +388,7 @@
 
 .btn-gradient:hover {
   transform: scale(1.02);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 8px 25px rgba(30, 58, 95, 0.4);
 }
 
 .btn-gradient:active {
@@ -422,7 +422,7 @@
 }
 
 .cover-gradient {
-  background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #065f46 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #1a365d 100%);
 }
 
 .social-btn {
@@ -475,11 +475,11 @@
 }
 
 .eye-toggle:hover {
-  color: #f59e0b;
+  color: #1e3a5f;
 }
 
 .custom-checkbox {
-  accent-color: #10b981;
+  accent-color: #1e3a5f;
 }
 
 @keyframes deskGlow {
@@ -493,8 +493,8 @@
 
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.3); border-radius: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.5); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(30, 58, 95, 0.3); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(30, 58, 95, 0.5); }
 
 /* Role selector pills for login */
 .role-pill {

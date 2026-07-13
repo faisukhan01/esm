@@ -1,0 +1,1078 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Input } from '@/components/ui/input';
+    10→import { Label } from '@/components/ui/label';
+    11→import { Textarea } from '@/components/ui/textarea';
+    12→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    13→import {
+    14→  Building2, Users, Network, Plus, Crown, MapPin, CheckCircle2,
+    15→  Sparkles, Server, Building, Lock, Unlock, Edit, Megaphone, Send,
+    16→  ChevronDown, ChevronRight, UserCog, Mail, Settings, ShieldCheck, Palette, Loader2,
+    17→  Trash2, X,
+    18→} from 'lucide-react';
+    19→import { toast } from '@/hooks/use-toast';
+    20→
+    21→// ---------- Main router ----------
+    22→export function SuperAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    23→  // Top-level data shared across the dashboard and institutes pages
+    24→  const [overview, setOverview] = useState<any>(null);
+    25→  const [institutes, setInstitutes] = useState<any[]>([]);
+    26→  const [overviewLoading, setOverviewLoading] = useState(true);
+    27→  const [institutesLoading, setInstitutesLoading] = useState(true);
+    28→  const [showAdd, setShowAdd] = useState(false);
+    29→
+    30→  // Loading state defaults to `true` (initial load). On later refreshes we keep the
+    31→  // previously-fetched data visible until the new data arrives, which is better UX than
+    32→  // flashing a spinner on every refresh. We therefore only ever flip loading → false here.
+    33→  const refreshOverview = () => {
+    34→    api.platformOverview()
+    35→      .then(setOverview)
+    36→      .catch(() => {})
+    37→      .finally(() => setOverviewLoading(false));
+    38→  };
+    39→  const refreshInstitutes = () => {
+    40→    api.institutes()
+    41→      .then(setInstitutes)
+    42→      .catch(() => {})
+    43→      .finally(() => setInstitutesLoading(false));
+    44→  };
+    45→
+    46→  useEffect(() => {
+    47→    refreshOverview();
+    48→    refreshInstitutes();
+    49→  }, []);
+    50→
+    51→  const refreshAll = () => { refreshOverview(); refreshInstitutes(); };
+    52→
+    53→  if (activeModule === 'institutes') {
+    54→    return (
+    55→      <InstitutesManager
+    56→        institutes={institutes}
+    57→        loading={institutesLoading}
+    58→        onRefresh={refreshAll}
+    59→        showAdd={showAdd}
+    60→        setShowAdd={setShowAdd}
+    61→      />
+    62→    );
+    63→  }
+    64→  if (activeModule === 'announcements') {
+    65→    return <AnnouncementsView user={user} institutes={institutes} institutesLoading={institutesLoading} />;
+    66→  }
+    67→  if (activeModule === 'config') {
+    68→    return <PlatformConfig overview={overview} loading={overviewLoading} />;
+    69→  }
+    70→  if (activeModule === 'branding') {
+    71→    return <BrandingPage />;
+    72→  }
+    73→  // Default: dashboard overview
+    74→  return (
+    75→    <PlatformOverview
+    76→      overview={overview}
+    77→      overviewLoading={overviewLoading}
+    78→      institutes={institutes}
+    79→      institutesLoading={institutesLoading}
+    80→      onAddInstitute={() => setShowAdd(true)}
+    81→      onRefreshAll={refreshAll}
+    82→      user={user}
+    83→      showAdd={showAdd}
+    84→      setShowAdd={setShowAdd}
+    85→    />
+    86→  );
+    87→}
+    88→
+    89→// ---------- Shared UI bits ----------
+    90→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+    91→  return (
+    92→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    93→      <div>
+    94→        <h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1>
+    95→        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+    96→      </div>
+    97→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+    98→    </div>
+    99→  );
+   100→}
+   101→
+   102→function EmptyState({ icon: Icon, title, desc, action }: any) {
+   103→  return (
+   104→    <Card className="p-10 text-center">
+   105→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4">
+   106→        <Icon className="h-7 w-7 text-muted-foreground" />
+   107→      </div>
+   108→      <h3 className="font-display font-bold text-lg">{title}</h3>
+   109→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   110→      {action && <div className="mt-5">{action}</div>}
+   111→    </Card>
+   112→  );
+   113→}
+   114→
+   115→function LoadingState({ label = 'Loading…', className = '' }: { label?: string; className?: string }) {
+   116→  return (
+   117→    <div className={`flex items-center justify-center gap-2.5 py-10 text-muted-foreground ${className}`}>
+   118→      <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+   119→      <span className="text-sm">{label}</span>
+   120→    </div>
+   121→  );
+   122→}
+   123→
+   124→function StatPill({ label, value, color = 'text-foreground' }: { label: string; value: React.ReactNode; color?: string }) {
+   125→  return (
+   126→    <div className="rounded-lg bg-muted/40 border border-border/60 px-3 py-2 text-center">
+   127→      <div className={`text-lg font-extrabold font-display ${color}`}>{value}</div>
+   128→      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
+   129→    </div>
+   130→  );
+   131→}
+   132→
+   133→// ---------- Dashboard overview (default landing for super admin) ----------
+   134→function PlatformOverview({
+   135→  overview, overviewLoading, institutes, institutesLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd,
+   136→}: any) {
+   137→  const cards = [
+   138→    { label: 'Institutions', value: overview?.institutes ?? 0, icon: Building2, color: 'from-amber-500 to-orange-600', sub: `${overview?.activeInstitutes ?? 0} active` },
+   139→    { label: 'Branches', value: overview?.branches ?? 0, icon: Network, color: 'from-emerald-500 to-emerald-700', sub: 'across all institutions' },
+   140→    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'from-teal-500 to-cyan-600', sub: 'platform-wide' },
+   141→    { label: 'Total Staff', value: overview?.totalStaff ?? 0, icon: UserCog, color: 'from-violet-500 to-purple-600', sub: 'teachers & managers' },
+   142→  ];
+   143→
+   144→  return (
+   145→    <div className="space-y-6">
+   146→      <motion.div
+   147→        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   148→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-600 via-orange-700 to-amber-900 p-6 sm:p-8 text-white"
+   149→      >
+   150→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-emerald-400/15 blur-3xl" />
+   151→        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+   152→          <div>
+   153→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
+   154→              <Crown className="h-3 w-3 text-amber-300" /> Super Admin · Platform Owner
+   155→            </div>
+   156→            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">
+   157→              Welcome back, {user?.name?.split(' ')[0] || 'Owner'} 👑
+   158→            </h1>
+   159→            <p className="text-amber-50/80 text-sm mt-1.5 max-w-lg">
+   160→              {overviewLoading ? 'Loading platform stats…' : (overview?.institutes ? `${overview.institutes} institutions onboarded.` : 'Provision your first institute to get started.')}
+   161→            </p>
+   162→          </div>
+   163→          <Button className="bg-white text-amber-800 hover:bg-amber-50" size="sm" onClick={onAddInstitute}>
+   164→            <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   165→          </Button>
+   166→        </div>
+   167→      </motion.div>
+   168→
+   169→      {/* KPI cards */}
+   170→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   171→        {overviewLoading ? (
+   172→          Array.from({ length: 4 }).map((_, i) => (
+   173→            <Card key={i} className="p-5">
+   174→              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
+   175→              <div className="mt-4 h-7 w-16 rounded bg-muted/60 animate-pulse" />
+   176→              <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
+   177→            </Card>
+   178→          ))
+   179→        ) : (
+   180→          cards.map((c, i) => (
+   181→            <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   182→              <Card className="p-5 hover:shadow-lg hover:-translate-y-0.5 transition relative overflow-hidden">
+   183→                <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   184→                <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md`}>
+   185→                  <c.icon className="h-5 w-5 text-white" />
+   186→                </div>
+   187→                <div className="mt-4">
+   188→                  <div className="text-2xl sm:text-3xl font-extrabold font-display">
+   189→                    {typeof c.value === 'number' ? c.value.toLocaleString() : c.value}
+   190→                  </div>
+   191→                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   192→                  <div className="text-[11px] text-muted-foreground mt-1">{c.sub}</div>
+   193→                </div>
+   194→              </Card>
+   195→            </motion.div>
+   196→          ))
+   197→        )}
+   198→      </div>
+   199→
+   200→      {/* Institutes section */}
+   201→      {institutesLoading ? (
+   202→        <Card className="p-5"><LoadingState label="Loading institutes…" /></Card>
+   203→      ) : institutes.length === 0 ? (
+   204→        <EmptyState
+   205→          icon={Building}
+   206→          title="No institutions yet"
+   207→          desc="Provision your first institute. You'll set the admin's email and password."
+   208→          action={
+   209→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAddInstitute}>
+   210→              <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   211→            </Button>
+   212→          }
+   213→        />
+   214→      ) : (
+   215→        <Card className="p-5">
+   216→          <div className="flex items-center justify-between mb-4">
+   217→            <div>
+   218→              <h3 className="font-bold text-base">Institutions</h3>
+   219→              <p className="text-xs text-muted-foreground">Click a card to expand & view branches</p>
+   220→            </div>
+   221→            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAddInstitute}>
+   222→              <Plus className="h-4 w-4 mr-1.5" /> Add Institute
+   223→            </Button>
+   224→          </div>
+   225→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   226→            {institutes.map((inst: any) => (
+   227→              <InstituteCard key={inst.id} inst={inst} onRefresh={onRefreshAll} />
+   228→            ))}
+   229→          </div>
+   230→        </Card>
+   231→      )}
+   232→
+   233→      {showAdd && (
+   234→        <ProvisionInstituteModal
+   235→          onClose={() => setShowAdd(false)}
+   236→          onSaved={() => { setShowAdd(false); onRefreshAll(); }}
+   237→        />
+   238→      )}
+   239→    </div>
+   240→  );
+   241→}
+   242→
+   243→// ---------- Institutes manager (dedicated page) ----------
+   244→function InstitutesManager({ institutes, loading, onRefresh, showAdd, setShowAdd }: any) {
+   245→  return (
+   246→    <div className="space-y-6">
+   247→      <ModuleHeader
+   248→        title="Institutes"
+   249→        subtitle="Provision institutions — click any card to expand and view branches"
+   250→        actions={
+   251→          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAdd(true)}>
+   252→            <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   253→          </Button>
+   254→        }
+   255→      />
+   256→      {loading ? (
+   257→        <Card className="p-5"><LoadingState label="Loading institutes…" /></Card>
+   258→      ) : institutes.length === 0 ? (
+   259→        <EmptyState
+   260→          icon={Building}
+   261→          title="No institutions yet"
+   262→          desc="Provision your first institute. You'll set the admin's email and password."
+   263→          action={
+   264→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAdd(true)}>
+   265→              <Plus className="h-4 w-4 mr-1.5" /> Provision Institute
+   266→            </Button>
+   267→          }
+   268→        />
+   269→      ) : (
+   270→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   271→          {institutes.map((inst: any) => (
+   272→            <InstituteCard key={inst.id} inst={inst} onRefresh={onRefresh} />
+   273→          ))}
+   274→        </div>
+   275→      )}
+   276→      {showAdd && (
+   277→        <ProvisionInstituteModal
+   278→          onClose={() => setShowAdd(false)}
+   279→          onSaved={() => { setShowAdd(false); onRefresh(); }}
+   280→        />
+   281→      )}
+   282→    </div>
+   283→  );
+   284→}
+   285→
+   286→// ---------- Institute card (opens modal popup on click) ----------
+   287→function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }) {
+   288→  const [showDetails, setShowDetails] = useState(false);
+   289→  const [showEdit, setShowEdit] = useState(false);
+   290→  const [showDelete, setShowDelete] = useState(false);
+   291→  const [blocked, setBlocked] = useState<boolean>(inst.blocked === 1 || inst.blocked === true);
+   292→
+   293→  const isBlocked = blocked || inst.status === 'Blocked';
+   294→  const statusLabel = isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active');
+   295→  const statusClass = isBlocked
+   296→    ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
+   297→    : inst.status === 'Trial'
+   298→      ? 'text-amber-600 bg-amber-500/10 border-amber-500/20'
+   299→      : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20';
+   300→
+   301→  const toggleBlock = async (e: React.MouseEvent) => {
+   302→    e.stopPropagation();
+   303→    try {
+   304→      await api.blockInstitute(inst.id, !blocked, !blocked ? 'Blocked by Super Admin' : '');
+   305→      setBlocked(!blocked);
+   306→      toast({
+   307→        title: blocked ? 'Institute unblocked' : 'Institute blocked',
+   308→        description: blocked ? 'Access restored to all branches & users' : 'All branches and users are now blocked (cascade)',
+   309→      });
+   310→      onRefresh();
+   311→    } catch (e: any) {
+   312→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   313→    }
+   314→  };
+   315→
+   316→  const handleDelete = async () => {
+   317→    try {
+   318→      await api.deleteInstitute(inst.id);
+   319→      toast({ title: 'Institute deleted', description: `${inst.name} and all its data have been removed.` });
+   320→      setShowDelete(false);
+   321→      onRefresh();
+   322→    } catch (e: any) {
+   323→      toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' });
+   324→    }
+   325→  };
+   326→
+   327→  const initials = (inst.short || inst.name || '').slice(0, 2).toUpperCase();
+   328→
+   329→  return (
+   330→    <>
+   331→      <Card
+   332→        className={`p-5 hover:shadow-lg transition relative cursor-pointer ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`}
+   333→        onClick={() => setShowDetails(true)}
+   334→      >
+   335→        <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+   336→        <div className="flex items-start justify-between">
+   337→          <div className="flex items-start gap-3 min-w-0">
+   338→            <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center shadow-md text-white font-display font-extrabold">
+   339→              {initials}
+   340→            </div>
+   341→            <div className="min-w-0">
+   342→              <h3 className="font-bold text-base truncate">{inst.name}</h3>
+   343→              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+   344→                <MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}
+   345→              </div>
+   346→              <div className="flex items-center gap-2 mt-1.5">
+   347→                <Badge variant="outline" className="text-[10px] font-normal border-border/60">{inst.plan || 'Starter'}</Badge>
+   348→                <Badge variant="outline" className={`text-[10px] font-medium ${statusClass}`}>{statusLabel}</Badge>
+   349→              </div>
+   350→            </div>
+   351→          </div>
+   352→        </div>
+   353→        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+   354→          <div className="text-xs min-w-0">
+   355→            <div className="text-muted-foreground">Admin</div>
+   356→            <div className="font-medium truncate">{inst.adminName || '—'}</div>
+   357→          </div>
+   358→          {/* Action buttons — stop propagation so they don't open the details modal */}
+   359→          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+   360→            <button
+   361→              type="button"
+   362→              onClick={() => setShowEdit(true)}
+   363→              title="Edit"
+   364→              className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"
+   365→            >
+   366→              <Edit className="h-4 w-4" />
+   367→            </button>
+   368→            <button
+   369→              type="button"
+   370→              onClick={toggleBlock}
+   371→              title={isBlocked ? 'Unblock' : 'Block (cascades to branches & users)'}
+   372→              className={`h-8 w-8 grid place-items-center rounded-lg transition ${
+   373→                isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-emerald-600 hover:bg-emerald-500/10'
+   374→              }`}
+   375→            >
+   376→              {isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+   377→            </button>
+   378→            <button
+   379→              type="button"
+   380→              onClick={() => setShowDelete(true)}
+   381→              title="Delete institute"
+   382→              className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"
+   383→            >
+   384→              <Trash2 className="h-4 w-4" />
+   385→            </button>
+   386→          </div>
+   387→        </div>
+   388→      </Card>
+   389→
+   390→      {/* Details modal — opens when clicking the card */}
+   391→      {showDetails && (
+   392→        <InstituteDetailsModal inst={inst} onClose={() => setShowDetails(false)} onEdit={() => { setShowDetails(false); setShowEdit(true); }} />
+   393→      )}
+   394→
+   395→      {/* Edit modal */}
+   396→      {showEdit && (
+   397→        <EditInstituteModal inst={inst} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />
+   398→      )}
+   399→
+   400→      {/* Delete confirmation */}
+   401→      {showDelete && (
+   402→        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => setShowDelete(false)}>
+   403→          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+   404→            <Card className="p-6">
+   405→              <div className="flex items-center gap-3 mb-4">
+   406→                <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
+   407→                <div><h3 className="font-display font-bold text-lg">Delete Institute?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+   408→              </div>
+   409→              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
+   410→                This will permanently delete <strong>{inst.name}</strong> and ALL its data: branches, teachers, students, classes, courses, attendance, results, and materials.
+   411→              </div>
+   412→              <div className="flex gap-2">
+   413→                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white flex-1" onClick={handleDelete}>Delete Permanently</Button>
+   414→                <Button size="sm" variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+   415→              </div>
+   416→            </Card>
+   417→          </motion.div>
+   418→        </motion.div>
+   419→      )}
+   420→    </>
+   421→  );
+   422→}
+   423→
+   424→// ---------- Institute Details Modal (popup) ----------
+   425→function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: () => void; onEdit: () => void }) {
+   426→  const [branches, setBranches] = useState<any[]>([]);
+   427→  const [stats, setStats] = useState<any>(null);
+   428→  const [loading, setLoading] = useState(true);
+   429→
+   430→  useEffect(() => {
+   431→    Promise.all([
+   432→      api.branches(inst.id).catch(() => []),
+   433→      api.scopedStats(inst.id).catch(() => null),
+   434→    ]).then(([b, s]) => {
+   435→      setBranches(Array.isArray(b) ? b : []);
+   436→      setStats(s);
+   437→      setLoading(false);
+   438→    });
+   439→  }, [inst.id]);
+   440→
+   441→  const isBlocked = inst.blocked === 1 || inst.blocked === true;
+   442→
+   443→  return (
+   444→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   445→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
+   446→        <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
+   447→          {/* Header */}
+   448→          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-emerald-50 to-amber-50 dark:from-emerald-950/20 dark:to-amber-950/10">
+   449→            <div className="flex items-start justify-between">
+   450→              <div className="flex items-start gap-3">
+   451→                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center shadow-md text-white font-display font-extrabold text-lg">
+   452→                  {(inst.short || inst.name || '').slice(0, 2).toUpperCase()}
+   453→                </div>
+   454→                <div>
+   455→                  <h2 className="font-display text-xl font-extrabold">{inst.name}</h2>
+   456→                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}</div>
+   457→                  <div className="flex items-center gap-2 mt-2">
+   458→                    <Badge variant="outline" className="text-[10px]">{inst.plan || 'Starter'}</Badge>
+   459→                    <Badge variant="outline" className={`text-[10px] ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}`}>{isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active')}</Badge>
+   460→                  </div>
+   461→                </div>
+   462→              </div>
+   463→              <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground"><X className="h-5 w-5" /></button>
+   464→            </div>
+   465→          </div>
+   466→
+   467→          {/* Body */}
+   468→          <div className="p-6 space-y-5">
+   469→            {/* Stats */}
+   470→            <div>
+   471→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</div>
+   472→              <div className="grid grid-cols-3 gap-3">
+   473→                <StatPill label="Branches" value={loading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-emerald-600" />
+   474→                <StatPill label="Students" value={loading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-teal-600" />
+   475→                <StatPill label="Staff" value={loading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-violet-600" />
+   476→              </div>
+   477→            </div>
+   478→
+   479→            {/* Admin info */}
+   480→            <div className="rounded-xl bg-muted/40 p-4">
+   481→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Institute Admin</div>
+   482→              <div className="flex items-center justify-between">
+   483→                <div>
+   484→                  <div className="font-medium text-sm">{inst.adminName || '—'}</div>
+   485→                  <div className="text-xs text-muted-foreground">{inst.adminEmail || '—'}</div>
+   486→                </div>
+   487→                <Button size="sm" variant="outline" onClick={onEdit}><Edit className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+   488→              </div>
+   489→            </div>
+   490→
+   491→            {/* Branches list */}
+   492→            <div>
+   493→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between">
+   494→                <span>Branches ({branches.length})</span>
+   495→              </div>
+   496→              {loading ? (
+   497→                <LoadingState label="Loading branches…" className="py-4" />
+   498→              ) : branches.length === 0 ? (
+   499→                <div className="text-xs text-muted-foreground py-3 text-center bg-muted/30 rounded-lg">No branches yet.</div>
+   500→              ) : (
+   501→                <div className="space-y-2 max-h-60 overflow-y-auto scroll-fancy">
+   502→                  {branches.map((br: any) => <BranchRow key={br.id} br={br} />)}
+   503→                </div>
+   504→              )}
+   505→            </div>
+   506→          </div>
+   507→        </Card>
+   508→      </motion.div>
+   509→    </motion.div>
+   510→  );
+   511→}
+   512→
+   513→function BranchRow({ br }: { br: any }) {
+   514→  const isBlocked = br.blocked === 1 || br.blocked === true;
+   515→  return (
+   516→    <div className="rounded-lg border border-border/60 bg-background p-3 hover:bg-accent/40 transition">
+   517→      <div className="flex items-start justify-between gap-2">
+   518→        <div className="min-w-0">
+   519→          <div className="font-medium text-sm truncate flex items-center gap-1.5">
+   520→            <Building className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+   521→            <span className="truncate">{br.name}</span>
+   522→          </div>
+   523→          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+   524→            <MapPin className="h-3 w-3" /> {br.city || '—'}
+   525→            {br.manager && (<><span className="mx-1">·</span><UserCog className="h-3 w-3" /> {br.manager}</>)}
+   526→          </div>
+   527→        </div>
+   528→        <Badge
+   529→          variant="outline"
+   530→          className={`text-[10px] shrink-0 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}`}
+   531→        >
+   532→          {isBlocked ? 'Blocked' : 'Active'}
+   533→        </Badge>
+   534→      </div>
+   535→      <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-border/40 text-center">
+   536→        <div>
+   537→          <div className="font-bold text-sm">{br.students ?? 0}</div>
+   538→          <div className="text-[10px] text-muted-foreground">Students</div>
+   539→        </div>
+   540→        <div>
+   541→          <div className="font-bold text-sm">{br.teachers ?? 0}</div>
+   542→          <div className="text-[10px] text-muted-foreground">Teachers</div>
+   543→        </div>
+   544→      </div>
+   545→    </div>
+   546→  );
+   547→}
+   548→
+   549→// ---------- Edit Institute modal (scrollable) ----------
+   550→function EditInstituteModal({ inst, onClose, onSaved }: any) {
+   551→  const [form, setForm] = useState({
+   552→    name: inst.name || '',
+   553→    plan: inst.plan || 'Starter',
+   554→    adminName: inst.adminName || '',
+   555→    adminEmail: inst.adminEmail || '',
+   556→    adminPassword: '',
+   557→  });
+   558→  const [saving, setSaving] = useState(false);
+   559→
+   560→  const save = async () => {
+   561→    if (!form.name || !form.adminEmail) {
+   562→      toast({ title: 'Institute name and admin email are required', variant: 'destructive' });
+   563→      return;
+   564→    }
+   565→    setSaving(true);
+   566→    try {
+   567→      // Only include adminPassword if the user typed a new one
+   568→      const body: any = {
+   569→        name: form.name,
+   570→        plan: form.plan,
+   571→        adminName: form.adminName,
+   572→        adminEmail: form.adminEmail,
+   573→      };
+   574→      if (form.adminPassword.trim()) body.adminPassword = form.adminPassword.trim();
+   575→      await api.editInstitute(inst.id, body);
+   576→      toast({
+   577→        title: 'Institute updated',
+   578→        description: form.adminPassword ? 'Admin password updated — they will need to use the new one.' : 'Changes saved.',
+   579→      });
+   580→      onSaved();
+   581→    } catch (e: any) {
+   582→      toast({ title: 'Failed to save', description: e.message, variant: 'destructive' });
+   583→    } finally {
+   584→      setSaving(false);
+   585→    }
+   586→  };
+   587→
+   588→  return (
+   589→    <motion.div
+   590→      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   591→      className="fixed inset-0 z-[60] grid place-items-start sm:place-items-center p-4 bg-black/50 overflow-y-auto"
+   592→      onClick={onClose}
+   593→    >
+   594→      <motion.div
+   595→        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+   596→        onClick={(e) => e.stopPropagation()}
+   597→        className="w-full max-w-md my-8"
+   598→      >
+   599→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   600→          <div className="flex items-center justify-between mb-4">
+   601→            <div>
+   602→              <h3 className="font-display font-bold text-lg">Edit Institute</h3>
+   603→              <p className="text-xs text-muted-foreground mt-0.5">Update institute info and admin credentials</p>
+   604→            </div>
+   605→            <Edit className="h-5 w-5 text-muted-foreground" />
+   606→          </div>
+   607→
+   608→          <div className="space-y-3">
+   609→            <div>
+   610→              <Label>Institute Name</Label>
+   611→              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1" />
+   612→            </div>
+   613→            <div>
+   614→              <Label>Plan</Label>
+   615→              <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+   616→                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   617→                <SelectContent>
+   618→                  <SelectItem value="Starter">Starter</SelectItem>
+   619→                  <SelectItem value="Premium">Premium</SelectItem>
+   620→                  <SelectItem value="Enterprise">Enterprise</SelectItem>
+   621→                </SelectContent>
+   622→              </Select>
+   623→            </div>
+   624→
+   625→            <div className="pt-2 border-t border-border/40">
+   626→              <div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Institute Admin</div>
+   627→            </div>
+   628→            <div>
+   629→              <Label>Admin Name</Label>
+   630→              <Input value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} className="mt-1" />
+   631→            </div>
+   632→            <div>
+   633→              <Label>Admin Email</Label>
+   634→              <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} className="mt-1" />
+   635→            </div>
+   636→            <div>
+   637→              <Label>New Password (optional)</Label>
+   638→              <Input
+   639→                type="text"
+   640→                value={form.adminPassword}
+   641→                onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+   642→                placeholder="Leave blank to keep current"
+   643→                className="mt-1 font-mono"
+   644→              />
+   645→              <p className="text-[11px] text-muted-foreground mt-1">If set, the admin must use this password to log in.</p>
+   646→            </div>
+   647→          </div>
+   648→
+   649→          <div className="flex gap-2 mt-5">
+   650→            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={saving} onClick={save}>
+   651→              {saving ? 'Saving…' : 'Save Changes'}
+   652→            </Button>
+   653→            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+   654→          </div>
+   655→        </Card>
+   656→      </motion.div>
+   657→    </motion.div>
+   658→  );
+   659→}
+   660→
+   661→// ---------- Provision Institute modal (scrollable, shows actual password) ----------
+   662→function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+   663→  const [form, setForm] = useState({
+   664→    name: '', city: '', country: 'USA', plan: 'Premium',
+   665→    adminName: '', adminEmail: '', adminPassword: '',
+   666→  });
+   667→  const [creating, setCreating] = useState(false);
+   668→  const [lastCreated, setLastCreated] = useState<any>(null);
+   669→
+   670→  const create = async () => {
+   671→    if (!form.name || !form.adminEmail || !form.adminPassword) {
+   672→      toast({ title: 'Institute name, admin email and password are required', variant: 'destructive' });
+   673→      return;
+   674→    }
+   675→    setCreating(true);
+   676→    try {
+   677→      const res = await api.createInstitute(form);
+   678→      toast({ title: 'Institute provisioned!', description: `${res.institute.name} — admin login created` });
+   679→      setLastCreated(res);
+   680→      setForm({ name: '', city: '', country: 'USA', plan: 'Premium', adminName: '', adminEmail: '', adminPassword: '' });
+   681→      onSaved();
+   682→    } catch (e: any) {
+   683→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   684→    } finally {
+   685→      setCreating(false);
+   686→    }
+   687→  };
+   688→
+   689→  return (
+   690→    <motion.div
+   691→      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   692→      className="fixed inset-0 z-[60] grid place-items-start sm:place-items-center p-4 bg-black/50 overflow-y-auto"
+   693→      onClick={() => { if (!creating) onClose(); }}
+   694→    >
+   695→      <motion.div
+   696→        initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+   697→        onClick={(e) => e.stopPropagation()}
+   698→        className="w-full max-w-lg my-8"
+   699→      >
+   700→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   701→          {lastCreated ? (
+   702→            <>
+   703→              <div className="flex items-center gap-3 mb-4">
+   704→                <div className="h-12 w-12 rounded-full bg-emerald-500/15 grid place-items-center">
+   705→                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+   706→                </div>
+   707→                <div>
+   708→                  <h3 className="font-display font-bold text-lg">Institute provisioned!</h3>
+   709→                  <p className="text-sm text-muted-foreground">{lastCreated.institute.name} is ready</p>
+   710→                </div>
+   711→              </div>
+   712→              <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2 text-sm">
+   713→                <div className="font-semibold text-emerald-700 dark:text-emerald-300">Institute Admin login credentials</div>
+   714→                <div className="flex items-center justify-between gap-3">
+   715→                  <span className="text-muted-foreground">Email</span>
+   716→                  <span className="font-mono text-xs sm:text-sm break-all text-right">{lastCreated.adminLogin?.email}</span>
+   717→                </div>
+   718→                <div className="flex items-center justify-between gap-3">
+   719→                  <span className="text-muted-foreground">Password</span>
+   720→                  <span className="font-mono text-xs sm:text-sm break-all text-right text-emerald-700 dark:text-emerald-300">
+   721→                    {lastCreated.adminLogin?.password}
+   722→                  </span>
+   723→                </div>
+   724→                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">
+   725→                  Share these credentials securely. The admin can change their password after logging in.
+   726→                </div>
+   727→              </div>
+   728→              <div className="flex gap-2 mt-5">
+   729→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={onClose}>Done</Button>
+   730→                <Button size="sm" variant="outline" onClick={() => setLastCreated(null)}>Add Another</Button>
+   731→              </div>
+   732→            </>
+   733→          ) : (
+   734→            <>
+   735→              <div className="flex items-center justify-between mb-1">
+   736→                <h3 className="font-display font-bold text-lg">Provision a new institute</h3>
+   737→                <Plus className="h-5 w-5 text-muted-foreground" />
+   738→              </div>
+   739→              <p className="text-sm text-muted-foreground mb-5">
+   740→                You will set the Institute Admin's email and password. They can change it after first login.
+   741→              </p>
+   742→              <div className="space-y-3">
+   743→                <div>
+   744→                  <Label>Institute name *</Label>
+   745→                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Dallas Modern School" className="mt-1" />
+   746→                </div>
+   747→                <div className="grid grid-cols-2 gap-3">
+   748→                  <div>
+   749→                    <Label>City</Label>
+   750→                    <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Dallas" className="mt-1" />
+   751→                  </div>
+   752→                  <div>
+   753→                    <Label>Country</Label>
+   754→                    <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} className="mt-1" />
+   755→                  </div>
+   756→                </div>
+   757→                <div>
+   758→                  <Label>Plan</Label>
+   759→                  <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+   760→                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   761→                    <SelectContent>
+   762→                      <SelectItem value="Starter">Starter — 1 branch, basic modules</SelectItem>
+   763→                      <SelectItem value="Premium">Premium — multi-branch, all modules</SelectItem>
+   764→                      <SelectItem value="Enterprise">Enterprise — unlimited, white-label</SelectItem>
+   765→                    </SelectContent>
+   766→                  </Select>
+   767→                </div>
+   768→                <div className="pt-2 border-t border-border/40">
+   769→                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+   770→                    Institute Admin — You set the credentials
+   771→                  </div>
+   772→                </div>
+   773→                <div>
+   774→                  <Label>Admin name</Label>
+   775→                  <Input value={form.adminName} onChange={(e) => setForm({ ...form, adminName: e.target.value })} placeholder="Dr. Jane Doe" className="mt-1" />
+   776→                </div>
+   777→                <div>
+   778→                  <Label>Admin email *</Label>
+   779→                  <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} placeholder="admin@school.edu" className="mt-1" />
+   780→                </div>
+   781→                <div>
+   782→                  <Label>Assign password *</Label>
+   783→                  <Input
+   784→                    type="text"
+   785→                    value={form.adminPassword}
+   786→                    onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+   787→                    placeholder="Set a password for the admin"
+   788→                    className="mt-1 font-mono"
+   789→                  />
+   790→                  <p className="text-[11px] text-muted-foreground mt-1">This is the actual password the admin will use to log in.</p>
+   791→                </div>
+   792→              </div>
+   793→              <div className="flex gap-2 mt-5">
+   794→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={creating} onClick={create}>
+   795→                  {creating ? 'Provisioning…' : 'Provision Institute'}
+   796→                </Button>
+   797→                <Button size="sm" variant="outline" disabled={creating} onClick={onClose}>Cancel</Button>
+   798→              </div>
+   799→            </>
+   800→          )}
+   801→        </Card>
+   802→      </motion.div>
+   803→    </motion.div>
+   804→  );
+   805→}
+   806→
+   807→// ---------- Announcements view (super admin only sees their own) ----------
+   808→function AnnouncementsView({ user, institutes, institutesLoading }: { user: any; institutes: any[]; institutesLoading: boolean }) {
+   809→  const [announcements, setAnnouncements] = useState<any[]>([]);
+   810→  const [loading, setLoading] = useState(true);
+   811→  const [form, setForm] = useState({ title: '', message: '', targetScope: 'all', selectedInstitutes: [] as string[] });
+   812→  const [sending, setSending] = useState(false);
+   813→  const [showForm, setShowForm] = useState(false);
+   814→
+   815→  const refresh = () => {
+   816→    api.getAnnouncements()
+   817→      .then((a) => setAnnouncements(Array.isArray(a) ? a : []))
+   818→      .catch(() => {})
+   819→      .finally(() => setLoading(false));
+   820→  };
+   821→  useEffect(() => { refresh(); }, []);
+   822→
+   823→  const send = async () => {
+   824→    if (!form.title || !form.message) {
+   825→      toast({ title: 'Title and message required', variant: 'destructive' });
+   826→      return;
+   827→    }
+   828→    if (form.targetScope === 'specific' && form.selectedInstitutes.length === 0) {
+   829→      toast({ title: 'Select at least one institute', variant: 'destructive' });
+   830→      return;
+   831→    }
+   832→    setSending(true);
+   833→    try {
+   834→      await api.createAnnouncement({
+   835→        title: form.title,
+   836→        message: form.message,
+   837→        targetRole: 'institute-admin',
+   838→        targetScope: form.targetScope,
+   839→        targetIds: form.targetScope === 'specific' ? form.selectedInstitutes : undefined,
+   840→      });
+   841→      toast({
+   842→        title: 'Announcement sent!',
+   843→        description: form.targetScope === 'all' ? 'Sent to all institutes' : `Sent to ${form.selectedInstitutes.length} institute(s)`,
+   844→      });
+   845→      setForm({ title: '', message: '', targetScope: 'all', selectedInstitutes: [] });
+   846→      setShowForm(false);
+   847→      refresh();
+   848→    } catch (e: any) {
+   849→      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+   850→    } finally {
+   851→      setSending(false);
+   852→    }
+   853→  };
+   854→
+   855→  return (
+   856→    <div className="space-y-6">
+   857→      <ModuleHeader
+   858→        title="Announcements"
+   859→        subtitle="Send messages to Institute Admins — only your announcements are shown here"
+   860→        actions={
+   861→          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm((v) => !v)}>
+   862→            <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
+   863→          </Button>
+   864→        }
+   865→      />
+   866→
+   867→      {showForm && (
+   868→        <Card className="p-5">
+   869→          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+   870→          <div className="space-y-3">
+   871→            <div>
+   872→              <Label>Title</Label>
+   873→              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Platform maintenance scheduled" className="mt-1" />
+   874→            </div>
+   875→            <div>
+   876→              <Label>Message</Label>
+   877→              <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" />
+   878→            </div>
+   879→            <div>
+   880→              <Label>Recipients</Label>
+   881→              <Select value={form.targetScope} onValueChange={(v) => setForm({ ...form, targetScope: v })}>
+   882→                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   883→                <SelectContent>
+   884→                  <SelectItem value="all">All Institute Admins</SelectItem>
+   885→                  <SelectItem value="specific">Specific Institutes</SelectItem>
+   886→                </SelectContent>
+   887→              </Select>
+   888→            </div>
+   889→            {form.targetScope === 'specific' && (
+   890→              <div>
+   891→                <Label>Select Institutes</Label>
+   892→                {institutesLoading ? (
+   893→                  <LoadingState label="Loading institutes…" className="py-4 border border-border/60 rounded-lg" />
+   894→                ) : (
+   895→                  <div className="mt-2 max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+   896→                    {institutes.map((inst) => (
+   897→                      <label key={inst.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+   898→                        <input
+   899→                          type="checkbox"
+   900→                          checked={form.selectedInstitutes.includes(inst.id)}
+   901→                          onChange={(e) => {
+   902→                            if (e.target.checked) setForm({ ...form, selectedInstitutes: [...form.selectedInstitutes, inst.id] });
+   903→                            else setForm({ ...form, selectedInstitutes: form.selectedInstitutes.filter((id) => id !== inst.id) });
+   904→                          }}
+   905→                          className="custom-checkbox w-4 h-4 rounded"
+   906→                        />
+   907→                        <span className="text-sm">{inst.name}</span>
+   908→                      </label>
+   909→                    ))}
+   910→                  </div>
+   911→                )}
+   912→              </div>
+   913→            )}
+   914→            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={sending} onClick={send}>
+   915→              {sending ? 'Sending…' : (<><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>)}
+   916→            </Button>
+   917→          </div>
+   918→        </Card>
+   919→      )}
+   920→
+   921→      {loading ? (
+   922→        <Card className="p-5"><LoadingState label="Loading announcements…" /></Card>
+   923→      ) : announcements.length === 0 ? (
+   924→        <EmptyState
+   925→          icon={Megaphone}
+   926→          title="No announcements yet"
+   927→          desc="Send messages to all or specific Institute Admins."
+   928→          action={
+   929→            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(true)}>
+   930→              <Megaphone className="h-4 w-4 mr-1.5" /> New Announcement
+   931→            </Button>
+   932→          }
+   933→        />
+   934→      ) : (
+   935→        <div className="space-y-3">
+   936→          {announcements.map((a) => (
+   937→            <Card key={a.id} className="p-4">
+   938→              <div className="flex items-start justify-between mb-2 gap-2">
+   939→                <div className="flex items-center gap-2 min-w-0">
+   940→                  <Megaphone className="h-4 w-4 text-amber-500 shrink-0" />
+   941→                  <div className="font-medium text-sm truncate">{a.title}</div>
+   942→                </div>
+   943→                <span className="text-[11px] text-muted-foreground shrink-0">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ''}</span>
+   944→              </div>
+   945→              <p className="text-sm text-muted-foreground ml-6 whitespace-pre-wrap">{a.message}</p>
+   946→              <div className="text-[11px] text-muted-foreground mt-2 ml-6">
+   947→                To: {a.targetScope === 'all' ? 'All Institute Admins' : 'Specific Institutes'}
+   948→              </div>
+   949→            </Card>
+   950→          ))}
+   951→        </div>
+   952→      )}
+   953→    </div>
+   954→  );
+   955→}
+   956→
+   957→// ---------- Platform Config (display-only) ----------
+   958→function PlatformConfig({ overview, loading }: { overview: any; loading: boolean }) {
+   959→  const settings = [
+   960→    { icon: Building2, label: 'Platform Name', value: 'ESM', desc: 'Shown across the platform UI' },
+   961→    { icon: Sparkles, label: 'Default Plan for New Institutes', value: 'Premium', desc: 'Pre-selected when provisioning' },
+   962→    { icon: Mail, label: 'Support Email', value: 'faisalkhan00297@gmail.com', desc: 'For all support requests' },
+   963→    { icon: Building, label: 'Max Institutes Allowed', value: loading ? '…' : (overview?.institutes ? `${overview.institutes} active` : 'Unlimited'), desc: 'Current platform cap' },
+   964→  ];
+   965→
+   966→  return (
+   967→    <div className="space-y-6">
+   968→      <ModuleHeader title="Platform Configuration" subtitle="Display-only platform settings — edit backend config to change values" />
+   969→      <div className="grid sm:grid-cols-2 gap-4">
+   970→        {settings.map((s, i) => (
+   971→          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+   972→            <Card className="p-5 hover:shadow-md transition relative overflow-hidden">
+   973→              <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-amber-500/10 blur-2xl" />
+   974→              <div className="flex items-start gap-3">
+   975→                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 grid place-items-center shadow shrink-0">
+   976→                  <s.icon className="h-5 w-5 text-white" />
+   977→                </div>
+   978→                <div className="min-w-0">
+   979→                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{s.label}</div>
+   980→                  <div className="font-bold text-base break-all mt-0.5">{s.value}</div>
+   981→                  <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
+   982→                </div>
+   983→              </div>
+   984→            </Card>
+   985→          </motion.div>
+   986→        ))}
+   987→      </div>
+   988→      <Card className="p-5 border-dashed">
+   989→        <div className="flex items-start gap-3">
+   990→          <Settings className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+   991→          <div>
+   992→            <div className="font-medium text-sm">Display-only mode</div>
+   993→            <p className="text-xs text-muted-foreground mt-1">
+   994→              These settings are read from the backend configuration. To change platform name, default plan, support email, or institute caps,
+   995→              update the backend config file. This page reflects the live values for visibility.
+   996→            </p>
+   997→          </div>
+   998→        </div>
+   999→      </Card>
+  1000→    </div>
+  1001→  );
+  1002→}
+  1003→
+  1004→// ---------- Branding page (display-only) ----------
+  1005→function BrandingPage() {
+  1006→  return (
+  1007→    <div className="space-y-6">
+  1008→      <ModuleHeader title="Branding" subtitle="Platform visual identity" />
+  1009→      <Card className="p-0 overflow-hidden">
+  1010→        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600 via-orange-700 to-amber-900 p-8 sm:p-10 text-white">
+  1011→          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-emerald-400/15 blur-3xl" />
+  1012→          <div className="relative">
+  1013→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
+  1014→              <ShieldCheck className="h-3 w-3 text-amber-300" /> Platform Identity
+  1015→            </div>
+  1016→            <h2 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">ESM</h2>
+  1017→            <p className="text-amber-50/90 text-base sm:text-lg mt-1">Electronic School Management</p>
+  1018→            <p className="text-amber-50/70 text-sm mt-3 max-w-md">
+  1019→              Modern school management for institutions worldwide — by Cyber Advance Solutions.
+  1020→            </p>
+  1021→          </div>
+  1022→        </div>
+  1023→      </Card>
+  1024→
+  1025→      <div className="grid sm:grid-cols-2 gap-4">
+  1026→        <Card className="p-5">
+  1027→          <div className="flex items-center gap-2 mb-3">
+  1028→            <Palette className="h-4 w-4 text-amber-600" />
+  1029→            <h3 className="font-bold text-sm">Color Theme</h3>
+  1030→          </div>
+  1031→          <div className="space-y-2.5">
+  1032→            <ColorRow name="Primary (Amber)" hex="#d97706" className="bg-amber-600" />
+  1033→            <ColorRow name="Accent (Orange)" hex="#c2410c" className="bg-orange-700" />
+  1034→            <ColorRow name="Success (Emerald)" hex="#059669" className="bg-emerald-600" />
+  1035→            <ColorRow name="Neutral (Slate)" hex="#475569" className="bg-slate-600" />
+  1036→          </div>
+  1037→        </Card>
+  1038→        <Card className="p-5">
+  1039→          <div className="flex items-center gap-2 mb-3">
+  1040→            <Building2 className="h-4 w-4 text-emerald-600" />
+  1041→            <h3 className="font-bold text-sm">Brand Information</h3>
+  1042→          </div>
+  1043→          <div className="space-y-3 text-sm">
+  1044→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Platform Name</span><span className="font-medium">ESM</span></div>
+  1045→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Tagline</span><span className="font-medium text-right">Electronic School Management</span></div>
+  1046→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Provider</span><span className="font-medium text-right">Cyber Advance Solutions</span></div>
+  1047→            <div className="flex justify-between gap-3"><span className="text-muted-foreground">Theme Mode</span><span className="font-medium">Light / Dark</span></div>
+  1048→          </div>
+  1049→        </Card>
+  1050→      </div>
+  1051→
+  1052→      <Card className="p-5 border-dashed">
+  1053→        <div className="flex items-start gap-3">
+  1054→          <Settings className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+  1055→          <div>
+  1056→            <div className="font-medium text-sm">Display-only</div>
+  1057→            <p className="text-xs text-muted-foreground mt-1">
+  1058→              Branding assets (logo, tagline, color palette) are defined in the platform theme configuration. Update the theme tokens to change the look.
+  1059→            </p>
+  1060→          </div>
+  1061→        </div>
+  1062→      </Card>
+  1063→    </div>
+  1064→  );
+  1065→}
+  1066→
+  1067→function ColorRow({ name, hex, className }: { name: string; hex: string; className: string }) {
+  1068→  return (
+  1069→    <div className="flex items-center gap-3">
+  1070→      <div className={`h-7 w-7 rounded-md ${className} ring-1 ring-black/10`} />
+  1071→      <div className="flex-1 min-w-0">
+  1072→        <div className="text-sm font-medium">{name}</div>
+  1073→        <div className="text-[11px] text-muted-foreground font-mono">{hex}</div>
+  1074→      </div>
+  1075→    </div>
+  1076→  );
+  1077→}
+  1078→

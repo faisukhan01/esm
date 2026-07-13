@@ -84,7 +84,7 @@ function ParentOverview({ user, ward, attendance, results, fees }: any) {
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Heart className="h-3 w-3 text-amber-300" /> Parent · {user?.instituteName}</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]} 👋</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
           <p className="text-rose-50/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{ward?.name || user?.ward || '—'}</strong>{ward ? ` · ${ward.class} ${ward.section}` : ''}.</p>
         </div>
       </motion.div>

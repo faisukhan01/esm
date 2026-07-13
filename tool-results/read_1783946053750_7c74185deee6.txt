@@ -1,0 +1,813 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    10→import {
+    11→  CalendarCheck, GraduationCap, Calendar, ClipboardList,
+    12→  CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
+    13→  ArrowLeft, FileText, Link2, Download, Loader2, Megaphone,
+    14→  Wallet, DollarSign, Printer,
+    15→} from 'lucide-react';
+    16→import { toast } from '@/hooks/use-toast';
+    17→
+    18→type Course = { id: string; name: string; code?: string };
+    19→
+    20→type MaterialItem = {
+    21→  id: string;
+    22→  title: string;
+    23→  description?: string;
+    24→  fileType?: string;
+    25→  fileName?: string;
+    26→  linkUrl?: string;
+    27→  createdAt?: number | string;
+    28→  classId?: string;
+    29→  courseId?: string;
+    30→};
+    31→
+    32→type Announcement = {
+    33→  id: string;
+    34→  title: string;
+    35→  message: string;
+    36→  senderRole?: string;
+    37→  targetRole?: string;
+    38→  targetScope?: string;
+    39→  classId?: string | null;
+    40→  createdAt?: number | string;
+    41→};
+    42→
+    43→export function StudentPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    44→  const [attendance, setAttendance] = useState<any>(null);
+    45→  const [results, setResults] = useState<any>(null);
+    46→  const [diary, setDiary] = useState<any[]>([]);
+    47→  const [courses, setCourses] = useState<Course[]>([]);
+    48→  const [classId, setClassId] = useState<string>('');
+    49→  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    50→  const [selectedCourse, setSelectedCourse] = useState<{ course: Course; initialTab: 'materials' | 'results' | 'attendance' } | null>(null);
+    51→
+    52→  const refresh = () => {
+    53→    if (user?.id) {
+    54→      api.getAttendance({ studentId: user.id }).then(setAttendance).catch(() => {});
+    55→      api.getResults({ studentId: user.id }).then(setResults).catch(() => {});
+    56→      if (user?.branchId) api.getDiary({ branchId: user.branchId }).then(setDiary).catch(() => {});
+    57→      api.getStudentCourses().then(setCourses).catch(() => setCourses([]));
+    58→      api.getAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]));
+    59→    }
+    60→  };
+    61→
+    62→  // Resolve the student's classId from the branch's classes by matching user.class (class name)
+    63→  useEffect(() => {
+    64→    if (user?.branchId) {
+    65→      api.getClasses(user.branchId)
+    66→        .then((cls: any[]) => {
+    67→          const match = cls.find(c => c.name === user.class);
+    68→          setClassId(match?.id || '');
+    69→        })
+    70→        .catch(() => setClassId(''));
+    71→    }
+    72→  }, [user?.branchId, user?.class]);
+    73→
+    74→  useEffect(() => { refresh(); }, [user?.id, user?.branchId]);
+    75→
+    76→  if (activeModule === 'student-overview' && selectedCourse) {
+    77→    return (
+    78→      <CourseDetail
+    79→        course={selectedCourse.course}
+    80→        classId={classId}
+    81→        studentId={user?.id}
+    82→        initialTab={selectedCourse.initialTab}
+    83→        onBack={() => setSelectedCourse(null)}
+    84→      />
+    85→    );
+    86→  }
+    87→
+    88→  if (activeModule === 'my-attendance') return <MyAttendance attendance={attendance} />;
+    89→  if (activeModule === 'my-results') return <MyResults results={results} />;
+    90→  if (activeModule === 'my-timetable') return <MyTimetable />;
+    91→  if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
+    92→  if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
+    93→  if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
+    94→  return (
+    95→    <StudentOverview
+    96→      user={user}
+    97→      attendance={attendance}
+    98→      results={results}
+    99→      courses={courses}
+   100→      announcements={announcements}
+   101→      onOpenCourse={(course, tab) => setSelectedCourse({ course, initialTab: tab })}
+   102→    />
+   103→  );
+   104→}
+   105→
+   106→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+   107→  return (
+   108→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   109→      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+   110→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+   111→    </div>
+   112→  );
+   113→}
+   114→
+   115→function EmptyState({ icon: Icon, title, desc }: any) {
+   116→  return (
+   117→    <Card className="p-10 text-center">
+   118→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+   119→      <h3 className="font-display font-bold text-lg">{title}</h3>
+   120→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   121→    </Card>
+   122→  );
+   123→}
+   124→
+   125→// ============== Student Overview (course cards) ==============
+   126→function StudentOverview({ user, attendance, results, courses, announcements, onOpenCourse }: any) {
+   127→  // Normalize results — API returns a flat array, but some code expects {entries, total, avgPercentage}
+   128→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   129→  const resultsTotal = resultsArray.length;
+   130→  const avgPercentage = resultsTotal > 0
+   131→    ? Math.round(resultsArray.reduce((a: number, r: any) => a + (r.percentage || (r.marks / r.totalMarks * 100) || 0), 0) / resultsTotal * 10) / 10
+   132→    : null;
+   133→
+   134→  const cards = [
+   135→    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
+   136→    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+   137→    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-amber-500 to-yellow-600' },
+   138→    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-teal-500 to-cyan-600' },
+   139→  ];
+   140→
+   141→  // Group recent results by subject/course so we can show "recent marks" per course card
+   142→  const recentByCourse = useMemo(() => {
+   143→    const map: Record<string, any> = {};
+   144→    // results can be a flat array (from API) or an object with .entries
+   145→    const entries = Array.isArray(results) ? results : (results?.entries || []);
+   146→    if (Array.isArray(entries)) {
+   147→      for (const r of entries) {
+   148→        const key = r.courseId || r.subject;
+   149→        if (!map[key]) map[key] = r;
+   150→      }
+   151→    }
+   152→    return map;
+   153→  }, [results]);
+   154→
+   155→  return (
+   156→    <div className="space-y-6">
+   157→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   158→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-600 via-teal-700 to-cyan-900 p-6 sm:p-8 text-white">
+   159→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   160→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
+   161→        <div className="relative">
+   162→          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-amber-300" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
+   163→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}! 👋</h1>
+   164→          <p className="text-cyan-50/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
+   165→        </div>
+   166→      </motion.div>
+   167→
+   168→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   169→        {cards.map((c, i) => (
+   170→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   171→            <Card className="p-5 relative overflow-hidden">
+   172→              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   173→              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   174→              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+   175→              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   176→            </Card>
+   177→          </motion.div>
+   178→        ))}
+   179→      </div>
+   180→
+   181→      {announcements.length > 0 && (
+   182→        <Card className="p-5">
+   183→          <h3 className="font-bold text-base mb-3 flex items-center gap-2"><Megaphone className="h-4 w-4 text-rose-500" /> Latest Announcement</h3>
+   184→          <AnnouncementCard a={announcements[0]} />
+   185→        </Card>
+   186→      )}
+   187→
+   188→      <div>
+   189→        <div className="flex items-center justify-between mb-4">
+   190→          <div>
+   191→            <h2 className="font-display text-lg font-bold">My Courses</h2>
+   192→            <p className="text-xs text-muted-foreground mt-0.5">Click a course to view materials, results, and attendance.</p>
+   193→          </div>
+   194→        </div>
+   195→        {courses.length === 0 ? (
+   196→          <EmptyState icon={BookOpen} title="No courses assigned" desc="Your class doesn't have any courses assigned yet. Check back later." />
+   197→        ) : (
+   198→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   199→            {courses.map((c: Course, i: number) => {
+   200→              const recent = recentByCourse[c.id];
+   201→              return (
+   202→                <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+   203→                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenCourse(c, 'materials')}>
+   204→                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 opacity-10 blur-2xl group-hover:opacity-20 transition" />
+   205→                    <div className="flex items-start justify-between mb-3">
+   206→                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 grid place-items-center shadow-md">
+   207→                        <BookOpen className="h-5 w-5 text-white" />
+   208→                      </div>
+   209→                      {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
+   210→                    </div>
+   211→                    <h3 className="font-display font-bold text-lg">{c.name}</h3>
+   212→                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+   213→                    <div className="grid grid-cols-2 gap-2 mt-4">
+   214→                      <div className="p-2 rounded-md bg-violet-500/10">
+   215→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
+   216→                        <div className="text-sm font-bold text-violet-700 mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
+   217→                      </div>
+   218→                      <div className="p-2 rounded-md bg-emerald-500/10">
+   219→                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
+   220→                        <div className="text-sm font-bold text-emerald-700 mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
+   221→                      </div>
+   222→                    </div>
+   223→                    <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+   224→                      <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
+   225→                      <span className="text-cyan-700 font-medium group-hover:underline">Open →</span>
+   226→                    </div>
+   227→                  </Card>
+   228→                </motion.div>
+   229→              );
+   230→            })}
+   231→          </div>
+   232→        )}
+   233→      </div>
+   234→    </div>
+   235→  );
+   236→}
+   237→
+   238→// ============== Course Detail (Materials / Results / Attendance tabs) ==============
+   239→const COURSE_TABS = [
+   240→  { id: 'materials', label: 'Materials', icon: FileText },
+   241→  { id: 'results', label: 'Results', icon: GraduationCap },
+   242→  { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+   243→] as const;
+   244→
+   245→function CourseDetail({ course, classId, studentId, initialTab, onBack }: {
+   246→  course: Course;
+   247→  classId: string;
+   248→  studentId: string;
+   249→  initialTab: 'materials' | 'results' | 'attendance';
+   250→  onBack: () => void;
+   251→}) {
+   252→  const [tab, setTab] = useState(initialTab);
+   253→
+   254→  return (
+   255→    <div className="space-y-6">
+   256→      <div className="flex items-center gap-3">
+   257→        <button onClick={onBack} className="h-9 w-9 grid place-items-center rounded-lg border border-border hover:bg-accent transition" title="Back to courses">
+   258→          <ArrowLeft className="h-4 w-4" />
+   259→        </button>
+   260→        <div>
+   261→          <h1 className="font-display text-2xl font-extrabold tracking-tight">{course.name}</h1>
+   262→          <p className="text-sm text-muted-foreground mt-0.5">{course.code ? `Code ${course.code} · ` : ''}Course materials, results & attendance</p>
+   263→        </div>
+   264→      </div>
+   265→
+   266→      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy">
+   267→        {COURSE_TABS.map(t => {
+   268→          const active = tab === t.id;
+   269→          return (
+   270→            <button key={t.id} onClick={() => setTab(t.id)}
+   271→              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+   272→              <t.icon className="h-4 w-4" /> {t.label}
+   273→            </button>
+   274→          );
+   275→        })}
+   276→      </div>
+   277→
+   278→      <AnimatePresence mode="wait">
+   279→        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+   280→          {tab === 'materials' && <CourseMaterialsView classId={classId} courseId={course.id} />}
+   281→          {tab === 'results' && <CourseResultsView courseId={course.id} studentId={studentId} />}
+   282→          {tab === 'attendance' && <CourseAttendanceView studentId={studentId} />}
+   283→        </motion.div>
+   284→      </AnimatePresence>
+   285→    </div>
+   286→  );
+   287→}
+   288→
+   289→function CourseMaterialsView({ classId, courseId }: { classId: string; courseId: string }) {
+   290→  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+   291→  const [loading, setLoading] = useState(true);
+   292→
+   293→  useEffect(() => {
+   294→    if (!classId || !courseId) return;
+   295→    api.getCourseMaterials({ classId, courseId })
+   296→      .then(setMaterials)
+   297→      .catch(() => setMaterials([]))
+   298→      .finally(() => setLoading(false));
+   299→  }, [classId, courseId]);
+   300→
+   301→  if (!classId) {
+   302→    return <EmptyState icon={FileText} title="Class not found" desc="We couldn't resolve your class. Please contact your Branch Manager." />;
+   303→  }
+   304→
+   305→  if (loading) {
+   306→    return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   307→  }
+   308→
+   309→  if (materials.length === 0) {
+   310→    return <EmptyState icon={FileText} title="No materials yet" desc="Your teacher hasn't uploaded any materials for this course yet. Check back later." />;
+   311→  }
+   312→
+   313→  return (
+   314→    <div className="space-y-4">
+   315→      <p className="text-sm text-muted-foreground">{materials.length} material{materials.length === 1 ? '' : 's'} available</p>
+   316→      <div className="grid sm:grid-cols-2 gap-3">
+   317→        {materials.map(m => <MaterialCard key={m.id} material={m} />)}
+   318→      </div>
+   319→    </div>
+   320→  );
+   321→}
+   322→
+   323→function MaterialCard({ material }: { material: MaterialItem }) {
+   324→  const [downloading, setDownloading] = useState(false);
+   325→  const isLink = !!material.linkUrl;
+   326→  const Icon = isLink ? Link2 : FileText;
+   327→  const ext = material.fileName?.split('.').pop()?.toUpperCase() || (isLink ? 'LINK' : 'FILE');
+   328→  const createdAt = material.createdAt ? new Date(material.createdAt).toLocaleDateString() : '';
+   329→
+   330→  const handleDownload = async () => {
+   331→    if (isLink && material.linkUrl) {
+   332→      window.open(material.linkUrl, '_blank', 'noopener,noreferrer');
+   333→      return;
+   334→    }
+   335→    setDownloading(true);
+   336→    try {
+   337→      const res = await api.downloadMaterialBlob(material.id);
+   338→      if ('linkUrl' in res) {
+   339→        window.open(res.linkUrl, '_blank', 'noopener,noreferrer');
+   340→      } else {
+   341→        const url = URL.createObjectURL(res.blob);
+   342→        const a = document.createElement('a');
+   343→        a.href = url;
+   344→        a.download = res.fileName || material.fileName || 'download';
+   345→        document.body.appendChild(a);
+   346→        a.click();
+   347→        document.body.removeChild(a);
+   348→        URL.revokeObjectURL(url);
+   349→      }
+   350→    } catch (e: any) {
+   351→      toast({ title: 'Download failed', description: e.message, variant: 'destructive' });
+   352→    } finally { setDownloading(false); }
+   353→  };
+   354→
+   355→  return (
+   356→    <Card className="p-4 hover:shadow-md transition">
+   357→      <div className="flex items-start gap-3">
+   358→        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-cyan-500/15' : 'bg-violet-500/15'}`}>
+   359→          <Icon className={`h-5 w-5 ${isLink ? 'text-cyan-600' : 'text-violet-600'}`} />
+   360→        </div>
+   361→        <div className="flex-1 min-w-0">
+   362→          <div className="flex items-center gap-2 mb-0.5">
+   363→            <h4 className="font-medium text-sm truncate">{material.title}</h4>
+   364→            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{ext}</Badge>
+   365→          </div>
+   366→          {material.description && <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>}
+   367→          <div className="text-[11px] text-muted-foreground mt-1">{createdAt}{isLink ? ' · External link' : ''}</div>
+   368→        </div>
+   369→      </div>
+   370→      <div className="mt-3 flex justify-end">
+   371→        <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+   372→          {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+   373→          {isLink ? 'Open Link' : 'Download'}
+   374→        </Button>
+   375→      </div>
+   376→    </Card>
+   377→  );
+   378→}
+   379→
+   380→function CourseResultsView({ courseId, studentId }: { courseId: string; studentId: string }) {
+   381→  const [results, setResults] = useState<any[]>([]);
+   382→  const [loading, setLoading] = useState(true);
+   383→
+   384→  useEffect(() => {
+   385→    api.getResults({ studentId })
+   386→      .then((r: any) => {
+   387→        const entries = r?.entries || [];
+   388→        // Filter to this course; backend may not return courseId on student-scoped results, so include all if courseId missing
+   389→        const filtered = entries.filter((e: any) => !e.courseId || e.courseId === courseId);
+   390→        setResults(filtered.length > 0 ? filtered : entries);
+   391→      })
+   392→      .catch(() => setResults([]))
+   393→      .finally(() => setLoading(false));
+   394→  }, [courseId, studentId]);
+   395→
+   396→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   397→  if (results.length === 0) {
+   398→    return <EmptyState icon={GraduationCap} title="No results yet" desc="Your teacher hasn't posted any results for this course yet." />;
+   399→  }
+   400→
+   401→  return (
+   402→    <Card className="p-5">
+   403→      <div className="space-y-3">
+   404→        {results.map((r: any, idx: number) => (
+   405→          <div key={r.id || idx} className="flex items-center gap-3">
+   406→            <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+   407→            <div className="flex-1">
+   408→              <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.exam || 'Exam'}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   409→              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
+   410→              <div className="text-[11px] text-muted-foreground mt-1">{r.date}</div>
+   411→            </div>
+   412→            <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   413→          </div>
+   414→        ))}
+   415→      </div>
+   416→    </Card>
+   417→  );
+   418→}
+   419→
+   420→function CourseAttendanceView({ studentId }: { studentId: string }) {
+   421→  const [attendance, setAttendance] = useState<any>(null);
+   422→  const [loading, setLoading] = useState(true);
+   423→
+   424→  useEffect(() => {
+   425→    api.getAttendance({ studentId })
+   426→      .then(setAttendance)
+   427→      .catch(() => setAttendance(null))
+   428→      .finally(() => setLoading(false));
+   429→  }, [studentId]);
+   430→
+   431→  if (loading) return <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>;
+   432→  if (!attendance || attendance.total === 0) {
+   433→    return <EmptyState icon={CalendarCheck} title="No attendance records" desc="Your teacher hasn't marked any attendance for you yet." />;
+   434→  }
+   435→
+   436→  return (
+   437→    <div className="space-y-4">
+   438→      <div className="grid grid-cols-4 gap-3">
+   439→        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   440→        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   441→        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   442→        <Card className="p-4 text-center bg-emerald-500/10"><CalendarCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold text-emerald-600">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   443→      </div>
+   444→      <Card className="p-4">
+   445→        <Table>
+   446→          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   447→          <TableBody>
+   448→            {(attendance.entries || []).map((e: any, idx: number) => (
+   449→              <TableRow key={e.id || idx}>
+   450→                <TableCell className="text-sm">{e.date}</TableCell>
+   451→                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{e.status}</Badge></TableCell>
+   452→              </TableRow>
+   453→            ))}
+   454→          </TableBody>
+   455→        </Table>
+   456→      </Card>
+   457→    </div>
+   458→  );
+   459→}
+   460→
+   461→// ============== MyAttendance (existing module) ==============
+   462→function MyAttendance({ attendance }: any) {
+   463→  return (
+   464→    <div className="space-y-6">
+   465→      <ModuleHeader title="My Attendance" subtitle="Your attendance record" />
+   466→      {!attendance || attendance.total === 0 ? (
+   467→        <EmptyState icon={CalendarCheck} title="No attendance records yet" desc="Your teachers haven't marked any attendance yet. Check back after your next class." />
+   468→      ) : (
+   469→        <>
+   470→          <div className="grid grid-cols-4 gap-3">
+   471→            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   472→            <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   473→            <Card className="p-4 text-center"><Clock className="h-6 w-6 text-amber-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   474→            <Card className="p-4 text-center bg-emerald-500/10"><CalendarCheck className="h-6 w-6 text-emerald-600 mx-auto mb-1" /><div className="text-2xl font-bold text-emerald-600">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+   475→          </div>
+   476→          <Card className="p-4">
+   477→            <Table>
+   478→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+   479→              <TableBody>
+   480→                {(attendance.entries || []).map((e: any) => (
+   481→                  <TableRow key={e.id}><TableCell className="text-sm">{e.date}</TableCell><TableCell className="text-sm">{e.class}</TableCell>
+   482→                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-amber-600 bg-amber-500/10 border-amber-500/20'}>{e.status}</Badge></TableCell>
+   483→                  </TableRow>
+   484→                ))}
+   485→              </TableBody>
+   486→            </Table>
+   487→          </Card>
+   488→        </>
+   489→      )}
+   490→    </div>
+   491→  );
+   492→}
+   493→
+   494→function MyResults({ results }: any) {
+   495→  const resultsArray = Array.isArray(results) ? results : (results?.entries || []);
+   496→  return (
+   497→    <div className="space-y-6">
+   498→      <ModuleHeader title="My Results" subtitle="All your test & exam results" />
+   499→      {resultsArray.length === 0 ? (
+   500→        <EmptyState icon={GraduationCap} title="No results posted yet" desc="Your teachers haven't posted any results yet. Check back after your next exam." />
+   501→      ) : (
+   502→        <Card className="p-5">
+   503→          <div className="space-y-3">
+   504→            {resultsArray.map((r: any) => {
+   505→              const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
+   506→              return (
+   507→              <div key={r.id} className="flex items-center gap-3">
+   508→                <div className="h-9 w-9 rounded-lg bg-emerald-500/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-emerald-600" /></div>
+   509→                <div className="flex-1">
+   510→                  <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
+   511→                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} /></div>
+   512→                  <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
+   513→                </div>
+   514→                <Badge variant="outline" className="font-bold">{r.grade}</Badge>
+   515→              </div>
+   516→              );
+   517→            })}
+   518→          </div>
+   519→        </Card>
+   520→      )}
+   521→    </div>
+   522→  );
+   523→}
+   524→
+   525→function MyTimetable() {
+   526→  return (
+   527→    <div className="space-y-6">
+   528→      <ModuleHeader title="My Timetable" subtitle="Your weekly class schedule" />
+   529→      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager." />
+   530→    </div>
+   531→  );
+   532→}
+   533→
+   534→function MyDiary({ diary }: any) {
+   535→  return (
+   536→    <div className="space-y-6">
+   537→      <ModuleHeader title="Diary & Homework" subtitle="Assignments from your teachers" />
+   538→      {diary.length === 0 ? (
+   539→        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Your teachers haven't posted any homework or assignments yet." />
+   540→      ) : (
+   541→        <div className="space-y-3">
+   542→          {diary.map((d: any) => (
+   543→            <Card key={d.id} className="p-4">
+   544→              <div className="flex items-start justify-between mb-2">
+   545→                <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
+   546→                <Badge variant="outline" className={d.due ? 'text-amber-600 bg-amber-500/10 border-amber-500/20' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+   547→              </div>
+   548→              {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
+   549→            </Card>
+   550→          ))}
+   551→        </div>
+   552→      )}
+   553→    </div>
+   554→  );
+   555→}
+   556→
+   557→function MyAnnouncements({ announcements, loading }: { announcements: Announcement[]; loading: boolean }) {
+   558→  return (
+   559→    <div className="space-y-6">
+   560→      <ModuleHeader title="Announcements" subtitle="Notices from your teachers, branch & institute" />
+   561→      {loading ? (
+   562→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+   563→      ) : announcements.length === 0 ? (
+   564→        <EmptyState icon={Inbox} title="No announcements" desc="You're all caught up! New announcements will appear here." />
+   565→      ) : (
+   566→        <div className="space-y-3">
+   567→          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+   568→        </div>
+   569→      )}
+   570→    </div>
+   571→  );
+   572→}
+   573→
+   574→function AnnouncementCard({ a }: { a: Announcement }) {
+   575→  const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '';
+   576→  return (
+   577→    <Card className="p-4">
+   578→      <div className="flex items-start justify-between gap-3 mb-1.5">
+   579→        <h4 className="font-semibold text-sm">{a.title}</h4>
+   580→        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{a.targetScope || 'all'}</Badge>
+   581→      </div>
+   582→      <p className="text-sm text-muted-foreground">{a.message}</p>
+   583→      <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
+   584→    </Card>
+   585→  );
+   586→}
+   587→
+   588→// ============== My Invoices (with PDF challan) ==============
+   589→const fmtPKR = (n: number) => 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK');
+   590→
+   591→function downloadChallanPDF(challan: any) {
+   592→  const w = window.open('', '_blank', 'width=820,height=920');
+   593→  if (!w) {
+   594→    toast({ title: 'Popup blocked', description: 'Please allow popups to download the challan PDF.', variant: 'destructive' });
+   595→    return;
+   596→  }
+   597→  const amount = Number(challan.amount || 0);
+   598→  const status = String(challan.status || 'unpaid').toLowerCase();
+   599→  const isPaid = status === 'paid';
+   600→  const today = new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' });
+   601→  const escape = (v: any) => String(v ?? '—').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+   602→
+   603→  const html = `<!DOCTYPE html>
+   604→<html lang="en">
+   605→<head>
+   606→<meta charset="utf-8" />
+   607→<title>Fee Challan ${escape(challan.challanNo || '')}</title>
+   608→<style>
+   609→  * { box-sizing: border-box; }
+   610→  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #f8fafc; color: #1f2937; }
+   611→  .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #0f766e; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+   612→  .header { text-align: center; border-bottom: 2px dashed #99f6e4; padding-bottom: 18px; margin-bottom: 22px; }
+   613→  .brand { font-size: 11px; letter-spacing: 3px; color: #0f766e; font-weight: 700; }
+   614→  .title { font-size: 26px; font-weight: 800; margin-top: 4px; color: #134e4a; letter-spacing: 0.5px; }
+   615→  .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
+   616→  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 8px 0 18px; }
+   617→  .field { display: flex; flex-direction: column; }
+   618→  .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+   619→  .value { font-size: 14px; font-weight: 600; color: #111827; }
+   620→  .amount-row { display: flex; justify-content: space-between; align-items: center; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 16px 22px; margin: 18px 0; }
+   621→  .amount-label { font-size: 12px; color: #0f766e; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+   622→  .amount-value { font-size: 22px; font-weight: 800; color: #134e4a; }
+   623→  .status-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+   624→  .status { display: inline-block; padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+   625→  .status-paid { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+   626→  .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+   627→  .signature { margin-top: 64px; padding-top: 14px; border-top: 2px dashed #9ca3af; display: flex; justify-content: space-between; gap: 24px; }
+   628→  .sig-label { font-size: 12px; color: #6b7280; padding-top: 6px; }
+   629→  .footer { text-align: center; margin-top: 22px; font-size: 10px; color: #9ca3af; letter-spacing: 0.5px; }
+   630→  @media print {
+   631→    body { padding: 0; background: #fff; }
+   632→    .challan { box-shadow: none; border: 2px solid #0f766e; }
+   633→  }
+   634→</style>
+   635→</head>
+   636→<body>
+   637→  <div class="challan">
+   638→    <div class="header">
+   639→      <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
+   640→      <div class="title">Fee Challan</div>
+   641→      <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
+   642→    </div>
+   643→    <div class="grid">
+   644→      <div class="field"><span class="label">Challan No.</span><span class="value">${escape(challan.challanNo || '—')}</span></div>
+   645→      <div class="field"><span class="label">Date</span><span class="value">${today}</span></div>
+   646→      <div class="field"><span class="label">Student Name</span><span class="value">${escape(challan.studentName || challan.student || '—')}</span></div>
+   647→      <div class="field"><span class="label">Class</span><span class="value">${escape(challan.className || challan.class || '—')}</span></div>
+   648→      <div class="field"><span class="label">Roll No.</span><span class="value">${escape(challan.rollNo || '—')}</span></div>
+   649→      <div class="field"><span class="label">Month / Year</span><span class="value">${escape(challan.month || '—')}${challan.year ? ' ' + escape(challan.year) : ''}</span></div>
+   650→    </div>
+   651→    <div class="amount-row">
+   652→      <span class="amount-label">Amount Payable</span>
+   653→      <span class="amount-value">Rs. ${amount.toLocaleString('en-PK')}</span>
+   654→    </div>
+   655→    <div class="status-row">
+   656→      <span class="label" style="margin:0">Status</span>
+   657→      <span class="status ${isPaid ? 'status-paid' : 'status-unpaid'}">${status.toUpperCase()}</span>
+   658→      ${challan.paidDate ? `<span class="value" style="font-size:12px;color:#374151;">Paid on ${escape(challan.paidDate)}</span>` : ''}
+   659→      ${challan.paymentMethod ? `<span class="value" style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
+   660→    </div>
+   661→    <div class="signature">
+   662→      <div><div class="sig-label">Student / Parent Signature</div></div>
+   663→      <div><div class="sig-label">Authorized Signature</div></div>
+   664→    </div>
+   665→    <div class="footer">This is a system-generated challan from ESM · Electronic School Management. Please retain for your records.</div>
+   666→  </div>
+   667→  <script>
+   668→    window.onload = function() { setTimeout(function() { window.print(); }, 300); };
+   669→  </script>
+   670→</body>
+   671→</html>`;
+   672→  w.document.open();
+   673→  w.document.write(html);
+   674→  w.document.close();
+   675→}
+   676→
+   677→function MyInvoices({ user }: { user: any }) {
+   678→  const [invoices, setInvoices] = useState<any[]>([]);
+   679→  const [loading, setLoading] = useState(true);
+   680→  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+   681→
+   682→  const refresh = () => {
+   683→    setLoading(true);
+   684→    api.getFeeInvoices()
+   685→      .then(r => setInvoices(Array.isArray(r) ? r : []))
+   686→      .catch(() => setInvoices([]))
+   687→      .finally(() => setLoading(false));
+   688→  };
+   689→
+   690→  useEffect(() => { refresh(); }, [user?.id]);
+   691→
+   692→  const stats = useMemo(() => {
+   693→    const total = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+   694→    const paid = invoices.filter(i => String(i.status).toLowerCase() === 'paid').reduce((acc, i) => acc + (Number(i.paidAmount || i.amount) || 0), 0);
+   695→    const pending = total - paid;
+   696→    return { total, paid, pending, count: invoices.length, paidCount: invoices.filter(i => String(i.status).toLowerCase() === 'paid').length };
+   697→  }, [invoices]);
+   698→
+   699→  const downloadChallan = async (inv: any) => {
+   700→    setDownloadingId(inv.id);
+   701→    try {
+   702→      const challan = await api.getChallanData(inv.id);
+   703→      // Merge with invoice data as a fallback so the PDF is complete even if the challan endpoint returns a partial payload
+   704→      const merged = { ...inv, ...challan };
+   705→      downloadChallanPDF(merged);
+   706→      toast({ title: 'Challan opened', description: 'Use the print dialog to save it as a PDF.' });
+   707→    } catch (e: any) {
+   708→      // Fallback: open PDF using the invoice data we already have
+   709→      toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — generating PDF from invoice summary.' });
+   710→      downloadChallanPDF(inv);
+   711→    } finally {
+   712→      setDownloadingId(null);
+   713→    }
+   714→  };
+   715→
+   716→  const cards = [
+   717→    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-emerald-500 to-emerald-700', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
+   718→    { label: 'Total Pending', value: fmtPKR(stats.pending), icon: Clock, color: 'from-rose-500 to-red-600', sub: `${stats.count - stats.paidCount} invoice${stats.count - stats.paidCount === 1 ? '' : 's'}` },
+   719→    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-amber-500 to-yellow-600', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
+   720→  ];
+   721→
+   722→  return (
+   723→    <div className="space-y-6">
+   724→      <ModuleHeader title="My Invoices" subtitle="View your monthly fee invoices and download challan PDFs" />
+   725→
+   726→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   727→        {cards.map((c, i) => (
+   728→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   729→            <Card className="p-5 relative overflow-hidden">
+   730→              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   731→              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   732→              <div className="text-2xl font-extrabold font-display">{c.value}</div>
+   733→              <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
+   734→            </Card>
+   735→          </motion.div>
+   736→        ))}
+   737→      </div>
+   738→
+   739→      <Card className="p-4">
+   740→        <div className="flex items-center justify-between mb-4">
+   741→          <div className="flex items-center gap-2">
+   742→            <FileText className="h-4 w-4 text-amber-600" />
+   743→            <h3 className="font-bold text-base">Invoice History</h3>
+   744→          </div>
+   745→          <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
+   746→            {loading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+   747→            Refresh
+   748→          </Button>
+   749→        </div>
+   750→
+   751→        {loading ? (
+   752→          <div className="text-center py-12 text-sm text-muted-foreground flex items-center justify-center gap-2">
+   753→            <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+   754→          </div>
+   755→        ) : invoices.length === 0 ? (
+   756→          <EmptyState icon={DollarSign} title="No invoices yet" desc="Your monthly fee invoices will appear here once your Branch Manager generates them." />
+   757→        ) : (
+   758→          <div className="max-h-[60vh] overflow-y-auto scroll-fancy -mx-4 px-4">
+   759→            <Table>
+   760→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40 sticky top-0">
+   761→                <TableHead>Month</TableHead>
+   762→                <TableHead className="hidden sm:table-cell">Year</TableHead>
+   763→                <TableHead className="hidden md:table-cell">Challan No.</TableHead>
+   764→                <TableHead className="text-right">Amount</TableHead>
+   765→                <TableHead>Status</TableHead>
+   766→                <TableHead className="text-right">Action</TableHead>
+   767→              </TableRow></TableHeader>
+   768→              <TableBody>
+   769→                {invoices.map(inv => {
+   770→                  const isPaid = String(inv.status).toLowerCase() === 'paid';
+   771→                  return (
+   772→                    <TableRow key={inv.id} className="hover:bg-muted/30">
+   773→                      <TableCell className="font-medium text-sm">{inv.month || '—'}</TableCell>
+   774→                      <TableCell className="hidden sm:table-cell text-sm">{inv.year || '—'}</TableCell>
+   775→                      <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">{inv.challanNo || inv.id?.slice(-8)}</TableCell>
+   776→                      <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
+   777→                      <TableCell>
+   778→                        <Badge variant="outline" className={isPaid ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+   779→                          {isPaid ? 'Paid' : 'Unpaid'}
+   780→                        </Badge>
+   781→                        {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
+   782→                      </TableCell>
+   783→                      <TableCell className="text-right">
+   784→                        <Button size="sm" variant="outline" className="h-8 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
+   785→                          {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Printer className="h-3 w-3 mr-1" /> Download Challan</>}
+   786→                        </Button>
+   787→                      </TableCell>
+   788→                    </TableRow>
+   789→                  );
+   790→                })}
+   791→              </TableBody>
+   792→            </Table>
+   793→          </div>
+   794→        )}
+   795→      </Card>
+   796→
+   797→      <Card className="p-4 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900">
+   798→        <div className="flex items-start gap-3">
+   799→          <div className="h-9 w-9 rounded-lg bg-amber-500/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-amber-700 dark:text-amber-400" /></div>
+   800→          <div>
+   801→            <div className="font-bold text-sm text-amber-900 dark:text-amber-200">How to download your challan PDF</div>
+   802→            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+   803→              Click <b>Download Challan</b> on any invoice. A new tab will open with a printable challan form —
+   804→              in the print dialog, choose <b>"Save as PDF"</b> as the destination to save the file.
+   805→              If a popup blocker prevents the new tab, please allow popups for this site.
+   806→            </p>
+   807→          </div>
+   808→        </div>
+   809→      </Card>
+   810→    </div>
+   811→  );
+   812→}
+   813→

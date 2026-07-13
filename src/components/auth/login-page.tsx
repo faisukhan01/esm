@@ -15,18 +15,18 @@ function WavingPerson() {
   return (
     <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full max-w-[280px] mx-auto">
       {/* Legs */}
-      <rect x="175" y="210" width="14" height="70" rx="6" fill="#064e3b" />
-      <rect x="210" y="210" width="14" height="70" rx="6" fill="#064e3b" />
+      <rect x="175" y="210" width="14" height="70" rx="6" fill="#0f1e3a" />
+      <rect x="210" y="210" width="14" height="70" rx="6" fill="#0f1e3a" />
       {/* Shoes */}
-      <ellipse cx="182" cy="282" rx="12" ry="6" fill="#064e3b" />
-      <ellipse cx="217" cy="282" rx="12" ry="6" fill="#064e3b" />
+      <ellipse cx="182" cy="282" rx="12" ry="6" fill="#0f1e3a" />
+      <ellipse cx="217" cy="282" rx="12" ry="6" fill="#0f1e3a" />
       {/* Body / Shirt */}
-      <path d="M168 100 C165 120 162 150 164 210 L235 210 C237 150 234 120 231 100 Z" fill="#10b981" />
+      <path d="M168 100 C165 120 162 150 164 210 L235 210 C237 150 234 120 231 100 Z" fill="#1e3a5f" />
       {/* Left arm */}
-      <path d="M168 110 C145 100 130 80 135 55 L140 50" fill="#10b981" stroke="#0d9668" strokeWidth="1" />
+      <path d="M168 110 C145 100 130 80 135 55 L140 50" fill="#1e3a5f" stroke="#163150" strokeWidth="1" />
       <ellipse cx="138" cy="48" rx="7" ry="6" fill="#fde68a" transform="rotate(-20, 138, 48)" />
       {/* Right arm waving */}
-      <path d="M231 110 C255 95 265 70 258 48" fill="#10b981" stroke="#0d9668" strokeWidth="1">
+      <path d="M231 110 C255 95 265 70 258 48" fill="#1e3a5f" stroke="#163150" strokeWidth="1">
         <animateTransform attributeName="transform" type="rotate" values="0 231 110;8 231 110;0 231 110;-8 231 110;0 231 110" dur="1.5s" repeatCount="indefinite" />
       </path>
       <ellipse cx="260" cy="46" rx="7" ry="6" fill="#fde68a" transform="rotate(15, 260, 46)">
@@ -41,36 +41,13 @@ function WavingPerson() {
       <path d="M172 42 C170 38 173 32 178 28" stroke="#92400e" strokeWidth="5" strokeLinecap="round" fill="none" />
       <path d="M228 42 C230 38 227 32 222 28" stroke="#92400e" strokeWidth="5" strokeLinecap="round" fill="none" />
       {/* Eyes - happy squint */}
-      <path d="M186 48 Q190 44 194 48" stroke="#064e3b" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M206 48 Q210 44 214 48" stroke="#064e3b" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M186 48 Q190 44 194 48" stroke="#0f1e3a" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <path d="M206 48 Q210 44 214 48" stroke="#0f1e3a" strokeWidth="2" fill="none" strokeLinecap="round" />
       {/* Big smile */}
       <path d="M188 58 Q200 70 212 58" stroke="#c0785c" strokeWidth="2" fill="#e17055" opacity="0.5" strokeLinecap="round" />
       {/* Blush */}
       <ellipse cx="183" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
       <ellipse cx="217" cy="56" rx="6" ry="3" fill="#fab1a0" opacity="0.4" />
-      {/* Sparkles */}
-      <g>
-        <path d="M130 30 L133 20 L136 30 L146 33 L136 36 L133 46 L130 36 L120 33 Z" fill="#fcd34d" opacity="0.6">
-          <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2s" repeatCount="indefinite" />
-        </path>
-        <path d="M260 80 L262 74 L264 80 L270 82 L264 84 L262 90 L260 84 L254 82 Z" fill="#d1fae5" opacity="0.5">
-          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.5s" repeatCount="indefinite" />
-        </path>
-        <path d="M155 100 L157 95 L159 100 L164 102 L159 104 L157 109 L155 104 L150 102 Z" fill="#fcd34d" opacity="0.4">
-          <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.8s" repeatCount="indefinite" />
-        </path>
-      </g>
-      {/* Floating hearts */}
-      <g opacity="0.5">
-        <path d="M110 60 C110 55 115 50 120 55 C125 50 130 55 130 60 C130 68 120 75 120 75 C120 75 110 68 110 60 Z" fill="#fd79a8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;-5,-10;0,0" dur="3s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3s" repeatCount="indefinite" />
-        </path>
-        <path d="M270 35 C270 31 274 27 278 31 C282 27 286 31 286 35 C286 41 278 47 278 47 C278 47 270 41 270 35 Z" fill="#fd79a8">
-          <animateTransform attributeName="transform" type="translate" values="0,0;5,-8;0,0" dur="3.5s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3.5s" repeatCount="indefinite" />
-        </path>
-      </g>
     </svg>
   );
 }
@@ -83,7 +60,7 @@ function FloatingInput({ id, type, placeholder, icon, value, onChange, success, 
       <input
         id={id} type={type} value={value} onChange={onChange} autoComplete={autoComplete}
         className={`login-input w-full h-12 pl-11 ${togglePassword ? 'pr-11' : 'pr-4'} rounded-xl border bg-white text-gray-800 text-sm outline-none transition-all ${
-          success ? 'border-green-400' : 'border-gray-200 focus:border-amber-500'
+          success ? 'border-blue-400' : 'border-gray-200 focus:border-blue-700'
         }`}
         placeholder=" "
       />
@@ -129,8 +106,8 @@ function CoverPanel() {
   return (
     <div className="cover-gradient relative flex flex-col items-center justify-center px-6 py-8 md:p-12 min-h-[200px] md:min-h-full rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none overflow-hidden">
       <FloatingShapes />
-      <div className="glow-circle absolute w-48 h-48 rounded-full bg-amber-300/10 -top-10 -left-10" />
-      <div className="glow-circle absolute w-36 h-36 rounded-full bg-amber-300/10 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
+      <div className="glow-circle absolute w-48 h-48 rounded-full bg-blue-300/10 -top-10 -left-10" />
+      <div className="glow-circle absolute w-36 h-36 rounded-full bg-blue-300/10 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
 
       <div className="relative z-10 text-center">
         {/* Waving cartoon illustration */}
@@ -175,7 +152,7 @@ function CoverPanel() {
           ].map(f => (
             <div key={f.text} className="flex items-center gap-2.5 text-white/80 text-sm">
               <div className="h-7 w-7 rounded-lg bg-white/10 grid place-items-center shrink-0">
-                <f.icon className="h-3.5 w-3.5 text-amber-300" />
+                <f.icon className="h-3.5 w-3.5 text-blue-300" />
               </div>
               {f.text}
             </div>
@@ -250,8 +227,8 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
         className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8"
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-11 w-11 rounded-xl bg-emerald-100 grid place-items-center shrink-0">
-            <Shield className="h-5 w-5 text-emerald-600" />
+          <div className="h-11 w-11 rounded-xl bg-blue-100 grid place-items-center shrink-0">
+            <Shield className="h-5 w-5 text-blue-700" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-gray-800">Change your password</h3>
@@ -265,7 +242,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-current" type={showCurrent ? 'text' : 'password'} value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-blue-700 bg-white text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">Current password</label>
@@ -279,7 +256,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-new" type={showNew ? 'text' : 'password'} value={newPassword}
               onChange={e => setNewPassword(e.target.value)} autoComplete="new-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-blue-700 bg-white text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">New password</label>
@@ -293,7 +270,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-confirm" type={showConfirm ? 'text' : 'password'} value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-emerald-500 bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-blue-700 bg-white text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">Confirm new password</label>
@@ -403,7 +380,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
               key={r.id} type="button" onClick={() => pickRole(r.id)}
               className={`role-pill flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
                 isActive
-                  ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 border-transparent shadow-md text-white'
+                  ? 'bg-gradient-to-br from-blue-700 to-blue-900 border-transparent shadow-md text-white'
                   : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
               }`}
             >
@@ -446,7 +423,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
             <input type="checkbox" className="custom-checkbox w-4 h-4 rounded" />
             <span className="text-sm text-gray-500">Remember me</span>
           </label>
-          <button type="button" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors">
+          <button type="button" className="text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors">
             Forgot password?
           </button>
         </div>
@@ -464,8 +441,8 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
       {/* Role-specific info (no demo credentials shown) */}
       <div className="slide-up slide-up-delay-5 mt-4">
-        <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
-          <p className="text-emerald-800 text-[11px]">{activeRole.note}</p>
+        <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-center">
+          <p className="text-blue-800 text-[11px]">{activeRole.note}</p>
         </div>
       </div>
     </div>

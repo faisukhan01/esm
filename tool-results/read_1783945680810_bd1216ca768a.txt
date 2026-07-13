@@ -1,0 +1,507 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState } from 'react';
+     4→import { motion } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { Card } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Button } from '@/components/ui/button';
+     9→import { Input } from '@/components/ui/input';
+    10→import { Label } from '@/components/ui/label';
+    11→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    12→import { Textarea } from '@/components/ui/textarea';
+    13→import {
+    14→  Building2, Network, Users, Plus, MapPin, CheckCircle2, Lock, Unlock, Edit,
+    15→  Trash2, X, Megaphone, Send, Loader2, Server, Inbox,
+    16→} from 'lucide-react';
+    17→import { toast } from '@/hooks/use-toast';
+    18→
+    19→export function InstituteAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    20→  const [stats, setStats] = useState<any>(null);
+    21→  const [branches, setBranches] = useState<any[]>([]);
+    22→  const [showAddBranch, setShowAddBranch] = useState(false);
+    23→  const [lastCreated, setLastCreated] = useState<any>(null);
+    24→  const [loading, setLoading] = useState(true);
+    25→
+    26→  const refresh = () => {
+    27→    setLoading(true);
+    28→    if (user?.instituteId) {
+    29→      Promise.all([
+    30→        api.scopedStats(user.instituteId).catch(() => null),
+    31→        api.branches(user.instituteId).catch(() => []),
+    32→      ]).then(([s, b]) => {
+    33→        setStats(s);
+    34→        setBranches(Array.isArray(b) ? b : []);
+    35→        setLoading(false);
+    36→      });
+    37→    } else {
+    38→      setLoading(false);
+    39→    }
+    40→  };
+    41→  useEffect(() => {
+    42→    let active = true;
+    43→    if (user?.instituteId) {
+    44→      Promise.all([
+    45→        api.scopedStats(user.instituteId).catch(() => null),
+    46→        api.branches(user.instituteId).catch(() => []),
+    47→      ]).then(([s, b]) => {
+    48→        if (active) { setStats(s); setBranches(Array.isArray(b) ? b : []); setLoading(false); }
+    49→      });
+    50→    }
+    51→    return () => { active = false; };
+    52→  }, [user?.instituteId]);
+    53→
+    54→  if (activeModule === 'announcements') return <AnnouncementsView user={user} />;
+    55→  if (activeModule === 'settings') return null; // handled by RolePortal
+    56→  // Default: institute overview with branch cards
+    57→  return <InstituteOverview user={user} stats={stats} branches={branches} loading={loading} onAddBranch={() => setShowAddBranch(true)} onRefresh={refresh} showAddBranch={showAddBranch} setShowAddBranch={setShowAddBranch} lastCreated={lastCreated} setLastCreated={setLastCreated} />;
+    58→}
+    59→
+    60→function LoadingState({ label }: { label: string }) {
+    61→  return (
+    62→    <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+    63→      <Loader2 className="h-4 w-4 animate-spin" />
+    64→      <span className="text-sm">{label}</span>
+    65→    </div>
+    66→  );
+    67→}
+    68→
+    69→function EmptyState({ icon: Icon, title, desc, action }: any) {
+    70→  return (
+    71→    <Card className="p-10 text-center">
+    72→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+    73→      <h3 className="font-display font-bold text-lg">{title}</h3>
+    74→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+    75→      {action && <div className="mt-5">{action}</div>}
+    76→    </Card>
+    77→  );
+    78→}
+    79→
+    80→// ============== Institute Overview ==============
+    81→function InstituteOverview({ user, stats, branches, loading, onAddBranch, onRefresh, showAddBranch, setShowAddBranch, lastCreated, setLastCreated }: any) {
+    82→  const cards = [
+    83→    { label: 'Branches', value: stats?.branches ?? 0, icon: Network, color: 'from-emerald-500 to-emerald-700' },
+    84→    { label: 'Total Students', value: stats?.students ?? 0, icon: Users, color: 'from-teal-500 to-cyan-600' },
+    85→    { label: 'Staff', value: stats?.staff ?? 0, icon: Building2, color: 'from-violet-500 to-purple-600' },
+    86→  ];
+    87→
+    88→  return (
+    89→    <div className="space-y-6">
+    90→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+    91→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 p-6 sm:p-8 text-white">
+    92→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+    93→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
+    94→        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    95→          <div>
+    96→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Building2 className="h-3 w-3 text-amber-300" /> Institute Admin</div>
+    97→            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]} 👋</h1>
+    98→            <p className="text-emerald-50/80 text-sm mt-1.5">{stats?.branches ? `${stats.branches} branches · ${stats.students} students` : 'Add your first branch to get started.'}</p>
+    99→          </div>
+   100→          <Button className="bg-white text-emerald-800 hover:bg-emerald-50" size="sm" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+   101→        </div>
+   102→      </motion.div>
+   103→
+   104→      {loading ? (
+   105→        <LoadingState label="Loading institute data…" />
+   106→      ) : (
+   107→        <>
+   108→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   109→            {cards.map((c, i) => (
+   110→              <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   111→                <Card className="p-5 relative overflow-hidden">
+   112→                  <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   113→                  <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   114→                  <div className="text-2xl sm:text-3xl font-extrabold font-display">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
+   115→                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   116→                </Card>
+   117→              </motion.div>
+   118→            ))}
+   119→          </div>
+   120→
+   121→          {branches.length === 0 ? (
+   122→            <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password."
+   123→              action={<Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
+   124→          ) : (
+   125→            <Card className="p-5">
+   126→              <div className="flex items-center justify-between mb-4">
+   127→                <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a card to view details</p></div>
+   128→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+   129→              </div>
+   130→              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   131→                {branches.map((br: any) => <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} />)}
+   132→              </div>
+   133→            </Card>
+   134→          )}
+   135→        </>
+   136→      )}
+   137→
+   138→      <BranchModal show={showAddBranch} setShow={setShowAddBranch} instituteId={user?.instituteId} onRefresh={onRefresh} lastCreated={lastCreated} setLastCreated={setLastCreated} />
+   139→    </div>
+   140→  );
+   141→}
+   142→
+   143→// ============== Branch Card (popup modal on click) ==============
+   144→function BranchCard({ br, instituteId, onRefresh }: { br: any; instituteId: string; onRefresh: () => void }) {
+   145→  const [showDetails, setShowDetails] = useState(false);
+   146→  const [showEdit, setShowEdit] = useState(false);
+   147→  const [showDelete, setShowDelete] = useState(false);
+   148→  const [blocked, setBlocked] = useState<boolean>(br.blocked === 1 || br.blocked === true);
+   149→
+   150→  const isBlocked = blocked;
+   151→  const statusLabel = isBlocked ? 'Blocked' : 'Active';
+   152→  const statusClass = isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20';
+   153→
+   154→  const toggleBlock = async (e: React.MouseEvent) => {
+   155→    e.stopPropagation();
+   156→    try {
+   157→      await api.blockBranch(br.id, !blocked, !blocked ? 'Blocked by Institute Admin' : '');
+   158→      setBlocked(!blocked);
+   159→      toast({ title: blocked ? 'Branch unblocked' : 'Branch blocked', description: blocked ? 'Access restored' : 'All teachers and students blocked (cascade)' });
+   160→      onRefresh();
+   161→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   162→  };
+   163→
+   164→  const handleDelete = async () => {
+   165→    try {
+   166→      await api.deleteBranch(br.id);
+   167→      toast({ title: 'Branch deleted', description: `${br.name} and all its data have been removed.` });
+   168→      setShowDelete(false);
+   169→      onRefresh();
+   170→    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+   171→  };
+   172→
+   173→  return (
+   174→    <>
+   175→      <Card className={`p-5 hover:shadow-lg transition relative cursor-pointer ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`} onClick={() => setShowDetails(true)}>
+   176→        <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-teal-500/10 blur-2xl pointer-events-none" />
+   177→        <div className="flex items-start justify-between">
+   178→          <div className="flex items-start gap-3 min-w-0">
+   179→            <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-700 grid place-items-center shadow-md text-white">
+   180→              <Network className="h-5 w-5" />
+   181→            </div>
+   182→            <div className="min-w-0">
+   183→              <h3 className="font-bold text-base truncate">{br.name}</h3>
+   184→              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {br.city || '—'}</div>
+   185→              <Badge variant="outline" className={`text-[10px] font-medium mt-1.5 ${statusClass}`}>{statusLabel}</Badge>
+   186→            </div>
+   187→          </div>
+   188→        </div>
+   189→        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+   190→          <div className="text-xs">
+   191→            <div className="text-muted-foreground">Manager</div>
+   192→            <div className="font-medium truncate">{br.manager || '—'}</div>
+   193→          </div>
+   194→          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+   195→            <button type="button" onClick={() => setShowEdit(true)} title="Edit" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"><Edit className="h-4 w-4" /></button>
+   196→            <button type="button" onClick={toggleBlock} title={isBlocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg transition ${isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-emerald-600 hover:bg-emerald-500/10'}`}>{isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+   197→            <button type="button" onClick={() => setShowDelete(true)} title="Delete branch" className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"><Trash2 className="h-4 w-4" /></button>
+   198→          </div>
+   199→        </div>
+   200→      </Card>
+   201→
+   202→      {showDetails && <BranchDetailsModal br={br} instituteId={instituteId} onClose={() => setShowDetails(false)} onEdit={() => { setShowDetails(false); setShowEdit(true); }} />}
+   203→      {showEdit && <EditBranchModal br={br} instituteId={instituteId} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
+   204→      {showDelete && (
+   205→        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => setShowDelete(false)}>
+   206→          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+   207→            <Card className="p-6">
+   208→              <div className="flex items-center gap-3 mb-4">
+   209→                <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
+   210→                <div><h3 className="font-display font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+   211→              </div>
+   212→              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
+   213→                This will permanently delete <strong>{br.name}</strong> and ALL its data: teachers, students, classes, courses, attendance, results, and materials.
+   214→              </div>
+   215→              <div className="flex gap-2">
+   216→                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white flex-1" onClick={handleDelete}>Delete Permanently</Button>
+   217→                <Button size="sm" variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+   218→              </div>
+   219→            </Card>
+   220→          </motion.div>
+   221→        </motion.div>
+   222→      )}
+   223→    </>
+   224→  );
+   225→}
+   226→
+   227→// ============== Branch Details Modal ==============
+   228→function BranchDetailsModal({ br, instituteId, onClose, onEdit }: { br: any; instituteId: string; onClose: () => void; onEdit: () => void }) {
+   229→  const [teachers, setTeachers] = useState<any[]>([]);
+   230→  const [students, setStudents] = useState<any[]>([]);
+   231→  const [loading, setLoading] = useState(true);
+   232→
+   233→  useEffect(() => {
+   234→    Promise.all([
+   235→      api.platformUsers({ branchId: br.id, role: 'teacher' }).catch(() => []),
+   236→      api.platformUsers({ branchId: br.id, role: 'student' }).catch(() => []),
+   237→    ]).then(([t, s]) => { setTeachers(Array.isArray(t) ? t : []); setStudents(Array.isArray(s) ? s : []); setLoading(false); });
+   238→  }, [br.id]);
+   239→
+   240→  const isBlocked = br.blocked === 1 || br.blocked === true;
+   241→
+   242→  return (
+   243→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   244→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
+   245→        <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
+   246→          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/10">
+   247→            <div className="flex items-start justify-between">
+   248→              <div className="flex items-start gap-3">
+   249→                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-700 grid place-items-center shadow-md text-white"><Network className="h-7 w-7" /></div>
+   250→                <div>
+   251→                  <h2 className="font-display text-xl font-extrabold">{br.name}</h2>
+   252→                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {br.city || '—'}</div>
+   253→                  <Badge variant="outline" className={`text-[10px] mt-2 ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}`}>{isBlocked ? 'Blocked' : 'Active'}</Badge>
+   254→                </div>
+   255→              </div>
+   256→              <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground"><X className="h-5 w-5" /></button>
+   257→            </div>
+   258→          </div>
+   259→          <div className="p-6 space-y-5">
+   260→            <div className="grid grid-cols-2 gap-3">
+   261→              <div className="rounded-xl bg-muted/40 p-3 text-center"><div className="text-2xl font-bold">{loading ? '…' : teachers.length}</div><div className="text-xs text-muted-foreground">Teachers</div></div>
+   262→              <div className="rounded-xl bg-muted/40 p-3 text-center"><div className="text-2xl font-bold">{loading ? '…' : students.length}</div><div className="text-xs text-muted-foreground">Students</div></div>
+   263→            </div>
+   264→            <div className="rounded-xl bg-muted/40 p-4">
+   265→              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Branch Manager</div>
+   266→              <div className="flex items-center justify-between">
+   267→                <div><div className="font-medium text-sm">{br.manager || '—'}</div><div className="text-xs text-muted-foreground">{br.managerEmail || '—'}</div></div>
+   268→                <Button size="sm" variant="outline" onClick={onEdit}><Edit className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+   269→              </div>
+   270→            </div>
+   271→            {!loading && teachers.length > 0 && (
+   272→              <div>
+   273→                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Teachers ({teachers.length})</div>
+   274→                <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-fancy">
+   275→                  {teachers.map((t: any) => <div key={t.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm"><span>{t.name}</span><span className="text-xs text-muted-foreground">{t.rollNo || '—'}</span></div>)}
+   276→                </div>
+   277→              </div>
+   278→            )}
+   279→            {!loading && students.length > 0 && (
+   280→              <div>
+   281→                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Students ({students.length})</div>
+   282→                <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-fancy">
+   283→                  {students.slice(0, 20).map((s: any) => <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm"><span>{s.name}</span><span className="text-xs text-muted-foreground">{s.class || '—'} · {s.rollNo || '—'}</span></div>)}
+   284→                  {students.length > 20 && <div className="text-xs text-muted-foreground text-center py-1">+{students.length - 20} more…</div>}
+   285→                </div>
+   286→              </div>
+   287→            )}
+   288→          </div>
+   289→        </Card>
+   290→      </motion.div>
+   291→    </motion.div>
+   292→  );
+   293→}
+   294→
+   295→// ============== Edit Branch Modal ==============
+   296→function EditBranchModal({ br, instituteId, onClose, onSaved }: { br: any; instituteId: string; onClose: () => void; onSaved: () => void }) {
+   297→  const [form, setForm] = useState({ name: br.name, managerName: br.manager || '', managerEmail: br.managerEmail || '', managerPassword: '' });
+   298→  const [saving, setSaving] = useState(false);
+   299→
+   300→  const save = async () => {
+   301→    setSaving(true);
+   302→    try {
+   303→      // Find the branch manager user
+   304→      const users = await api.platformUsers({ branchId: br.id, role: 'branch-manager' });
+   305→      if (users.length > 0) {
+   306→        const body: any = {};
+   307→        if (form.managerName) body.name = form.managerName;
+   308→        if (form.managerEmail) body.email = form.managerEmail;
+   309→        if (form.managerPassword) body.password = form.managerPassword;
+   310→        await api.editUser(users[0].id, body);
+   311→      }
+   312→      toast({ title: 'Branch updated!' });
+   313→      onSaved();
+   314→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   315→    finally { setSaving(false); }
+   316→  };
+   317→
+   318→  return (
+   319→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   320→      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-8">
+   321→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   322→          <h3 className="font-display font-bold text-lg mb-4">Edit Branch</h3>
+   323→          <div className="space-y-3">
+   324→            <div><Label>Branch Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" disabled /></div>
+   325→            <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager</div></div>
+   326→            <div><Label>Manager Name</Label><Input value={form.managerName} onChange={e => setForm({...form, managerName: e.target.value})} className="mt-1" /></div>
+   327→            <div><Label>Manager Email</Label><Input value={form.managerEmail} onChange={e => setForm({...form, managerEmail: e.target.value})} className="mt-1" /></div>
+   328→            <div><Label>New Password (leave blank to keep current)</Label><Input type="text" value={form.managerPassword} onChange={e => setForm({...form, managerPassword: e.target.value})} placeholder="Set new password" className="mt-1" /></div>
+   329→          </div>
+   330→          <div className="flex gap-2 mt-5">
+   331→            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+   332→            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+   333→          </div>
+   334→        </Card>
+   335→      </motion.div>
+   336→    </motion.div>
+   337→  );
+   338→}
+   339→
+   340→// ============== Add Branch Modal ==============
+   341→function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLastCreated }: any) {
+   342→  const [form, setForm] = useState({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' });
+   343→  const [creating, setCreating] = useState(false);
+   344→
+   345→  const create = async () => {
+   346→    if (!form.name || !form.managerEmail || !form.managerPassword) { toast({ title: 'Branch name, manager email and password are required', variant: 'destructive' }); return; }
+   347→    setCreating(true);
+   348→    try {
+   349→      const res = await api.createBranch({ ...form, instituteId });
+   350→      toast({ title: 'Branch created!', description: `${res.branch.name} — manager login ready` });
+   351→      setLastCreated(res); setForm({ name: '', city: '', managerName: '', managerEmail: '', managerPassword: '' }); onRefresh();
+   352→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   353→    finally { setCreating(false); }
+   354→  };
+   355→
+   356→  if (!show && !lastCreated) return null;
+   357→  return (
+   358→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => { setShow(false); setLastCreated(null); }}>
+   359→      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-8">
+   360→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   361→          {lastCreated ? (
+   362→            <>
+   363→              <div className="flex items-center gap-3 mb-4">
+   364→                <div className="h-12 w-12 rounded-full bg-emerald-500/15 grid place-items-center"><CheckCircle2 className="h-6 w-6 text-emerald-600" /></div>
+   365→                <div><h3 className="font-display font-bold text-lg">Branch created!</h3><p className="text-sm text-muted-foreground">{lastCreated.branch.name}</p></div>
+   366→              </div>
+   367→              <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2 text-sm">
+   368→                <div className="font-semibold text-emerald-700 dark:text-emerald-300">Branch Manager login credentials</div>
+   369→                <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono">{lastCreated.managerLogin.email}</span></div>
+   370→                <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">{lastCreated.managerLogin.password}</span></div>
+   371→                <div className="text-xs text-muted-foreground pt-2 border-t border-emerald-500/20">The manager must change this password on first login. Share these credentials securely.</div>
+   372→              </div>
+   373→              <div className="flex gap-2 mt-5">
+   374→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" onClick={() => { setShow(false); setLastCreated(null); }}>Done</Button>
+   375→                <Button size="sm" variant="outline" onClick={() => setLastCreated(null)}>Add Another</Button>
+   376→              </div>
+   377→            </>
+   378→          ) : (
+   379→            <>
+   380→              <h3 className="font-display font-bold text-lg mb-1">Add a new branch</h3>
+   381→              <p className="text-sm text-muted-foreground mb-5">You will set the Branch Manager's email and password. They must change it on first login.</p>
+   382→              <div className="space-y-3">
+   383→                <div><Label>Branch name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. North Campus" className="mt-1" /></div>
+   384→                <div><Label>City</Label><Input value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="Dallas" className="mt-1" /></div>
+   385→                <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager — You set the credentials</div></div>
+   386→                <div><Label>Manager name</Label><Input value={form.managerName} onChange={e => setForm({...form, managerName: e.target.value})} placeholder="Lisa Chen" className="mt-1" /></div>
+   387→                <div><Label>Manager email *</Label><Input type="email" value={form.managerEmail} onChange={e => setForm({...form, managerEmail: e.target.value})} placeholder="manager@school.edu" className="mt-1" /></div>
+   388→                <div><Label>Assign password *</Label><Input type="text" value={form.managerPassword} onChange={e => setForm({...form, managerPassword: e.target.value})} placeholder="Set a password for the manager" className="mt-1" /></div>
+   389→              </div>
+   390→              <div className="flex gap-2 mt-5">
+   391→                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1" disabled={creating} onClick={create}>{creating ? 'Creating…' : 'Create Branch'}</Button>
+   392→                <Button size="sm" variant="outline" onClick={() => setShow(false)}>Cancel</Button>
+   393→              </div>
+   394→            </>
+   395→          )}
+   396→        </Card>
+   397→      </motion.div>
+   398→    </motion.div>
+   399→  );
+   400→}
+   401→
+   402→// ============== Announcements View ==============
+   403→function AnnouncementsView({ user }: { user: any }) {
+   404→  const [announcements, setAnnouncements] = useState<any[]>([]);
+   405→  const [form, setForm] = useState({ title: '', message: '', targetScope: 'all', targetType: 'branch-manager', selectedIds: [] as string[] });
+   406→  const [targets, setTargets] = useState<any[]>([]);
+   407→  const [sending, setSending] = useState(false);
+   408→  const [showForm, setShowForm] = useState(false);
+   409→  const [loading, setLoading] = useState(true);
+   410→
+   411→  const refresh = () => { api.getAnnouncements().then(setAnnouncements).catch(() => {}); };
+   412→  useEffect(() => { refresh(); setLoading(false); }, []);
+   413→
+   414→  const loadTargets = async (type: string) => {
+   415→    if (type === 'all') { setTargets([]); return; }
+   416→    const role = type === 'branch' ? 'branch-manager' : type;
+   417→    const users = await api.platformUsers({ instituteId: user.instituteId, role });
+   418→    setTargets(Array.isArray(users) ? users : []);
+   419→  };
+   420→
+   421→  const send = async () => {
+   422→    if (!form.title || !form.message) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+   423→    setSending(true);
+   424→    try {
+   425→      await api.createAnnouncement({
+   426→        title: form.title, message: form.message,
+   427→        targetRole: form.targetType === 'branch' ? 'branch-manager' : form.targetType,
+   428→        targetScope: form.targetScope,
+   429→        targetIds: form.targetScope === 'specific' ? form.selectedIds : undefined,
+   430→      });
+   431→      toast({ title: 'Announcement sent!' });
+   432→      setForm({ title: '', message: '', targetScope: 'all', targetType: 'branch-manager', selectedIds: [] });
+   433→      setShowForm(false); refresh();
+   434→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   435→    finally { setSending(false); }
+   436→  };
+   437→
+   438→  return (
+   439→    <div className="space-y-6">
+   440→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   441→        <div><h1 className="font-display text-2xl font-extrabold tracking-tight">Announcements</h1><p className="text-sm text-muted-foreground mt-1">Send messages to branches, teachers, or students</p></div>
+   442→        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>
+   443→      </div>
+   444→      {showForm && (
+   445→        <Card className="p-5">
+   446→          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+   447→          <div className="space-y-3">
+   448→            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Schedule change" className="mt-1" /></div>
+   449→            <div><Label>Message</Label><Textarea value={form.message} onChange={e => setForm({...form, message: e.target.value})} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" /></div>
+   450→            <div className="grid grid-cols-2 gap-3">
+   451→              <div><Label>Recipients</Label>
+   452→                <Select value={form.targetType} onValueChange={v => { setForm({...form, targetType: v, targetScope: 'all', selectedIds: []}); loadTargets(v); }}>
+   453→                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   454→                  <SelectContent>
+   455→                    <SelectItem value="branch-manager">All Branch Managers</SelectItem>
+   456→                    <SelectItem value="teacher">All Teachers</SelectItem>
+   457→                    <SelectItem value="student">All Students</SelectItem>
+   458→                  </SelectContent>
+   459→                </Select>
+   460→              </div>
+   461→              <div><Label>Scope</Label>
+   462→                <Select value={form.targetScope} onValueChange={v => setForm({...form, targetScope: v, selectedIds: []})}>
+   463→                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   464→                  <SelectContent>
+   465→                    <SelectItem value="all">All {form.targetType === 'branch-manager' ? 'Branches' : form.targetType + 's'}</SelectItem>
+   466→                    <SelectItem value="specific">Specific {form.targetType === 'branch-manager' ? 'Branches' : form.targetType + 's'}</SelectItem>
+   467→                  </SelectContent>
+   468→                </Select>
+   469→              </div>
+   470→            </div>
+   471→            {form.targetScope === 'specific' && targets.length > 0 && (
+   472→              <div className="max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+   473→                {targets.map((t: any) => (
+   474→                  <label key={t.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+   475→                    <input type="checkbox" checked={form.selectedIds.includes(t.id)} onChange={e => {
+   476→                      if (e.target.checked) setForm({...form, selectedIds: [...form.selectedIds, t.id]});
+   477→                      else setForm({...form, selectedIds: form.selectedIds.filter((id:string) => id !== t.id)});
+   478→                    }} className="custom-checkbox w-4 h-4 rounded" />
+   479→                    <span className="text-sm">{t.name}</span>
+   480→                  </label>
+   481→                ))}
+   482→              </div>
+   483→            )}
+   484→            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send</>}</Button>
+   485→          </div>
+   486→        </Card>
+   487→      )}
+   488→      {loading ? <LoadingState label="Loading announcements…" /> : announcements.length === 0 ? (
+   489→        <EmptyState icon={Megaphone} title="No announcements yet" desc="Send messages to all or specific branches, teachers, or students." />
+   490→      ) : (
+   491→        <div className="space-y-3">
+   492→          {announcements.map(a => (
+   493→            <Card key={a.id} className="p-4">
+   494→              <div className="flex items-start justify-between mb-2">
+   495→                <div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-amber-500" /><div className="font-medium text-sm">{a.title}</div></div>
+   496→                <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+   497→              </div>
+   498→              <p className="text-sm text-muted-foreground ml-6">{a.message}</p>
+   499→              <div className="text-[11px] text-muted-foreground mt-2 ml-6">To: {a.targetScope === 'all' ? `All ${a.targetRole || 'users'}` : `Specific ${a.targetRole || 'users'}`}</div>
+   500→            </Card>
+   501→          ))}
+   502→        </div>
+   503→      )}
+   504→    </div>
+   505→  );
+   506→}
+   507→

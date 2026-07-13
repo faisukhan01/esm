@@ -64,7 +64,7 @@ export function SettingsPage({ user }: { user: any }) {
 
       {/* Profile info */}
       <Card className="p-6">
-        <h3 className="font-bold text-base mb-4 flex items-center gap-2"><User className="h-4 w-4 text-emerald-600" /> Profile Information</h3>
+        <h3 className="font-bold text-base mb-4 flex items-center gap-2"><User className="h-4 w-4 text-blue-700" /> Profile Information</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="rounded-xl bg-muted/40 p-3">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Name</div>
@@ -102,17 +102,17 @@ export function SettingsPage({ user }: { user: any }) {
       {/* Change Password */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-base flex items-center gap-2"><Lock className="h-4 w-4 text-emerald-600" /> Change Password</h3>
+          <h3 className="font-bold text-base flex items-center gap-2"><Lock className="h-4 w-4 text-blue-700" /> Change Password</h3>
           {user?.mustChangePassword && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-[11px] font-medium text-blue-700">
               <Shield className="h-3 w-3" /> Action required
             </span>
           )}
         </div>
 
         {user?.mustChangePassword && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-4">
-            <p className="text-sm text-amber-800">
+          <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 mb-4">
+            <p className="text-sm text-blue-800">
               <strong>Please change your password.</strong> You're using a password assigned by your administrator. Change it now to secure your account.
             </p>
           </div>
@@ -165,7 +165,7 @@ export function SettingsPage({ user }: { user: any }) {
           </div>
 
           <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="bg-blue-700 hover:bg-blue-800 text-white"
             disabled={saving || !currentPassword || !newPassword || !confirmPassword}
             onClick={submit}
           >

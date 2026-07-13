@@ -1423,3 +1423,165 @@ Stage Summary:
 - All features preserved — only visual design changed
 - Institute Admin has full branch-level access
 - Fee system with PKR currency and PDF challan download working
+
+---
+Task ID: NAVY-THEME
+Agent: full-stack-developer
+Task: Global navy blue theme + remove emojis + professional banners
+
+Work Log:
+- **globals.css**: Updated all login-related CSS classes from green/amber to navy blue:
+  - `.login-bg` → `linear-gradient(135deg, #0f1e3a 0%, #1a365d 50%, #0f1e3a 100%)`
+  - `.cover-gradient` → `linear-gradient(135deg, #1e3a5f 0%, #1a365d 100%)`
+  - `.btn-gradient` → `linear-gradient(135deg, #1e3a5f 0%, #163150 100%)`
+  - `.login-input:focus` / `.floating-label` focus color → `#1e3a5f`
+  - `.custom-checkbox` accent-color → `#1e3a5f`
+  - `.custom-scrollbar` thumb → navy blue tint
+  - `.eye-toggle:hover` → `#1e3a5f`
+- **login-page.tsx**: WavingPerson SVG repainted navy (body/arms/legs/shoes/eyes → `#1e3a5f` / `#0f1e3a` / `#163150`). Removed floating hearts + sparkles. Glow circles `bg-blue-300/10`. Role selector active pills → `from-blue-700 to-blue-900`. FloatingInput success border `border-blue-400`, focus `focus:border-blue-700`. Forgot password link blue. Role info box `bg-blue-50`. ChangePasswordModal Shield icon `bg-blue-100 text-blue-700`. All password field `focus:border-emerald-500` → `focus:border-blue-700`.
+- **role-modules.ts**: All module `color` values converted to navy blue variants (`from-blue-600 to-blue-800` for primary, `from-blue-500 to-blue-700` for secondary). Complaints (Branch Manager / Parent) stay `from-rose-500 to-rose-700` (destructive action). `roleAccent` for ALL 6 roles → `from-blue-700 to-blue-900`.
+- **role-portal.tsx**: Must-change-password banner repainted navy: `bg-blue-50 border-blue-300`, shield icon `text-blue-700`, CTA button `bg-blue-700 hover:bg-blue-800`. Blocked screen kept rose (correct).
+- **super-admin-portal.tsx**: Welcome banner `from-blue-800 via-blue-900 to-blue-950`. Removed 👑 emoji from "Welcome back, {name}". Removed Sparkles import. KPI cards → `from-blue-600 to-blue-800` / `from-blue-500 to-blue-700`. All `bg-emerald-600 hover:bg-emerald-700` buttons → `bg-blue-700 hover:bg-blue-800`. Institute/branch status badges: Active → blue, Trial → sky, Blocked → rose. PlatformConfig, BrandingPage, all modals repainted navy. ColorRow palette → Navy/Accent Blue/Sky/Slate.
+- **institute-admin-portal.tsx**: Welcome banner `from-blue-800 via-blue-900 to-blue-950`. Removed 👋 emoji. KPI cards all navy. BranchCard/BranchDetailsModal/EditBranchModal/BranchModal/AnnouncementsView all repainted (teal/cyan → navy). All emerald buttons → blue.
+- **branch-manager-portal.tsx**: Welcome banner navy. Removed 👋 emoji. Removed Sparkles import + replaced Generate Invoices button icon with `Plus`. KPI cards all navy. UserRowActions password reveal bubble amber → blue. ClassCourseView (course assignment, sections, class grid) all emerald/teal/cyan/violet → blue. Fee structure: "Fees Configured" emerald → blue, "Pending Setup" amber → sky. Fee cards amber-yellow → blue. Invoice Paid badge emerald → blue. Mark Paid button emerald outline → blue outline. All emerald buttons → blue.
+- **teacher-portal.tsx**: Welcome banner `from-blue-800 via-blue-900 to-blue-950`. Removed 👋 emoji. KPI cards all navy. Class cards violet gradient → navy. **Removed the "Announce" quick action button from class cards in TeacherOverview** (announcements only in dedicated Announcements page). Attendance colors: Present emerald → blue, Late amber → sky (Absent stays rose). MaterialUploadForm, MaterialCard, ClassResults, ClassAnnouncements, MarkAttendance, PostResults, DiaryView, MessageParents, TeacherAnnouncements — all repainted navy.
+- **student-portal.tsx**: Welcome banner navy. Removed 👋 emoji. Removed Megaphone import. **Removed "Latest Announcement" card from StudentOverview** (announcements only in dedicated MyAnnouncements page). Course card `from-cyan-500 to-teal-600` → `from-blue-600 to-blue-800`. Recent-mark/attendance blocks violet/emerald → blue. CourseResultsView progress bar `bg-emerald-500` → `bg-blue-700`. Attendance (CourseAttendanceView, MyAttendance): Present/Late icons repainted (blue/sky), Rate card `bg-blue-500/10`. Status badges Present/Late: emerald/amber → blue/sky. MyDiary due badge amber → blue. MyInvoices cards: Total Paid emerald → blue, Total Pending stays rose, Total Amount amber → blue. Paid badge emerald → blue. Download Challan button amber outline → blue outline. PDF challan HTML template: teal colors → navy (#1e3a5f / #0f1e3a), paid status badge light blue.
+- **settings-page.tsx**: Profile/Change Password icons emerald → blue. "Action required" pill amber → blue. Must-change-password warning amber → blue. Update Password button `bg-emerald-600` → `bg-blue-700 hover:bg-blue-800`.
+- **parent-portal.tsx**: Removed 👋 emoji from "Hello, {name}" (welcome banner kept rose/pink per parent accent identity).
+- **dashboard-overview.tsx** (landing dashboard): Removed 👋 emoji from "Good morning, Administrator". Welcome banner emerald → navy. KPI cards all navy. Pie chart: Present `#10b981` → `#1d4ed8`, Late `#f59e0b` → `#0ea5e9`. Area chart "present" stroke/fill `#10b981` → `#1d4ed8`. Fee bar chart: collected `#10b981` → `#1d4ed8`, pending `#f59e0b` → `#0ea5e9`. Subject performance bar `#10b981` → `#1d4ed8`. Quick stats icons emerald → blue.
+
+Verification:
+- `bun run lint` passes clean (exit code 0) ✅
+- Dev server compiles successfully (no errors) ✅
+- All HTTP responses still 200 OK ✅
+- No emojis anywhere in `src/` (verified by grep for 👑 👋 🎉 ✨ 🚀 💼 📚 🎓 🏫 etc.) ✅
+- No emerald/amber/teal/cyan/violet/purple remaining in the 10 modified portal files (verified by grep) ✅
+- Status badges preserved semantically: Paid/Active = blue, Unpaid/Blocked = rose, Late/Trial = sky ✅
+- Blocked screen still red (role-portal.tsx) ✅
+- Complaints module (destructive action) still rose ✅
+
+Stage Summary:
+- Entire ESM portal now uses a unified navy blue professional theme matching the UCP/Odoo reference
+- Welcome banners: deep navy gradient (`from-blue-800 via-blue-900 to-blue-950`) for all 5 roles + dashboard
+- KPI / module cards: navy gradients (`from-blue-600 to-blue-800` primary, `from-blue-500 to-blue-700` secondary)
+- Action buttons: `bg-blue-700 hover:bg-blue-800` (replaced all emerald/amber/teal/cyan/violet/purple button colors)
+- Status badges: blue for positive (Paid/Active/Present), rose for destructive (Unpaid/Blocked/Absent), sky for warnings (Late/Trial)
+- Login page: navy waving character body (#1e3a5f), navy cover panel, navy role pills (from-blue-700 to-blue-900), blue focus rings (#1e3a5f)
+- NO emojis anywhere — all 👋, 👑 removed from welcome texts
+- Announcements removed from teacher & student dashboards — kept ONLY in dedicated Announcements pages
+- PDF challan template: navy-themed printable (#1e3a5f border, #0f1e3a header, #dbeafe/#93c5fd paid badge)
+- All features preserved — only visual design changed
+- Lint clean, dev server healthy
+
+---
+Task ID: IA-BRANCH-TEACHER-CHALLAN
+Agent: Main (Z.ai Code)
+Task: 1) Institute Admin branch selector for branch modules, 2) Teacher dashboard KPI refresh, 3) Student challan iframe-based PDF download
+
+Work Log:
+
+**Task 1 — Institute Admin Branch Selector (`institute-admin-portal.tsx` + `role-portal.tsx`)**
+- Created new `InstituteBranchWrapper` component (exported from institute-admin-portal.tsx).
+  - Fetches all branches for the institute via `api.branches(user.instituteId)`.
+  - Renders a navy-blue "Branch" selector card at the top using shadcn `<Select>` listing every branch (name + city).
+  - Defaults to the first branch on load.
+  - Builds a `modifiedUser` object (via `useMemo`) that overrides `branchId` and `branchName` from the selected branch while preserving all other user fields.
+  - Renders `<BranchManagerPortal activeModule={activeModule} user={modifiedUser} />` so all Branch Manager queries (teachers/students/classes/fees) are scoped to the selected branch.
+  - Shows a loading spinner while branches are being fetched and a "No branches yet" empty state with a hint to add branches from the Branches page.
+  - Per-module header (Teachers / Students / Classes & Courses / Fee Management) shown above the selector.
+- Updated `role-portal.tsx`:
+  - Imports `InstituteBranchWrapper` from `./institute-admin-portal`.
+  - Changed the institute-admin branch-module routing from `<BranchManagerPortal activeModule user />` to `<InstituteBranchWrapper user={user} activeModule={activeModule} />` so the institute admin picks a branch before seeing branch-level data.
+- ESLint fix: deferred the no-institute `setLoading(false)` to a microtask (`Promise.resolve().then(...)`) so we don't call `setState` synchronously inside the effect body (avoids the `react-hooks/set-state-in-effect` rule).
+
+**Task 2 — Teacher Dashboard KPI Refresh (`teacher-portal.tsx`)**
+- Updated `TeacherOverview` KPI cards to exactly match the task spec:
+  - "Total Classes" (classes.length)
+  - "Total Students" (students.length — all students in the teacher's branch)
+  - "Total Courses" (sum of courses across all assigned classes)
+  - "Today's Schedule" (0 with a "No timetable yet" subtitle — no real timetable is published yet; the welcome banner mentions the timetable is pending)
+- Each KPI card now shows a small sub-label below the value (e.g. "5 classes assigned", "12 students in branch", "8 courses", "No timetable yet") for extra context.
+- Class cards grid: each card now shows **both** course count AND student count badges (previously only course count). Student count is computed by filtering the branch's students by `s.class === cls.name`.
+- Welcome banner text updated to mention both total courses and total students in a single sentence.
+- No announcements are rendered on the dashboard (already the case — announcements live only in the dedicated Announcements page).
+
+**Task 3 — Student Challan Iframe PDF (`student-portal.tsx`)**
+- Replaced the previous `window.open('', '_blank')` + new-tab `window.print()` approach with a hidden-iframe approach so no new browser tab opens.
+- New `buildChallanHTML(challan, instituteName?)` returns the styled challan HTML string (extracted for clarity and reuse).
+- New `printChallanInIframe(html)`:
+  - Reuses a single hidden `<iframe id="esm-challan-frame">` (created once, appended to `document.body`, sized 0×0, `aria-hidden`, with a descriptive title).
+  - Writes the challan HTML into the iframe's document.
+  - Defers `iframe.contentWindow.focus()` + `print()` by 300ms (avoids relying on `iframe.onload`, which doesn't re-fire when the iframe is reused for subsequent prints).
+  - Try/catch around `print()` shows a toast if the browser blocks printing.
+- `downloadChallanPDF(challan, instituteName?)` now simply builds the HTML and delegates to the iframe printer.
+- `MyInvoices.downloadChallan` passes `user?.instituteName` to `downloadChallanPDF` so the institute name appears at the top of the printed challan.
+- Challan content updates:
+  - **Institute name** now rendered at the top of the header (large, bold, navy color) — pulled from `user.instituteName`.
+  - "Fee Challan" title kept below the institute name.
+  - "ESM — ELECTRONIC SCHOOL MANAGEMENT" small brand text.
+  - Fields: Challan No, Date, Student Name, Class, Roll No, Month/Year (unchanged 2-column grid).
+  - Amount row in PKR: "Rs. X,XXX".
+  - Status pill: Paid (blue) / Unpaid (red) with paid date + payment method when paid.
+  - Dashed signature line (Student/Parent + Authorized).
+  - Footer changed from "This is a system-generated challan…" to **"Powered by ESM — Electronic School Management"** with the ESM brand segment emphasized.
+- Updated the "How to download your challan PDF" help card to reflect the new flow (no new tab opens; the print dialog opens directly with the challan rendered in a hidden frame).
+
+Verification:
+- `bun run lint` — passes clean (0 errors, 0 warnings) ✅
+- Dev server compiles successfully (dev.log shows multiple "✓ Compiled" entries after edits) ✅
+- All HTTP responses still 200 ✅
+- Institute Admin sidebar: Dashboard, Branches, Announcements, Teachers, Students, Classes & Courses, Fee Management, Settings — branch modules now show a selector bar before rendering Branch Manager content ✅
+- Teacher dashboard: 4 KPI cards (Total Classes / Total Students / Total Courses / Today's Schedule) with sub-labels; class cards show course + student count badges ✅
+- Student challan: hidden iframe print (no new tab), institute name at top, "Powered by ESM — Electronic School Management" footer ✅
+
+Stage Summary:
+- Institute Admin can now switch between branches on the fly when managing teachers/students/classes/fees — no need to log in as each branch's manager.
+- Teacher dashboard KPIs match the requested metric set; class cards surface both course and student counts per class.
+- Student fee challan downloads via an in-page hidden iframe print (cleaner UX — no popup/tab), with the institute name and a "Powered by ESM" footer.
+
+---
+Task ID: NAVY-THEME + IA-BRANCH + TEACHER-DASH + CHALLAN
+Agent: Main (Z.ai Code) + 2 subagents
+Task: Global navy blue theme + Institute Admin branch selector + Teacher dashboard + Student challan PDF fix
+
+Work Log:
+- **Global Navy Theme** (by subagent NAVY-THEME):
+  - All portal banners changed to navy blue (from-blue-800 via-blue-900 to-blue-950)
+  - All buttons changed from emerald to navy blue (bg-blue-700 hover:bg-blue-800)
+  - All KPI cards use navy blue gradients
+  - Login page: waving character body/arms/legs changed to navy blue, cover panel navy, buttons navy
+  - globals.css: all login CSS classes (login-bg, cover-gradient, btn-gradient, focus colors, checkbox) changed to navy
+  - role-modules.ts: all module colors changed to navy blue variants, roleAccent all navy
+  - Removed ALL emojis (no 👋, 👑, etc.)
+  - Removed announcements from dashboards (teacher + student) — only in Announcements page
+  - Status badges: Paid/Active = blue, Blocked/Unpaid = rose, Late/Trial = sky
+  - Charts recolored to navy blue
+- **Institute Admin Branch Selector** (by subagent IA-BRANCH-TEACHER-CHALLAN):
+  - Created InstituteBranchWrapper component — fetches all branches, shows dropdown selector
+  - When Institute Admin accesses Teachers/Students/Classes/Fees, they see a branch selector at top
+  - Selecting a branch renders BranchManagerPortal with the selected branchId
+  - Can manage ANY branch in their institute
+- **Teacher Dashboard** (by subagent):
+  - KPI cards: Total Classes, Total Students, Total Courses, Today's Schedule
+  - Class cards show course count + student count
+  - No announcements on dashboard
+- **Student Challan PDF** (by subagent):
+  - Changed from new-tab print to hidden iframe approach
+  - Institute name now appears at top of challan (from user.instituteName)
+  - "Powered by ESM — Electronic School Management" at bottom
+  - All fields: Challan No, Date, Student Name, Class, Roll No, Month/Year, Amount (Rs.), Status, signature line
+
+Verification:
+- VLM rated portal 9/10: "sidebar deep navy, welcome banner navy, buttons navy, no emojis, professional and clean" ✅
+- VLM rated login: "left panel navy blue, waving character navy blue, professional" ✅
+- No emojis found in DOM ✅
+- Lint passes clean ✅
+- Backend health: OK ✅
+
+Stage Summary:
+- Entire system now uses cohesive navy blue theme (sidebar, banners, buttons, cards, login)
+- No emojis, no green/emerald colors
+- Institute Admin can manage any branch via branch selector
+- Teacher has proper dashboard with KPIs
+- Student challan PDF includes institute name + ESM footer
+- Announcements only in Announcements page (not dashboards)
