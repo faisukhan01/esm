@@ -58,7 +58,7 @@ export function SettingsPage({ user }: { user: any }) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your account and security</p>
       </div>
 

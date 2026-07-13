@@ -51,7 +51,7 @@ export function ParentPortal({ activeModule, user }: { activeModule: string; use
 function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
     </div>
   );
@@ -61,7 +61,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   return (
     <Card className="p-10 text-center">
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </Card>
@@ -84,7 +84,7 @@ function ParentOverview({ user, ward, attendance, results, fees }: any) {
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Heart className="h-3 w-3 text-white/80" /> Parent · {user?.instituteName}</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
           <p className="text-white/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{ward?.name || user?.ward || '—'}</strong>{ward ? ` · ${ward.class} ${ward.section}` : ''}.</p>
         </div>
       </motion.div>
@@ -210,7 +210,7 @@ function WardFees({ ward, fees, user }: any) {
       <ModuleHeader title="Pay Fees" subtitle={ward ? `For ${ward.name}` : 'Fee management'} />
       <Card className="p-5 border border-border rounded-lg shadow-sm">
         <div className="flex items-center justify-between">
-          <div><div className="text-xs text-muted-foreground">Total Paid</div><div className="text-3xl font-extrabold font-display mt-1">{fmtMoney(totalPaid)}</div><div className="text-xs text-muted-foreground mt-1">{fees.length} transactions</div></div>
+          <div><div className="text-xs text-muted-foreground">Total Paid</div><div className="text-3xl font-extrabold mt-1">{fmtMoney(totalPaid)}</div><div className="text-xs text-muted-foreground mt-1">{fees.length} transactions</div></div>
           <div className="h-12 w-12 rounded-xl bg-primary/10 grid place-items-center"><CreditCard className="h-6 w-6 text-primary" /></div>
         </div>
       </Card>

@@ -101,7 +101,7 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
 function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
     </div>
   );
@@ -111,7 +111,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   return (
     <Card className="p-10 text-center">
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </Card>
@@ -143,7 +143,7 @@ function ClassDetail({ cls, user, students, initialTab, onBack }: {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="font-display text-2xl font-extrabold tracking-tight">{cls.name}</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">{cls.name}</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{cls.section ? `Section ${cls.section} · ` : ''}{cls.courses.length} course{cls.courses.length === 1 ? '' : 's'} · {students.length} student{students.length === 1 ? '' : 's'}</p>
           </div>
         </div>
@@ -644,7 +644,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><LayoutDashboard className="h-3 w-3 text-primary/70" /> Teacher Dashboard · {user?.branchName}</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
           <p className="text-white/80 text-sm mt-1.5">
             {classes.length
               ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.`
@@ -671,7 +671,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-display text-lg font-bold">Quick Links</h2>
+            <h2 className="text-lg font-bold">Quick Links</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Jump straight to a teaching task.</p>
           </div>
         </div>
@@ -692,7 +692,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
                 </div>
-                <h3 className="font-display font-bold text-base">{q.label}</h3>
+                <h3 className="font-bold text-base">{q.label}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">{q.desc}</p>
               </Card>
             </motion.button>
@@ -767,7 +767,7 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><BookOpen className="h-3 w-3 text-primary/70" /> Teacher · {user?.branchName}</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">Hello, {user?.name}</h1>
           <p className="text-white/80 text-sm mt-1.5">
             {classes.length ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.` : 'Your classes will appear here once your Branch Manager assigns them.'}
           </p>
@@ -790,7 +790,7 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-display text-lg font-bold">My Classes</h2>
+            <h2 className="text-lg font-bold">My Classes</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Click a class to take attendance, post results, upload materials, or announce.</p>
           </div>
         </div>
@@ -812,7 +812,7 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
                         <Badge variant="secondary" className="font-mono text-[10px]">{studentCount} student{studentCount === 1 ? '' : 's'}</Badge>
                       </div>
                     </div>
-                    <h3 className="font-display font-bold text-lg">{cls.name}</h3>
+                    <h3 className="font-bold text-lg">{cls.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{cls.section ? `Section ${cls.section}` : 'Default section'}</p>
                     {cls.courses.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-3">

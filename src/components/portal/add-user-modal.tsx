@@ -140,7 +140,7 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-12 w-12 rounded-full bg-emerald-500/15 grid place-items-center"><CheckCircle2 className="h-6 w-6 text-emerald-600" /></div>
                 <div>
-                  <h3 className="font-display font-bold text-lg">{roleLabel} added!</h3>
+                  <h3 className="font-bold text-lg">{roleLabel} added!</h3>
                   <p className="text-sm text-muted-foreground">{created.user.name}</p>
                 </div>
               </div>
@@ -160,7 +160,7 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
             </>
           ) : (
             <>
-              <h3 className="font-display font-bold text-lg mb-1">Add {roleLabel}</h3>
+              <h3 className="font-bold text-lg mb-1">Add {roleLabel}</h3>
               <p className="text-sm text-muted-foreground mb-5">
                 A login will be created with the Roll No / ID and password you assign. The user must change their password on first sign-in.
               </p>

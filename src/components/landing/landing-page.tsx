@@ -105,7 +105,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
             Electronic School Management
           </div>
 
-          <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white">
             One platform for{' '}
             <span className="bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">your entire</span>{' '}
             institution
@@ -163,7 +163,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               </div>
             </div>
             <div className="leading-tight">
-              <div className={`font-display font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
+              <div className={`font-extrabold text-lg tracking-tight ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
               <div className={`text-[10px] -mt-0.5 hidden sm:block ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
             </div>
           </a>
@@ -217,7 +217,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Platform Capabilities</Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Built to run{' '}
               <span className="emerald-text">your entire institution</span>
             </h2>
@@ -253,7 +253,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">{MODULES.length} Integrated Modules</Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Every module your institution needs,{' '}
               <span className="emerald-text">in one place</span>
             </h2>
@@ -318,7 +318,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">How It Works</Badge>
-            <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               From signup to{' '}
               <span className="emerald-text">first day</span>{' '}
               in minutes
@@ -365,7 +365,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
             <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
             <div className="relative">
               <Rocket className="h-8 w-8 mx-auto text-amber-300 mb-4" />
-              <h2 className="font-display text-3xl sm:text-4xl font-extrabold tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 Ready to modernize your campus?
               </h2>
               <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
@@ -398,7 +398,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <div>
-                <div className="font-display font-extrabold text-lg">ESM</div>
+                <div className="font-extrabold text-lg">ESM</div>
                 <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
               </div>
             </div>

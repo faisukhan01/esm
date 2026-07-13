@@ -106,7 +106,7 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
 function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
     </div>
   );
@@ -116,7 +116,7 @@ function EmptyState({ icon: Icon, title, desc }: any) {
   return (
     <Card className="p-10 text-center">
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
     </Card>
   );
@@ -160,7 +160,7 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-primary/70" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
-          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-white/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
         </div>
       </motion.div>
@@ -180,7 +180,7 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-display text-lg font-bold">My Courses</h2>
+            <h2 className="text-lg font-bold">My Courses</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Click a course to view materials, results, and attendance.</p>
           </div>
         </div>
@@ -199,7 +199,7 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
                       </div>
                       {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
                     </div>
-                    <h3 className="font-display font-bold text-lg">{c.name}</h3>
+                    <h3 className="font-bold text-lg">{c.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       <div className="p-2 rounded-md bg-accent0/10">
@@ -249,7 +249,7 @@ function CourseDetail({ course, classId, studentId, initialTab, onBack }: {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">{course.name}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">{course.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{course.code ? `Code ${course.code} · ` : ''}Course materials, results & attendance</p>
         </div>
       </div>

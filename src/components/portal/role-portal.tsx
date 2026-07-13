@@ -40,7 +40,7 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
         </div>
         {!collapsed && (
           <div className="leading-tight min-w-0">
-            <div className="font-display font-bold text-base text-white tracking-tight">ESM</div>
+            <div className="font-bold text-base text-white tracking-tight">ESM</div>
             <div className="text-[10px] text-sidebar-foreground/50 truncate">{user?.roleLabel || 'Portal'}</div>
           </div>
         )}
@@ -177,7 +177,7 @@ export function RolePortal() {
             <div className="inline-flex h-16 w-16 rounded-2xl bg-rose-100 items-center justify-center mb-5">
               <Shield className="h-8 w-8 text-rose-600" />
             </div>
-            <h1 className="font-display text-2xl font-extrabold text-slate-900 mb-2">Access Blocked</h1>
+            <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Access Blocked</h1>
             <p className="text-sm text-slate-600 mb-1">Your access has been blocked by your administration.</p>
             <p className="text-xs text-slate-400 mb-6">{effectiveBlockedMsg}</p>
             <p className="text-xs text-slate-500 mb-6">Please contact your administrator to restore access.</p>

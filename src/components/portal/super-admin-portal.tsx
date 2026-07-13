@@ -91,7 +91,7 @@ function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: s
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
-        <h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
@@ -105,7 +105,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4">
         <Icon className="h-7 w-7 text-muted-foreground" />
       </div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </Card>
@@ -124,7 +124,7 @@ function LoadingState({ label = 'Loading…', className = '' }: { label?: string
 function StatPill({ label, value, color = 'text-foreground' }: { label: string; value: React.ReactNode; color?: string }) {
   return (
     <div className="rounded-lg bg-muted/40 border border-border/60 px-3 py-2 text-center">
-      <div className={`text-lg font-extrabold font-display ${color}`}>{value}</div>
+      <div className={`text-lg font-extrabold ${color}`}>{value}</div>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
     </div>
   );
@@ -153,7 +153,7 @@ function PlatformOverview({
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
               <Crown className="h-3 w-3 text-primary/70" /> Super Admin · Platform Owner
             </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">
+            <h1 className="text-2xl sm:text-3xl font-extrabold">
               Welcome back, {user?.name?.split(' ')[0] || 'Owner'}
             </h1>
             <p className="text-white/80 text-sm mt-1.5 max-w-lg">
@@ -333,7 +333,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 grid place-items-center text-primary font-display font-extrabold">
+            <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 grid place-items-center text-primary font-extrabold">
               {initials}
             </div>
             <div className="min-w-0">
@@ -402,7 +402,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
             <Card className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
-                <div><h3 className="font-display font-bold text-lg">Delete Institute?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+                <div><h3 className="font-bold text-lg">Delete Institute?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
               </div>
               <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
                 This will permanently delete <strong>{inst.name}</strong> and ALL its data: branches, teachers, students, classes, courses, attendance, results, and materials.
@@ -446,11 +446,11 @@ function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: 
           <div className="p-6 border-b border-border/40 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/20 dark:to-slate-900/10">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-md text-white font-display font-extrabold text-lg">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-md text-white font-extrabold text-lg">
                   {(inst.short || inst.name || '').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="font-display text-xl font-extrabold">{inst.name}</h2>
+                  <h2 className="text-xl font-extrabold">{inst.name}</h2>
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}</div>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="outline" className="text-[10px]">{inst.plan || 'Starter'}</Badge>
@@ -597,7 +597,7 @@ function EditInstituteModal({ inst, onClose, onSaved }: any) {
         <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-display font-bold text-lg">Edit Institute</h3>
+              <h3 className="font-bold text-lg">Edit Institute</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Update institute info and admin credentials</p>
             </div>
             <Edit className="h-5 w-5 text-muted-foreground" />
@@ -703,7 +703,7 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
                   <CheckCircle2 className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-lg">Institute provisioned!</h3>
+                  <h3 className="font-bold text-lg">Institute provisioned!</h3>
                   <p className="text-sm text-muted-foreground">{lastCreated.institute.name} is ready</p>
                 </div>
               </div>
@@ -731,7 +731,7 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
           ) : (
             <>
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-display font-bold text-lg">Provision a new institute</h3>
+                <h3 className="font-bold text-lg">Provision a new institute</h3>
                 <Plus className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground mb-5">
@@ -1010,7 +1010,7 @@ function BrandingPage() {
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15">
               <ShieldCheck className="h-3 w-3 text-primary/70" /> Platform Identity
             </div>
-            <h2 className="font-display text-4xl sm:text-5xl font-extrabold tracking-tight">ESM</h2>
+            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">ESM</h2>
             <p className="text-blue-50/90 text-base sm:text-lg mt-1">Electronic School Management</p>
             <p className="text-blue-50/70 text-sm mt-3 max-w-md">
               Modern school management for institutions worldwide — by Cyber Advance Solutions.

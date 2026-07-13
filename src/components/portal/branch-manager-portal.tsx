@@ -59,7 +59,7 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
 function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
     </div>
   );
@@ -69,7 +69,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   return (
     <Card className="p-10 text-center">
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </Card>
@@ -92,7 +92,7 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-primary/70" /> Branch Manager · {user?.branchName}</div>
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
             <p className="text-white/80 text-sm mt-1.5 max-w-lg">
               {stats?.students || stats?.teachers ? `You have ${stats.students} students and ${stats.teachers} teachers.` : 'Add your first teacher or student to get started.'}
             </p>
@@ -225,7 +225,7 @@ function EditUserModal({ u, onClose, onSaved }: { u: any; onClose: () => void; o
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
       <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-4">
         <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
-          <h3 className="font-display font-bold text-lg mb-1">Edit {u.role === 'teacher' ? 'Teacher' : 'Student'}</h3>
+          <h3 className="font-bold text-lg mb-1">Edit {u.role === 'teacher' ? 'Teacher' : 'Student'}</h3>
           <p className="text-sm text-muted-foreground mb-4">Update profile details or assign a new password.</p>
           <div className="space-y-3">
             <div><Label>Full name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1" /></div>
@@ -453,7 +453,7 @@ function ClassCoursesView({ user }: { user: any }) {
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
             </button>
             <div>
-              <h1 className="font-display text-2xl font-extrabold tracking-tight flex items-center gap-2">
+              <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" /> {activeGroup.name}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
@@ -885,19 +885,19 @@ function FeeStructureTab({ user }: { user: any }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Total Classes</div>
-          <div className="text-2xl font-extrabold font-display mt-1">{grouped.length}</div>
+          <div className="text-2xl font-extrabold mt-1">{grouped.length}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Fees Configured</div>
-          <div className="text-2xl font-extrabold font-display mt-1 text-primary">{setCount}</div>
+          <div className="text-2xl font-extrabold mt-1 text-primary">{setCount}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Avg Monthly Fee</div>
-          <div className="text-2xl font-extrabold font-display mt-1">{fmtPKR(avgMonthly)}</div>
+          <div className="text-2xl font-extrabold mt-1">{fmtPKR(avgMonthly)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Pending Setup</div>
-          <div className="text-2xl font-extrabold font-display mt-1 text-sky-700">{grouped.length - setCount}</div>
+          <div className="text-2xl font-extrabold mt-1 text-sky-700">{grouped.length - setCount}</div>
         </Card>
       </div>
 
@@ -1027,19 +1027,19 @@ function FeeInvoicesTab({ user }: { user: any }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Total Invoices</div>
-          <div className="text-2xl font-extrabold font-display mt-1">{stats.count}</div>
+          <div className="text-2xl font-extrabold mt-1">{stats.count}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Collected</div>
-          <div className="text-xl font-extrabold font-display mt-1 text-primary">{fmtPKR(stats.paid)}</div>
+          <div className="text-xl font-extrabold mt-1 text-primary">{fmtPKR(stats.paid)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Pending</div>
-          <div className="text-xl font-extrabold font-display mt-1 text-rose-600">{fmtPKR(stats.pending)}</div>
+          <div className="text-xl font-extrabold mt-1 text-rose-600">{fmtPKR(stats.pending)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Total Amount</div>
-          <div className="text-xl font-extrabold font-display mt-1">{fmtPKR(stats.total)}</div>
+          <div className="text-xl font-extrabold mt-1">{fmtPKR(stats.total)}</div>
         </Card>
       </div>
 

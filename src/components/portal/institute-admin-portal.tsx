@@ -108,7 +108,7 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
   return (
     <Card className="p-10 text-center">
       <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
-      <h3 className="font-display font-bold text-lg">{title}</h3>
+      <h3 className="font-bold text-lg">{title}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
       {action && <div className="mt-5">{action}</div>}
     </Card>
@@ -191,7 +191,7 @@ function BranchManagementView({ branch, user, onBack, onRefresh }: {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-display text-xl sm:text-2xl font-extrabold tracking-tight truncate">{branch.name}</h1>
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight truncate">{branch.name}</h1>
                 <Badge variant="outline" className={isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>
                   {isBlocked ? 'Blocked' : 'Active'}
                 </Badge>
@@ -252,7 +252,7 @@ function BranchManagementView({ branch, user, onBack, onRefresh }: {
             <Card className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
-                <div><h3 className="font-display font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+                <div><h3 className="font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
               </div>
               <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
                 This will permanently delete <strong>{branch.name}</strong> and ALL its data: teachers, students, classes, courses, attendance, results, and materials.
@@ -272,51 +272,50 @@ function BranchManagementView({ branch, user, onBack, onRefresh }: {
 // ============== Institute Overview ==============
 function InstituteOverview({ user, stats, branches, loading, onAddBranch, onSelectBranch, onRefresh, showAddBranch, setShowAddBranch, lastCreated, setLastCreated }: any) {
   const cards = [
-    { label: 'Branches', value: stats?.branches ?? 0, icon: Network, color: 'from-primary to-primary/80' },
-    { label: 'Total Students', value: stats?.students ?? 0, icon: Users, color: 'from-primary/80 to-primary' },
-    { label: 'Staff', value: stats?.staff ?? 0, icon: Building2, color: 'from-primary/80 to-primary' },
+    { label: 'Branches', value: stats?.branches ?? 0, icon: Network },
+    { label: 'Total Students', value: stats?.students ?? 0, icon: Users },
+    { label: 'Staff', value: stats?.staff ?? 0, icon: Building2 },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Welcome banner — only on Dashboard */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
-        <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Building2 className="h-3 w-3 text-primary/70" /> Institute Admin</div>
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Welcome, {user?.name?.split(' ')[0]}</h1>
             <p className="text-white/80 text-sm mt-1.5">{stats?.branches ? `${stats.branches} branches · ${stats.students} students` : 'Add your first branch to get started.'}</p>
           </div>
-          <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+          <Button className="bg-white text-primary hover:bg-white/90" size="sm" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
         </div>
       </motion.div>
 
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {cards.map((c, i) => (
+          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-2xl sm:text-3xl font-bold tabular-nums">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Branch cards */}
       {loading ? (
         <LoadingState label="Loading institute data…" />
+      ) : branches.length === 0 ? (
+        <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password."
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {cards.map((c, i) => (
-              <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-                  <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-                  <div className="text-2xl sm:text-3xl font-extrabold font-display">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {branches.length === 0 ? (
-            <EmptyState icon={Network} title="No branches yet" desc="Add your first branch. You'll set the Branch Manager's email and password."
-              action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>} />
-          ) : (
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a branch card to open its management page</p></div>
-                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a branch card to open its management page</p></div>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {branches.map((br: any) => (
@@ -325,8 +324,6 @@ function InstituteOverview({ user, stats, branches, loading, onAddBranch, onSele
               </div>
             </Card>
           )}
-        </>
-      )}
 
       <BranchModal show={showAddBranch} setShow={setShowAddBranch} instituteId={user?.instituteId} onRefresh={onRefresh} lastCreated={lastCreated} setLastCreated={setLastCreated} />
     </div>
@@ -397,7 +394,7 @@ function BranchCard({ br, instituteId, onRefresh, onSelectBranch }: { br: any; i
             <Card className="p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
-                <div><h3 className="font-display font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+                <div><h3 className="font-bold text-lg">Delete Branch?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
               </div>
               <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
                 This will permanently delete <strong>{br.name}</strong> and ALL its data: teachers, students, classes, courses, attendance, results, and materials.
@@ -441,7 +438,7 @@ function EditBranchModal({ br, instituteId, onClose, onSaved }: { br: any; insti
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
       <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-8">
         <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
-          <h3 className="font-display font-bold text-lg mb-4">Edit Branch</h3>
+          <h3 className="font-bold text-lg mb-4">Edit Branch</h3>
           <div className="space-y-3">
             <div><Label>Branch Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" disabled /></div>
             <div className="pt-2 border-t border-border/40"><div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Branch Manager</div></div>
@@ -484,7 +481,7 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
             <>
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-12 w-12 rounded-full bg-accent0/15 grid place-items-center"><CheckCircle2 className="h-6 w-6 text-primary" /></div>
-                <div><h3 className="font-display font-bold text-lg">Branch created!</h3><p className="text-sm text-muted-foreground">{lastCreated.branch.name}</p></div>
+                <div><h3 className="font-bold text-lg">Branch created!</h3><p className="text-sm text-muted-foreground">{lastCreated.branch.name}</p></div>
               </div>
               <div className="rounded-xl bg-accent0/5 border border-[oklch(0.5_0.04_260)_/_0.2] p-4 space-y-2 text-sm">
                 <div className="font-semibold text-primary dark:text-primary/70">Branch Manager login credentials</div>
@@ -499,7 +496,7 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
             </>
           ) : (
             <>
-              <h3 className="font-display font-bold text-lg mb-1">Add a new branch</h3>
+              <h3 className="font-bold text-lg mb-1">Add a new branch</h3>
               <p className="text-sm text-muted-foreground mb-5">You will set the Branch Manager's email and password. They must change it on first login.</p>
               <div className="space-y-3">
                 <div><Label>Branch name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. North Campus" className="mt-1" /></div>
@@ -560,7 +557,7 @@ function AnnouncementsView({ user }: { user: any }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div><h1 className="font-display text-2xl font-extrabold tracking-tight">Announcements</h1><p className="text-sm text-muted-foreground mt-1">Send messages to branches, teachers, or students</p></div>
+        <div><h1 className="text-2xl font-extrabold tracking-tight">Announcements</h1><p className="text-sm text-muted-foreground mt-1">Send messages to branches, teachers, or students</p></div>
         <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>
       </div>
       {showForm && (

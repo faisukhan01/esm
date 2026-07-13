@@ -1750,3 +1750,27 @@ Stage Summary:
 - Student challan: direct PDF download with institute name + ESM footer
 - Institute Admin: clicking branch card opens full branch management page with tabs
 - Cards: clean white with subtle borders, no gradients, no blur effects — matches UCP reference
+
+---
+Task ID: CLEAN-FONTS + IA-STRUCTURE
+Agent: Main (Z.ai Code)
+Task: Fix Institute Admin structure (remove duplicate banner from Branches) + replace Playfair Display with Inter font for KPI numbers
+
+Work Log:
+- **Institute Admin structure fixed**:
+  - Removed duplicate greeting banner from Branches page
+  - Dashboard (institute-overview) now shows: welcome banner → KPI cards → branch cards (one clean flow)
+  - Branches page shows: KPI cards → branch cards (no greeting banner)
+  - Cleaned up the JSX structure — removed unnecessary fragment wrappers
+- **Font fix — Playfair Display → Inter**:
+  - Removed ALL `font-display` classes from every portal file (super-admin, institute-admin, branch-manager, teacher, student, parent, role-portal, settings, add-user-modal)
+  - Updated `layout.tsx`: replaced `Geist + Geist_Mono + Playfair_Display` with just `Inter`
+  - Removed the Playfair_Display import and variable entirely
+  - All numbers in KPI cards now use Inter (clean sans-serif) with `font-bold tabular-nums`
+  - All headings use Inter with `font-bold` or `font-extrabold` — no serif fonts anywhere
+- **Card cleanup**: KPI cards simplified to `border border-border rounded-lg shadow-sm hover:shadow-md` with `bg-primary/10 text-primary` icon boxes
+
+Verification:
+- VLM rated 9/10: "KPI card numbers use clean sans-serif font, welcome banner navy blue, cards clean white with subtle borders, well-organized uncluttered layout"
+- Lint passes clean ✅
+- No Playfair Display loaded — page loads faster with just Inter ✅
