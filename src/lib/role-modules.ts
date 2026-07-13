@@ -34,9 +34,15 @@ export const ROLE_MODULES: RoleModules = {
   ],
   'institute-admin': [
     { group: 'Institute', items: [
-      { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-emerald-500 to-emerald-700' },
-      { id: 'branches', name: 'Branches', icon: Network, color: 'from-teal-500 to-cyan-600' },
+      { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-blue-500 to-blue-700' },
+      { id: 'branches', name: 'Branches', icon: Network, color: 'from-blue-500 to-cyan-600' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-rose-500 to-pink-600' },
+    ]},
+    { group: 'Branch Management', items: [
+      { id: 'teachers', name: 'Teachers', icon: Users, color: 'from-violet-500 to-purple-600' },
+      { id: 'branch-students', name: 'Students', icon: GraduationCap, color: 'from-blue-600 to-blue-800' },
+      { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-lime-500 to-emerald-600' },
+      { id: 'fees', name: 'Fee Management', icon: DollarSign, color: 'from-amber-500 to-yellow-600' },
     ]},
     { group: 'Account', items: [
       { id: 'settings', name: 'Settings', icon: Settings, color: 'from-slate-500 to-slate-700' },
@@ -106,10 +112,10 @@ export const ROLE_MODULES: RoleModules = {
 };
 
 export const roleAccent: Record<string, { from: string; to: string; text: string; bg: string }> = {
-  'super-admin': { from: 'from-amber-600', to: 'to-orange-700', text: 'text-amber-600', bg: 'bg-amber-500/15' },
-  'institute-admin': { from: 'from-emerald-600', to: 'to-emerald-800', text: 'text-emerald-600', bg: 'bg-emerald-500/15' },
-  'branch-manager': { from: 'from-teal-600', to: 'to-cyan-700', text: 'text-teal-600', bg: 'bg-teal-500/15' },
-  'teacher': { from: 'from-violet-600', to: 'to-purple-700', text: 'text-violet-600', bg: 'bg-violet-500/15' },
-  'student': { from: 'from-cyan-600', to: 'to-teal-700', text: 'text-cyan-600', bg: 'bg-cyan-500/15' },
+  'super-admin': { from: 'from-blue-700', to: 'to-blue-900', text: 'text-blue-600', bg: 'bg-blue-500/15' },
+  'institute-admin': { from: 'from-blue-600', to: 'to-blue-800', text: 'text-blue-600', bg: 'bg-blue-500/15' },
+  'branch-manager': { from: 'from-blue-500', to: 'to-cyan-700', text: 'text-blue-500', bg: 'bg-blue-500/15' },
+  'teacher': { from: 'from-blue-600', to: 'to-violet-700', text: 'text-blue-600', bg: 'bg-blue-500/15' },
+  'student': { from: 'from-blue-500', to: 'to-cyan-700', text: 'text-blue-500', bg: 'bg-blue-500/15' },
   'parent': { from: 'from-rose-600', to: 'to-pink-700', text: 'text-rose-600', bg: 'bg-rose-500/15' },
 };

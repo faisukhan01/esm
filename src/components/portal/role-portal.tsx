@@ -158,6 +158,10 @@ export function RolePortal() {
 
   const renderPortal = () => {
     if (activeModule === 'settings') return <SettingsPage user={user} />;
+    // Institute Admin can access branch-level modules (teachers, students, classes, fees)
+    if (role === 'institute-admin' && ['teachers', 'branch-students', 'class-courses', 'fees'].includes(activeModule)) {
+      return <BranchManagerPortal activeModule={activeModule} user={user} />;
+    }
     switch (role) {
       case 'super-admin': return <SuperAdminPortal activeModule={activeModule} user={user} />;
       case 'institute-admin': return <InstituteAdminPortal activeModule={activeModule} user={user} />;

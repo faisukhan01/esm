@@ -1312,3 +1312,50 @@ Stage Summary:
 - Fee system fully implemented: Branch Manager sets fees per class → generates monthly invoices → marks paid when student pays cash → student sees invoices + downloads challan PDF
 - Currency: PKR (Rs.)
 - All data persists in Turso DB
+
+---
+Task ID: UI-OVERHAUL + IA-EXPAND
+Agent: Main (Z.ai Code)
+Task: UI/theme overhaul to match reference screenshots + add branch-level features to Institute Admin
+
+Work Log:
+- **Analyzed reference PDF** (10 pages from university portal):
+  - Dark navy blue sidebar (#1E3A8A)
+  - Clean white background
+  - Sans-serif typography (semi-bold headings, regular body)
+  - White cards with subtle shadows, 8-10px border radius
+  - Clean status badges (green/red)
+  - Professional, minimal, ample white space
+- **Updated color theme** (globals.css):
+  - Changed from emerald/gold to navy blue / clean white
+  - Sidebar: deep navy blue (oklch 0.26 0.05 260)
+  - Background: near-white (oklch 0.985 0.002 250)
+  - Primary: blue (oklch 0.45 0.18 260)
+  - Cards: pure white with subtle shadows
+  - Borders: light gray-blue
+  - Dark mode updated to match with blue tones
+- **Updated roleAccent** to use blue tones instead of emerald/amber for all roles
+- **Institute Admin expanded** with branch-level access:
+  - Added "Branch Management" group to sidebar: Teachers, Students, Classes & Courses, Fee Management
+  - These modules render the BranchManagerPortal components (so Institute Admin can do everything a Branch Manager can do)
+  - Routing in RolePortal: `if (role === 'institute-admin' && ['teachers', 'branch-students', 'class-courses', 'fees'].includes(activeModule)) return <BranchManagerPortal />`
+- **Fee system verified** — all endpoints working:
+  - Generate invoices: creates monthly invoices for all students with PKR amounts
+  - Mark paid: updates status to "Paid" with date and payment method
+  - Challan data: returns all fields for PDF generation
+  - Student portal has "Invoices" tab with "Download Challan" button (generates printable PDF)
+
+Verification:
+- Lint passes clean ✅
+- Backend health: `{"ok": true, "db": "turso", "users": 8}` ✅
+- VLM rated new UI 8/10: "navy sidebar, clean white background, clean minimal cards, professional and organized" ✅
+- Super Admin sidebar: Dashboard, Institutes, Announcements, Platform Config, Branding, Settings ✅
+- Institute Admin sidebar: Dashboard, Branches, Announcements + Teachers, Students, Classes & Courses, Fee Management + Settings ✅
+- Fee system: all endpoints working (generate, mark paid, challan data) ✅
+
+Stage Summary:
+- UI overhauled to match reference: navy sidebar, clean white background, professional cards
+- Institute Admin now has full branch-level access (teachers, students, classes, fees)
+- Fee system fully functional in both Branch Manager and Institute Admin portals
+- Student portal has Invoices tab with PDF challan download
+- All features preserved — only UI/theme updated
