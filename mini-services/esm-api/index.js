@@ -106,7 +106,8 @@ function buildUserProfile(u) {
     id: u.id, name: u.name, email: u.email, rollNo: u.rollNo, role: u.role,
     roleLabel: ROLE_LABELS[u.role] || u.role, title: u.title || '',
     status: u.status, mustChangePassword: u.mustChangePassword === 1, blocked: u.blocked === 1,
-    instituteId: u.instituteId || null, branchId: u.branchId || null,
+    instituteId: u.instituteId || null, instituteName: u.instituteName || null, instituteShort: u.instituteShort || null,
+    branchId: u.branchId || null, branchName: u.branchName || null,
     class: u.class || null, section: u.section || null,
     guardian: u.guardian || null, ward: u.ward, wardId: u.wardId,
     subjects: u.subjects ? JSON.parse(u.subjects) : [],
@@ -152,8 +153,15 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    // Find user by email OR rollNo/ID
-    let result = await db.execute({ sql: 'SELECT * FROM users WHERE LOWER(email) = ? OR LOWER(rollNo) = ?', args: [identifier, identifier.toLowerCase()] });
+    // Find user by email OR rollNo/ID — JOIN with institutes + branches to get names
+    let result = await db.execute({
+      sql: `SELECT u.*, i.name as instituteName, i.short as instituteShort, b.name as branchName
+            FROM users u
+            LEFT JOIN institutes i ON u.instituteId = i.id
+            LEFT JOIN branches b ON u.branchId = b.id
+            WHERE LOWER(u.email) = ? OR LOWER(u.rollNo) = ?`,
+      args: [identifier, identifier.toLowerCase()],
+    });
 
     if (result.rows.length === 0) {
       const r = registerFailedAttempt(rateKey);
@@ -1744,8 +1752,15 @@ app.get('/api/fee-invoices/:id/challan', requireAuth, async (req, res) => {
   const inv = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE id = ?', args: [req.params.id] });
   if (inv.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
   const invoice = inv.rows[0];
-  // Get student details
-  const stu = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [invoice.studentId] });
+  // Get student details + institute name
+  const stu = await db.execute({
+    sql: `SELECT u.*, i.name as instituteName, b.name as branchName
+          FROM users u
+          LEFT JOIN institutes i ON u.instituteId = i.id
+          LEFT JOIN branches b ON u.branchId = b.id
+          WHERE u.id = ?`,
+    args: [invoice.studentId],
+  });
   const student = stu.rows[0] || {};
   res.json({
     challanNo: invoice.challanNo,
@@ -1754,11 +1769,17 @@ app.get('/api/fee-invoices/:id/challan', requireAuth, async (req, res) => {
     rollNo: student.rollNo,
     className: invoice.className || student.class,
     branch: student.branchId,
+    branchName: student.branchName,
+    instituteId: student.instituteId,
+    instituteName: student.instituteName,
     month: invoice.month,
     year: invoice.year,
     amount: invoice.amount,
     status: invoice.status,
     type: invoice.type,
+    paidDate: invoice.paidDate,
+    paidAmount: invoice.paidAmount,
+    paymentMethod: invoice.paymentMethod,
     generatedAt: invoice.createdAt,
   });
 });

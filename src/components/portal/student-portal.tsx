@@ -900,9 +900,11 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #ffffff; color: #1f2937; }
   .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #1e3a5f; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
+  .institute-banner { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); color: #fff; text-align: center; padding: 22px 24px; border-radius: 12px; margin-bottom: 22px; }
+  .institute-name { font-size: 28px; font-weight: 900; letter-spacing: 0.5px; margin: 0; }
+  .institute-sub { font-size: 11px; color: #c3d4e8; margin-top: 4px; letter-spacing: 1px; }
   .header { text-align: center; border-bottom: 2px dashed #b6c5d8; padding-bottom: 18px; margin-bottom: 22px; }
-  .institute { font-size: 20px; font-weight: 800; color: #0f1e3a; letter-spacing: 0.3px; }
-  .brand { font-size: 11px; letter-spacing: 3px; color: #1e3a5f; font-weight: 700; margin-top: 6px; }
+  .brand { font-size: 11px; letter-spacing: 3px; color: #1e3a5f; font-weight: 700; }
   .title { font-size: 26px; font-weight: 800; margin-top: 8px; color: #0f1e3a; letter-spacing: 0.5px; }
   .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 8px 0 18px; }
@@ -928,8 +930,8 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
 </head>
 <body>
   <div class="challan">
+    ${institute ? `<div class="institute-banner"><div class="institute-name">${escape(institute)}</div><div class="institute-sub">OFFICIAL FEE CHALLAN</div></div>` : ''}
     <div class="header">
-      ${institute ? `<div class="institute">${escape(institute)}</div>` : ''}
       <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
       <div class="title">FEE CHALLAN</div>
       <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
@@ -944,7 +946,7 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
     </div>
     <div class="amount-row">
       <span class="amount-label">Amount Payable</span>
-      <span class="amount-value">PKR {amount.toLocaleString('en-PK')}</span>
+      <span class="amount-value">PKR ${amount.toLocaleString('en-PK')}</span>
     </div>
     <div class="status-row">
       <span class="label" style="margin:0">Status</span>
@@ -998,44 +1000,108 @@ function printChallanInIframe(html: string) {
   }, 300);
 }
 
-// Generate an actual PDF file using html2pdf.js (no print dialog).
-// Falls back to the iframe print path if the library fails to load or render.
-async function downloadChallanPDF(challan: any, instituteName?: string): Promise<{ via: 'pdf' | 'print' }> {
+// Generate an actual PDF file using jsPDF + html2canvas (no print dialog, ever).
+// This directly creates a PDF Blob and triggers a browser download — no print popup.
+async function downloadChallanPDF(challan: any, instituteName?: string): Promise<{ via: 'pdf' | 'error' }> {
   const html = buildChallanHTML(challan, instituteName);
   const challanNo = String(challan.challanNo || challan.id?.slice?.(-8) || 'challan').replace(/[^A-Za-z0-9_-]/g, '_');
 
   // Build a temporary off-screen container so html2canvas can render the styled challan.
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-99999px';
-  container.style.top = '0';
-  container.style.width = '760px';
-  container.style.background = '#ffffff';
-  container.innerHTML = html;
-  // Strip the surrounding <html>/<head>/<body> tags — we only need the inner content
-  // so the PDF renders just the challan card, not the full document chrome.
-  const challanEl = container.querySelector('.challan') as HTMLElement | null;
-  const renderEl: HTMLElement = challanEl || container;
-  document.body.appendChild(container);
+  // Use an iframe to fully isolate the challan HTML from the parent page's CSS (which uses
+  // oklch/lab color functions that html2canvas can't parse).
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.left = '-99999px';
+  iframe.style.top = '0';
+  iframe.style.width = '800px';
+  iframe.style.height = '600px';
+  iframe.style.border = '0';
+  iframe.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    return { via: 'error' };
+  }
+
+  iframeDoc.open();
+  iframeDoc.write(html);
+  iframeDoc.close();
+
+  // Wait for the iframe content to render
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  const challanEl = iframeDoc.querySelector('.challan') as HTMLElement | null;
+  const renderEl: HTMLElement = challanEl || iframeDoc.body;
 
   try {
-    const html2pdf = (await import('html2pdf.js')).default;
-    const opt = {
-      margin: [10, 10, 10, 10] as [number, number, number, number],
-      filename: `Challan-${challanNo}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
-      pagebreak: { mode: ['css', 'legacy'] as const },
-    };
-    await html2pdf().set(opt).from(renderEl).save();
+    // Dynamically import jsPDF and html2canvas (client-side only)
+    const { default: jsPDF } = await import('jspdf');
+    const html2canvas = (await import('html2canvas')).default;
+
+    // Render the challan element to a canvas at high resolution
+    // Use the iframe's contentWindow so html2canvas reads only the iframe's CSS (no oklch)
+    const canvas = await html2canvas(renderEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: 800,
+      // Pass the iframe's window so computed styles come from the isolated document
+      window: iframe.contentWindow,
+    });
+
+    // Create a jsPDF instance (A4 portrait)
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10; // 10mm margin
+    const imgWidth = pageWidth - margin * 2;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    // If the content is taller than one page, split it across multiple pages
+    if (imgHeight <= pageHeight - margin * 2) {
+      // Single page — just add the image
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+    } else {
+      // Multi-page: slice the canvas into page-sized chunks
+      const pageContentHeight = pageHeight - margin * 2;
+      const pxPerMm = canvas.width / imgWidth;
+      const pageContentHeightPx = pageContentHeight * pxPerMm;
+      let remainingHeight = canvas.height;
+      let offset = 0;
+
+      while (remainingHeight > 0) {
+        // Create a slice canvas for this page
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = Math.min(pageContentHeightPx, remainingHeight);
+        const ctx = sliceCanvas.getContext('2d');
+        if (!ctx) break;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, offset, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
+
+        const imgData = sliceCanvas.toDataURL('image/jpeg', 0.98);
+        const sliceHeightMm = (sliceCanvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, sliceHeightMm);
+
+        remainingHeight -= sliceCanvas.height;
+        offset += sliceCanvas.height;
+        if (remainingHeight > 0) pdf.addPage();
+      }
+    }
+
+    // Save the PDF directly — this triggers a browser download, NOT a print dialog
+    pdf.save(`Challan-${challanNo}.pdf`);
     return { via: 'pdf' };
   } catch (err: any) {
-    // Fall back to the browser print dialog (Save as PDF) if html2pdf fails
-    printChallanInIframe(html);
-    return { via: 'print' };
+    console.error('PDF generation failed:', err);
+    return { via: 'error' };
   } finally {
-    try { document.body.removeChild(container); } catch {}
+    try { document.body.removeChild(iframe); } catch {}
   }
 }
 
@@ -1067,11 +1133,13 @@ function MyInvoices({ user }: { user: any }) {
       const challan = await api.getChallanData(inv.id);
       // Merge with invoice data as a fallback so the PDF is complete even if the challan endpoint returns a partial payload
       const merged = { ...inv, ...challan };
-      const result = await downloadChallanPDF(merged, user?.instituteName);
+      // Prefer the challan endpoint's instituteName (authoritative), fall back to user's instituteName
+      const instituteName = challan.instituteName || user?.instituteName;
+      const result = await downloadChallanPDF(merged, instituteName);
       if (result.via === 'pdf') {
         toast({ title: 'Challan downloaded', description: `Challan-${merged.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
       } else {
-        toast({ title: 'Preparing challan', description: 'PDF generation unavailable — use the print dialog to save it as a PDF.' });
+        toast({ title: 'Download failed', description: 'Could not generate the PDF. Please try again.', variant: 'destructive' });
       }
     } catch {
       // Fallback: generate PDF using the invoice data we already have
@@ -1080,7 +1148,7 @@ function MyInvoices({ user }: { user: any }) {
         if (result.via === 'pdf') {
           toast({ title: 'Challan downloaded', description: `Challan-${inv.challanNo || inv.id?.slice(-8)}.pdf saved to your downloads.` });
         } else {
-          toast({ title: 'Using local invoice data', description: 'Could not fetch full challan details — using invoice summary instead.' });
+          toast({ title: 'Download failed', description: 'Could not generate the PDF. Please try again.', variant: 'destructive' });
         }
       } catch {
         toast({ title: 'Failed', description: 'Could not generate the challan PDF. Please try again.', variant: 'destructive' });

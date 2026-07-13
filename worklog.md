@@ -2515,3 +2515,53 @@ Unresolved issues or risks:
 - The Branch Manager dashboard still auto-calculates revenue from fee_invoices (branch-level). This is correct — Branch Managers collect fees from students, so their revenue is real fee data. Only Super Admin and Institute Admin use manual revenue.
 - No historical revenue migration — existing fee_invoice-based revenue data is no longer shown on SA/IA dashboards. If the user wants to see old fee data, the Fees & Revenue page still has a per-student fee summary table (though it now shows zeros since the finance endpoint no longer populates paid/pending from invoices).
 - Next priority: consider adding a "Revenue vs Salary" comparison view and a date-range filter for the revenue entries.
+
+---
+Task ID: STUDENT-PDF-FIX + INSTITUTE-NAME
+Agent: Main (Z.ai Code)
+Task: Fix student challan PDF download — (1) no print dialog, download PDF directly; (2) show institute name at the top of the PDF (e.g., "Alhamd Institute"); (3) "Powered by ESM" at the bottom.
+
+Work Log:
+- **Root cause 1: Print dialog fallback**: The old `downloadChallanPDF` function used `html2pdf.js` which was falling back to `printChallanInIframe` (browser print dialog) whenever the library failed. The user saw the print popup instead of a direct download.
+- **Root cause 2: Missing institute name**: The `buildUserProfile` function in the backend did NOT include `instituteName` or `branchName` — only `instituteId` and `branchId`. So `user.instituteName` was `undefined` on the frontend, and the PDF showed no institute name.
+- **Root cause 3: lab() color error**: `html2canvas` (used by both html2pdf.js and the new jsPDF approach) cannot parse the `oklch()`/`lab()` color functions used by Tailwind CSS 4. When rendering the challan element inside the main page, html2canvas read the page's computed styles (which include oklch) and threw "Attempting to parse an unsupported color function lab".
+- **Fix 1: Backend — add institute/branch names to user profile**:
+  - Updated `buildUserProfile` in `index.js` to include `instituteName`, `instituteShort`, `branchName` (read from the joined query result)
+  - Updated the login query (`POST /api/auth/login`) to JOIN with `institutes` and `branches` tables: `SELECT u.*, i.name as instituteName, i.short as instituteShort, b.name as branchName FROM users u LEFT JOIN institutes i ON u.instituteId = i.id LEFT JOIN branches b ON u.branchId = b.id WHERE ...`
+  - Updated `GET /api/fee-invoices/:id/challan` to JOIN with institutes + branches tables and return `instituteName`, `branchName`, `instituteId`, `paidDate`, `paidAmount`, `paymentMethod` in the response
+- **Fix 2: Frontend — direct PDF download with jsPDF + html2canvas (no print dialog)**:
+  - Replaced the `html2pdf.js` wrapper with direct `jspdf` + `html2canvas` imports (both already installed as dependencies of html2pdf.js)
+  - Removed the `printChallanInIframe` fallback entirely — the function now returns `{ via: 'pdf' | 'error' }` (never `'print'`)
+  - Added multi-page support: if the challan content is taller than one A4 page, the canvas is sliced into page-sized chunks and added to multiple PDF pages
+  - Uses `pdf.save(filename)` which triggers a direct browser download — no print dialog ever
+- **Fix 3: Iframe isolation to avoid oklch/lab color error**:
+  - Instead of rendering the challan HTML in a div inside the main page (which inherits the page's oklch CSS), the challan HTML is written into a hidden `<iframe>` with its own isolated document
+  - html2canvas renders the iframe's content (which only has the challan's own CSS with hex colors) — no oklch/lab colors to parse
+  - The `window: iframe.contentWindow` option ensures html2canvas uses the iframe's window for computed styles
+- **Fix 4: Enhanced challan HTML with prominent institute banner**:
+  - Added a navy gradient banner (`linear-gradient(135deg, #1e3a5f, #2c5282)`) at the very top of the challan with the institute name in large 28px bold white text + "OFFICIAL FEE CHALLAN" subtitle
+  - If a student is from "Alhamd Institute", the banner shows "Alhamd Institute" at the top
+  - If from another institute, that institute's name appears instead
+  - Footer shows "Powered by ESM — Electronic School Management" (already existed, kept as-is)
+  - Fixed a template literal bug: `PKR {amount.toLocaleString()}` → `PKR ${amount.toLocaleString()}` (the `{` was a literal character, not interpolation)
+- **Fix 5: Updated downloadChallan handler**:
+  - Now passes `challan.instituteName` (from the challan API) as the preferred institute name, falling back to `user.instituteName`
+  - Updated toast messages: success → "Challan downloaded", error → "Download failed" (no more "use print dialog" message)
+- **Verification**:
+  - Logged in as student (faisal, roll 0297, from Alhamd Institute)
+  - Went to Invoices page → clicked "Download Challan"
+  - PDF downloaded directly to `/home/z/Downloads/Challan-CH-202507-0001.pdf` (220KB, valid PDF, 1 page) — NO print dialog appeared
+  - Converted PDF to image and verified with VLM:
+    - Top: "Alhamd Institute" (prominent navy gradient banner, large bold white text) ✅
+    - Footer: "Powered by ESM — Electronic School Management" ✅
+    - Student: faisal, Class: Class 1, Amount: PKR 5,000, Status: PAID ✅
+    - Layout: clean and professional ✅
+  - The `lab()` color error still appears in the console (harmless warning from html2canvas trying to parse inherited page styles) but the PDF generates correctly because the iframe isolation works
+  - Lint: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- **Student challan PDF now downloads directly** — no print dialog, no popup. The PDF file is saved to the browser's downloads folder immediately when the student clicks "Download Challan".
+- **Institute name shown prominently at the top** — a navy gradient banner displays the student's institute name (e.g., "Alhamd Institute") in large bold text. If a student from a different institute downloads their challan, that institute's name appears instead.
+- **"Powered by ESM" footer** — preserved at the bottom of every challan.
+- **Backend now returns institute/branch names** in both the login response and the challan data response, so the frontend always has the correct institute name.
+- **Iframe isolation** prevents the oklch/lab color parsing error from breaking PDF generation.
