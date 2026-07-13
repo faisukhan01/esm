@@ -1,0 +1,1285 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { api } from '@/lib/api';
+     6→import { useApp } from '@/lib/store';
+     7→import { Card } from '@/components/ui/card';
+     8→import { Badge } from '@/components/ui/badge';
+     9→import { Button } from '@/components/ui/button';
+    10→import { Input } from '@/components/ui/input';
+    11→import { Label } from '@/components/ui/label';
+    12→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    13→import {
+    14→  BookOpen, CalendarCheck, GraduationCap, ClipboardList, Calendar, Users,
+    15→  CheckCircle2, XCircle, Clock, Plus, MessageSquare, Inbox, ArrowLeft,
+    16→  FileText, Link2, Download, Megaphone, Paperclip, Loader2,
+    17→  LayoutDashboard, ArrowRight,
+    18→} from 'lucide-react';
+    19→import { toast } from '@/hooks/use-toast';
+    20→
+    21→type ClassInfo = {
+    22→  id: string;
+    23→  name: string;
+    24→  section?: string;
+    25→  branchId?: string;
+    26→  courses: { id: string; name: string; code?: string }[];
+    27→};
+    28→
+    29→type MaterialItem = {
+    30→  id: string;
+    31→  title: string;
+    32→  description?: string;
+    33→  fileType?: string;
+    34→  fileName?: string;
+    35→  linkUrl?: string;
+    36→  createdAt?: number | string;
+    37→  classId?: string;
+    38→  courseId?: string;
+    39→};
+    40→
+    41→type Announcement = {
+    42→  id: string;
+    43→  title: string;
+    44→  message: string;
+    45→  senderRole?: string;
+    46→  targetRole?: string;
+    47→  targetScope?: string;
+    48→  classId?: string | null;
+    49→  createdAt?: number | string;
+    50→};
+    51→
+    52→export function TeacherPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    53→  const [students, setStudents] = useState<any[]>([]);
+    54→  const [diary, setDiary] = useState<any[]>([]);
+    55→  const [myResults, setMyResults] = useState<any[]>([]);
+    56→  const [classes, setClasses] = useState<ClassInfo[]>([]);
+    57→  const [selectedClass, setSelectedClass] = useState<ClassInfo | null>(null);
+    58→  const [selectedTab, setSelectedTab] = useState<'attendance' | 'results' | 'materials' | 'announcements'>('attendance');
+    59→
+    60→  const refresh = () => {
+    61→    if (user?.branchId) {
+    62→      api.platformUsers({ branchId: user.branchId, role: 'student' }).then(setStudents).catch(() => {});
+    63→    }
+    64→    if (user?.id) {
+    65→      api.getDiary({ teacherId: user.id }).then(setDiary).catch(() => {});
+    66→      api.getResults({ teacherId: user.id }).then(setMyResults).catch(() => {});
+    67→      api.getTeacherClasses().then(setClasses).catch(() => {});
+    68→    }
+    69→  };
+    70→  useEffect(() => { refresh(); }, [user?.id, user?.branchId]);
+    71→
+    72→  const openClass = (cls: ClassInfo, tab: 'attendance' | 'results' | 'materials' | 'announcements' = 'attendance') => {
+    73→    setSelectedClass(cls);
+    74→    setSelectedTab(tab);
+    75→  };
+    76→
+    77→  // If a class is selected on the overview, render detail view (only when on overview module)
+    78→  if (activeModule === 'teacher-overview' && selectedClass) {
+    79→    return (
+    80→      <ClassDetail
+    81→        cls={selectedClass}
+    82→        user={user}
+    83→        students={students.filter((s: any) => s.class === selectedClass.name)}
+    84→        initialTab={selectedTab}
+    85→        onBack={() => setSelectedClass(null)}
+    86→      />
+    87→    );
+    88→  }
+    89→
+    90→  if (activeModule === 'mark-attendance') return <MarkAttendance user={user} classes={classes} students={students} onSaved={refresh} />;
+    91→  if (activeModule === 'post-results') return <PostResults user={user} classes={classes} students={students} onSaved={refresh} />;
+    92→  if (activeModule === 'diary') return <DiaryView user={user} diary={diary} onSaved={refresh} />;
+    93→  if (activeModule === 'timetable') return <TeacherTimetable user={user} />;
+    94→  if (activeModule === 'my-students') return <MyStudents students={students} />;
+    95→  if (activeModule === 'sms') return <MessageParents user={user} students={students} />;
+    96→  if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
+    97→  if (activeModule === 'teacher-dashboard') return <TeacherDashboard user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
+    98→  return <TeacherOverview user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
+    99→}
+   100→
+   101→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+   102→  return (
+   103→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   104→      <div><h1 className="font-display text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+   105→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+   106→    </div>
+   107→  );
+   108→}
+   109→
+   110→function EmptyState({ icon: Icon, title, desc, action }: any) {
+   111→  return (
+   112→    <Card className="p-10 text-center">
+   113→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+   114→      <h3 className="font-display font-bold text-lg">{title}</h3>
+   115→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+   116→      {action && <div className="mt-5">{action}</div>}
+   117→    </Card>
+   118→  );
+   119→}
+   120→
+   121→const TABS = [
+   122→  { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
+   123→  { id: 'results', label: 'Results', icon: GraduationCap },
+   124→  { id: 'materials', label: 'Materials', icon: FileText },
+   125→  { id: 'announcements', label: 'Announcements', icon: Megaphone },
+   126→] as const;
+   127→
+   128→function ClassDetail({ cls, user, students, initialTab, onBack }: {
+   129→  cls: ClassInfo;
+   130→  user: any;
+   131→  students: any[];
+   132→  initialTab: 'attendance' | 'results' | 'materials' | 'announcements';
+   133→  onBack: () => void;
+   134→}) {
+   135→  const [tab, setTab] = useState(initialTab);
+   136→  const [courseId, setCourseId] = useState<string>(cls.courses[0]?.id || '');
+   137→
+   138→  return (
+   139→    <div className="space-y-6">
+   140→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   141→        <div className="flex items-center gap-3">
+   142→          <button onClick={onBack} className="h-9 w-9 grid place-items-center rounded-lg border border-border hover:bg-accent transition" title="Back to classes">
+   143→            <ArrowLeft className="h-4 w-4" />
+   144→          </button>
+   145→          <div>
+   146→            <h1 className="font-display text-2xl font-extrabold tracking-tight">{cls.name}</h1>
+   147→            <p className="text-sm text-muted-foreground mt-0.5">{cls.section ? `Section ${cls.section} · ` : ''}{cls.courses.length} course{cls.courses.length === 1 ? '' : 's'} · {students.length} student{students.length === 1 ? '' : 's'}</p>
+   148→          </div>
+   149→        </div>
+   150→        {cls.courses.length > 0 && (
+   151→          <div className="flex items-center gap-2">
+   152→            <Label className="text-xs text-muted-foreground hidden sm:block">Course</Label>
+   153→            <select value={courseId} onChange={e => setCourseId(e.target.value)} className="h-9 rounded-md border border-border bg-card px-3 text-sm min-w-[180px]">
+   154→              {cls.courses.map(c => <option key={c.id} value={c.id}>{c.name}{c.code ? ` · ${c.code}` : ''}</option>)}
+   155→            </select>
+   156→          </div>
+   157→        )}
+   158→      </div>
+   159→
+   160→      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy">
+   161→        {TABS.map(t => {
+   162→          const active = tab === t.id;
+   163→          return (
+   164→            <button key={t.id} onClick={() => setTab(t.id)}
+   165→              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+   166→              <t.icon className="h-4 w-4" /> {t.label}
+   167→            </button>
+   168→          );
+   169→        })}
+   170→      </div>
+   171→
+   172→      <AnimatePresence mode="wait">
+   173→        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+   174→          {tab === 'attendance' && <ClassAttendance user={user} cls={cls} students={students} />}
+   175→          {tab === 'results' && <ClassResults user={user} cls={cls} courseId={courseId} students={students} />}
+   176→          {tab === 'materials' && <ClassMaterials user={user} cls={cls} courseId={courseId} />}
+   177→          {tab === 'announcements' && <ClassAnnouncements user={user} cls={cls} />}
+   178→        </motion.div>
+   179→      </AnimatePresence>
+   180→    </div>
+   181→  );
+   182→}
+   183→
+   184→// ============== Attendance Tab ==============
+   185→function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; students: any[] }) {
+   186→  const [attendance, setAttendance] = useState<Record<string, string>>({});
+   187→  const [saving, setSaving] = useState(false);
+   188→
+   189→  const setStatus = (id: string, status: string) => setAttendance(a => ({ ...a, [id]: status }));
+   190→  const present = students.filter(s => (attendance[s.id] || 'Present') === 'Present').length;
+   191→  const absent = students.filter(s => attendance[s.id] === 'Absent').length;
+   192→  const late = students.filter(s => attendance[s.id] === 'Late').length;
+   193→
+   194→  const save = async () => {
+   195→    if (students.length === 0) { toast({ title: 'No students to mark', variant: 'destructive' }); return; }
+   196→    setSaving(true);
+   197→    try {
+   198→      const records = students.map(s => ({ studentId: s.id, status: attendance[s.id] || 'Present' }));
+   199→      await api.markAttendance({
+   200→        classId: cls.id,
+   201→        branchId: user.branchId,
+   202→        class: cls.name,
+   203→        date: new Date().toISOString().slice(0, 10),
+   204→        teacherId: user.id,
+   205→        records,
+   206→      });
+   207→      toast({ title: 'Attendance saved!', description: `${present} present, ${absent} absent, ${late} late` });
+   208→      setAttendance({});
+   209→    } catch (e: any) {
+   210→      const msg = e.message || 'Unknown error';
+   211→      if (msg.includes('Insufficient permissions')) {
+   212→        toast({ title: 'Permission denied', description: 'Only teachers can mark attendance.', variant: 'destructive' });
+   213→      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+   214→        toast({ title: 'Session expired', description: 'Please sign out and sign in again.', variant: 'destructive' });
+   215→      } else {
+   216→        toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
+   217→      }
+   218→    } finally { setSaving(false); }
+   219→  };
+   220→
+   221→  if (students.length === 0) {
+   222→    return <EmptyState icon={Users} title="No students in this class" desc="Your Branch Manager needs to add students to this class before you can take attendance." />;
+   223→  }
+   224→
+   225→  return (
+   226→    <div className="space-y-4">
+   227→      <div className="flex items-center justify-between">
+   228→        <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+   229→        <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={save}>
+   230→          {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : 'Save Attendance'}
+   231→        </Button>
+   232→      </div>
+   233→      <div className="grid grid-cols-3 gap-3">
+   234→        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   235→        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   236→        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   237→      </div>
+   238→      <Card className="p-4">
+   239→        <Table>
+   240→          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Roll</TableHead><TableHead>Student</TableHead><TableHead className="text-right">Mark</TableHead></TableRow></TableHeader>
+   241→          <TableBody>
+   242→            {students.map(s => {
+   243→              const st = attendance[s.id] || 'Present';
+   244→              return (
+   245→                <TableRow key={s.id}>
+   246→                  <TableCell className="font-mono text-sm">{s.rollNo}</TableCell>
+   247→                  <TableCell className="font-medium text-sm">{s.name}</TableCell>
+   248→                  <TableCell className="text-right">
+   249→                    <div className="flex gap-1 justify-end">
+   250→                      {['Present', 'Absent', 'Late'].map(opt => (
+   251→                        <Button key={opt} size="sm" variant={st === opt ? 'default' : 'outline'}
+   252→                          className={st === opt ? (opt === 'Present' ? 'bg-primary text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
+   253→                          onClick={() => setStatus(s.id, opt)}>{opt[0]}</Button>
+   254→                      ))}
+   255→                    </div>
+   256→                  </TableCell>
+   257→                </TableRow>
+   258→              );
+   259→            })}
+   260→          </TableBody>
+   261→        </Table>
+   262→      </Card>
+   263→    </div>
+   264→  );
+   265→}
+   266→
+   267→// ============== Results Tab ==============
+   268→function ClassResults({ user, cls, courseId, students }: { user: any; cls: ClassInfo; courseId: string; students: any[] }) {
+   269→  const [exam, setExam] = useState('');
+   270→  const [totalMarks, setTotalMarks] = useState(100);
+   271→  const [marks, setMarks] = useState<Record<string, string>>({});
+   272→  const [saving, setSaving] = useState(false);
+   273→
+   274→  const calcGrade = (m: number, total: number) => {
+   275→    const p = (m / total) * 100;
+   276→    return p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B' : p >= 60 ? 'C' : p >= 50 ? 'D' : 'F';
+   277→  };
+   278→
+   279→  const save = async () => {
+   280→    if (!exam.trim()) { toast({ title: 'Enter exam name', description: 'e.g. Chapter 1 Test', variant: 'destructive' }); return; }
+   281→    if (!courseId) { toast({ title: 'Select a course first', variant: 'destructive' }); return; }
+   282→    if (students.length === 0) { toast({ title: 'No students', variant: 'destructive' }); return; }
+   283→    setSaving(true);
+   284→    try {
+   285→      const records = students.map(s => {
+   286→        const m = parseInt(marks[s.id] || '0');
+   287→        return { studentId: s.id, marks: m, grade: calcGrade(m, totalMarks) };
+   288→      });
+   289→      await api.postResults({
+   290→        classId: cls.id,
+   291→        courseId,
+   292→        branchId: user.branchId,
+   293→        exam,
+   294→        teacherId: user.id,
+   295→        totalMarks,
+   296→        date: new Date().toISOString().slice(0, 10),
+   297→        records,
+   298→      });
+   299→      toast({ title: 'Results posted!', description: `${records.length} students · ${exam}` });
+   300→      setMarks({});
+   301→    } catch (e: any) { toast({ title: 'Failed to post', description: e.message, variant: 'destructive' }); }
+   302→    finally { setSaving(false); }
+   303→  };
+   304→
+   305→  if (!courseId) {
+   306→    return <EmptyState icon={GraduationCap} title="No course assigned" desc="This class doesn't have any courses assigned yet. Ask your Branch Manager to assign courses." />;
+   307→  }
+   308→
+   309→  if (students.length === 0) {
+   310→    return <EmptyState icon={Users} title="No students in this class" desc="There are no students to post results for." />;
+   311→  }
+   312→
+   313→  return (
+   314→    <div className="space-y-4">
+   315→      <Card className="p-4">
+   316→        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   317→          <div><Label className="text-xs">Exam Name *</Label>
+   318→            <Input value={exam} onChange={e => setExam(e.target.value)} placeholder="e.g. Chapter 1 Test" className="mt-1" />
+   319→          </div>
+   320→          <div><Label className="text-xs">Total Marks</Label><Input type="number" value={totalMarks} onChange={e => setTotalMarks(parseInt(e.target.value) || 100)} className="mt-1" /></div>
+   321→          <div className="flex items-end"><Button size="sm" className="bg-primary hover:bg-primary/90 text-white w-full" disabled={saving || !exam.trim()} onClick={save}>
+   322→            {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Posting…</> : 'Publish Results'}</Button></div>
+   323→        </div>
+   324→      </Card>
+   325→      <Card className="p-4">
+   326→        <Table>
+   327→          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Roll</TableHead><TableHead>Student</TableHead><TableHead className="text-right">Marks</TableHead><TableHead className="text-right">Grade</TableHead></TableRow></TableHeader>
+   328→          <TableBody>
+   329→            {students.map(s => {
+   330→              const m = parseInt(marks[s.id] || '0');
+   331→              const grade = m > 0 ? calcGrade(m, totalMarks) : '—';
+   332→              return (
+   333→                <TableRow key={s.id}>
+   334→                  <TableCell className="font-mono text-sm">{s.rollNo}</TableCell>
+   335→                  <TableCell className="font-medium text-sm">{s.name}</TableCell>
+   336→                  <TableCell className="text-right"><Input type="number" value={marks[s.id] || ''} onChange={e => setMarks({ ...marks, [s.id]: e.target.value })} className="w-20 h-8 text-right ml-auto" placeholder="0" max={totalMarks} /></TableCell>
+   337→                  <TableCell className="text-right"><Badge variant="outline" className="font-bold">{grade}</Badge></TableCell>
+   338→                </TableRow>
+   339→              );
+   340→            })}
+   341→          </TableBody>
+   342→        </Table>
+   343→      </Card>
+   344→    </div>
+   345→  );
+   346→}
+   347→
+   348→// ============== Materials Tab ==============
+   349→function ClassMaterials({ user, cls, courseId }: { user: any; cls: ClassInfo; courseId: string }) {
+   350→  const [materials, setMaterials] = useState<MaterialItem[]>([]);
+   351→  const [loading, setLoading] = useState(true);
+   352→  const [showForm, setShowForm] = useState(false);
+   353→  const [reloadKey, setReloadKey] = useState(0);
+   354→
+   355→  useEffect(() => {
+   356→    if (!cls.id || !courseId) return;
+   357→    api.getCourseMaterials({ classId: cls.id, courseId })
+   358→      .then(setMaterials)
+   359→      .catch(() => setMaterials([]))
+   360→      .finally(() => setLoading(false));
+   361→  }, [cls.id, courseId, reloadKey]);
+   362→
+   363→  return (
+   364→    <div className="space-y-4">
+   365→      <div className="flex items-center justify-between">
+   366→        <p className="text-sm text-muted-foreground">{materials.length} material{materials.length === 1 ? '' : 's'} for this class</p>
+   367→        <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={!courseId} onClick={() => setShowForm(v => !v)}>
+   368→          <Plus className="h-4 w-4 mr-1.5" /> {showForm ? 'Cancel' : 'Upload Material'}
+   369→        </Button>
+   370→      </div>
+   371→
+   372→      {showForm && courseId && (
+   373→        <MaterialUploadForm
+   374→          classId={cls.id}
+   375→          courseId={courseId}
+   376→          teacherId={user.id}
+   377→          onSaved={() => { setShowForm(false); setReloadKey(k => k + 1); }}
+   378→        />
+   379→      )}
+   380→
+   381→      {loading ? (
+   382→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+   383→      ) : materials.length === 0 ? (
+   384→        <EmptyState icon={FileText} title="No materials uploaded yet" desc="Upload PDFs, DOCX, PNG, PPT files or share a link. Students will be able to download them from their portal." />
+   385→      ) : (
+   386→        <div className="grid sm:grid-cols-2 gap-3">
+   387→          {materials.map(m => <MaterialCard key={m.id} material={m} teacherView />)}
+   388→        </div>
+   389→      )}
+   390→    </div>
+   391→  );
+   392→}
+   393→
+   394→function MaterialUploadForm({ classId, courseId, teacherId, onSaved }: { classId: string; courseId: string; teacherId: string; onSaved: () => void }) {
+   395→  const [title, setTitle] = useState('');
+   396→  const [description, setDescription] = useState('');
+   397→  const [mode, setMode] = useState<'file' | 'link'>('file');
+   398→  const [linkUrl, setLinkUrl] = useState('');
+   399→  const [file, setFile] = useState<File | null>(null);
+   400→  const [saving, setSaving] = useState(false);
+   401→
+   402→  const handleFile = (f: File | null) => {
+   403→    if (!f) { setFile(null); return; }
+   404→    const allowed = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+   405→      'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'image/png', 'image/jpeg'];
+   406→    const ext = f.name.split('.').pop()?.toLowerCase();
+   407→    const okExt = ['pdf', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg'].includes(ext || '');
+   408→    if (!allowed.includes(f.type) && !okExt) {
+   409→      toast({ title: 'Unsupported file type', description: 'Use PDF, DOCX, PPT, PNG, or JPG.', variant: 'destructive' });
+   410→      return;
+   411→    }
+   412→    if (f.size > 8 * 1024 * 1024) {
+   413→      toast({ title: 'File too large', description: 'Max 8 MB.', variant: 'destructive' });
+   414→      return;
+   415→    }
+   416→    setFile(f);
+   417→  };
+   418→
+   419→  const submit = async () => {
+   420→    if (!title.trim()) { toast({ title: 'Title required', variant: 'destructive' }); return; }
+   421→    if (mode === 'file' && !file) { toast({ title: 'Choose a file', variant: 'destructive' }); return; }
+   422→    if (mode === 'link' && !linkUrl.trim()) { toast({ title: 'Link URL required', variant: 'destructive' }); return; }
+   423→
+   424→    setSaving(true);
+   425→    try {
+   426→      let body: any = { classId, courseId, title, description, teacherId };
+   427→      if (mode === 'file' && file) {
+   428→        const base64 = await new Promise<string>((resolve, reject) => {
+   429→          const reader = new FileReader();
+   430→          reader.onload = () => {
+   431→            const result = reader.result as string;
+   432→            // strip "data:<mime>;base64," prefix
+   433→            const idx = result.indexOf(',');
+   434→            resolve(idx >= 0 ? result.slice(idx + 1) : result);
+   435→          };
+   436→          reader.onerror = reject;
+   437→          reader.readAsDataURL(file);
+   438→        });
+   439→        body = { ...body, fileType: file.type || 'application/octet-stream', fileName: file.name, fileData: base64 };
+   440→      } else if (mode === 'link') {
+   441→        body = { ...body, linkUrl };
+   442→      }
+   443→      await api.addCourseMaterial(body);
+   444→      toast({ title: 'Material uploaded!', description: 'Students can now access it.' });
+   445→      setTitle(''); setDescription(''); setLinkUrl(''); setFile(null);
+   446→      onSaved();
+   447→    } catch (e: any) { toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }); }
+   448→    finally { setSaving(false); }
+   449→  };
+   450→
+   451→  return (
+   452→    <Card className="p-5 space-y-3">
+   453→      <div className="flex items-center gap-2 mb-1">
+   454→        <div className="h-8 w-8 rounded-lg bg-accent0/15 grid place-items-center"><Paperclip className="h-4 w-4 text-primary" /></div>
+   455→        <h3 className="font-bold text-sm">New Course Material</h3>
+   456→      </div>
+   457→      <div className="flex gap-1 p-1 rounded-lg bg-muted/60 w-fit">
+   458→        <button onClick={() => setMode('file')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${mode === 'file' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>
+   459→          <FileText className="h-3.5 w-3.5 inline mr-1" /> File
+   460→        </button>
+   461→        <button onClick={() => setMode('link')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${mode === 'link' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>
+   462→          <Link2 className="h-3.5 w-3.5 inline mr-1" /> Link
+   463→        </button>
+   464→      </div>
+   465→      <div><Label className="text-xs">Title *</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Chapter 5 — Lecture Notes" className="mt-1" /></div>
+   466→      <div><Label className="text-xs">Description</Label><textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Brief description of the material…" className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
+   467→      {mode === 'file' ? (
+   468→        <div>
+   469→          <Label className="text-xs">File (PDF, DOCX, PPT, PNG, JPG — max 8 MB)</Label>
+   470→          <input type="file" accept=".pdf,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={e => handleFile(e.target.files?.[0] || null)} className="block w-full mt-1 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-accent0/15 file:text-primary hover:file:bg-accent0/25 file:font-medium file:text-sm cursor-pointer" />
+   471→          {file && <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5"><Paperclip className="h-3 w-3" /> {file.name} · {(file.size / 1024).toFixed(0)} KB</div>}
+   472→        </div>
+   473→      ) : (
+   474→        <div><Label className="text-xs">Link URL *</Label><Input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://docs.google.com/…" className="mt-1" /></div>
+   475→      )}
+   476→      <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={submit}>
+   477→        {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Uploading…</> : 'Upload'}
+   478→      </Button>
+   479→    </Card>
+   480→  );
+   481→}
+   482→
+   483→function MaterialCard({ material, teacherView = false }: { material: MaterialItem; teacherView?: boolean }) {
+   484→  const [downloading, setDownloading] = useState(false);
+   485→  const isLink = !!material.linkUrl;
+   486→  const icon = isLink ? Link2 : FileText;
+   487→  const Icon = icon;
+   488→  const ext = material.fileName?.split('.').pop()?.toUpperCase() || (isLink ? 'LINK' : 'FILE');
+   489→  const createdAt = material.createdAt ? new Date(material.createdAt).toLocaleDateString() : '';
+   490→
+   491→  const handleDownload = async () => {
+   492→    if (isLink && material.linkUrl) {
+   493→      window.open(material.linkUrl, '_blank', 'noopener,noreferrer');
+   494→      return;
+   495→    }
+   496→    setDownloading(true);
+   497→    try {
+   498→      const res = await api.downloadMaterialBlob(material.id);
+   499→      if ('linkUrl' in res) {
+   500→        window.open(res.linkUrl, '_blank', 'noopener,noreferrer');
+   501→      } else {
+   502→        const url = URL.createObjectURL(res.blob);
+   503→        const a = document.createElement('a');
+   504→        a.href = url;
+   505→        a.download = res.fileName || material.fileName || 'download';
+   506→        document.body.appendChild(a);
+   507→        a.click();
+   508→        document.body.removeChild(a);
+   509→        URL.revokeObjectURL(url);
+   510→      }
+   511→    } catch (e: any) {
+   512→      toast({ title: 'Download failed', description: e.message, variant: 'destructive' });
+   513→    } finally { setDownloading(false); }
+   514→  };
+   515→
+   516→  return (
+   517→    <Card className="p-4 hover:shadow-md transition">
+   518→      <div className="flex items-start gap-3">
+   519→        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-accent0/15' : 'bg-accent0/15'}`}>
+   520→          <Icon className={`h-5 w-5 ${isLink ? 'text-primary' : 'text-primary'}`} />
+   521→        </div>
+   522→        <div className="flex-1 min-w-0">
+   523→          <div className="flex items-center gap-2 mb-0.5">
+   524→            <h4 className="font-medium text-sm truncate">{material.title}</h4>
+   525→            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{ext}</Badge>
+   526→          </div>
+   527→          {material.description && <p className="text-xs text-muted-foreground line-clamp-2">{material.description}</p>}
+   528→          <div className="text-[11px] text-muted-foreground mt-1">{createdAt}{isLink ? ' · External link' : ''}</div>
+   529→        </div>
+   530→      </div>
+   531→      <div className="mt-3 flex justify-end">
+   532→        <Button size="sm" variant="outline" onClick={handleDownload} disabled={downloading}>
+   533→          {downloading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+   534→          {isLink ? 'Open Link' : 'Download'}
+   535→        </Button>
+   536→      </div>
+   537→    </Card>
+   538→  );
+   539→}
+   540→
+   541→// ============== Class Announcements Tab ==============
+   542→function ClassAnnouncements({ user, cls }: { user: any; cls: ClassInfo }) {
+   543→  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+   544→  const [loading, setLoading] = useState(true);
+   545→  const [title, setTitle] = useState('');
+   546→  const [message, setMessage] = useState('');
+   547→  const [sending, setSending] = useState(false);
+   548→  const [reloadKey, setReloadKey] = useState(0);
+   549→
+   550→  useEffect(() => {
+   551→    api.getAnnouncements()
+   552→      .then((list: any[]) => setAnnouncements(list.filter(a => !a.classId || a.classId === cls.id)))
+   553→      .catch(() => setAnnouncements([]))
+   554→      .finally(() => setLoading(false));
+   555→  }, [cls.id, reloadKey]);
+   556→
+   557→  const send = async () => {
+   558→    if (!title.trim() || !message.trim()) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+   559→    setSending(true);
+   560→    try {
+   561→      await api.createAnnouncement({
+   562→        title, message,
+   563→        classId: cls.id,
+   564→        targetScope: 'class',
+   565→        targetRole: 'student',
+   566→      });
+   567→      toast({ title: 'Announcement sent!', description: `To ${cls.name} students` });
+   568→      setTitle(''); setMessage('');
+   569→      setReloadKey(k => k + 1);
+   570→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   571→    finally { setSending(false); }
+   572→  };
+   573→
+   574→  return (
+   575→    <div className="space-y-4">
+   576→      <Card className="p-5 space-y-3">
+   577→        <div className="flex items-center gap-2 mb-1">
+   578→          <div className="h-8 w-8 rounded-lg bg-accent0/15 grid place-items-center"><Megaphone className="h-4 w-4 text-primary" /></div>
+   579→          <h3 className="font-bold text-sm">Announce to {cls.name}</h3>
+   580→        </div>
+   581→        <div><Label className="text-xs">Title *</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Tomorrow's class cancelled" className="mt-1" /></div>
+   582→        <div><Label className="text-xs">Message *</Label><textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} placeholder="Write your announcement…" className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
+   583→        <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>
+   584→          {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : <><Megaphone className="h-4 w-4 mr-1.5" /> Send to Class</>}
+   585→        </Button>
+   586→      </Card>
+   587→
+   588→      {loading ? (
+   589→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+   590→      ) : announcements.length === 0 ? (
+   591→        <EmptyState icon={Inbox} title="No announcements yet" desc="Send your first announcement to this class. Students will see it in their portal." />
+   592→      ) : (
+   593→        <div className="space-y-3">
+   594→          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+   595→        </div>
+   596→      )}
+   597→    </div>
+   598→  );
+   599→}
+   600→
+   601→function AnnouncementCard({ a }: { a: Announcement }) {
+   602→  const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '';
+   603→  return (
+   604→    <Card className="p-4">
+   605→      <div className="flex items-start justify-between gap-3 mb-1.5">
+   606→        <h4 className="font-semibold text-sm">{a.title}</h4>
+   607→        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{a.targetScope || 'all'}</Badge>
+   608→      </div>
+   609→      <p className="text-sm text-muted-foreground">{a.message}</p>
+   610→      <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
+   611→    </Card>
+   612→  );
+   613→}
+   614→
+   615→// ============== Teacher Dashboard (KPIs + Quick Links, NO announcements) ==============
+   616→function TeacherDashboard({ user, students, diary, myResults, classes, onOpenClass }: any) {
+   617→  const setActiveModule = useApp(s => s.setActiveModule);
+   618→  const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
+   619→  const diaryCount = diary.length;
+   620→  const resultsCount = myResults?.length || 0;
+   621→
+   622→  const cards = [
+   623→    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-primary to-primary/80', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
+   624→    { label: 'Total Students', value: students.length, icon: Users, color: 'from-primary/80 to-primary', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
+   625→    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-primary/80 to-primary', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
+   626→    { label: 'Diary Entries', value: diaryCount, icon: ClipboardList, color: 'from-primary/80 to-primary', sub: diaryCount === 0 ? 'No entries yet' : diaryCount === 1 ? '1 entry posted' : `${diaryCount} entries posted` },
+   627→  ];
+   628→
+   629→  const quickLinks = [
+   630→    { label: 'My Classes', desc: 'View & manage your classes', icon: BookOpen, module: 'teacher-overview', color: 'from-primary to-primary/80' },
+   631→    { label: 'Take Attendance', desc: 'Mark today\'s attendance', icon: CalendarCheck, module: 'mark-attendance', color: 'from-primary/80 to-primary' },
+   632→    { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results', color: 'from-primary/80 to-primary' },
+   633→    { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary', color: 'from-primary/80 to-primary' },
+   634→    { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable', color: 'from-primary/80 to-primary' },
+   635→    { label: 'Message Parents', desc: 'Send SMS to parents', icon: MessageSquare, module: 'sms', color: 'from-primary/80 to-primary' },
+   636→  ];
+   637→
+   638→  return (
+   639→    <div className="space-y-6">
+   640→      {/* Welcome banner — navy blue (already styled) */}
+   641→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   642→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
+   643→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   644→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   645→        <div className="relative">
+   646→          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><LayoutDashboard className="h-3 w-3 text-primary/70" /> Teacher Dashboard · {user?.branchName}</div>
+   647→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
+   648→          <p className="text-white/80 text-sm mt-1.5">
+   649→            {classes.length
+   650→              ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.`
+   651→              : 'Your classes will appear here once your Branch Manager assigns them.'}
+   652→          </p>
+   653→        </div>
+   654→      </motion.div>
+   655→
+   656→      {/* KPI cards */}
+   657→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   658→        {cards.map((c, i) => (
+   659→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   660→            <Card className="p-5 relative overflow-hidden">
+   661→              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   662→              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   663→              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+   664→              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   665→              <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
+   666→            </Card>
+   667→          </motion.div>
+   668→        ))}
+   669→      </div>
+   670→
+   671→      {/* Quick Links — NO announcements (those live in the Announcements page) */}
+   672→      <div>
+   673→        <div className="flex items-center justify-between mb-4">
+   674→          <div>
+   675→            <h2 className="font-display text-lg font-bold">Quick Links</h2>
+   676→            <p className="text-xs text-muted-foreground mt-0.5">Jump straight to a teaching task.</p>
+   677→          </div>
+   678→        </div>
+   679→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   680→          {quickLinks.map((q, i) => (
+   681→            <motion.button
+   682→              key={q.label}
+   683→              initial={{ opacity: 0, y: 12 }}
+   684→              animate={{ opacity: 1, y: 0 }}
+   685→              transition={{ delay: i * 0.04 }}
+   686→              onClick={() => setActiveModule(q.module)}
+   687→              className="text-left group"
+   688→            >
+   689→              <Card className="p-5 hover:shadow-lg hover:-translate-y-0.5 transition relative overflow-hidden h-full">
+   690→                <div className={`absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br ${q.color} opacity-10 blur-2xl group-hover:opacity-20 transition`} />
+   691→                <div className="flex items-start justify-between mb-3">
+   692→                  <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${q.color} grid place-items-center shadow-md`}>
+   693→                    <q.icon className="h-5 w-5 text-white" />
+   694→                  </div>
+   695→                  <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
+   696→                </div>
+   697→                <h3 className="font-display font-bold text-base">{q.label}</h3>
+   698→                <p className="text-xs text-muted-foreground mt-0.5">{q.desc}</p>
+   699→              </Card>
+   700→            </motion.button>
+   701→          ))}
+   702→        </div>
+   703→      </div>
+   704→
+   705→      {/* Recent Diary snippet (optional, only if entries exist) */}
+   706→      {diaryCount > 0 && (
+   707→        <Card className="p-5">
+   708→          <div className="flex items-center justify-between mb-3">
+   709→            <div className="flex items-center gap-2">
+   710→              <ClipboardList className="h-4 w-4 text-primary" />
+   711→              <h3 className="font-bold text-base">Recent Diary Entries</h3>
+   712→            </div>
+   713→            <Button size="sm" variant="outline" onClick={() => setActiveModule('diary')}>View all <ArrowRight className="h-3 w-3 ml-1" /></Button>
+   714→          </div>
+   715→          <div className="space-y-2 max-h-56 overflow-y-auto scroll-fancy">
+   716→            {diary.slice(0, 5).map((d: any) => (
+   717→              <div key={d.id} className="flex items-start justify-between p-3 rounded-lg bg-muted/30 text-sm">
+   718→                <div className="min-w-0">
+   719→                  <div className="font-medium truncate">{d.title || d.subject || 'Diary entry'}</div>
+   720→                  <div className="text-xs text-muted-foreground truncate mt-0.5">{d.class || d.className || '—'}{d.dueDate ? ` · Due ${d.dueDate}` : ''}</div>
+   721→                </div>
+   722→                <Badge variant="outline" className="text-[10px] ml-2 shrink-0">{d.date || (d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—')}</Badge>
+   723→              </div>
+   724→            ))}
+   725→          </div>
+   726→        </Card>
+   727→      )}
+   728→
+   729→      {/* Hint card: results */}
+   730→      {resultsCount === 0 && classes.length > 0 && (
+   731→        <Card className="p-4 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-accent dark:border-[oklch(0.2_0.04_260)]">
+   732→          <div className="flex items-start gap-3">
+   733→            <div className="h-9 w-9 rounded-lg bg-accent0/20 grid place-items-center shrink-0"><GraduationCap className="h-4 w-4 text-primary dark:text-primary/70" /></div>
+   734→            <div className="flex-1">
+   735→              <div className="font-bold text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">No results published yet</div>
+   736→              <p className="text-xs text-muted-foreground mt-1">Publish your first exam results from the Post Results page — students and parents will see them instantly.</p>
+   737→            </div>
+   738→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shrink-0" onClick={() => setActiveModule('post-results')}>Post Results</Button>
+   739→          </div>
+   740→        </Card>
+   741→      )}
+   742→    </div>
+   743→  );
+   744→}
+   745→
+   746→// ============== Teacher Overview (class cards) ==============
+   747→function TeacherOverview({ user, students, diary, myResults, classes, onOpenClass }: any) {
+   748→  const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
+   749→  // "Today's Schedule" — number of classes the teacher has today.
+   750→  // The real per-day timetable isn't published yet, so we fall back to 0 with a hint
+   751→  // until the Branch Manager publishes a weekly timetable.
+   752→  const todaySchedule = 0;
+   753→  const cards = [
+   754→    { label: 'Total Classes', value: classes.length, icon: GraduationCap, color: 'from-primary to-primary/80', sub: classes.length === 1 ? '1 class assigned' : `${classes.length} classes assigned` },
+   755→    { label: 'Total Students', value: students.length, icon: Users, color: 'from-primary/80 to-primary', sub: students.length === 1 ? '1 student in branch' : `${students.length} students in branch` },
+   756→    { label: 'Total Courses', value: totalCourses, icon: BookOpen, color: 'from-primary/80 to-primary', sub: totalCourses === 1 ? '1 course' : `${totalCourses} courses` },
+   757→    { label: "Today's Schedule", value: todaySchedule, icon: CalendarCheck, color: 'from-primary/80 to-primary', sub: 'No timetable yet' },
+   758→  ];
+   759→
+   760→  // Per-class student count helper — students are scoped to the teacher's branch,
+   761→  // so we filter by matching the class name to the student's `class` field.
+   762→  const studentsInClass = (cls: ClassInfo) => students.filter((s: any) => s.class === cls.name).length;
+   763→
+   764→  return (
+   765→    <div className="space-y-6">
+   766→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   767→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
+   768→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   769→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   770→        <div className="relative">
+   771→          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><BookOpen className="h-3 w-3 text-primary/70" /> Teacher · {user?.branchName}</div>
+   772→          <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name}</h1>
+   773→          <p className="text-white/80 text-sm mt-1.5">
+   774→            {classes.length ? `You teach ${classes.length} class${classes.length === 1 ? '' : 'es'} with ${totalCourses} course${totalCourses === 1 ? '' : 's'} and ${students.length} student${students.length === 1 ? '' : 's'} in your branch.` : 'Your classes will appear here once your Branch Manager assigns them.'}
+   775→          </p>
+   776→        </div>
+   777→      </motion.div>
+   778→
+   779→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   780→        {cards.map((c, i) => (
+   781→          <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+   782→            <Card className="p-5 relative overflow-hidden">
+   783→              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
+   784→              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+   785→              <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
+   786→              <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
+   787→              <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
+   788→            </Card>
+   789→          </motion.div>
+   790→        ))}
+   791→      </div>
+   792→
+   793→      <div>
+   794→        <div className="flex items-center justify-between mb-4">
+   795→          <div>
+   796→            <h2 className="font-display text-lg font-bold">My Classes</h2>
+   797→            <p className="text-xs text-muted-foreground mt-0.5">Click a class to take attendance, post results, upload materials, or announce.</p>
+   798→          </div>
+   799→        </div>
+   800→        {classes.length === 0 ? (
+   801→          <EmptyState icon={GraduationCap} title="No classes assigned yet" desc="Your Branch Manager hasn't assigned you to any classes yet. Once assigned, they'll appear here." />
+   802→        ) : (
+   803→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   804→            {classes.map((cls: ClassInfo, i: number) => {
+   805→              const studentCount = studentsInClass(cls);
+   806→              return (
+   807→                <motion.div key={cls.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+   808→                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenClass(cls)}>
+   809→                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-primary/80 to-primary opacity-10 blur-2xl group-hover:opacity-20 transition" />
+   810→                    <div className="flex items-start justify-between mb-3">
+   811→                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-md">
+   812→                        <GraduationCap className="h-5 w-5 text-white" />
+   813→                      </div>
+   814→                      <div className="flex items-center gap-1.5">
+   815→                        <Badge variant="outline" className="font-mono text-[10px]">{cls.courses.length} course{cls.courses.length === 1 ? '' : 's'}</Badge>
+   816→                        <Badge variant="secondary" className="font-mono text-[10px]">{studentCount} student{studentCount === 1 ? '' : 's'}</Badge>
+   817→                      </div>
+   818→                    </div>
+   819→                    <h3 className="font-display font-bold text-lg">{cls.name}</h3>
+   820→                    <p className="text-xs text-muted-foreground mt-0.5">{cls.section ? `Section ${cls.section}` : 'Default section'}</p>
+   821→                    {cls.courses.length > 0 && (
+   822→                      <div className="flex flex-wrap gap-1 mt-3">
+   823→                        {cls.courses.slice(0, 4).map(c => (
+   824→                          <Badge key={c.id} variant="secondary" className="text-[10px] font-normal">{c.name}</Badge>
+   825→                        ))}
+   826→                        {cls.courses.length > 4 && <Badge variant="secondary" className="text-[10px] font-normal">+{cls.courses.length - 4}</Badge>}
+   827→                      </div>
+   828→                    )}
+   829→                    <div className="grid grid-cols-2 gap-1.5 mt-4">
+   830→                      <QuickAction icon={CalendarCheck} label="Attendance" color="text-primary bg-accent0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'attendance'); }} />
+   831→                      <QuickAction icon={GraduationCap} label="Results" color="text-primary bg-accent0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'results'); }} />
+   832→                      <QuickAction icon={FileText} label="Material" color="text-primary bg-accent0/10" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onOpenClass(cls, 'materials'); }} />
+   833→                    </div>
+   834→                  </Card>
+   835→                </motion.div>
+   836→              );
+   837→            })}
+   838→          </div>
+   839→        )}
+   840→      </div>
+   841→    </div>
+   842→  );
+   843→}
+   844→
+   845→function QuickAction({ icon: Icon, label, color, onClick }: { icon: any; label: string; color: string; onClick: (e: React.MouseEvent) => void }) {
+   846→  return (
+   847→    <button onClick={onClick} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium hover:scale-[1.02] transition ${color}`}>
+   848→      <Icon className="h-3.5 w-3.5" /> {label}
+   849→    </button>
+   850→  );
+   851→}
+   852→
+   853→// ============== Standalone Mark Attendance (uses class picker) ==============
+   854→function MarkAttendance({ user, classes, students, onSaved }: any) {
+   855→  const [selectedClassId, setSelectedClassId] = useState<string>('');
+   856→  const [attendance, setAttendance] = useState<Record<string, string>>({});
+   857→  const [saving, setSaving] = useState(false);
+   858→
+   859→  // Derive the effective class: explicit selection OR first available class
+   860→  const effectiveClassId = selectedClassId || classes[0]?.id || '';
+   861→  const cls = classes.find((c: ClassInfo) => c.id === effectiveClassId);
+   862→  const classStudents = useMemo(() => {
+   863→    if (!cls) return [];
+   864→    return students.filter((s: any) => s.class === cls.name);
+   865→  }, [students, cls]);
+   866→
+   867→  const setStatus = (id: string, status: string) => setAttendance(a => ({ ...a, [id]: status }));
+   868→  const present = classStudents.filter((s: any) => (attendance[s.id] || 'Present') === 'Present').length;
+   869→  const absent = classStudents.filter((s: any) => attendance[s.id] === 'Absent').length;
+   870→  const late = classStudents.filter((s: any) => attendance[s.id] === 'Late').length;
+   871→
+   872→  const save = async () => {
+   873→    if (!cls) { toast({ title: 'Select a class', variant: 'destructive' }); return; }
+   874→    if (classStudents.length === 0) { toast({ title: 'No students to mark', variant: 'destructive' }); return; }
+   875→    setSaving(true);
+   876→    try {
+   877→      const records = classStudents.map((s: any) => ({ studentId: s.id, status: attendance[s.id] || 'Present' }));
+   878→      await api.markAttendance({
+   879→        classId: cls.id,
+   880→        branchId: user.branchId,
+   881→        class: cls.name,
+   882→        date: new Date().toISOString().slice(0, 10),
+   883→        teacherId: user.id,
+   884→        records,
+   885→      });
+   886→      toast({ title: 'Attendance saved!', description: `${present} present, ${absent} absent, ${late} late` });
+   887→      setAttendance({});
+   888→      onSaved();
+   889→    } catch (e: any) {
+   890→      const msg = e.message || 'Unknown error';
+   891→      if (msg.includes('Insufficient permissions')) {
+   892→        toast({ title: 'Permission denied', description: 'Only teachers can mark attendance.', variant: 'destructive' });
+   893→      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+   894→        toast({ title: 'Session expired', description: 'Please sign out and sign in again.', variant: 'destructive' });
+   895→      } else {
+   896→        toast({ title: 'Failed to save', description: msg, variant: 'destructive' });
+   897→      }
+   898→    } finally { setSaving(false); }
+   899→  };
+   900→
+   901→  return (
+   902→    <div className="space-y-6">
+   903→      <ModuleHeader title="Take Attendance" subtitle={`${new Date().toLocaleDateString()}`}
+   904→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving || classStudents.length === 0} onClick={save}>{saving ? 'Saving…' : 'Save Attendance'}</Button>} />
+   905→      {classes.length === 0 ? (
+   906→        <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
+   907→      ) : (
+   908→        <>
+   909→          <Card className="p-4">
+   910→            <Label className="text-xs">Select Class</Label>
+   911→            <select value={selectedClassId} onChange={e => { setSelectedClassId(e.target.value); setAttendance({}); }} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-3 text-sm">
+   912→              {classes.map((c: ClassInfo) => <option key={c.id} value={c.id}>{c.name}</option>)}
+   913→            </select>
+   914→          </Card>
+   915→          {classStudents.length === 0 ? (
+   916→            <EmptyState icon={Users} title="No students in this class" desc="There are no students enrolled in this class yet." />
+   917→          ) : (
+   918→            <>
+   919→              <div className="grid grid-cols-3 gap-3">
+   920→                <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+   921→                <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
+   922→                <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+   923→              </div>
+   924→              <Card className="p-4">
+   925→                <Table>
+   926→                  <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Roll</TableHead><TableHead>Student</TableHead><TableHead className="text-right">Mark</TableHead></TableRow></TableHeader>
+   927→                  <TableBody>
+   928→                    {classStudents.map((s: any) => {
+   929→                      const st = attendance[s.id] || 'Present';
+   930→                      return (
+   931→                        <TableRow key={s.id}>
+   932→                          <TableCell className="font-mono text-sm">{s.rollNo}</TableCell>
+   933→                          <TableCell className="font-medium text-sm">{s.name}</TableCell>
+   934→                          <TableCell className="text-right">
+   935→                            <div className="flex gap-1 justify-end">
+   936→                              {['Present', 'Absent', 'Late'].map(opt => (
+   937→                                <Button key={opt} size="sm" variant={st === opt ? 'default' : 'outline'}
+   938→                                  className={st === opt ? (opt === 'Present' ? 'bg-primary text-white' : opt === 'Absent' ? 'bg-rose-600 text-white' : 'bg-sky-700 text-white') : 'h-8 px-2 text-xs'}
+   939→                                  onClick={() => setStatus(s.id, opt)}>{opt[0]}</Button>
+   940→                              ))}
+   941→                            </div>
+   942→                          </TableCell>
+   943→                        </TableRow>
+   944→                      );
+   945→                    })}
+   946→                  </TableBody>
+   947→                </Table>
+   948→              </Card>
+   949→            </>
+   950→          )}
+   951→        </>
+   952→      )}
+   953→    </div>
+   954→  );
+   955→}
+   956→
+   957→// ============== Standalone Post Results (uses class + course picker) ==============
+   958→function PostResults({ user, classes, students, onSaved }: any) {
+   959→  const [selectedClassId, setSelectedClassId] = useState<string>('');
+   960→  const [courseId, setCourseId] = useState<string>('');
+   961→  const [exam, setExam] = useState('');
+   962→  const [totalMarks, setTotalMarks] = useState(100);
+   963→  const [marks, setMarks] = useState<Record<string, string>>({});
+   964→  const [saving, setSaving] = useState(false);
+   965→
+   966→  // Derive effective class + course from available data
+   967→  const effectiveClassId = selectedClassId || classes[0]?.id || '';
+   968→  const cls = classes.find((c: ClassInfo) => c.id === effectiveClassId);
+   969→  const effectiveCourseId = courseId || cls?.courses[0]?.id || '';
+   970→
+   971→  const calcGrade = (m: number, total: number) => {
+   972→    const p = (m / total) * 100;
+   973→    return p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B' : p >= 60 ? 'C' : p >= 50 ? 'D' : 'F';
+   974→  };
+   975→
+   976→  const save = async () => {
+   977→    if (!exam.trim()) { toast({ title: 'Enter exam name', description: 'e.g. Chapter 1 Test', variant: 'destructive' }); return; }
+   978→    if (!cls) { toast({ title: 'Select a class', variant: 'destructive' }); return; }
+   979→    if (!effectiveCourseId) { toast({ title: 'Select a course', variant: 'destructive' }); return; }
+   980→    if (classStudents.length === 0) { toast({ title: 'No students', variant: 'destructive' }); return; }
+   981→    setSaving(true);
+   982→    try {
+   983→      const records = classStudents.map((s: any) => {
+   984→        const m = parseInt(marks[s.id] || '0');
+   985→        return { studentId: s.id, marks: m, grade: calcGrade(m, totalMarks) };
+   986→      });
+   987→      await api.postResults({
+   988→        classId: cls.id,
+   989→        courseId: effectiveCourseId,
+   990→        branchId: user.branchId,
+   991→        exam,
+   992→        teacherId: user.id,
+   993→        totalMarks,
+   994→        date: new Date().toISOString().slice(0, 10),
+   995→        records,
+   996→      });
+   997→      toast({ title: 'Results posted!', description: `${records.length} students · ${exam}` });
+   998→      setMarks({});
+   999→      onSaved();
+  1000→    } catch (e: any) { toast({ title: 'Failed to post', description: e.message, variant: 'destructive' }); }
+  1001→    finally { setSaving(false); }
+  1002→  };
+  1003→
+  1004→  return (
+  1005→    <div className="space-y-6">
+  1006→      <ModuleHeader title="Post Results" subtitle="Enter test scores — parents get notified automatically"
+  1007→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving || classStudents.length === 0 || !exam.trim()} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
+  1008→      {classes.length === 0 ? (
+  1009→        <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
+  1010→      ) : (
+  1011→        <Card className="p-5">
+  1012→          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+  1013→            <div><Label className="text-xs">Class</Label>
+  1014→              <select value={effectiveClassId} onChange={e => { setSelectedClassId(e.target.value); setCourseId(''); setMarks({}); }} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
+  1015→                {classes.map((c: ClassInfo) => <option key={c.id} value={c.id}>{c.name}</option>)}
+  1016→              </select>
+  1017→            </div>
+  1018→            <div><Label className="text-xs">Course</Label>
+  1019→              <select value={effectiveCourseId} onChange={e => setCourseId(e.target.value)} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">
+  1020→                <option value="">— Select —</option>
+  1021→                {cls?.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+  1022→              </select>
+  1023→            </div>
+  1024→            <div><Label className="text-xs">Exam Name *</Label>
+  1025→              <Input value={exam} onChange={e => setExam(e.target.value)} placeholder="e.g. Chapter 1 Test" className="mt-1" />
+  1026→            </div>
+  1027→            <div><Label className="text-xs">Total Marks</Label><Input type="number" value={totalMarks} onChange={e => setTotalMarks(parseInt(e.target.value) || 100)} className="mt-1" /></div>
+  1028→          </div>
+  1029→          {classStudents.length === 0 ? (
+  1030→            <EmptyState icon={Users} title="No students in this class" desc="There are no students enrolled in this class yet." />
+  1031→          ) : (
+  1032→            <Table>
+  1033→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Roll</TableHead><TableHead>Student</TableHead><TableHead className="text-right">Marks</TableHead><TableHead className="text-right">Grade</TableHead></TableRow></TableHeader>
+  1034→              <TableBody>
+  1035→                {classStudents.map((s: any) => {
+  1036→                  const m = parseInt(marks[s.id] || '0');
+  1037→                  const grade = m > 0 ? calcGrade(m, totalMarks) : '—';
+  1038→                  return (
+  1039→                    <TableRow key={s.id}>
+  1040→                      <TableCell className="font-mono text-sm">{s.rollNo}</TableCell>
+  1041→                      <TableCell className="font-medium text-sm">{s.name}</TableCell>
+  1042→                      <TableCell className="text-right"><Input type="number" value={marks[s.id] || ''} onChange={e => setMarks({ ...marks, [s.id]: e.target.value })} className="w-20 h-8 text-right ml-auto" placeholder="0" max={totalMarks} /></TableCell>
+  1043→                      <TableCell className="text-right"><Badge variant="outline" className="font-bold">{grade}</Badge></TableCell>
+  1044→                    </TableRow>
+  1045→                  );
+  1046→                })}
+  1047→              </TableBody>
+  1048→            </Table>
+  1049→          )}
+  1050→        </Card>
+  1051→      )}
+  1052→    </div>
+  1053→  );
+  1054→}
+  1055→
+  1056→// ============== Diary view (unchanged logic) ==============
+  1057→function DiaryView({ user, diary, onSaved }: any) {
+  1058→  const [form, setForm] = useState({ subject: user?.subjects?.[0] || 'Mathematics', title: '', desc: '', due: '', class: user?.classes?.[0] || '' });
+  1059→  const [saving, setSaving] = useState(false);
+  1060→  const [showForm, setShowForm] = useState(false);
+  1061→
+  1062→  const post = async () => {
+  1063→    if (!form.title) { toast({ title: 'Title required', variant: 'destructive' }); return; }
+  1064→    setSaving(true);
+  1065→    try {
+  1066→      await api.postDiary({ teacherId: user.id, branchId: user.branchId, ...form });
+  1067→      toast({ title: 'Diary entry posted!', description: 'Synced to student & parent apps' });
+  1068→      setForm({ subject: user?.subjects?.[0] || 'Mathematics', title: '', desc: '', due: '', class: user?.classes?.[0] || '' });
+  1069→      setShowForm(false);
+  1070→      onSaved();
+  1071→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+  1072→    finally { setSaving(false); }
+  1073→  };
+  1074→
+  1075→  return (
+  1076→    <div className="space-y-6">
+  1077→      <ModuleHeader title="Diary & Homework" subtitle="Post homework — synced to student & parent apps"
+  1078→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
+  1079→      {showForm && (
+  1080→        <Card className="p-5">
+  1081→          <div className="space-y-3">
+  1082→            <div className="grid grid-cols-2 gap-3">
+  1083→              <div><Label className="text-xs">Subject</Label><select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">{(user?.subjects || ['Mathematics']).map((s: string) => <option key={s}>{s}</option>)}</select></div>
+  1084→              <div><Label className="text-xs">Class</Label><select value={form.class} onChange={e => setForm({ ...form, class: e.target.value })} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-2 text-sm">{(user?.classes || ['Grade 8']).map((c: string) => <option key={c}>{c}</option>)}</select></div>
+  1085→            </div>
+  1086→            <div><Label className="text-xs">Title *</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Chapter 5 — Quadratic Equations" className="mt-1" /></div>
+  1087→            <div><Label className="text-xs">Description</Label><textarea value={form.desc} onChange={e => setForm({ ...form, desc: e.target.value })} rows={3} placeholder="Solve exercises 5.1 to 5.4..." className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
+  1088→            <div><Label className="text-xs">Due date</Label><Input value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} placeholder="Tomorrow / 3 days / 2025-01-15" className="mt-1" /></div>
+  1089→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={post}>{saving ? 'Posting…' : 'Post Entry'}</Button>
+  1090→          </div>
+  1091→        </Card>
+  1092→      )}
+  1093→      {diary.length === 0 ? (
+  1094→        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Post homework and assignments. They'll appear in student and parent portals instantly."
+  1095→          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
+  1096→      ) : (
+  1097→        <div className="space-y-3">
+  1098→          {diary.map((d: any) => (
+  1099→            <Card key={d.id} className="p-4">
+  1100→              <div className="flex items-start justify-between mb-2">
+  1101→                <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
+  1102→                <Badge variant="outline" className={d.due ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+  1103→              </div>
+  1104→              {d.desc && <p className="text-sm text-muted-foreground mt-2">{d.desc}</p>}
+  1105→            </Card>
+  1106→          ))}
+  1107→        </div>
+  1108→      )}
+  1109→    </div>
+  1110→  );
+  1111→}
+  1112→
+  1113→function TeacherTimetable({ user }: any) {
+  1114→  return (
+  1115→    <div className="space-y-6">
+  1116→      <ModuleHeader title="My Timetable" subtitle="Your weekly teaching schedule" />
+  1117→      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager. Check back soon." />
+  1118→    </div>
+  1119→  );
+  1120→}
+  1121→
+  1122→function MyStudents({ students }: any) {
+  1123→  return (
+  1124→    <div className="space-y-6">
+  1125→      <ModuleHeader title="My Students" subtitle={`${students.length} students in your branch`} />
+  1126→      {students.length === 0 ? (
+  1127→        <EmptyState icon={Users} title="No students yet" desc="Your Branch Manager hasn't added students to your branch yet." />
+  1128→      ) : (
+  1129→        <Card className="p-4">
+  1130→          <Table>
+  1131→            <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40"><TableHead>Roll</TableHead><TableHead>Student</TableHead><TableHead className="hidden sm:table-cell">Class</TableHead></TableRow></TableHeader>
+  1132→            <TableBody>
+  1133→              {students.map((s: any) => (
+  1134→                <TableRow key={s.id} className="hover:bg-muted/30">
+  1135→                  <TableCell className="font-mono text-sm">{s.rollNo}</TableCell>
+  1136→                  <TableCell className="font-medium text-sm">{s.name}</TableCell>
+  1137→                  <TableCell className="hidden sm:table-cell"><Badge variant="outline" className="font-normal">{s.class} · {s.section}</Badge></TableCell>
+  1138→                </TableRow>
+  1139→              ))}
+  1140→            </TableBody>
+  1141→          </Table>
+  1142→        </Card>
+  1143→      )}
+  1144→    </div>
+  1145→  );
+  1146→}
+  1147→
+  1148→function MessageParents({ user, students }: any) {
+  1149→  const [text, setText] = useState('');
+  1150→  const [sending, setSending] = useState(false);
+  1151→  const [sent, setSent] = useState<any[]>([]);
+  1152→
+  1153→  useEffect(() => { api.getSms({ senderId: user.id }).then(setSent).catch(() => {}); }, [user?.id]);
+  1154→
+  1155→  const send = async () => {
+  1156→    if (!text.trim()) { toast({ title: 'Empty message', variant: 'destructive' }); return; }
+  1157→    setSending(true);
+  1158→    try {
+  1159→      await api.sendSms({ text, recipients: students.length, type: 'Teacher Notice', senderId: user.id, instituteId: user.instituteId, branchId: user.branchId });
+  1160→      toast({ title: 'SMS sent!', description: `Delivered to ${students.length} parents` });
+  1161→      setText('');
+  1162→      api.getSms({ senderId: user.id }).then(setSent).catch(() => {});
+  1163→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+  1164→    finally { setSending(false); }
+  1165→  };
+  1166→
+  1167→  return (
+  1168→    <div className="space-y-6">
+  1169→      <ModuleHeader title="Message Parents" subtitle={`Send SMS to parents of your ${students.length} students`} />
+  1170→      {students.length === 0 ? (
+  1171→        <EmptyState icon={Users} title="No students yet" desc="Your Branch Manager needs to add students before you can message parents." />
+  1172→      ) : (
+  1173→        <>
+  1174→          <Card className="p-5">
+  1175→            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Type a message to parents…" rows={4} className="w-full rounded-md border border-border bg-card p-3 text-sm resize-none" />
+  1176→            <div className="flex items-center justify-between mt-3">
+  1177→              <span className="text-xs text-muted-foreground">{text.length} chars · {Math.ceil(text.length / 160)} SMS</span>
+  1178→              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><MessageSquare className="h-4 w-4 mr-1.5" /> Send to {students.length} parents</>}</Button>
+  1179→            </div>
+  1180→          </Card>
+  1181→          {sent.length > 0 && (
+  1182→            <Card className="p-5">
+  1183→              <h3 className="font-bold text-base mb-3">Sent Messages</h3>
+  1184→              <div className="space-y-2">
+  1185→                {sent.map((s: any) => (
+  1186→                  <div key={s.id} className="p-3 rounded-lg bg-muted/40">
+  1187→                    <div className="flex items-center justify-between mb-1">
+  1188→                      <Badge variant="outline" className="text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]">{s.status}</Badge>
+  1189→                      <span className="text-[11px] text-muted-foreground">{new Date(s.sentAt).toLocaleString()}</span>
+  1190→                    </div>
+  1191→                    <p className="text-sm">{s.text}</p>
+  1192→                    <div className="text-[11px] text-muted-foreground mt-1">{s.recipients} recipients · {s.type}</div>
+  1193→                  </div>
+  1194→                ))}
+  1195→              </div>
+  1196→            </Card>
+  1197→          )}
+  1198→        </>
+  1199→      )}
+  1200→    </div>
+  1201→  );
+  1202→}
+  1203→
+  1204→// ============== Standalone Announcements Module ==============
+  1205→function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo[] }) {
+  1206→  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  1207→  const [loading, setLoading] = useState(true);
+  1208→  const [showForm, setShowForm] = useState(false);
+  1209→  const [title, setTitle] = useState('');
+  1210→  const [message, setMessage] = useState('');
+  1211→  const [scope, setScope] = useState<'all' | 'class'>('all');
+  1212→  const [classId, setClassId] = useState<string>(classes[0]?.id || '');
+  1213→  const [sending, setSending] = useState(false);
+  1214→  const [reloadKey, setReloadKey] = useState(0);
+  1215→
+  1216→  useEffect(() => {
+  1217→    api.getAnnouncements()
+  1218→      .then((list: any[]) => setAnnouncements(list))
+  1219→      .catch(() => setAnnouncements([]))
+  1220→      .finally(() => setLoading(false));
+  1221→  }, [reloadKey]);
+  1222→
+  1223→  const send = async () => {
+  1224→    if (!title.trim() || !message.trim()) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+  1225→    if (scope === 'class' && !classId) { toast({ title: 'Select a class', variant: 'destructive' }); return; }
+  1226→    setSending(true);
+  1227→    try {
+  1228→      const body: any = {
+  1229→        title, message,
+  1230→        targetScope: scope,
+  1231→        targetRole: 'student',
+  1232→      };
+  1233→      if (scope === 'class') body.classId = classId;
+  1234→      await api.createAnnouncement(body);
+  1235→      toast({ title: 'Announcement sent!', description: scope === 'all' ? 'To all your students' : `To ${classes.find(c => c.id === classId)?.name || 'class'}` });
+  1236→      setTitle(''); setMessage(''); setShowForm(false);
+  1237→      setReloadKey(k => k + 1);
+  1238→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+  1239→    finally { setSending(false); }
+  1240→  };
+  1241→
+  1242→  return (
+  1243→    <div className="space-y-6">
+  1244→      <ModuleHeader title="Announcements" subtitle="Send notices to your students"
+  1245→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> {showForm ? 'Cancel' : 'New Announcement'}</Button>} />
+  1246→
+  1247→      {showForm && (
+  1248→        <Card className="p-5 space-y-3">
+  1249→          <div className="flex items-center gap-2 mb-1">
+  1250→            <div className="h-8 w-8 rounded-lg bg-accent0/15 grid place-items-center"><Megaphone className="h-4 w-4 text-primary" /></div>
+  1251→            <h3 className="font-bold text-sm">New Announcement</h3>
+  1252→          </div>
+  1253→          <div className="flex gap-1 p-1 rounded-lg bg-muted/60 w-fit">
+  1254→            <button onClick={() => setScope('all')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${scope === 'all' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>All my classes</button>
+  1255→            <button onClick={() => setScope('class')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${scope === 'class' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>Specific class</button>
+  1256→          </div>
+  1257→          {scope === 'class' && (
+  1258→            <div><Label className="text-xs">Class</Label>
+  1259→              <select value={classId} onChange={e => setClassId(e.target.value)} className="w-full mt-1 h-9 rounded-md border border-border bg-card px-3 text-sm">
+  1260→                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+  1261→              </select>
+  1262→            </div>
+  1263→          )}
+  1264→          <div><Label className="text-xs">Title *</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Tomorrow's class cancelled" className="mt-1" /></div>
+  1265→          <div><Label className="text-xs">Message *</Label><textarea value={message} onChange={e => setMessage(e.target.value)} rows={3} placeholder="Write your announcement…" className="w-full mt-1 rounded-md border border-border bg-card p-2 text-sm resize-none" /></div>
+  1266→          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>
+  1267→            {sending ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Sending…</> : <><Megaphone className="h-4 w-4 mr-1.5" /> Send Announcement</>}
+  1268→          </Button>
+  1269→        </Card>
+  1270→      )}
+  1271→
+  1272→      {loading ? (
+  1273→        <Card className="p-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></Card>
+  1274→      ) : announcements.length === 0 ? (
+  1275→        <EmptyState icon={Inbox} title="No announcements yet" desc="Send notices to your students. They'll appear in their portal instantly."
+  1276→          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+  1277→      ) : (
+  1278→        <div className="space-y-3">
+  1279→          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+  1280→        </div>
+  1281→      )}
+  1282→    </div>
+  1283→  );
+  1284→}
+  1285→

@@ -46,38 +46,38 @@
 
 :root {
   --radius: 0.5rem;
-  /* UCP/Odoo-inspired academic palette: deep navy sidebar, light gray bg, clean cards */
-  --background: oklch(0.97 0.003 250);
-  --foreground: oklch(0.23 0.02 260);
+  /* Clean navy palette: vibrant navy primary, deep navy sidebar, light bg */
+  --background: oklch(0.98 0.002 250);
+  --foreground: oklch(0.2 0.02 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.23 0.02 260);
+  --card-foreground: oklch(0.2 0.02 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.23 0.02 260);
-  --primary: oklch(0.38 0.12 260);
+  --popover-foreground: oklch(0.2 0.02 260);
+  --primary: oklch(0.45 0.15 260);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.006 250);
+  --secondary: oklch(0.96 0.008 250);
   --secondary-foreground: oklch(0.3 0.03 260);
-  --muted: oklch(0.95 0.006 250);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.92 0.02 250);
-  --accent-foreground: oklch(0.3 0.05 260);
+  --muted: oklch(0.96 0.008 250);
+  --muted-foreground: oklch(0.52 0.02 260);
+  --accent: oklch(0.93 0.025 260);
+  --accent-foreground: oklch(0.3 0.06 260);
   --destructive: oklch(0.55 0.2 25);
-  --border: oklch(0.9 0.006 250);
-  --input: oklch(0.92 0.006 250);
-  --ring: oklch(0.38 0.12 260);
-  --chart-1: oklch(0.38 0.12 260);
+  --border: oklch(0.9 0.008 250);
+  --input: oklch(0.92 0.008 250);
+  --ring: oklch(0.45 0.15 260);
+  --chart-1: oklch(0.45 0.15 260);
   --chart-2: oklch(0.6 0.15 160);
   --chart-3: oklch(0.65 0.18 30);
   --chart-4: oklch(0.55 0.14 300);
   --chart-5: oklch(0.7 0.15 80);
-  --sidebar: oklch(0.22 0.04 260);
+  --sidebar: oklch(0.22 0.05 260);
   --sidebar-foreground: oklch(0.9 0.01 250);
-  --sidebar-primary: oklch(0.5 0.15 260);
+  --sidebar-primary: oklch(0.55 0.18 260);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.3 0.04 260);
+  --sidebar-accent: oklch(0.3 0.06 260);
   --sidebar-accent-foreground: oklch(0.95 0.01 250);
-  --sidebar-border: oklch(0.32 0.04 260);
-  --sidebar-ring: oklch(0.5 0.15 260);
+  --sidebar-border: oklch(0.32 0.05 260);
+  --sidebar-ring: oklch(0.55 0.18 260);
   --gold: oklch(0.74 0.15 85);
   --emerald: oklch(0.55 0.15 160);
 }
@@ -85,35 +85,35 @@
 .dark {
   --background: oklch(0.15 0.02 260);
   --foreground: oklch(0.95 0.01 250);
-  --card: oklch(0.2 0.025 260);
+  --card: oklch(0.2 0.03 260);
   --card-foreground: oklch(0.95 0.01 250);
-  --popover: oklch(0.2 0.025 260);
+  --popover: oklch(0.2 0.03 260);
   --popover-foreground: oklch(0.95 0.01 250);
-  --primary: oklch(0.55 0.2 260);
+  --primary: oklch(0.6 0.18 260);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.25 0.03 260);
+  --secondary: oklch(0.25 0.04 260);
   --secondary-foreground: oklch(0.95 0.01 250);
-  --muted: oklch(0.25 0.025 260);
+  --muted: oklch(0.25 0.03 260);
   --muted-foreground: oklch(0.65 0.02 250);
-  --accent: oklch(0.3 0.05 260);
+  --accent: oklch(0.3 0.06 260);
   --accent-foreground: oklch(0.9 0.02 250);
   --destructive: oklch(0.7 0.19 22);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.55 0.2 260);
-  --chart-1: oklch(0.55 0.2 260);
+  --ring: oklch(0.6 0.18 260);
+  --chart-1: oklch(0.6 0.18 260);
   --chart-2: oklch(0.65 0.15 160);
   --chart-3: oklch(0.68 0.18 30);
   --chart-4: oklch(0.6 0.16 300);
   --chart-5: oklch(0.76 0.15 80);
-  --sidebar: oklch(0.2 0.04 260);
+  --sidebar: oklch(0.2 0.05 260);
   --sidebar-foreground: oklch(0.9 0.01 250);
-  --sidebar-primary: oklch(0.55 0.2 260);
+  --sidebar-primary: oklch(0.6 0.18 260);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.28 0.04 260);
+  --sidebar-accent: oklch(0.28 0.05 260);
   --sidebar-accent-foreground: oklch(0.92 0.01 250);
-  --sidebar-border: oklch(0.32 0.04 260);
-  --sidebar-ring: oklch(0.55 0.2 260);
+  --sidebar-border: oklch(0.32 0.05 260);
+  --sidebar-ring: oklch(0.6 0.18 260);
   --gold: oklch(0.78 0.15 85);
   --emerald: oklch(0.6 0.15 160);
 }
@@ -223,7 +223,7 @@
 /* ===== Animated Login Page Styles (from uploaded design) ===== */
 
 .login-bg {
-  background: linear-gradient(135deg, oklch(0.15 0.03 260) 0%, oklch(0.22 0.04 260) 50%, oklch(0.15 0.03 260) 100%);
+  background: linear-gradient(135deg, var(--sidebar) 0%, oklch(0.28 0.06 260) 50%, var(--sidebar) 100%);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -353,8 +353,8 @@
 }
 
 .login-input:focus {
-  border-color: oklch(0.22 0.04 260);
-  box-shadow: 0 0 0 3px oklch(0.22 0.04 260 / 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px oklch(0.45 0.15 260 / 0.15);
 }
 
 .floating-label {
@@ -373,14 +373,14 @@
   top: 0;
   transform: translateY(-50%);
   font-size: 0.75rem;
-  color: oklch(0.22 0.04 260);
+  color: var(--primary);
   background: white;
   padding: 0 6px;
   left: 12px;
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, oklch(0.22 0.04 260) 0%, oklch(0.18 0.04 260) 100%);
+  background: var(--primary);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -422,7 +422,7 @@
 }
 
 .cover-gradient {
-  background: linear-gradient(135deg, oklch(0.22 0.04 260) 0%, oklch(0.18 0.04 260) 100%);
+  background: var(--primary);
 }
 
 .social-btn {
@@ -475,11 +475,11 @@
 }
 
 .eye-toggle:hover {
-  color: oklch(0.22 0.04 260);
+  color: var(--primary);
 }
 
 .custom-checkbox {
-  accent-color: oklch(0.22 0.04 260);
+  accent-color: var(--primary);
 }
 
 @keyframes deskGlow {
@@ -532,15 +532,15 @@
 
 /* ===== Navy Blue (sidebar-matching) utility classes ===== */
 /* These match the sidebar color (oklch 0.22 0.04 260) exactly */
-.bg-navy { background-color: oklch(0.22 0.04 260); }
+.bg-navy { background-color: var(--primary); }
 .bg-navy-hover:hover { background-color: oklch(0.28 0.04 260); }
-.text-navy { color: oklch(0.22 0.04 260); }
-.border-navy { border-color: oklch(0.22 0.04 260); }
+.text-navy { color: var(--primary); }
+.border-navy { border-color: var(--primary); }
 .from-navy { --tw-gradient-from: oklch(0.22 0.04 260); }
 .to-navy { --tw-gradient-to: oklch(0.18 0.04 260); }
 .bg-navy-50 { background-color: oklch(0.95 0.01 260); }
 .bg-navy-100 { background-color: oklch(0.9 0.02 260); }
 .text-navy-600 { color: oklch(0.35 0.05 260); }
 .text-navy-700 { color: oklch(0.28 0.04 260); }
-.text-navy-800 { color: oklch(0.22 0.04 260); }
+.text-navy-800 { color: var(--primary); }
 .border-navy-200 { border-color: oklch(0.88 0.02 260); }

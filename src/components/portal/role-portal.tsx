@@ -246,18 +246,18 @@ export function RolePortal() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4 rounded-xl bg-[oklch(0.95_0.01_260)] border border-[oklch(0.6_0.04_260)] p-4 flex items-center justify-between gap-3"
+              className="mb-4 rounded-xl bg-accent border border-[oklch(0.6_0.04_260)] p-4 flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-[oklch(0.5_0.04_260)_/_0.2] grid place-items-center shrink-0">
-                  <Shield className="h-5 w-5 text-[oklch(0.22_0.04_260)]" />
+                  <Shield className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <div className="font-semibold text-sm text-[oklch(0.15_0.03_260)]">Please change your password</div>
-                  <div className="text-xs text-[oklch(0.22_0.04_260)]">You're using a password assigned by your administrator. Change it now to secure your account.</div>
+                  <div className="font-semibold text-sm text-primary">Please change your password</div>
+                  <div className="text-xs text-primary">You're using a password assigned by your administrator. Change it now to secure your account.</div>
                 </div>
               </div>
-              <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white shrink-0" onClick={() => setActiveModule('settings')}>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white shrink-0" onClick={() => setActiveModule('settings')}>
                 Change now
               </Button>
             </motion.div>

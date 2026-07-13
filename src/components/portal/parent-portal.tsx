@@ -71,29 +71,28 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
 function ParentOverview({ user, ward, attendance, results, fees }: any) {
   const feePaid = fees.filter(f => f.status === 'Paid').reduce((a:number, f:any) => a + f.amount, 0);
   const cards = [
-    { label: "Ward's Attendance", value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-emerald-500 to-emerald-700' },
-    { label: 'Avg Score', value: results?.avgPercentage != null ? results.avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
-    { label: 'Fees Paid', value: fmtMoney(feePaid), icon: CreditCard, color: 'from-amber-500 to-yellow-600' },
-    { label: 'Results', value: results?.total ?? 0, icon: Award, color: 'from-rose-500 to-pink-600' },
+    { label: "Ward's Attendance", value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck },
+    { label: 'Avg Score', value: results?.avgPercentage != null ? results.avgPercentage + '%' : '—', icon: GraduationCap },
+    { label: 'Fees Paid', value: fmtMoney(feePaid), icon: CreditCard },
+    { label: 'Results', value: results?.total ?? 0, icon: Award },
   ];
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-600 via-pink-700 to-rose-900 p-6 sm:p-8 text-white">
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
+        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Heart className="h-3 w-3 text-amber-300" /> Parent · {user?.instituteName}</div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Heart className="h-3 w-3 text-white/80" /> Parent · {user?.instituteName}</div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hello, {user?.name?.split(' ')[0]}</h1>
-          <p className="text-rose-50/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{ward?.name || user?.ward || '—'}</strong>{ward ? ` · ${ward.class} ${ward.section}` : ''}.</p>
+          <p className="text-white/80 text-sm mt-1.5">Tracking progress for your ward, <strong>{ward?.name || user?.ward || '—'}</strong>{ward ? ` · ${ward.class} ${ward.section}` : ''}.</p>
         </div>
       </motion.div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 relative overflow-hidden">
-              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
-              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
             </Card>
@@ -209,10 +208,10 @@ function WardFees({ ward, fees, user }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Pay Fees" subtitle={ward ? `For ${ward.name}` : 'Fee management'} />
-      <Card className="p-5 bg-gradient-to-br from-amber-600 to-yellow-700 text-white">
+      <Card className="p-5 border border-border rounded-lg shadow-sm">
         <div className="flex items-center justify-between">
-          <div><div className="text-xs text-amber-50/80">Total Paid</div><div className="text-3xl font-extrabold font-display mt-1">{fmtMoney(totalPaid)}</div><div className="text-xs text-amber-50/80 mt-1">{fees.length} transactions</div></div>
-          <CreditCard className="h-12 w-12 text-white" />
+          <div><div className="text-xs text-muted-foreground">Total Paid</div><div className="text-3xl font-extrabold font-display mt-1">{fmtMoney(totalPaid)}</div><div className="text-xs text-muted-foreground mt-1">{fees.length} transactions</div></div>
+          <div className="h-12 w-12 rounded-xl bg-primary/10 grid place-items-center"><CreditCard className="h-6 w-6 text-primary" /></div>
         </div>
       </Card>
       <Card className="p-5">

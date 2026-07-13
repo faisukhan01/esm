@@ -132,10 +132,10 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
     : null;
 
   const cards = [
-    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
-    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
-    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
-    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]' },
+    { label: 'Attendance', value: attendance?.rate != null ? attendance.rate + '%' : '—', icon: CalendarCheck, color: 'from-primary to-primary/80' },
+    { label: 'Avg Score', value: avgPercentage != null ? avgPercentage + '%' : '—', icon: GraduationCap, color: 'from-primary/80 to-primary' },
+    { label: 'Results', value: resultsTotal, icon: Award, color: 'from-primary/80 to-primary' },
+    { label: 'Courses', value: courses.length, icon: BookOpen, color: 'from-primary to-primary/80' },
   ];
 
   // Group recent results by subject/course so we can show "recent marks" per course card
@@ -155,11 +155,11 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-primary/70" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-white/80 text-sm mt-1.5">{user?.branchName} · {user?.instituteName}</p>
         </div>
@@ -168,9 +168,8 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 relative overflow-hidden">
-              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
-              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl sm:text-3xl font-extrabold font-display">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
             </Card>
@@ -193,29 +192,28 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
               const recent = recentByCourse[c.id];
               return (
                 <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group relative overflow-hidden" onClick={() => onOpenCourse(c, 'materials')}>
-                    <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-gradient-to-br from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)] opacity-10 blur-2xl group-hover:opacity-20 transition" />
+                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenCourse(c, 'materials')}>
                     <div className="flex items-start justify-between mb-3">
-                      <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)] grid place-items-center shadow-md">
-                        <BookOpen className="h-5 w-5 text-white" />
+                      <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+                        <BookOpen className="h-5 w-5 text-primary" />
                       </div>
                       {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
                     </div>
                     <h3 className="font-display font-bold text-lg">{c.name}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
                     <div className="grid grid-cols-2 gap-2 mt-4">
-                      <div className="p-2 rounded-md bg-[oklch(0.95_0.01_260)]0/10">
+                      <div className="p-2 rounded-md bg-accent0/10">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
-                        <div className="text-sm font-bold text-[oklch(0.22_0.04_260)] mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
+                        <div className="text-sm font-bold text-primary mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
                       </div>
-                      <div className="p-2 rounded-md bg-[oklch(0.95_0.01_260)]0/10">
+                      <div className="p-2 rounded-md bg-accent0/10">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
-                        <div className="text-sm font-bold text-[oklch(0.22_0.04_260)] mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
+                        <div className="text-sm font-bold text-primary mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
-                      <span className="text-[oklch(0.22_0.04_260)] font-medium group-hover:underline">Open →</span>
+                      <span className="text-primary font-medium group-hover:underline">Open →</span>
                     </div>
                   </Card>
                 </motion.div>
@@ -348,8 +346,8 @@ function MaterialCard({ material }: { material: MaterialItem }) {
   return (
     <Card className="p-4 hover:shadow-md transition">
       <div className="flex items-start gap-3">
-        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-[oklch(0.95_0.01_260)]0/15' : 'bg-[oklch(0.95_0.01_260)]0/15'}`}>
-          <Icon className={`h-5 w-5 ${isLink ? 'text-[oklch(0.22_0.04_260)]' : 'text-[oklch(0.22_0.04_260)]'}`} />
+        <div className={`h-10 w-10 rounded-lg grid place-items-center shrink-0 ${isLink ? 'bg-accent0/15' : 'bg-accent0/15'}`}>
+          <Icon className={`h-5 w-5 ${isLink ? 'text-primary' : 'text-primary'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -396,10 +394,10 @@ function CourseResultsView({ courseId, studentId }: { courseId: string; studentI
       <div className="space-y-3">
         {results.map((r: any, idx: number) => (
           <div key={r.id || idx} className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
+            <div className="h-9 w-9 rounded-lg bg-accent0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.exam || 'Exam'}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-[oklch(0.22_0.04_260)]" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${r.percentage || (r.totalMarks ? (r.marks / r.totalMarks) * 100 : 0)}%` }} /></div>
               <div className="text-[11px] text-muted-foreground mt-1">{r.date}</div>
             </div>
             <Badge variant="outline" className="font-bold">{r.grade}</Badge>
@@ -429,10 +427,10 @@ function CourseAttendanceView({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-3">
-        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
         <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
         <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
-        <Card className="p-4 text-center bg-[oklch(0.95_0.01_260)]0/10"><CalendarCheck className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold text-[oklch(0.22_0.04_260)]">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+        <Card className="p-4 text-center bg-accent0/10"><CalendarCheck className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold text-primary">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
       </div>
       <Card className="p-4">
         <Table>
@@ -441,7 +439,7 @@ function CourseAttendanceView({ studentId }: { studentId: string }) {
             {(attendance.entries || []).map((e: any, idx: number) => (
               <TableRow key={e.id || idx}>
                 <TableCell className="text-sm">{e.date}</TableCell>
-                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -461,10 +459,10 @@ function MyAttendance({ attendance }: any) {
       ) : (
         <>
           <div className="grid grid-cols-4 gap-3">
-            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
+            <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
             <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
             <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{attendance.late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
-            <Card className="p-4 text-center bg-[oklch(0.95_0.01_260)]0/10"><CalendarCheck className="h-6 w-6 text-[oklch(0.22_0.04_260)] mx-auto mb-1" /><div className="text-2xl font-bold text-[oklch(0.22_0.04_260)]">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
+            <Card className="p-4 text-center bg-accent0/10"><CalendarCheck className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold text-primary">{attendance.rate}%</div><div className="text-xs text-muted-foreground">Rate</div></Card>
           </div>
           <Card className="p-4">
             <Table>
@@ -472,7 +470,7 @@ function MyAttendance({ attendance }: any) {
               <TableBody>
                 {(attendance.entries || []).map((e: any) => (
                   <TableRow key={e.id}><TableCell className="text-sm">{e.date}</TableCell><TableCell className="text-sm">{e.class}</TableCell>
-                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className={e.status === 'Present' ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : e.status === 'Absent' ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-sky-700 bg-sky-500/10 border-sky-500/20'}>{e.status}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -498,10 +496,10 @@ function MyResults({ results }: any) {
               const pct = r.percentage || (r.totalMarks ? Math.round(r.marks / r.totalMarks * 1000) / 10 : 0);
               return (
               <div key={r.id} className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
+                <div className="h-9 w-9 rounded-lg bg-accent0/15 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1"><span className="font-medium text-sm">{r.subject || r.exam}</span><span className="font-bold text-sm">{r.marks}/{r.totalMarks}</span></div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-[oklch(0.22_0.04_260)]" style={{ width: `${pct}%` }} /></div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary" style={{ width: `${pct}%` }} /></div>
                   <div className="text-[11px] text-muted-foreground mt-1">{r.exam} · {r.date}</div>
                 </div>
                 <Badge variant="outline" className="font-bold">{r.grade}</Badge>
@@ -536,7 +534,7 @@ function MyDiary({ diary }: any) {
             <Card key={d.id} className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <div><div className="font-medium text-sm">{d.title}</div><div className="text-[11px] text-muted-foreground">{d.subject} · {d.class} · {d.date}</div></div>
-                <Badge variant="outline" className={d.due ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
+                <Badge variant="outline" className={d.due ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]' : 'text-muted-foreground'}>{d.due || 'No deadline'}</Badge>
               </div>
               {d.desc && <p className="text-sm text-muted-foreground">{d.desc}</p>}
             </Card>
@@ -630,7 +628,7 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
     <div class="header">
       ${institute ? `<div class="institute">${escape(institute)}</div>` : ''}
       <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
-      <div class="title">Fee Challan</div>
+      <div class="title">FEE CHALLAN</div>
       <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
     </div>
     <div class="grid">
@@ -790,9 +788,9 @@ function MyInvoices({ user }: { user: any }) {
   };
 
   const cards = [
-    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
+    { label: 'Total Paid', value: fmtPKR(stats.paid), icon: CheckCircle2, color: 'from-primary to-primary/80', sub: `${stats.paidCount} invoice${stats.paidCount === 1 ? '' : 's'}` },
     { label: 'Total Pending', value: fmtPKR(stats.pending), icon: Clock, color: 'from-rose-500 to-rose-700', sub: `${stats.count - stats.paidCount} invoice${stats.count - stats.paidCount === 1 ? '' : 's'}` },
-    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
+    { label: 'Total Amount', value: fmtPKR(stats.total), icon: Wallet, color: 'from-primary/80 to-primary', sub: `${stats.count} invoice${stats.count === 1 ? '' : 's'}` },
   ];
 
   return (
@@ -802,9 +800,8 @@ function MyInvoices({ user }: { user: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 relative overflow-hidden">
-              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
-              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl font-extrabold font-display">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
             </Card>
@@ -815,7 +812,7 @@ function MyInvoices({ user }: { user: any }) {
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
+            <FileText className="h-4 w-4 text-primary" />
             <h3 className="font-bold text-base">Invoice History</h3>
           </div>
           <Button size="sm" variant="outline" onClick={refresh} disabled={loading}>
@@ -851,13 +848,13 @@ function MyInvoices({ user }: { user: any }) {
                       <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">{inv.challanNo || inv.id?.slice(-8)}</TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={isPaid ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+                        <Badge variant="outline" className={isPaid ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
                           {isPaid ? 'Paid' : 'Unpaid'}
                         </Badge>
                         {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
+                        <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-primary hover:bg-accent0/10" disabled={downloadingId === inv.id} onClick={() => downloadChallan(inv)}>
                           {downloadingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Preparing…</> : <><Download className="h-3 w-3 mr-1" /> Download Challan</>}
                         </Button>
                       </TableCell>
@@ -870,12 +867,12 @@ function MyInvoices({ user }: { user: any }) {
         )}
       </Card>
 
-      <Card className="p-4 bg-[oklch(0.95_0.01_260)] dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-[oklch(0.88_0.02_260)] dark:border-[oklch(0.2_0.04_260)]">
+      <Card className="p-4 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.3] border-accent dark:border-[oklch(0.2_0.04_260)]">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg bg-[oklch(0.95_0.01_260)]0/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.6_0.04_260)]" /></div>
+          <div className="h-9 w-9 rounded-lg bg-accent0/20 grid place-items-center shrink-0"><Download className="h-4 w-4 text-primary dark:text-[oklch(0.6_0.04_260)]" /></div>
           <div>
-            <div className="font-bold text-sm text-[oklch(0.15_0.03_260)] dark:text-[oklch(0.8_0.03_260)]">Download your challan PDF</div>
-            <p className="text-xs text-[oklch(0.18_0.04_260)] dark:text-[oklch(0.7_0.04_260)] mt-1 leading-relaxed">
+            <div className="font-bold text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">Download your challan PDF</div>
+            <p className="text-xs text-primary dark:text-primary/70 mt-1 leading-relaxed">
               Click <b>Download Challan</b> on any invoice and a real PDF file is generated and saved directly to your
               downloads folder — no print dialog, no extra steps. The challan includes the institute name, fee details,
               status, and a <b>"Powered by ESM"</b> footer.

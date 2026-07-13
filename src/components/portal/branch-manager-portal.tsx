@@ -78,27 +78,27 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
 
 function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddStudent }: any) {
   const cards = [
-    { label: 'Students', value: stats?.students ?? 0, icon: GraduationCap, color: 'from-[oklch(0.25_0.05_260)] to-[oklch(0.2_0.04_260)]', action: onAddStudent, actionLabel: 'Add Student' },
-    { label: 'Teachers', value: stats?.teachers ?? 0, icon: Users, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]', action: onAddTeacher, actionLabel: 'Add Teacher' },
-    { label: 'Fee Collected', value: fmtMoney(stats?.feeCollected || 0), icon: DollarSign, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
-    { label: 'Attendance Rate', value: (stats?.attendance || 0) + '%', icon: CalendarCheck, color: 'from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)]' },
+    { label: 'Students', value: stats?.students ?? 0, icon: GraduationCap, color: 'from-primary to-primary/80', action: onAddStudent, actionLabel: 'Add Student' },
+    { label: 'Teachers', value: stats?.teachers ?? 0, icon: Users, color: 'from-primary/80 to-primary', action: onAddTeacher, actionLabel: 'Add Teacher' },
+    { label: 'Fee Collected', value: fmtMoney(stats?.feeCollected || 0), icon: DollarSign, color: 'from-primary/80 to-primary' },
+    { label: 'Attendance Rate', value: (stats?.attendance || 0) + '%', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
   ];
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[oklch(0.22_0.04_260)] via-[oklch(0.19_0.04_260)] to-[oklch(0.15_0.03_260)] p-6 sm:p-8 text-white">
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 bg-grid-dark opacity-25" />
         <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-[oklch(0.7_0.04_260)]" /> Branch Manager · {user?.branchName}</div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-primary/70" /> Branch Manager · {user?.branchName}</div>
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
             <p className="text-white/80 text-sm mt-1.5 max-w-lg">
               {stats?.students || stats?.teachers ? `You have ${stats.students} students and ${stats.teachers} teachers.` : 'Add your first teacher or student to get started.'}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button className="bg-white text-[oklch(0.18_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
+            <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
             <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" size="sm" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Student</Button>
           </div>
         </div>
@@ -107,9 +107,8 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 hover:shadow-lg hover:-translate-y-0.5 transition relative overflow-hidden">
-              <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${c.color} opacity-10 blur-2xl`} />
-              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${c.color} grid place-items-center shadow-md mb-3`}><c.icon className="h-5 w-5 text-white" /></div>
+            <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl sm:text-3xl font-extrabold font-display">{typeof c.value === 'number' ? c.value.toLocaleString() : c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               {c.action && <Button size="sm" variant="ghost" className="mt-2 h-7 text-xs px-2 -mx-2" onClick={c.action}><Plus className="h-3 w-3 mr-1" /> {c.actionLabel}</Button>}
@@ -130,7 +129,7 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
             <div className="space-y-2">
               {teachers.map(t => (
                 <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><Users className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
+                  <div className="h-9 w-9 rounded-full bg-accent0/15 grid place-items-center"><Users className="h-4 w-4 text-primary" /></div>
                   <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{t.name}</div><div className="text-[11px] text-muted-foreground truncate">{t.subjects?.join(', ') || t.email}</div></div>
                 </div>
               ))}
@@ -148,7 +147,7 @@ function BranchOverview({ user, stats, teachers, students, onAddTeacher, onAddSt
             <div className="space-y-2 max-h-72 overflow-y-auto scroll-fancy">
               {students.map(s => (
                 <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center"><GraduationCap className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /></div>
+                  <div className="h-9 w-9 rounded-full bg-accent0/15 grid place-items-center"><GraduationCap className="h-4 w-4 text-primary" /></div>
                   <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-[11px] text-muted-foreground truncate">{s.class} {s.section} · {s.rollNo}</div></div>
                 </div>
               ))}
@@ -193,11 +192,11 @@ function UserRowActions({ u, onRefresh }: { u: any; onRefresh: () => void }) {
     <div className="flex items-center gap-1.5">
       <button onClick={viewPassword} disabled={busy} title="View Password" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-50"><Eye className="h-4 w-4" /></button>
       <button onClick={() => setShowEdit(true)} title="Edit" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
-      <button onClick={toggleBlock} disabled={busy} title={u.blocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg ${u.blocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10'} disabled:opacity-50`}>{u.blocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+      <button onClick={toggleBlock} disabled={busy} title={u.blocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg ${u.blocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-primary hover:bg-accent0/10'} disabled:opacity-50`}>{u.blocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
       {showPass && (
-        <div className="ml-2 px-2 py-1 rounded-md bg-[oklch(0.95_0.01_260)] dark:bg-[oklch(0.12_0.03_260)_/_0.4] border border-[oklch(0.88_0.02_260)] dark:border-[oklch(0.25_0.04_260)] text-xs">
-          <span className="text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)] font-mono">{pass}</span>
-          {mustChange && <span className="text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.6_0.04_260)] ml-1">· must change</span>}
+        <div className="ml-2 px-2 py-1 rounded-md bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.4] border border-accent dark:border-[oklch(0.25_0.04_260)] text-xs">
+          <span className="text-primary dark:text-primary/70 font-mono">{pass}</span>
+          {mustChange && <span className="text-primary dark:text-[oklch(0.6_0.04_260)] ml-1">· must change</span>}
         </div>
       )}
       {showEdit && <EditUserModal u={u} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
@@ -239,7 +238,7 @@ function EditUserModal({ u, onClose, onSaved }: { u: any; onClose: () => void; o
             {u.class && <div className="text-xs text-muted-foreground pt-1 border-t border-border/40">Class: <span className="font-medium text-foreground">{u.class} · {u.section || 'A'}</span></div>}
           </div>
           <div className="flex gap-2 mt-5">
-            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
             <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
           </div>
         </Card>
@@ -252,10 +251,10 @@ function TeachersView({ teachers, onAdd, onRefresh }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Teachers" subtitle={`${teachers.length} teachers in your branch`}
-        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
+        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
       {teachers.length === 0 ? (
         <EmptyState icon={Users} title="No teachers yet" desc="Add your first teacher. A login will be auto-created so they can sign in to their Teacher portal."
-          action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
       ) : (
         <Card className="p-4">
           <Table>
@@ -269,7 +268,7 @@ function TeachersView({ teachers, onAdd, onRefresh }: any) {
                   <TableCell className="hidden md:table-cell font-mono text-xs">{t.rollNo || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell">{t.subjects?.length ? t.subjects.map((s:string) => <Badge key={s} variant="secondary" className="mr-1 font-normal text-[10px]">{s}</Badge>) : '—'}</TableCell>
                   <TableCell className="hidden sm:table-cell text-sm">{t.classes?.length ? t.classes.join(', ') : '—'}</TableCell>
-                  <TableCell><Badge variant="outline" className={t.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{t.blocked ? 'Blocked' : (t.status || 'Active')}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className={t.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{t.blocked ? 'Blocked' : (t.status || 'Active')}</Badge></TableCell>
                   <TableCell className="text-right"><UserRowActions u={t} onRefresh={onRefresh} /></TableCell>
                 </TableRow>
               ))}
@@ -285,10 +284,10 @@ function StudentsView({ students, onAdd, onRefresh }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Students" subtitle={`${students.length} students in your branch`}
-        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
+        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
       {students.length === 0 ? (
         <EmptyState icon={GraduationCap} title="No students yet" desc="Add your first student. A login will be auto-created so they (or their parents) can sign in to their portal."
-          action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
       ) : (
         <Card className="p-4">
           <Table>
@@ -302,7 +301,7 @@ function StudentsView({ students, onAdd, onRefresh }: any) {
                   <TableCell><Badge variant="outline" className="font-normal">{s.class}{s.section ? ` · ${s.section}` : ''}</Badge></TableCell>
                   <TableCell className="hidden sm:table-cell font-mono text-sm">{s.rollNo || '—'}</TableCell>
                   <TableCell className="hidden md:table-cell text-sm">{s.guardian || '—'}</TableCell>
-                  <TableCell><Badge variant="outline" className={s.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{s.blocked ? 'Blocked' : (s.status || 'Active')}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className={s.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{s.blocked ? 'Blocked' : (s.status || 'Active')}</Badge></TableCell>
                   <TableCell className="text-right"><UserRowActions u={s} onRefresh={onRefresh} /></TableCell>
                 </TableRow>
               ))}
@@ -455,7 +454,7 @@ function ClassCoursesView({ user }: { user: any }) {
             </button>
             <div>
               <h1 className="font-display text-2xl font-extrabold tracking-tight flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-[oklch(0.22_0.04_260)]" /> {activeGroup.name}
+                <BookOpen className="h-5 w-5 text-primary" /> {activeGroup.name}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {activeGroup.sections.length} section{activeGroup.sections.length === 1 ? '' : 's'} · {assignedCourses.length} course{assignedCourses.length === 1 ? '' : 's'} assigned
@@ -464,20 +463,20 @@ function ClassCoursesView({ user }: { user: any }) {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>
-            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowAssignCourses(v => !v)}><CheckCircle2 className="h-4 w-4 mr-1.5" /> {showAssignCourses ? 'Hide Course List' : 'Assign Courses'}</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowAssignCourses(v => !v)}><CheckCircle2 className="h-4 w-4 mr-1.5" /> {showAssignCourses ? 'Hide Course List' : 'Assign Courses'}</Button>
           </div>
         </div>
 
         {/* Create course form (collapsible) */}
         {showCreateCourse && (
           <Card className="p-5">
-            <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /><h3 className="font-bold text-base">Create New Course</h3></div>
+            <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-primary" /><h3 className="font-bold text-base">Create New Course</h3></div>
             <div className="grid sm:grid-cols-3 gap-3 items-end">
               <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
               <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
             </div>
             <div className="flex gap-2 mt-4">
-              <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
               <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
             </div>
           </Card>
@@ -487,22 +486,22 @@ function ClassCoursesView({ user }: { user: any }) {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-base flex items-center gap-2"><BookOpen className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /> Assigned Courses</h3>
+              <h3 className="font-bold text-base flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /> Assigned Courses</h3>
               <p className="text-xs text-muted-foreground mt-0.5">These courses are taught in {activeGroup.name}. New sections inherit this list automatically.</p>
             </div>
-            <Badge variant="outline" className="text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.2]">{assignedCourseIds.length} assigned</Badge>
+            <Badge variant="outline" className="text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]">{assignedCourseIds.length} assigned</Badge>
           </div>
 
           {loadingAssigned ? (
             <div className="text-sm text-muted-foreground py-4 text-center">Loading assigned courses…</div>
           ) : assignedCourses.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[oklch(0.6_0.04_260)] dark:border-blue-700 bg-[oklch(0.95_0.01_260)] dark:bg-[oklch(0.12_0.03_260)_/_0.4] px-4 py-4 text-sm text-[oklch(0.18_0.04_260)] dark:text-[oklch(0.8_0.03_260)]">
+            <div className="rounded-lg border border-dashed border-[oklch(0.6_0.04_260)] dark:border-blue-700 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.4] px-4 py-4 text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">
               <strong>No courses assigned yet.</strong> Click <em>Assign Courses</em> above to select the subjects taught in this class. You must assign courses before you can add teachers for this class.
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
               {assignedCourses.map(c => (
-                <Badge key={c.id} variant="secondary" className="px-3 py-1.5 font-normal text-sm bg-[oklch(0.95_0.01_260)]0/10 text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)] border border-[oklch(0.5_0.04_260)_/_0.2]">
+                <Badge key={c.id} variant="secondary" className="px-3 py-1.5 font-normal text-sm bg-accent0/10 text-primary dark:text-primary/70 border border-[oklch(0.5_0.04_260)_/_0.2]">
                   <BookOpen className="h-3.5 w-3.5 mr-1.5" /> {c.name}{c.code ? <span className="ml-1.5 text-[10px] uppercase opacity-70">{c.code}</span> : null}
                 </Badge>
               ))}
@@ -517,7 +516,7 @@ function ClassCoursesView({ user }: { user: any }) {
               </div>
               {allCourses.length === 0 ? (
                 <div className="text-center py-6 text-sm text-muted-foreground">
-                  No courses created in this branch yet. <button onClick={() => setShowCreateCourse(true)} className="text-[oklch(0.22_0.04_260)] hover:underline font-medium">Create one now</button>.
+                  No courses created in this branch yet. <button onClick={() => setShowCreateCourse(true)} className="text-primary hover:underline font-medium">Create one now</button>.
                 </div>
               ) : (
                 <>
@@ -527,13 +526,13 @@ function ClassCoursesView({ user }: { user: any }) {
                       return (
                         <button key={c.id} type="button" onClick={() => toggleCourse(c.id)}
                           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition ${
-                            checked ? 'border-[oklch(0.5_0.04_260)_/_0.4] bg-[oklch(0.95_0.01_260)]0/10' : 'border-border bg-background hover:bg-muted/50'
+                            checked ? 'border-[oklch(0.5_0.04_260)_/_0.4] bg-accent0/10' : 'border-border bg-background hover:bg-muted/50'
                           }`}>
-                          <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-[oklch(0.22_0.04_260)] border-blue-700' : 'border-input bg-background'}`}>
+                          <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-primary border-blue-700' : 'border-input bg-background'}`}>
                             {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className={`text-sm font-medium truncate ${checked ? 'text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.7_0.04_260)]' : ''}`}>{c.name}</div>
+                            <div className={`text-sm font-medium truncate ${checked ? 'text-primary dark:text-primary/70' : ''}`}>{c.name}</div>
                             {c.code && <div className="text-[10px] text-muted-foreground uppercase">{c.code}</div>}
                           </div>
                         </button>
@@ -542,7 +541,7 @@ function ClassCoursesView({ user }: { user: any }) {
                   </div>
                   <div className="flex justify-end mt-4 pt-3 border-t border-border/40 gap-2">
                     <Button size="sm" variant="outline" onClick={() => setShowAssignCourses(false)}>Cancel</Button>
-                    <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={saving} onClick={saveAssignment}>
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={saveAssignment}>
                       {saving ? 'Saving…' : 'Save Assignment'}
                     </Button>
                   </div>
@@ -556,21 +555,21 @@ function ClassCoursesView({ user }: { user: any }) {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-bold text-base flex items-center gap-2"><Network className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /> Sections</h3>
+              <h3 className="font-bold text-base flex items-center gap-2"><Network className="h-4 w-4 text-primary" /> Sections</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Each section can have its own students. New sections inherit this class's course list.</p>
             </div>
             <Button size="sm" variant="outline" onClick={() => setShowAddSection(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> Add Section</Button>
           </div>
 
           {showAddSection && (
-            <div className="mb-4 rounded-lg border border-[oklch(0.5_0.04_260)_/_0.3] bg-[oklch(0.95_0.01_260)]0/5 p-4">
+            <div className="mb-4 rounded-lg border border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5 p-4">
               <div className="grid sm:grid-cols-3 gap-3 items-end">
                 <div className="sm:col-span-2">
                   <Label>Section letter (optional)</Label>
                   <Input value={newSectionLetter} onChange={e => setNewSectionLetter(e.target.value)} placeholder="e.g. C — leave blank for the next available letter" className="mt-1" maxLength={2} />
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={creatingSection} onClick={createSection}>{creatingSection ? 'Creating…' : 'Create Section'}</Button>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={creatingSection} onClick={createSection}>{creatingSection ? 'Creating…' : 'Create Section'}</Button>
                   <Button size="sm" variant="outline" onClick={() => { setShowAddSection(false); setNewSectionLetter(''); }}>Cancel</Button>
                 </div>
               </div>
@@ -585,7 +584,7 @@ function ClassCoursesView({ user }: { user: any }) {
                 <div key={sec.id} className="rounded-xl border border-border bg-card p-4 flex flex-col">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-9 w-9 rounded-lg bg-[oklch(0.22_0.04_260)] grid place-items-center text-white font-bold">{(sec.section || 'A').toUpperCase()}</div>
+                      <div className="h-9 w-9 rounded-lg bg-primary grid place-items-center text-white font-bold">{(sec.section || 'A').toUpperCase()}</div>
                       <div>
                         <div className="font-bold text-sm">{activeGroup.name} {(sec.section || 'A').toUpperCase()}</div>
                         <div className="text-[11px] text-muted-foreground">{secStudents.length} student{secStudents.length === 1 ? '' : 's'}</div>
@@ -604,7 +603,7 @@ function ClassCoursesView({ user }: { user: any }) {
                       <div className="space-y-1.5 max-h-36 overflow-y-auto scroll-fancy">
                         {secStudents.map(s => (
                           <div key={s.id} className="flex items-center gap-2 text-xs">
-                            <div className="h-6 w-6 rounded-full bg-[oklch(0.95_0.01_260)]0/15 grid place-items-center text-[oklch(0.22_0.04_260)]"><GraduationCap className="h-3 w-3" /></div>
+                            <div className="h-6 w-6 rounded-full bg-accent0/15 grid place-items-center text-primary"><GraduationCap className="h-3 w-3" /></div>
                             <div className="min-w-0 flex-1"><div className="font-medium truncate">{s.name}</div></div>
                             <div className="font-mono text-[10px] text-muted-foreground">{s.rollNo}</div>
                           </div>
@@ -625,17 +624,17 @@ function ClassCoursesView({ user }: { user: any }) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Classes & Courses" subtitle="Click a class to manage its courses and sections"
-        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>} />
+        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>} />
 
       {showCreateCourse && (
         <Card className="p-5">
-          <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /><h3 className="font-bold text-base">Create New Course</h3></div>
+          <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-primary" /><h3 className="font-bold text-base">Create New Course</h3></div>
           <div className="grid sm:grid-cols-3 gap-3 items-end">
             <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
             <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
             <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
           </div>
         </Card>
@@ -651,17 +650,16 @@ function ClassCoursesView({ user }: { user: any }) {
             const studentCount = g.sections.reduce((acc: number, s: any) => acc + studentsInSection(g.name, s.section).length, 0);
             return (
               <button key={g.name} onClick={() => { setActiveClassName(g.name); setShowCreateCourse(false); }}
-                className="text-left p-4 rounded-xl border border-border bg-card hover:border-[oklch(0.5_0.04_260)_/_0.4] hover:bg-muted/40 hover:shadow-md transition relative overflow-hidden group">
-                <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-[oklch(0.95_0.01_260)]0/10 blur-2xl opacity-0 group-hover:opacity-100 transition" />
+                className="text-left p-4 rounded-xl border border-border bg-card hover:border-[oklch(0.5_0.04_260)_/_0.4] hover:bg-muted/40 hover:shadow-md transition group">
                 <div className="flex items-center justify-between">
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)] grid place-items-center shadow-md text-white font-bold">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center text-primary font-bold">
                     {classNumber(g.name) || (idx + 1)}
                   </div>
                   <Badge variant="outline" className="text-[10px] text-muted-foreground">{g.sections.length} sec{g.sections.length === 1 ? '' : 's'}</Badge>
                 </div>
                 <div className="mt-3 font-bold text-sm">{g.name}</div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">{studentCount} student{studentCount === 1 ? '' : 's'} enrolled</div>
-                <div className="mt-2 text-[11px] text-[oklch(0.22_0.04_260)] dark:text-[oklch(0.6_0.04_260)] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                <div className="mt-2 text-[11px] text-primary dark:text-[oklch(0.6_0.04_260)] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                   <BookOpen className="h-3 w-3" /> Click to manage
                 </div>
               </button>
@@ -714,7 +712,7 @@ function AnnouncementsView({ user }: { user: any }) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Announcements" subtitle="Send messages to all classes or specific ones"
-        actions={<Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
 
       {showForm && (
         <Card className="p-5">
@@ -750,14 +748,14 @@ function AnnouncementsView({ user }: { user: any }) {
                 </div>
               </div>
             )}
-            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>}</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>}</Button>
           </div>
         </Card>
       )}
 
       {announcements.length === 0 ? (
         <EmptyState icon={Megaphone} title="No announcements yet" desc="Send messages to all or specific classes in your branch."
-          action={<Button className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowForm(true)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
       ) : (
         <div className="space-y-3">
           {announcements.map(a => (
@@ -891,7 +889,7 @@ function FeeStructureTab({ user }: { user: any }) {
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Fees Configured</div>
-          <div className="text-2xl font-extrabold font-display mt-1 text-[oklch(0.22_0.04_260)]">{setCount}</div>
+          <div className="text-2xl font-extrabold font-display mt-1 text-primary">{setCount}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Avg Monthly Fee</div>
@@ -905,7 +903,7 @@ function FeeStructureTab({ user }: { user: any }) {
 
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-4">
-          <Wallet className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
+          <Wallet className="h-4 w-4 text-primary" />
           <h3 className="font-bold text-base">Monthly Fee Structure</h3>
           <span className="text-xs text-muted-foreground ml-1">Edit each class's monthly fee and save.</span>
         </div>
@@ -915,10 +913,10 @@ function FeeStructureTab({ user }: { user: any }) {
             const isSaving = savingId === cls.id;
             const isSet = structure[cls.id]?.monthlyFee != null;
             return (
-              <div key={cls.id} className={`p-4 rounded-xl border ${isSet ? 'border-[oklch(0.5_0.04_260)_/_0.3] bg-[oklch(0.95_0.01_260)]0/5' : 'border-dashed border-border'} hover:shadow-sm transition`}>
+              <div key={cls.id} className={`p-4 rounded-xl border ${isSet ? 'border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5' : 'border-dashed border-border'} hover:shadow-sm transition`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[oklch(0.28_0.05_260)] to-[oklch(0.22_0.04_260)] grid place-items-center text-white font-bold text-xs">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary font-bold text-xs">
                       {classNumber(cls.name) || '—'}
                     </div>
                     <div>
@@ -926,7 +924,7 @@ function FeeStructureTab({ user }: { user: any }) {
                       <div className="text-[10px] text-muted-foreground">{isSet ? 'Configured' : 'Not set'}</div>
                     </div>
                   </div>
-                  {isSet && <CheckCircle2 className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />}
+                  {isSet && <CheckCircle2 className="h-4 w-4 text-primary" />}
                 </div>
                 <div className="space-y-2">
                   <div>
@@ -955,7 +953,7 @@ function FeeStructureTab({ user }: { user: any }) {
                       />
                     </div>
                   </div>
-                  <Button size="sm" className="w-full bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" disabled={isSaving} onClick={() => save(cls)}>
+                  <Button size="sm" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={isSaving} onClick={() => save(cls)}>
                     {isSaving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Save</>}
                   </Button>
                 </div>
@@ -1033,7 +1031,7 @@ function FeeInvoicesTab({ user }: { user: any }) {
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Collected</div>
-          <div className="text-xl font-extrabold font-display mt-1 text-[oklch(0.22_0.04_260)]">{fmtPKR(stats.paid)}</div>
+          <div className="text-xl font-extrabold font-display mt-1 text-primary">{fmtPKR(stats.paid)}</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs text-muted-foreground">Pending</div>
@@ -1048,7 +1046,7 @@ function FeeInvoicesTab({ user }: { user: any }) {
       <Card className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[oklch(0.22_0.04_260)]" />
+            <FileText className="h-4 w-4 text-primary" />
             <h3 className="font-bold text-base">Branch Invoices</h3>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -1060,7 +1058,7 @@ function FeeInvoicesTab({ user }: { user: any }) {
                 </button>
               ))}
             </div>
-            <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white" onClick={() => setShowGenerate(v => !v)}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowGenerate(v => !v)}>
               <Plus className="h-4 w-4 mr-1.5" /> Generate Invoices
             </Button>
           </div>
@@ -1068,8 +1066,8 @@ function FeeInvoicesTab({ user }: { user: any }) {
 
         {showGenerate && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden mb-4">
-            <div className="p-4 rounded-xl border border-[oklch(0.5_0.04_260)_/_0.3] bg-[oklch(0.95_0.01_260)]0/5">
-              <div className="flex items-center gap-2 mb-3"><Banknote className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /><span className="font-bold text-sm">Generate Monthly Invoices</span></div>
+            <div className="p-4 rounded-xl border border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5">
+              <div className="flex items-center gap-2 mb-3"><Banknote className="h-4 w-4 text-primary" /><span className="font-bold text-sm">Generate Monthly Invoices</span></div>
               <p className="text-xs text-muted-foreground mb-3">This creates one invoice per active student for the selected month and year, based on their class's monthly fee.</p>
               <div className="grid sm:grid-cols-3 gap-3 items-end">
                 <div>
@@ -1086,7 +1084,7 @@ function FeeInvoicesTab({ user }: { user: any }) {
                   <Input type="number" value={genYear} onChange={e => setGenYear(e.target.value)} className="mt-1" />
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white flex-1" disabled={generating} onClick={generate}>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={generating} onClick={generate}>
                     {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</> : 'Generate'}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setShowGenerate(false)}>Cancel</Button>
@@ -1130,16 +1128,16 @@ function FeeInvoicesTab({ user }: { user: any }) {
                       <TableCell className="text-sm whitespace-nowrap">{inv.month || '—'}{inv.year ? ` ${inv.year}` : ''}</TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={isPaid ? 'text-[oklch(0.22_0.04_260)] bg-[oklch(0.95_0.01_260)]0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+                        <Badge variant="outline" className={isPaid ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
                           {isPaid ? 'Paid' : 'Unpaid'}
                         </Badge>
                         {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
                       </TableCell>
                       <TableCell className="text-right">
                         {isPaid ? (
-                          <span className="text-[11px] text-[oklch(0.22_0.04_260)] inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Settled</span>
+                          <span className="text-[11px] text-primary inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Settled</span>
                         ) : (
-                          <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.95_0.01_260)]0/10" disabled={payingId === inv.id} onClick={() => markPaid(inv)}>
+                          <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-primary hover:bg-accent0/10" disabled={payingId === inv.id} onClick={() => markPaid(inv)}>
                             {payingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Marking…</> : 'Mark Paid'}
                           </Button>
                         )}

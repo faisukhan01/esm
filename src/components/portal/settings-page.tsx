@@ -64,7 +64,7 @@ export function SettingsPage({ user }: { user: any }) {
 
       {/* Profile info */}
       <Card className="p-6">
-        <h3 className="font-bold text-base mb-4 flex items-center gap-2"><User className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /> Profile Information</h3>
+        <h3 className="font-bold text-base mb-4 flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Profile Information</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="rounded-xl bg-muted/40 p-3">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Name</div>
@@ -102,17 +102,17 @@ export function SettingsPage({ user }: { user: any }) {
       {/* Change Password */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-base flex items-center gap-2"><Lock className="h-4 w-4 text-[oklch(0.22_0.04_260)]" /> Change Password</h3>
+          <h3 className="font-bold text-base flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Change Password</h3>
           {user?.mustChangePassword && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.95_0.01_260)] border border-[oklch(0.88_0.02_260)] px-2.5 py-1 text-[11px] font-medium text-[oklch(0.22_0.04_260)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent border border-accent px-2.5 py-1 text-[11px] font-medium text-primary">
               <Shield className="h-3 w-3" /> Action required
             </span>
           )}
         </div>
 
         {user?.mustChangePassword && (
-          <div className="rounded-xl bg-[oklch(0.95_0.01_260)] border border-[oklch(0.88_0.02_260)] p-3 mb-4">
-            <p className="text-sm text-[oklch(0.18_0.04_260)]">
+          <div className="rounded-xl bg-accent border border-accent p-3 mb-4">
+            <p className="text-sm text-primary">
               <strong>Please change your password.</strong> You're using a password assigned by your administrator. Change it now to secure your account.
             </p>
           </div>
@@ -165,7 +165,7 @@ export function SettingsPage({ user }: { user: any }) {
           </div>
 
           <Button
-            className="bg-[oklch(0.22_0.04_260)] hover:bg-[oklch(0.28_0.04_260)] text-white"
+            className="bg-primary hover:bg-primary/90 text-white"
             disabled={saving || !currentPassword || !newPassword || !confirmPassword}
             onClick={submit}
           >

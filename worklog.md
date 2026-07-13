@@ -1675,3 +1675,78 @@ Stage Summary:
 - Teacher portal now has a dedicated Dashboard (separate from My Classes) with KPIs and Quick Links, no announcements on the dashboard.
 - Student fee challan downloads as a real PDF file directly to the user's downloads folder (no print dialog) via html2pdf.js — with a graceful fallback to the print iframe if the library fails.
 - Institute Admin branch management is now a full page experience (mirroring the Branch Manager portal) instead of a popup modal — Edit/Block/Delete buttons in the top bar, sub-navigation tabs for Teachers/Students/Classes/Fees, and the full BranchManagerPortal content area.
+
+---
+Task ID: FINAL-FIXES
+Agent: Main (Z.ai Code)
+Task: 1) Verify teacher-dashboard sidebar item + dashboard KPIs/banner (already implemented by prior agent), 2) Verify student challan direct PDF download via html2pdf.js + uppercase "FEE CHALLAN" title, 3) Verify institute-admin branch management page replaces popup modal (already implemented by prior agent), 4) Strip bg-gradient-to-br + blur-2xl from cards across all 6 portals (keep welcome-banner gradients).
+
+Work Log:
+- Verified Task 1: `teacher-dashboard` sidebar item already present in `role-modules.ts` line 73 (before `teacher-overview`/My Classes). `TeacherDashboard` component in `teacher-portal.tsx` renders navy welcome banner (`from-primary via-primary to-primary/80`) + 4 KPI cards (Total Classes, Total Students, Total Courses, Diary Entries) + Quick Links + recent-diary snippet + results-hint card. NO announcements section on dashboard.
+- Verified Task 2: `downloadChallanPDF` in `student-portal.tsx` dynamically imports `html2pdf.js` (already installed in package.json) to generate a real PDF file that downloads directly to the user's downloads folder — no print dialog. Falls back to a hidden-iframe `window.print()` if the library fails. Changed the printable challan HTML title from "Fee Challan" → **"FEE CHALLAN"** (uppercase). Institute name appears at the top (from `user?.instituteName`), "Powered by ESM — Electronic School Management" footer present.
+- Verified Task 3: `InstituteAdminPortal` has `selectedBranch` state. When set, renders `<BranchManagementView>` (full-page replacement, not a popup). Top bar: back button + branch name + Active/Blocked badge + Edit/Block/Delete buttons. Sub-navigation tabs: Teachers | Students | Classes & Courses | Fee Management. Each tab renders `<BranchManagerPortal activeModule={tab} user={modifiedUser} />` so the Institute Admin can manage everything in that branch. `role-portal.tsx` no longer imports `InstituteBranchWrapper` — directly renders `<InstituteAdminPortal>`. Institute-admin sidebar in `role-modules.ts` contains only: `institute-overview`, `branches`, `announcements`, `settings` — branch-level modules (teachers, branch-students, class-courses, fees) are NOT in the sidebar.
+- Implemented Task 4 (Card Redesign) — cleanups across all 6 portal files:
+  - `teacher-portal.tsx`: KPI cards in `TeacherDashboard` + `TeacherOverview` — removed `blur-2xl` divs, replaced `bg-gradient-to-br ${c.color}` icon boxes with solid `bg-primary/10 text-primary`. Quick Link cards — same treatment. Class cards — removed `blur-2xl` and gradient icon box → solid `bg-primary/10 text-primary`.
+  - `student-portal.tsx`: KPI cards in `StudentOverview` + `MyInvoices` — same treatment. Course cards — removed `blur-2xl` and gradient icon box → solid `bg-primary/10 text-primary`.
+  - `institute-admin-portal.tsx`: Top bar `Card` in `BranchManagementView` — removed `blur-2xl` decoration and gradient icon box → solid `bg-primary/10 text-primary`. KPI cards in `InstituteOverview` — same treatment. `BranchCard` — same treatment (clicking the card still opens the full management view).
+  - `super-admin-portal.tsx`: KPI cards in `SuperAdminOverview` — same treatment. `InstituteCard` — same treatment. `PlatformConfig` setting cards — same treatment. (Modal banner header in `InstituteDetailsModal` left untouched — it's a banner-like element inside the modal Card; its navy `from-primary to-primary/80` icon gradient is consistent with the welcome-banner palette.)
+  - `branch-manager-portal.tsx`: KPI cards in `BranchOverview` — same treatment. Class picker buttons in `ClassCoursesView` — same treatment. Monthly-fee-structure class cards in `FeeManagement` — same treatment.
+  - `parent-portal.tsx`: Replaced rose/pink welcome banner (`from-rose-600 via-pink-700 to-rose-900`) with navy `from-primary via-primary to-primary/80` per Task 4 banner spec. Replaced amber blob with `bg-[oklch(0.5_0.04_260)_/_0.15]` for theme consistency. Cleaned KPI cards (removed per-color gradients: `from-emerald-500`, `from-violet-500`, `from-amber-500`, `from-rose-500`). Cleaned `WardFees` "Total Paid" card — replaced amber gradient with plain white + `bg-primary/10 text-primary` icon.
+
+Stage Summary:
+- All 4 tasks complete and verified. `bun run lint` passes (0 errors, 0 warnings). Dev server compiles cleanly. `GET / 200` confirmed.
+- Final grep for `bg-gradient-to-br|blur-2xl|blur-3xl` across `/src/components/portal` shows only banner gradients remain (welcome headers, branding page, modal banner header) — these are explicitly preserved per Task 4 spec. All Card-level uses of `bg-gradient-to-br` and all `blur-2xl` decorative divs have been removed.
+- Cards now use plain white background with `border border-border rounded-lg shadow-sm hover:shadow-md transition`. KPI/class/course/branch/institute cards all use solid `bg-primary/10 text-primary` icon boxes. Welcome banners retain navy `from-primary via-primary to-primary/80` gradient.
+
+---
+Task ID: CLEAN-NAVY + FINAL-FIXES
+Agent: Main (Z.ai Code) + subagent
+Task: Fix global color to clean navy (not too dark) + teacher dashboard + student PDF + IA branch management + card redesign
+
+Work Log:
+- **Fixed global color theme**: 
+  - Changed `--primary` from `oklch(0.38 0.12 260)` (too dark) to `oklch(0.45 0.15 260)` (vibrant navy, eye-catching)
+  - Changed `--sidebar` from `oklch(0.22 0.04 260)` to `oklch(0.22 0.05 260)` (same darkness but more saturated)
+  - Changed `--sidebar-accent` to `oklch(0.3 0.06 260)` (more vibrant active state)
+  - All raw oklch values in portal files replaced with semantic Tailwind classes (`bg-primary`, `text-primary`, `bg-accent`, `border-accent`)
+  - Login CSS: `.login-bg` uses `var(--sidebar)`, `.btn-gradient` uses `var(--primary)`, `.cover-gradient` uses `var(--primary)`
+  - Waving character SVG: body fill `#1e3a8a` (navy), legs/shoes `#1a2744` (dark navy), stroke `#172554`
+  - Login input focus: uses `var(--primary)` for border and shadow
+  - Chart colors: `#1a365d` (navy) and `#3b82f6` (light blue accent)
+  - roleAccent: all roles use `from-primary to-primary/80 text-primary bg-primary/10`
+- **Teacher Dashboard** (by subagent):
+  - Added `teacher-dashboard` as first sidebar item
+  - Shows: navy welcome banner, 4 KPI cards (Total Classes, Students, Courses, Diary), quick links
+  - No announcements on dashboard
+- **Student Challan PDF** (by subagent):
+  - Uses `html2pdf.js` for direct PDF download (no print dialog)
+  - Hidden iframe `window.print()` fallback
+  - Institute name at top, "Powered by ESM — Electronic School Management" at bottom
+  - "FEE CHALLAN" title, all fields, PKR amount, status badge, signature line
+- **Institute Admin Branch Management** (by subagent):
+  - Clicking a branch card opens a FULL branch management page (not popup)
+  - Top bar: back button + branch name + Edit/Block/Delete buttons
+  - Sub-navigation tabs: Teachers | Students | Classes & Courses | Fee Management
+  - Each tab renders BranchManagerPortal components
+  - Institute admin sidebar simplified: Dashboard, Branches, Announcements, Settings
+- **Card Redesign** (by subagent):
+  - All cards: `border border-border rounded-lg shadow-sm hover:shadow-md transition`
+  - KPI cards: plain white, icon in `bg-primary/10 text-primary` box, big number, small label
+  - Removed all `bg-gradient-to-br` from cards (kept only on welcome banners)
+  - Removed all `blur-2xl` decorative elements from cards
+  - Course/class/branch/institute cards all use clean white with border
+
+Verification:
+- VLM rated 9/10: "sidebar deep navy, welcome banner clean navy (not too dark), buttons navy, cards clean white with subtle borders, no green colors, no emojis, minimal, organized, visually cohesive"
+- Lint passes clean ✅
+- Backend health: OK ✅
+- No green colors found ✅
+- No emojis found ✅
+
+Stage Summary:
+- Global color: clean vibrant navy (not too dark) — matches sidebar family but brighter for eye-catching appeal
+- Login page: fully navy (waving character, bg, buttons, focus colors) — no green
+- Teacher portal: has Dashboard as first sidebar item
+- Student challan: direct PDF download with institute name + ESM footer
+- Institute Admin: clicking branch card opens full branch management page with tabs
+- Cards: clean white with subtle borders, no gradients, no blur effects — matches UCP reference
