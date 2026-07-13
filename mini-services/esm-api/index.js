@@ -1054,9 +1054,9 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
   if (!instituteId) return res.json({ kpi: {}, monthlyRevenue: [], branchPerformance: [], recentTransactions: [] });
 
   try {
-    // 1. All fee invoices for this institute (paid + unpaid)
-    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, branchId, month, year, amount, status, paidDate, paidAmount, paymentMethod, challanNo, createdAt FROM fee_invoices WHERE instituteId = ? ORDER BY createdAt DESC', args: [instituteId] });
-    const invoices = invR.rows;
+    // 1. Manual revenue entries entered by Institute Admin (per branch in this institute)
+    const revR = await db.execute({ sql: 'SELECT * FROM manual_revenue WHERE instituteId = ? AND enteredByRole = ? ORDER BY year DESC, createdAt DESC', args: [instituteId, 'institute-admin'] });
+    const revenueEntries = revR.rows;
 
     // 2. All salary payments for this institute
     const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments WHERE instituteId = ? ORDER BY createdAt DESC', args: [instituteId] });
@@ -1078,9 +1078,8 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
     const stuR = await db.execute({ sql: 'SELECT id, name, class, section, branchId, status, blocked FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'student'] });
     const students = stuR.rows;
 
-    // ===== Compute KPIs =====
-    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
-    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    // ===== Compute KPIs (from manual revenue) =====
+    const totalRevenue = revenueEntries.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const monthlySalaryExpense = teachers.reduce((sum, t) => {
       const ss = salaryStruct.find(s => s.teacherId === t.id);
@@ -1088,7 +1087,7 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
     }, 0);
     const netBalance = totalRevenue - totalSalaryPaid;
 
-    // ===== Monthly revenue (last 12 months) =====
+    // ===== Monthly revenue (last 12 months) — from manual revenue entries =====
     const now = new Date();
     const months = [];
     for (let i = 11; i >= 0; i--) {
@@ -1096,8 +1095,8 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
       const monthName = d.toLocaleString('en-US', { month: 'short' });
       const year = d.getFullYear();
       const monthFull = d.toLocaleString('en-US', { month: 'long' });
-      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
-      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const monthRev = revenueEntries.filter(r => r.year === year && r.month === monthFull);
+      const revenue = monthRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
       const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
       months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
@@ -1107,20 +1106,18 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
     const currentYear = now.getFullYear();
     const years = [];
     for (let y = currentYear - 4; y <= currentYear; y++) {
-      const yearInv = invoices.filter(inv => inv.year === y && inv.status === 'Paid');
-      const revenue = yearInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const yearRev = revenueEntries.filter(r => r.year === y);
+      const revenue = yearRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       const yearSal = salaries.filter(sal => sal.year === y);
       const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
       years.push({ year: y, revenue, salary, net: revenue - salary });
     }
 
-    // ===== Branch performance =====
-    const branchPerformance = await Promise.all(branches.map(async (br) => {
-      const brInv = invoices.filter(i => i.branchId === br.id);
-      const brRevenue = brInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
-      const brPending = brInv.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    // ===== Branch performance — from manual revenue per branch =====
+    const branchPerformance = branches.map(br => {
+      const brRev = revenueEntries.filter(r => r.sourceId === br.id);
+      const brRevenue = brRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       const brSal = salaries.filter(s => s.branchId === br.id).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      // Get fresh student/teacher counts
       const stuCount = students.filter(s => s.branchId === br.id).length;
       const tchCount = teachers.filter(t => t.branchId === br.id).length;
       return {
@@ -1132,42 +1129,26 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
         students: stuCount,
         teachers: tchCount,
         revenue: brRevenue,
-        pendingFees: brPending,
+        pendingFees: 0,
         salaryPaid: brSal,
         net: brRevenue - brSal,
-        invoices: brInv.length,
+        invoices: brRev.length,
       };
-    }));
+    });
 
-    // ===== Recent transactions (last 10) =====
-    const recentPaidInvoices = invoices
-      .filter(i => i.status === 'Paid')
-      .slice(0, 10)
-      .map(i => ({
-        id: i.id,
-        type: 'Fee Payment',
-        date: i.paidDate || i.createdAt,
-        party: i.studentName || 'Student',
-        branchId: i.branchId,
-        amount: Number(i.paidAmount) || 0,
-        method: i.paymentMethod || 'Cash',
-        status: 'Paid',
+    // ===== Recent transactions — from manual revenue entries =====
+    const recentTransactions = revenueEntries
+      .slice(0, 12)
+      .map(r => ({
+        id: r.id,
+        type: 'Revenue Entry',
+        date: r.createdAt,
+        party: r.sourceName,
+        branchId: r.sourceId,
+        amount: Number(r.amount) || 0,
+        method: r.month + ' ' + r.year,
+        status: 'Received',
       }));
-    const recentSalaries = salaries
-      .slice(0, 10)
-      .map(s => ({
-        id: s.id,
-        type: 'Salary Payout',
-        date: s.paidDate || s.createdAt,
-        party: s.teacherName || 'Teacher',
-        branchId: s.branchId,
-        amount: Number(s.amount) || 0,
-        method: s.paymentMethod || 'Bank Transfer',
-        status: s.status || 'Paid',
-      }));
-    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 12);
 
     // ===== Class distribution (for students analytics) =====
     const classMap = {};
@@ -1175,17 +1156,11 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
       const c = s.class || 'Unassigned';
       if (!classMap[c]) classMap[c] = { class: c, students: 0, paid: 0, pending: 0 };
       classMap[c].students++;
-      const sInv = invoices.filter(i => i.studentId === s.id);
-      classMap[c].paid += sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
-      classMap[c].pending += sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
     }
     const classDistribution = Object.values(classMap).sort((a, b) => b.students - a.students);
 
     // ===== Per-student fee summary =====
     const studentFeeSummary = students.map(s => {
-      const sInv = invoices.filter(i => i.studentId === s.id);
-      const paid = sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
-      const pending = sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
       const branch = branches.find(b => b.id === s.branchId);
       return {
         id: s.id,
@@ -1195,12 +1170,12 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
         branch: branch?.name || '—',
         branchId: s.branchId,
         status: s.blocked === 1 ? 'Blocked' : (s.status || 'Active'),
-        invoices: sInv.length,
-        paid,
-        pending,
-        total: paid + pending,
+        invoices: 0,
+        paid: 0,
+        pending: 0,
+        total: 0,
       };
-    }).sort((a, b) => b.pending - a.pending);
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
     // ===== Per-teacher salary summary =====
     const teacherSalarySummary = teachers.map(t => {
@@ -1230,13 +1205,14 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
         students: students.length,
         teachers: teachers.length,
         totalRevenue,
-        pendingFees,
+        pendingFees: 0,
         totalSalaryPaid,
         monthlySalaryExpense,
         netBalance,
-        totalInvoices: invoices.length,
-        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
-        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+        totalInvoices: revenueEntries.length,
+        paidInvoices: revenueEntries.length,
+        unpaidInvoices: 0,
+        revenueEntries: revenueEntries.length,
       },
       monthlyRevenue: months,
       yearlyRevenue: years,
@@ -1245,6 +1221,7 @@ app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 's
       classDistribution,
       studentFeeSummary,
       teacherSalarySummary,
+      revenueEntries,
     });
   } catch (e) {
     console.error('Institute finance error:', e);
@@ -1414,9 +1391,9 @@ app.get('/api/branch/finance', requireAuth, requireRole('branch-manager', 'insti
 // Platform-wide finance across all institutes for the Super Admin dashboard.
 app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async (req, res) => {
   try {
-    // 1. All fee invoices across all institutes
-    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, branchId, instituteId, month, year, amount, status, paidDate, paidAmount, paymentMethod, createdAt FROM fee_invoices ORDER BY createdAt DESC LIMIT 500' });
-    const invoices = invR.rows;
+    // 1. Manual revenue entries entered by Super Admin (per institute)
+    const revR = await db.execute({ sql: "SELECT * FROM manual_revenue WHERE enteredByRole = ? ORDER BY year DESC, createdAt DESC", args: ['super-admin'] });
+    const revenueEntries = revR.rows;
 
     // 2. All salary payments
     const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, instituteId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments ORDER BY createdAt DESC LIMIT 500' });
@@ -1436,13 +1413,12 @@ app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async 
     const totalStudents = stuR.rows[0].count;
     const totalTeachers = tchR.rows[0].count;
 
-    // ===== KPIs =====
-    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
-    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+    // ===== KPIs (from manual revenue) =====
+    const totalRevenue = revenueEntries.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const netBalance = totalRevenue - totalSalaryPaid;
 
-    // ===== Monthly revenue (last 12 months) =====
+    // ===== Monthly revenue (last 12 months) — from manual revenue entries =====
     const now = new Date();
     const months = [];
     for (let i = 11; i >= 0; i--) {
@@ -1450,8 +1426,8 @@ app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async 
       const monthName = d.toLocaleString('en-US', { month: 'short' });
       const year = d.getFullYear();
       const monthFull = d.toLocaleString('en-US', { month: 'long' });
-      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
-      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const monthRev = revenueEntries.filter(r => r.year === year && r.month === monthFull);
+      const revenue = monthRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
       const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
       months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
@@ -1461,18 +1437,20 @@ app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async 
     const currentYear = now.getFullYear();
     const years = [];
     for (let y = currentYear - 4; y <= currentYear; y++) {
-      const yearInv = invoices.filter(inv => inv.year === y && inv.status === 'Paid');
-      const revenue = yearInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+      const yearRev = revenueEntries.filter(r => r.year === y);
+      const revenue = yearRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
       const yearSal = salaries.filter(sal => sal.year === y);
       const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
       years.push({ year: y, revenue, salary, net: revenue - salary });
     }
 
-    // ===== Institute performance =====
+    // ===== Institute performance — from manual revenue per institute =====
     const institutePerformance = institutes.map(inst => {
-      const instInv = invoices.filter(i => i.instituteId === inst.id);
+      const instRev = revenueEntries.filter(r => r.sourceId === inst.id);
       const instSal = salaries.filter(s => s.instituteId === inst.id);
       const instBranches = branches.filter(b => b.instituteId === inst.id);
+      const instRevenue = instRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+      const instSalPaid = instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0);
       return {
         id: inst.id,
         name: inst.name,
@@ -1481,33 +1459,28 @@ app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async 
         branches: instBranches.length,
         students: inst.students || 0,
         staff: inst.staff || 0,
-        revenue: instInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0),
-        pendingFees: instInv.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0),
-        salaryPaid: instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0),
-        net: instInv.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0) - instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+        revenue: instRevenue,
+        pendingFees: 0,
+        salaryPaid: instSalPaid,
+        net: instRevenue - instSalPaid,
         status: inst.blocked === 1 ? 'Blocked' : (inst.status || 'Active'),
       };
     }).sort((a, b) => b.revenue - a.revenue);
 
-    // ===== Recent transactions =====
-    const recentPaidInvoices = invoices
-      .filter(i => i.status === 'Paid')
-      .slice(0, 8)
-      .map(i => ({
-        id: i.id, type: 'Fee Payment', date: i.paidDate || i.createdAt,
-        party: i.studentName || 'Student', instituteId: i.instituteId, branchId: i.branchId,
-        amount: Number(i.paidAmount) || 0, method: i.paymentMethod || 'Cash', status: 'Paid',
+    // ===== Recent transactions — from manual revenue entries =====
+    const recentTransactions = revenueEntries
+      .slice(0, 15)
+      .map(r => ({
+        id: r.id,
+        type: 'Revenue Entry',
+        date: r.createdAt,
+        party: r.sourceName,
+        instituteId: r.sourceId,
+        branchId: null,
+        amount: Number(r.amount) || 0,
+        method: r.month + ' ' + r.year,
+        status: 'Received',
       }));
-    const recentSalaries = salaries
-      .slice(0, 8)
-      .map(s => ({
-        id: s.id, type: 'Salary Payout', date: s.paidDate || s.createdAt,
-        party: s.teacherName || 'Teacher', instituteId: s.instituteId, branchId: s.branchId,
-        amount: Number(s.amount) || 0, method: s.paymentMethod || 'Bank Transfer', status: s.status || 'Paid',
-      }));
-    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 12);
 
     res.json({
       kpi: {
@@ -1517,17 +1490,19 @@ app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async 
         students: totalStudents,
         teachers: totalTeachers,
         totalRevenue,
-        pendingFees,
+        pendingFees: 0,
         totalSalaryPaid,
         netBalance,
-        totalInvoices: invoices.length,
-        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
-        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+        totalInvoices: revenueEntries.length,
+        paidInvoices: revenueEntries.length,
+        unpaidInvoices: 0,
+        revenueEntries: revenueEntries.length,
       },
       monthlyRevenue: months,
       yearlyRevenue: years,
       institutePerformance,
       recentTransactions,
+      revenueEntries,
     });
   } catch (e) {
     console.error('Platform finance error:', e);
@@ -1941,6 +1916,88 @@ app.post('/api/transport/routes', requireAuth, requireRole('branch-manager', 'in
     args: [id, brId, routeName, driver || '', vehicleNo || '', Number(fare) || 0, stops || '', Number(capacity) || 30],
   });
   res.status(201).json({ id, success: true });
+});
+
+// ===================== MANUAL REVENUE =====================
+// Super Admin enters revenue per institute; Institute Admin enters revenue per branch.
+// POST /api/revenue — add/update a revenue entry (upsert by sourceId + month + year)
+// GET /api/revenue — list revenue entries (filtered by role/scope)
+// DELETE /api/revenue/:id — delete a revenue entry
+
+app.post('/api/revenue', requireAuth, requireRole('super-admin', 'institute-admin'), async (req, res) => {
+  const { sourceType, sourceId, sourceName, amount, month, year, notes } = req.body || {};
+  if (!sourceType || !sourceId || !sourceName || amount === undefined || !month || !year) {
+    return res.status(400).json({ error: 'sourceType, sourceId, sourceName, amount, month, year required' });
+  }
+  // Authorization: super-admin enters revenue for institutes; institute-admin enters for branches in their institute
+  let instituteId = null;
+  if (req.user.role === 'super-admin') {
+    if (sourceType !== 'institute') return res.status(403).json({ error: 'Super Admin can only enter revenue for institutes' });
+    instituteId = sourceId;
+  } else if (req.user.role === 'institute-admin') {
+    if (sourceType !== 'branch') return res.status(403).json({ error: 'Institute Admin can only enter revenue for branches' });
+    instituteId = req.user.instituteId;
+    // Verify the branch belongs to this institute
+    const brR = await db.execute({ sql: 'SELECT id FROM branches WHERE id = ? AND instituteId = ?', args: [sourceId, instituteId] });
+    if (brR.rows.length === 0) return res.status(403).json({ error: 'Branch does not belong to your institute' });
+  }
+
+  // Upsert: if an entry exists for this source + month + year, update it; otherwise insert
+  const existing = await db.execute({
+    sql: 'SELECT id FROM manual_revenue WHERE sourceId = ? AND month = ? AND year = ? AND enteredByRole = ?',
+    args: [sourceId, month, year, req.user.role],
+  });
+  if (existing.rows.length > 0) {
+    await db.execute({
+      sql: 'UPDATE manual_revenue SET amount = ?, sourceName = ?, notes = ?, instituteId = ? WHERE id = ?',
+      args: [Number(amount), sourceName, notes || '', instituteId, existing.rows[0].id],
+    });
+    res.json({ success: true, id: existing.rows[0].id, updated: true });
+  } else {
+    const id = nextId('REV');
+    await db.execute({
+      sql: `INSERT INTO manual_revenue (id, enteredBy, enteredByRole, instituteId, sourceType, sourceId, sourceName, amount, month, year, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, req.user.id, req.user.role, instituteId, sourceType, sourceId, sourceName, Number(amount), month, year, notes || ''],
+    });
+    res.status(201).json({ success: true, id });
+  }
+});
+
+app.get('/api/revenue', requireAuth, async (req, res) => {
+  const { sourceType, sourceId, instituteId, month, year } = req.query;
+  let sql = 'SELECT * FROM manual_revenue WHERE 1=1';
+  const args = [];
+  // Scope by role
+  if (req.user.role === 'super-admin') {
+    // Super Admin sees all revenue they entered (sourceType = institute)
+    sql += ' AND enteredByRole = ?';
+    args.push('super-admin');
+  } else if (req.user.role === 'institute-admin') {
+    // Institute Admin sees revenue for their institute only
+    sql += ' AND instituteId = ? AND enteredByRole = ?';
+    args.push(req.user.instituteId, 'institute-admin');
+  }
+  if (sourceType) { sql += ' AND sourceType = ?'; args.push(sourceType); }
+  if (sourceId) { sql += ' AND sourceId = ?'; args.push(sourceId); }
+  if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  if (month) { sql += ' AND month = ?'; args.push(month); }
+  if (year) { sql += ' AND year = ?'; args.push(Number(year)); }
+  sql += ' ORDER BY year DESC, createdAt DESC LIMIT 500';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.delete('/api/revenue/:id', requireAuth, requireRole('super-admin', 'institute-admin'), async (req, res) => {
+  const r = await db.execute({ sql: 'SELECT * FROM manual_revenue WHERE id = ?', args: [req.params.id] });
+  if (r.rows.length === 0) return res.status(404).json({ error: 'Revenue entry not found' });
+  const entry = r.rows[0];
+  // Authorization check
+  if (req.user.role === 'institute-admin' && entry.instituteId !== req.user.instituteId) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  await db.execute({ sql: 'DELETE FROM manual_revenue WHERE id = ?', args: [req.params.id] });
+  res.json({ success: true });
 });
 
 app.get('/api/health', async (req, res) => {

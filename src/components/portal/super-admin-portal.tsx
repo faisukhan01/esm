@@ -41,6 +41,9 @@ function exportToCSV(filename: string, headers: string[], rows: (string | number
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
+// ---- Month names constant ----
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 // ---------- Main router ----------
 export function SuperAdminPortal({ activeModule, user }: { activeModule: string; user: any }) {
   // Top-level data shared across the dashboard and institutes pages
@@ -94,7 +97,7 @@ export function SuperAdminPortal({ activeModule, user }: { activeModule: string;
     );
   }
   if (activeModule === 'platform-analytics') {
-    return <PlatformAnalytics finance={finance} financeLoading={financeLoading} institutes={institutes} />;
+    return <PlatformAnalytics finance={finance} financeLoading={financeLoading} institutes={institutes} onRefresh={refreshFinance} />;
   }
   if (activeModule === 'announcements') {
     return <AnnouncementsView user={user} institutes={institutes} institutesLoading={institutesLoading} />;
@@ -273,9 +276,70 @@ function PlatformOverview({
 }
 
 // ---------- Platform Analytics (dedicated financial analytics page) ----------
-function PlatformAnalytics({ finance, financeLoading }: any) {
+function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: any) {
   const finKpis = finance?.kpi;
   const finLoading = financeLoading || !finance;
+
+  // ---- Revenue form state ----
+  const currentMonthName = MONTHS[new Date().getMonth()];
+  const [revInstituteId, setRevInstituteId] = useState<string>('');
+  const [revMonth, setRevMonth] = useState<string>(currentMonthName);
+  const [revYear, setRevYear] = useState<string>(String(new Date().getFullYear()));
+  const [revAmount, setRevAmount] = useState<string>('');
+  const [revSubmitting, setRevSubmitting] = useState(false);
+  const [revDeletingId, setRevDeletingId] = useState<string | null>(null);
+
+  const selectedInstitute = institutes?.find((i: any) => i.id === revInstituteId);
+  const noInstitutes = !institutes || institutes.length === 0;
+
+  const handleAddRevenue = async () => {
+    if (!revInstituteId || !revMonth || !revYear || !revAmount) {
+      toast({ title: 'Missing fields', description: 'Please select institute, month, year and enter an amount.', variant: 'destructive' });
+      return;
+    }
+    const amountNum = Number(revAmount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      toast({ title: 'Invalid amount', description: 'Amount must be a positive number.', variant: 'destructive' });
+      return;
+    }
+    setRevSubmitting(true);
+    try {
+      const res: any = await api.addRevenue({
+        sourceType: 'institute',
+        sourceId: revInstituteId,
+        sourceName: selectedInstitute?.name || '',
+        amount: amountNum,
+        month: revMonth,
+        year: Number(revYear),
+        notes: '',
+      });
+      toast({
+        title: res?.updated ? 'Revenue updated' : 'Revenue added',
+        description: `${selectedInstitute?.name || 'Institute'} · ${formatPKR(amountNum)} for ${revMonth} ${revYear}`,
+      });
+      setRevAmount('');
+      onRefresh?.();
+    } catch (e: any) {
+      toast({ title: 'Failed to add revenue', description: e?.message || 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setRevSubmitting(false);
+    }
+  };
+
+  const handleDeleteRevenue = async (id: string) => {
+    setRevDeletingId(id);
+    try {
+      await api.deleteRevenue(id);
+      toast({ title: 'Revenue entry deleted' });
+      onRefresh?.();
+    } catch (e: any) {
+      toast({ title: 'Failed to delete', description: e?.message || 'Something went wrong', variant: 'destructive' });
+    } finally {
+      setRevDeletingId(null);
+    }
+  };
+
+  const revenueEntries: any[] = Array.isArray(finance?.revenueEntries) ? finance.revenueEntries : [];
 
   const handleExportInstitutePerformance = () => {
     if (!finance?.institutePerformance) return;
@@ -312,6 +376,139 @@ function PlatformAnalytics({ finance, financeLoading }: any) {
           </Button>
         }
       />
+
+      {/* Revenue Management — manual entry form */}
+      <Card className="border border-border rounded-lg shadow-sm p-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <h3 className="font-bold text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-primary" /> Revenue Management
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Enter monthly revenue received from each institute</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <Label className="text-xs">Institute</Label>
+            <Select value={revInstituteId} onValueChange={setRevInstituteId} disabled={noInstitutes}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={noInstitutes ? 'Add institutes first' : 'Select institute'} />
+              </SelectTrigger>
+              <SelectContent>
+                {institutes?.map((inst: any) => (
+                  <SelectItem key={inst.id} value={inst.id}>{inst.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Month</Label>
+            <Select value={revMonth} onValueChange={setRevMonth}>
+              <SelectTrigger className="mt-1"><SelectValue placeholder="Select month" /></SelectTrigger>
+              <SelectContent>
+                {MONTHS.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Year</Label>
+            <Input
+              type="number"
+              className="mt-1"
+              value={revYear}
+              onChange={(e) => setRevYear(e.target.value)}
+              placeholder={String(new Date().getFullYear())}
+              min={2000}
+              max={2100}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Amount (PKR)</Label>
+            <Input
+              type="number"
+              className="mt-1"
+              value={revAmount}
+              onChange={(e) => setRevAmount(e.target.value)}
+              placeholder="e.g. 50000"
+              min={0}
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white"
+            onClick={handleAddRevenue}
+            disabled={revSubmitting || noInstitutes}
+          >
+            {revSubmitting ? (
+              <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</>
+            ) : (
+              <><Plus className="h-4 w-4 mr-1.5" /> Add Revenue</>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Re-entering an existing institute + month + year will update the amount.
+          </p>
+        </div>
+      </Card>
+
+      {/* Revenue Entries table */}
+      <Card className="border border-border rounded-lg shadow-sm p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" /> Revenue Entries
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              All manually-entered revenue across institutes{revenueEntries.length > 0 ? ` · ${revenueEntries.length} entr${revenueEntries.length === 1 ? 'y' : 'ies'}` : ''}
+            </p>
+          </div>
+        </div>
+        {revenueEntries.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            No revenue entries yet. Add your first entry above.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10">
+                <TableRow>
+                  <TableHead>Institute</TableHead>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="w-[60px] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {revenueEntries.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.sourceName || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.month}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">{r.year}</TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold text-emerald-600 whitespace-nowrap">{formatPKR(r.amount)}</TableCell>
+                    <TableCell className="text-muted-foreground max-w-xs truncate">{r.notes || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <button
+                        type="button"
+                        aria-label="Delete revenue entry"
+                        className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleDeleteRevenue(r.id)}
+                        disabled={revDeletingId === r.id}
+                      >
+                        {revDeletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
 
       {/* Financial KPI cards (platform-wide finance) */}
       {finLoading ? (

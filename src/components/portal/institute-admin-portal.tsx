@@ -373,13 +373,22 @@ function BranchesView({ user, branches, loading, onAddBranch, onSelectBranch, on
 }
 
 // ============== 3. Fees & Revenue View ==============
-function InstituteFeesView({ finance, loading }: any) {
+function InstituteFeesView({ finance, loading, branches, onRefresh }: any) {
   const kpi = finance?.kpi || {};
   const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
   const studentFees = Array.isArray(finance?.studentFeeSummary) ? finance.studentFeeSummary : [];
+  const revenueEntries = Array.isArray(finance?.revenueEntries) ? finance.revenueEntries : [];
 
   const [query, setQuery] = useState('');
   const [sortDesc, setSortDesc] = useState(true);
+
+  // Revenue manual-entry form state
+  const [revBranchId, setRevBranchId] = useState<string>('');
+  const [revMonth, setRevMonth] = useState<string>(MONTHS[new Date().getMonth()]);
+  const [revYear, setRevYear] = useState<string>(String(new Date().getFullYear()));
+  const [revAmount, setRevAmount] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const thisMonth = monthly[monthly.length - 1];
   const thisYear = (finance?.yearlyRevenue || []).slice(-1)[0];
@@ -397,8 +406,50 @@ function InstituteFeesView({ finance, loading }: any) {
     return [...list].sort((a, b) => sortDesc ? b.pending - a.pending : a.pending - b.pending);
   }, [studentFees, query, sortDesc]);
 
+  const handleAddRevenue = async () => {
+    if (!revBranchId) { toast({ title: 'Select a branch', description: 'Please choose a branch first.', variant: 'destructive' }); return; }
+    if (!revAmount || Number(revAmount) <= 0) { toast({ title: 'Invalid amount', description: 'Enter a valid amount greater than 0.', variant: 'destructive' }); return; }
+    if (!revYear || Number(revYear) < 2000) { toast({ title: 'Invalid year', description: 'Enter a valid year.', variant: 'destructive' }); return; }
+    const branch = (branches || []).find((b: any) => b.id === revBranchId);
+    if (!branch) { toast({ title: 'Branch not found', variant: 'destructive' }); return; }
+    setSubmitting(true);
+    try {
+      await api.addRevenue({
+        sourceType: 'branch',
+        sourceId: revBranchId,
+        sourceName: branch.name,
+        amount: Number(revAmount),
+        month: revMonth,
+        year: Number(revYear),
+        notes: '',
+      });
+      toast({ title: 'Revenue added', description: `${branch.name} · ${revMonth} ${revYear} · ${formatPKR(revAmount)}` });
+      setRevAmount('');
+      onRefresh?.();
+    } catch (e: any) {
+      toast({ title: 'Failed to add revenue', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteRevenue = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await api.deleteRevenue(id);
+      toast({ title: 'Revenue entry deleted' });
+      onRefresh?.();
+    } catch (e: any) {
+      toast({ title: 'Failed to delete', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) return <Card className="p-6"><LoadingState label="Loading fee records…" /></Card>;
   if (!finance) return <EmptyState icon={DollarSign} title="No fee data" desc="Fee invoices will appear here once students are enrolled and invoices generated." />;
+
+  const hasBranches = Array.isArray(branches) && branches.length > 0;
 
   return (
     <div className="space-y-6">
@@ -409,6 +460,68 @@ function InstituteFeesView({ finance, loading }: any) {
         }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
       } />
 
+      {/* Revenue Management — manual entry form (TOP of page, before KPI strip) */}
+      <Card className="border border-border rounded-lg shadow-sm p-5">
+        <div className="mb-4">
+          <h3 className="font-bold text-base">Revenue Management</h3>
+          <p className="text-xs text-muted-foreground">Enter monthly revenue received from each branch</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Branch</Label>
+            <Select value={revBranchId} onValueChange={setRevBranchId} disabled={!hasBranches}>
+              <SelectTrigger>
+                {!hasBranches
+                  ? <span className="text-muted-foreground">Add branches first</span>
+                  : <SelectValue placeholder="Select branch" />}
+              </SelectTrigger>
+              <SelectContent>
+                {(branches || []).map((b: any) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Month</Label>
+            <Select value={revMonth} onValueChange={setRevMonth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Year</Label>
+            <Input
+              type="number"
+              value={revYear}
+              onChange={e => setRevYear(e.target.value)}
+              placeholder="e.g. 2026"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Amount (PKR)</Label>
+            <Input
+              type="number"
+              value={revAmount}
+              onChange={e => setRevAmount(e.target.value)}
+              placeholder="e.g. 30000"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white"
+            onClick={handleAddRevenue}
+            disabled={submitting || !hasBranches}
+          >
+            {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
+            Add Revenue
+          </Button>
+        </div>
+      </Card>
+
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KPICard icon={DollarSign} label="Total Collected" value={formatPKR(kpi.totalRevenue)} sub={`${kpi.paidInvoices || 0} invoices paid`} tone="positive" />
@@ -416,6 +529,56 @@ function InstituteFeesView({ finance, loading }: any) {
         <KPICard icon={TrendingUp} label="This Month" value={formatPKR(thisMonth?.revenue || 0)} sub={thisMonth ? `${thisMonth.month} ${thisMonth.year}` : '—'} />
         <KPICard icon={Calendar} label="This Year" value={formatPKR(thisYear?.revenue || 0)} sub={thisYear ? `FY ${thisYear.year}` : '—'} />
       </div>
+
+      {/* Revenue Entries table — below the form, reflects manual entries in real-time */}
+      <Card className="border border-border rounded-lg shadow-sm p-5">
+        <div className="mb-4">
+          <h3 className="font-bold text-base">Revenue Entries</h3>
+          <p className="text-xs text-muted-foreground">All manually entered branch revenue records</p>
+        </div>
+        {revenueEntries.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            No revenue entries yet. Add your first entry above.
+          </div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs">Month</TableHead>
+                  <TableHead className="text-xs">Year</TableHead>
+                  <TableHead className="text-xs text-right">Amount</TableHead>
+                  <TableHead className="text-xs">Notes</TableHead>
+                  <TableHead className="text-xs text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {revenueEntries.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm font-medium">{r.sourceName}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{r.month}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground tabular-nums">{r.year}</TableCell>
+                    <TableCell className="text-sm text-right tabular-nums font-semibold text-emerald-600">{formatPKR(r.amount)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate">{r.notes || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <button
+                        type="button"
+                        aria-label="Delete revenue entry"
+                        onClick={() => handleDeleteRevenue(r.id)}
+                        disabled={deletingId === r.id}
+                        className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition disabled:opacity-50"
+                      >
+                        {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
 
       {/* Revenue chart */}
       <Card className="p-5 border border-border rounded-lg shadow-sm">

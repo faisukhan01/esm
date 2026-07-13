@@ -2378,3 +2378,140 @@ Stage Summary:
 Unresolved issues or risks:
 - Pre-existing TS error in `teacher-portal.tsx`: `classStudents` is used in `PostResults` component (line 1144) but defined in `ClassAttendance` component (line 1026) — this would crash if a teacher tries to post results. Should be fixed in a future round by defining `classStudents` inside `PostResults` or passing it as a prop.
 - The old `dashboard/modules/` files have multiple TS errors but are not used by any active portal (they're legacy files from an earlier dashboard design).
+
+---
+Task ID: IA-REVENUE-UI
+Agent: full-stack-developer
+Task: Add Revenue Management UI to Institute Admin Fees & Revenue page
+
+Work Log:
+- Read worklog.md tail (saw SA-DASHBOARD-SIMPLIFY and IA-DASHBOARD-SIMPLIFY context — both Institute Admin & Super Admin dashboards were simplified, separate Analytics/Fees pages hold the detailed financial data) and the current institute-admin-portal.tsx (1748 lines after edits).
+- Read InstituteFeesView component (originally lines 376-508) to understand the existing layout: PageHeader → KPI strip (4 cards) → Monthly Revenue BarChart → All Fee Invoices table (with search + sort). Confirmed it only received `{ finance, loading }` and did NOT accept `branches` or `onRefresh`.
+- Verified the parent `InstituteAdminPortal` already builds a `viewProps` object (lines 117-126) containing `{ finance, branches, loading, user, onRefresh: refresh, onAddBranch, onSelectBranch, setActiveModule }` and spreads it into `<InstituteFeesView {...viewProps} />` at line 145. This means `branches` and `onRefresh` were already being passed — only the child's destructuring signature needed updating.
+- Verified API client methods exist in src/lib/api.ts: `api.addRevenue({ sourceType, sourceId, sourceName, amount, month, year, notes? })` (line 252), `api.getRevenue(params?)` (line 254), `api.deleteRevenue(id)` (line 263).
+- Verified required imports are all already present: `Card`, `Button`, `Input`, `Label`, `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue`, `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`, `Plus`, `Trash2`, `Loader2` icons, `toast`, `formatPKR` helper, `MONTHS` constant.
+- Step 1 — Updated `InstituteFeesView` signature from `{ finance, loading }: any` to `{ finance, loading, branches, onRefresh }: any`.
+- Step 2 — Added `revenueEntries` derived from `finance?.revenueEntries` (defensive Array.isArray check, defaults to []).
+- Step 3 — Added form state hooks: `revBranchId` (string, default ''), `revMonth` (string, default = MONTHS[currentMonth]), `revYear` (string, default = current year), `revAmount` (string, default ''), `submitting` (boolean), `deletingId` (string | null for per-row delete loading state).
+- Step 4 — Added `handleAddRevenue` async handler:
+  - Validates branch selected, amount > 0, year >= 2000 (destructive toast on failure).
+  - Looks up the branch object from `branches` to get its `name`.
+  - Calls `api.addRevenue({ sourceType: 'branch', sourceId: revBranchId, sourceName: branch.name, amount: Number(revAmount), month: revMonth, year: Number(revYear), notes: '' })`.
+  - On success: success toast with "{branch.name} · {month} {year} · {formatPKR(amount)}", clears `revAmount`, calls `onRefresh?.()` so the parent re-fetches `api.getInstituteFinance()` and the KPI strip / chart / entries table re-render with the new data in real-time.
+  - On error: destructive toast with the error message.
+  - Wraps in try/finally with `submitting` flag for the button's loading spinner.
+- Step 5 — Added `handleDeleteRevenue(id)` async handler: sets `deletingId`, calls `api.deleteRevenue(id)`, success toast, calls `onRefresh?.()`, destructive toast on error, clears `deletingId` in finally.
+- Step 6 — Added the **Revenue Management** form Card (top of page, before the existing KPI strip):
+  - Card title "Revenue Management", subtitle "Enter monthly revenue received from each branch".
+  - 4-field responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3`):
+    - Branch: shadcn `Select` populated from `branches` prop. Disabled when no branches exist, shows "Add branches first" placeholder in that case. Value = `b.id`, label = `b.name`.
+    - Month: shadcn `Select` populated from `MONTHS` constant, defaults to current month.
+    - Year: shadcn `Input type="number"`, defaults to current year.
+    - Amount (PKR): shadcn `Input type="number"` with placeholder "e.g. 30000".
+  - "Add Revenue" button (navy `bg-primary hover:bg-primary/90 text-white`) below the form, right-aligned. Shows `Loader2` spinner + disabled state while `submitting` or when no branches exist. Otherwise shows `Plus` icon.
+- Step 7 — Added the **Revenue Entries** table Card (below the KPI strip, before the Monthly Revenue chart — placed between so the user sees their just-added entry close to the form):
+  - Card title "Revenue Entries", subtitle "All manually entered branch revenue records".
+  - Reads from `finance.revenueEntries`.
+  - Empty state: "No revenue entries yet. Add your first entry above."
+  - Populated state: `max-h-96 overflow-y-auto` scroll container wrapping a shadcn `Table` with columns Branch (`sourceName`), Month, Year, Amount (`formatPKR(r.amount)`, emerald `text-emerald-600`), Notes (`r.notes || '—'`, truncated to 220px), Actions.
+  - Actions cell: `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` button with `Trash2` icon (swaps to `Loader2` spinner while `deletingId === r.id`), `aria-label="Delete revenue entry"` for accessibility, disabled during that row's delete.
+- Step 8 — Verified the parent `InstituteAdminPortal` call site at line 145 (`<InstituteFeesView {...viewProps} />`) already passes `branches` and `onRefresh` via the spread of `viewProps` (lines 117-126) — no change needed there.
+- Did NOT touch `InstituteDashboard`, `BranchesView`, `InstituteTeachersView`, `InstituteStudentsView`, `InstituteReportsView`, `BranchManagementView`, `BranchCard`, `AnnouncementsView`, or any other component — only `InstituteFeesView` was modified.
+- Color discipline preserved: navy `bg-primary hover:bg-primary/90 text-white` for the Add Revenue button (and the existing KPI/icon accents); emerald `text-emerald-600` for revenue amounts in the entries table (and existing positive figures); rose `text-rose-500 hover:bg-rose-500/10` for the delete button only. No indigo/blue/green accents introduced.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly after the edits (`✓ Compiled in 581ms` / `679ms` / `592ms` / `723ms` / `660ms`, all successful, no errors). Existing `/api/institute/finance` and `/api/branches` requests continue returning 200.
+
+Stage Summary:
+- Institute Admin's **Fees & Revenue** page (`institute-fees` module) now has a manual Revenue Management section at the top, letting the admin enter monthly revenue for each branch (e.g. "Township branch: PKR 30,000 for July 2026").
+- New **Revenue Management** form card (top of page, before KPI strip): 4-field responsive grid (Branch select / Month select / Year number input / Amount number input) + navy "Add Revenue" button. Branch dropdown is disabled with "Add branches first" placeholder when the institute has no branches. Form calls `api.addRevenue({ sourceType: 'branch', sourceId, sourceName, amount, month, year, notes: '' })` (the API upserts on branch+month+year collisions), then clears the amount field and calls `onRefresh()` so KPIs/charts re-render in real-time.
+- New **Revenue Entries** table card (below KPI strip): columns Branch / Month / Year / Amount (emerald) / Notes / Actions (rose Trash2 delete button). `max-h-96 overflow-y-auto` scroll for long lists. Empty state "No revenue entries yet. Add your first entry above." Delete calls `api.deleteRevenue(id)` then `onRefresh()`.
+- Data flow confirmed: `User enters revenue → api.addRevenue() → onRefresh() → api.getInstituteFinance() → finance state updates (incl. revenueEntries, kpi.totalRevenue, monthlyRevenue) → charts/KPIs/entries table re-render`.
+- The parent `InstituteAdminPortal` already passed `branches` and `onRefresh` (via the `viewProps` spread), so the child's destructuring signature was the only change needed at the call site.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components were modified.
+
+---
+Task ID: SA-REVENUE-UI
+Agent: full-stack-developer
+Task: Add Revenue Management UI to Super Admin Analytics page
+
+Work Log:
+- Read worklog.md and existing `src/components/portal/super-admin-portal.tsx` (~1406 lines) to understand the `PlatformAnalytics` component and `SuperAdminPortal` parent (which exposes `refreshFinance` and `refreshAll`).
+- Verified backend support: `mini-services/esm-api/index.js` confirms `manual_revenue` table, `POST /api/revenue` upsert (returns `{ success, id, updated }`), `GET /api/platform/finance` returns `revenueEntries[]` ordered by `year DESC, createdAt DESC`.
+- Confirmed API client methods (`api.addRevenue`, `api.getRevenue`, `api.deleteRevenue`) exist in `src/lib/api.ts`.
+- Added `MONTHS` constant near the top of `super-admin-portal.tsx` (after the CSV export helper).
+- Updated `PlatformAnalytics` signature to destructure `{ finance, financeLoading, institutes, onRefresh }`.
+- Updated the `SuperAdminPortal` call site to pass `onRefresh={refreshFinance}` to `PlatformAnalytics` so the form/table can trigger a finance refresh.
+- Added Revenue form state (`revInstituteId`, `revMonth`, `revYear`, `revAmount`, `revSubmitting`, `revDeletingId`) with sensible defaults (current month + current year).
+- Implemented `handleAddRevenue`: validates fields/amount, calls `api.addRevenue({ sourceType: 'institute', sourceId, sourceName, amount, month, year, notes: '' })`, shows a toast that adapts to upsert result (`res.updated` → "Revenue updated" else "Revenue added"), clears the amount field, then calls `onRefresh()` so charts/KPIs re-render in real time.
+- Implemented `handleDeleteRevenue`: calls `api.deleteRevenue(id)`, toasts success, calls `onRefresh()`, with per-row spinner via `revDeletingId`.
+- Inserted a "Revenue Management" Card at the top of the Analytics page (before the financial KPI cards) containing a responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3` form: Institute Select (disabled with "Add institutes first" placeholder when no institutes exist), Month Select (all 12 months), Year numeric Input (default = current year), Amount (PKR) numeric Input (placeholder "e.g. 50000"). Below the grid is a navy primary `bg-primary hover:bg-primary/90 text-white` "Add Revenue" button with a `Loader2` spinner during submission, plus a hint that re-entering updates an existing entry.
+- Inserted a "Revenue Entries" Card directly below the form Card, with a sticky-header shadcn `Table` (inside `max-h-96 overflow-y-auto`) showing columns: Institute (sourceName), Month, Year, Amount (`formatPKR` in emerald), Notes ("—" fallback), Actions (rose trash button `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` with `Trash2` / spinner). Empty state shows "No revenue entries yet. Add your first entry above." Count badge in subtitle ("N entries").
+- Ensured color palette compliance: navy primary, emerald for revenue amounts, rose for delete, no indigo/blue/green accents.
+- Ran `bun run lint` from `/home/z/my-project` → 0 errors. Dev server log shows successful compilation after the edits.
+
+Stage Summary:
+- Super Admin can now manually enter monthly revenue per institute directly from the Analytics page via a 4-field form (Institute / Month / Year / Amount), with the API performing an upsert so re-entering an existing institute+month+year updates the amount.
+- A "Revenue Entries" table lists all manual entries (institute, month, year, emerald-formatted amount, notes, delete action) and updates in real time after add/delete via the `onRefresh` → `getPlatformFinance()` → `finance` state flow.
+- KPI cards and charts (monthly revenue vs salary, yearly trend, institute performance, recent transactions) re-render with the freshly-entered data because they all derive from the same `finance` state refreshed by `onRefresh`.
+- `bun run lint` passes with 0 errors; no other components (`PlatformOverview`, `InstituteCard`, `InstitutesManager`, `PlatformConfig`, `BrandingPage`, `AnnouncementsView`) were touched.
+
+---
+Task ID: MANUAL-REVENUE-SYSTEM
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: User wants Super Admin to manually enter revenue per institute, and Institute Admin to manually enter revenue per branch. Real-time charts/KPIs should reflect this manually-entered data instead of auto-calculating from fee invoices.
+
+Work Log:
+- **Backend: manual_revenue table** (Main agent):
+  - Added `manual_revenue` table to db.js with columns: id, enteredBy, enteredByRole, instituteId, sourceType, sourceId, sourceName, amount, month, year, notes, createdAt
+  - sourceType = 'institute' (Super Admin) or 'branch' (Institute Admin)
+- **Backend: revenue CRUD endpoints** (Main agent):
+  - `POST /api/revenue` — upsert (add/update) a revenue entry. Authorization: super-admin can only enter for institutes, institute-admin only for branches in their institute. Upsert key: sourceId + month + year + enteredByRole.
+  - `GET /api/revenue` — list revenue entries scoped by role (super-admin sees all their entries, institute-admin sees entries for their institute)
+  - `DELETE /api/revenue/:id` — delete a revenue entry with authz check
+- **Backend: updated finance endpoints** (Main agent):
+  - `GET /api/platform/finance` — now uses `manual_revenue` entries (enteredByRole='super-admin') instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, institutePerformance, recentTransactions. Returns `revenueEntries[]` array.
+  - `GET /api/institute/finance` — now uses `manual_revenue` entries (enteredByRole='institute-admin', scoped to instituteId) instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, branchPerformance, recentTransactions. Returns `revenueEntries[]` array.
+  - Fixed orphan `app.get('/api/health'` line that caused a syntax error — removed the duplicate
+- **API client methods** (Main agent):
+  - `api.addRevenue({ sourceType, sourceId, sourceName, amount, month, year, notes? })`
+  - `api.getRevenue({ sourceType?, sourceId?, instituteId?, month?, year? })`
+  - `api.deleteRevenue(id)`
+- **Super Admin Analytics: Revenue Management UI** (subagent SA-REVENUE-UI):
+  - Added Revenue Management form Card at the top of PlatformAnalytics:
+    - Institute Select (populated from institutes prop), Month Select, Year Input, Amount (PKR) Input
+    - "Add Revenue" button → calls api.addRevenue with sourceType='institute' → onRefresh() → charts update in real-time
+  - Added Revenue Entries table Card below the form:
+    - Columns: Institute, Month, Year, Amount (emerald), Notes, Actions (delete button)
+    - Delete calls api.deleteRevenue then onRefresh()
+  - Passed onRefresh={refreshFinance} from SuperAdminPortal parent
+  - Added MONTHS constant
+- **Institute Admin Fees & Revenue: Revenue Management UI** (subagent IA-REVENUE-UI):
+  - Added Revenue Management form Card at the top of InstituteFeesView:
+    - Branch Select (populated from branches prop), Month Select, Year Input, Amount (PKR) Input
+    - "Add Revenue" button → calls api.addRevenue with sourceType='branch' → onRefresh() → charts update in real-time
+  - Added Revenue Entries table Card below the form:
+    - Columns: Branch, Month, Year, Amount (emerald), Notes, Actions (delete button)
+  - Passed branches and onRefresh props from InstituteAdminPortal parent
+- **Verification with agent-browser**:
+  - Super Admin → Analytics page: ✅ Revenue Management form visible with Institute/Month/Year/Amount fields + Revenue Entries table showing 2 existing entries (Test Academy PKR 15,000, Alhamd Institute PKR 15,000)
+  - Added PKR 75,000 for Alhamd Institute July 2026 via the form → entry updated (upsert), Total Revenue updated to PKR 90,000, charts refreshed in real-time
+  - Institute Admin → Fees & Revenue page: ✅ Revenue Management form visible with Branch/Month/Year/Amount fields
+  - Added PKR 40,000 for Township branch July 2026 → entry created, Total Collected updated to PKR 40,000, KPIs and charts refreshed in real-time
+  - Lint: 0 errors, 0 warnings ✅
+  - Dev log: POST /api/revenue returns 201, GET /api/institute/finance returns 200
+
+Stage Summary:
+- **Manual revenue system implemented end-to-end**:
+  - Super Admin manually enters revenue per institute (e.g., "Alhamd Institute: PKR 75,000 for July 2026")
+  - Institute Admin manually enters revenue per branch (e.g., "Township: PKR 40,000 for July 2026")
+  - All dashboard KPIs, charts, and tables use this manually-entered data in real-time
+  - Upsert behavior: re-entering the same institute/branch + month + year updates the amount
+  - Delete functionality: trash icon removes entries and refreshes data
+- **Backend finance endpoints updated**: platform/finance and institute/finance now calculate revenue from manual_revenue table instead of auto-calculating from fee_invoices
+- **Revenue no longer depends on fee invoices** — the Super Admin and Institute Admin have full control over what revenue figures appear on their dashboards
+- Color discipline maintained: navy primary, emerald for revenue amounts, rose for delete
+
+Unresolved issues or risks:
+- The Branch Manager dashboard still auto-calculates revenue from fee_invoices (branch-level). This is correct — Branch Managers collect fees from students, so their revenue is real fee data. Only Super Admin and Institute Admin use manual revenue.
+- No historical revenue migration — existing fee_invoice-based revenue data is no longer shown on SA/IA dashboards. If the user wants to see old fee data, the Fees & Revenue page still has a per-student fee summary table (though it now shows zeros since the finance endpoint no longer populates paid/pending from invoices).
+- Next priority: consider adding a "Revenue vs Salary" comparison view and a date-range filter for the revenue entries.

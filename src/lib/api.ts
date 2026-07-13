@@ -248,6 +248,19 @@ export const api = {
   getStudentAnalytics: () => request<any>('student/analytics'),
   // Notifications (top bar dropdown)
   getNotifications: () => request<{ items: any[]; unread: number }>('notifications'),
+  // Manual revenue management (Super Admin enters per institute, Institute Admin enters per branch)
+  addRevenue: (body: { sourceType: string; sourceId: string; sourceName: string; amount: number; month: string; year: number; notes?: string }) =>
+    request<any>('revenue', { method: 'POST', body: JSON.stringify(body) }),
+  getRevenue: (params?: { sourceType?: string; sourceId?: string; instituteId?: string; month?: string; year?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.sourceType) q.set('sourceType', params.sourceType);
+    if (params?.sourceId) q.set('sourceId', params.sourceId);
+    if (params?.instituteId) q.set('instituteId', params.instituteId);
+    if (params?.month) q.set('month', params.month);
+    if (params?.year) q.set('year', String(params.year));
+    return request<any[]>(q.toString() ? `revenue?${q.toString()}` : 'revenue');
+  },
+  deleteRevenue: (id: string) => request<any>(`revenue/${id}`, { method: 'DELETE' }),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),

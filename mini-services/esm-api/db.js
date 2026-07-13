@@ -349,6 +349,23 @@ export async function initDB() {
       createdAt TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (branchId) REFERENCES branches(id)
     )`,
+
+    // Manual revenue entries — Super Admin enters revenue per institute,
+    // Institute Admin enters revenue per branch. Drives the finance dashboards.
+    `CREATE TABLE IF NOT EXISTS manual_revenue (
+      id TEXT PRIMARY KEY,
+      enteredBy TEXT NOT NULL,
+      enteredByRole TEXT NOT NULL,
+      instituteId TEXT,
+      sourceType TEXT NOT NULL,
+      sourceId TEXT NOT NULL,
+      sourceName TEXT NOT NULL,
+      amount REAL NOT NULL DEFAULT 0,
+      month TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      notes TEXT,
+      createdAt TEXT DEFAULT (datetime('now'))
+    )`,
   ];
 
   for (const sql of statements) {
