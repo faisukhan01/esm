@@ -67,6 +67,7 @@ export const api = {
   createInstitute: (body: any) => request<any>('institutes', { method: 'POST', body: JSON.stringify(body) }),
   updateInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   editInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteInstitute: (id: string) => request<any>(`institutes/${id}`, { method: 'DELETE' }),
   blockInstitute: (id: string, blocked: boolean, reason?: string) =>
     request<any>(`institutes/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
   branches: (instituteId?: string) => request<any[]>(instituteId ? `branches?instituteId=${instituteId}` : 'branches'),

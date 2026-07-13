@@ -141,6 +141,10 @@ export function RolePortal() {
     return () => setOnBlocked(() => {});
   }, []);
 
+  // Check if user has a blockedMessage from login (set by backend when institute/branch is blocked)
+  // Derive blocked state directly from user — no effect needed
+  const blockedFromUser = user?.blockedMessage || null;
+
   // Reset active module when role changes (e.g. on login)
   useEffect(() => {
     const firstModule = groups[0]?.items[0]?.id;
@@ -168,7 +172,9 @@ export function RolePortal() {
   const sidebarProps = { role, collapsed, groupOpen, setGroupOpen, activeModule, setActiveModule, setMobileOpen, user, logout };
 
   // Blocked screen — shown when Super Admin or Institute Admin blocks access
-  if (blockedMsg) {
+  // Can be triggered by: 1) blockedMessage from login, 2) 403/401 from API calls
+  const effectiveBlockedMsg = blockedMsg || blockedFromUser;
+  if (effectiveBlockedMsg) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-950 via-slate-950 to-rose-950 p-4">
         <motion.div
@@ -182,7 +188,7 @@ export function RolePortal() {
             </div>
             <h1 className="font-display text-2xl font-extrabold text-slate-900 mb-2">Access Blocked</h1>
             <p className="text-sm text-slate-600 mb-1">Your access has been blocked by your administration.</p>
-            <p className="text-xs text-slate-400 mb-6">{blockedMsg}</p>
+            <p className="text-xs text-slate-400 mb-6">{effectiveBlockedMsg}</p>
             <p className="text-xs text-slate-500 mb-6">Please contact your administrator to restore access.</p>
             <Button
               className="w-full bg-rose-600 hover:bg-rose-700 text-white"

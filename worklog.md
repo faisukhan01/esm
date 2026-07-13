@@ -1162,3 +1162,35 @@ Verification:
 - Already-logged-in users see "Access Blocked" screen when their institute is blocked ✅
 - Institute card expansion: `type="button"` added, clicking toggles expand ✅
 - Lint passes clean ✅
+
+---
+Task ID: DELETE-INSTITUTE + CARD-MODAL + BLOCK-SCREEN-REWORK
+Agent: Main (Z.ai Code)
+Task: Add delete institute option, change card from inline-expand to popup modal, rework blocked access behavior
+
+Work Log:
+- **Delete Institute**: Added `DELETE /api/institutes/:id` endpoint in backend. Deletes ALL related data in order: sessions, teacher_class_courses, course_materials, attendance, results, diary, class_courses, classes, courses, announcements, users, branches, and finally the institute itself. Added `api.deleteInstitute(id)` to frontend API client. Delete button (trash icon) on each institute card with confirmation modal.
+- **Institute card → popup modal**: Completely rewrote InstituteCard:
+  - Removed inline expand (was causing scroll/shift issues with other cards)
+  - Clicking the card body now opens a `InstituteDetailsModal` popup (fixed overlay, centered, scrollable)
+  - The details modal shows: institute header (logo, name, location, plan, status), overview stats (branches/students/staff), admin info with Edit button, and branches list
+  - Edit button opens a separate `EditInstituteModal` (as before)
+  - Delete button opens a confirmation dialog
+  - Block/Unblock button stays on the card (with stopPropagation)
+  - No more inline expansion — no scroll/shift issues
+- **Blocked access rework**: Changed the behavior so blocked users CAN sign in but see an error page:
+  - Backend login: No longer returns 403 for blocked users. Instead, allows login and adds `blockedMessage` to the user profile response
+  - Frontend login: Checks for `user.blockedMessage` — if present, shows a toast but still routes to the portal
+  - RolePortal: Derives blocked state from `user.blockedMessage` — if present, shows the full-screen "Access Blocked" page with the specific message and a "Back to Sign In" button
+  - The blocked screen looks like a 404-style error page with a red shield icon
+  - Also works for already-logged-in users: when their next API call returns 403/401 with "blocked", the API interceptor triggers the same blocked screen
+  - Added `blockedMessage` to the AuthUser type in store.ts
+
+Verification:
+- Delete: 5 institutes → deleted "Alhamd" → 4 institutes ✅
+- Block + login: Super Admin blocks "Test School" → Institute Admin logs in → gets `blockedMessage: "Your account has been blocked by your administration."` → frontend shows "Access Blocked" screen ✅
+- Unblock: Super Admin unblocks → institute admin can log in normally ✅
+- Card click: opens popup modal (no scroll/shift of other cards) ✅
+- Edit button: opens separate edit modal ✅
+- Delete button: opens confirmation dialog ✅
+- Lint passes clean ✅

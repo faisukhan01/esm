@@ -14,6 +14,7 @@ import {
   Building2, Users, Network, Plus, Crown, MapPin, CheckCircle2,
   Sparkles, Server, Building, Lock, Unlock, Edit, Megaphone, Send,
   ChevronDown, ChevronRight, UserCog, Mail, Settings, ShieldCheck, Palette, Loader2,
+  Trash2, X,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -282,17 +283,12 @@ function InstitutesManager({ institutes, loading, onRefresh, showAdd, setShowAdd
   );
 }
 
-// ---------- Institute card (expandable inline) ----------
+// ---------- Institute card (opens modal popup on click) ----------
 function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }) {
-  const [expanded, setExpanded] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const [blocked, setBlocked] = useState<boolean>(inst.blocked === 1 || inst.blocked === true);
-
-  // Branches loaded lazily when expanded
-  const [branches, setBranches] = useState<any[] | null>(null);
-  const [branchesLoading, setBranchesLoading] = useState(false);
-  const [stats, setStats] = useState<{ students: number; staff: number; branches: number } | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
 
   const isBlocked = blocked || inst.status === 'Blocked';
   const statusLabel = isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active');
@@ -301,30 +297,6 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
     : inst.status === 'Trial'
       ? 'text-amber-600 bg-amber-500/10 border-amber-500/20'
       : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20';
-
-  const loadDetails = async () => {
-    if (branches !== null) return; // already loaded
-    setBranchesLoading(true);
-    setStatsLoading(true);
-    Promise.all([
-      api.branches(inst.id).catch(() => []),
-      api.scopedStats(inst.id).catch(() => null),
-    ])
-      .then(([b, s]) => {
-        setBranches(Array.isArray(b) ? b : []);
-        if (s) setStats({ students: s.students || 0, staff: s.staff || 0, branches: s.branches || 0 });
-      })
-      .finally(() => {
-        setBranchesLoading(false);
-        setStatsLoading(false);
-      });
-  };
-
-  const toggleExpand = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next) loadDetails();
-  };
 
   const toggleBlock = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -341,17 +313,24 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await api.deleteInstitute(inst.id);
+      toast({ title: 'Institute deleted', description: `${inst.name} and all its data have been removed.` });
+      setShowDelete(false);
+      onRefresh();
+    } catch (e: any) {
+      toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' });
+    }
+  };
+
   const initials = (inst.short || inst.name || '').slice(0, 2).toUpperCase();
 
   return (
-    <Card
-      className={`p-0 overflow-hidden hover:shadow-lg transition relative ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`}
-    >
-      {/* Clickable header area */}
-      <button
-        type="button"
-        onClick={toggleExpand}
-        className="w-full text-left p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+    <>
+      <Card
+        className={`p-5 hover:shadow-lg transition relative cursor-pointer ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`}
+        onClick={() => setShowDetails(true)}
       >
         <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
         <div className="flex items-start justify-between">
@@ -370,20 +349,16 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <ChevronDown
-              className={`h-4 w-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`}
-            />
-          </div>
         </div>
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
           <div className="text-xs min-w-0">
             <div className="text-muted-foreground">Admin</div>
             <div className="font-medium truncate">{inst.adminName || '—'}</div>
           </div>
-          {/* Action buttons — stop propagation so they don't expand the card */}
+          {/* Action buttons — stop propagation so they don't open the details modal */}
           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             <button
+              type="button"
               onClick={() => setShowEdit(true)}
               title="Edit"
               className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"
@@ -391,6 +366,7 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
               <Edit className="h-4 w-4" />
             </button>
             <button
+              type="button"
               onClick={toggleBlock}
               title={isBlocked ? 'Unblock' : 'Block (cascades to branches & users)'}
               className={`h-8 w-8 grid place-items-center rounded-lg transition ${
@@ -399,66 +375,138 @@ function InstituteCard({ inst, onRefresh }: { inst: any; onRefresh: () => void }
             >
               {isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowDelete(true)}
+              title="Delete institute"
+              className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      </button>
+      </Card>
 
-      {/* Expanded body */}
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-border/40 bg-muted/20"
-          >
-            <div className="p-5 space-y-4">
-              {/* Totals */}
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Institute Totals</div>
-                <div className="grid grid-cols-3 gap-2">
-                  <StatPill label="Branches" value={statsLoading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-emerald-600" />
-                  <StatPill label="Students" value={statsLoading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-teal-600" />
-                  <StatPill label="Teachers" value={statsLoading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-violet-600" />
+      {/* Details modal — opens when clicking the card */}
+      {showDetails && (
+        <InstituteDetailsModal inst={inst} onClose={() => setShowDetails(false)} onEdit={() => { setShowDetails(false); setShowEdit(true); }} />
+      )}
+
+      {/* Edit modal */}
+      {showEdit && (
+        <EditInstituteModal inst={inst} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />
+      )}
+
+      {/* Delete confirmation */}
+      {showDelete && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={() => setShowDelete(false)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+            <Card className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-12 w-12 rounded-full bg-rose-100 grid place-items-center"><Trash2 className="h-6 w-6 text-rose-600" /></div>
+                <div><h3 className="font-display font-bold text-lg">Delete Institute?</h3><p className="text-sm text-muted-foreground">This action cannot be undone.</p></div>
+              </div>
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-800 mb-4">
+                This will permanently delete <strong>{inst.name}</strong> and ALL its data: branches, teachers, students, classes, courses, attendance, results, and materials.
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white flex-1" onClick={handleDelete}>Delete Permanently</Button>
+                <Button size="sm" variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </>
+  );
+}
+
+// ---------- Institute Details Modal (popup) ----------
+function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: () => void; onEdit: () => void }) {
+  const [branches, setBranches] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.branches(inst.id).catch(() => []),
+      api.scopedStats(inst.id).catch(() => null),
+    ]).then(([b, s]) => {
+      setBranches(Array.isArray(b) ? b : []);
+      setStats(s);
+      setLoading(false);
+    });
+  }, [inst.id]);
+
+  const isBlocked = inst.blocked === 1 || inst.blocked === true;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
+        <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
+          {/* Header */}
+          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-emerald-50 to-amber-50 dark:from-emerald-950/20 dark:to-amber-950/10">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 grid place-items-center shadow-md text-white font-display font-extrabold text-lg">
+                  {(inst.short || inst.name || '').slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-extrabold">{inst.name}</h2>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" /> {inst.city ? `${inst.city}, ` : ''}{inst.country || '—'}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline" className="text-[10px]">{inst.plan || 'Starter'}</Badge>
+                    <Badge variant="outline" className={`text-[10px] ${isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'}`}>{isBlocked ? 'Blocked' : (inst.status === 'Trial' ? 'Trial' : 'Active')}</Badge>
+                  </div>
                 </div>
               </div>
+              <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground"><X className="h-5 w-5" /></button>
+            </div>
+          </div>
 
-              {/* Branches list */}
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between">
-                  <span>Branches</span>
-                  {!branchesLoading && branches !== null && (
-                    <span className="text-[10px] normal-case tracking-normal">{branches.length} total</span>
-                  )}
-                </div>
-                {branchesLoading ? (
-                  <LoadingState label="Loading branches…" className="py-4" />
-                ) : branches && branches.length === 0 ? (
-                  <div className="text-xs text-muted-foreground py-3 text-center bg-muted/30 rounded-lg">
-                    No branches yet — the Institute Admin can add branches from their portal.
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-72 overflow-y-auto scroll-fancy pr-1">
-                    {branches?.map((br: any) => (
-                      <BranchRow key={br.id} br={br} />
-                    ))}
-                  </div>
-                )}
+          {/* Body */}
+          <div className="p-6 space-y-5">
+            {/* Stats */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Overview</div>
+              <div className="grid grid-cols-3 gap-3">
+                <StatPill label="Branches" value={loading ? '…' : (stats?.branches ?? inst.branches ?? 0)} color="text-emerald-600" />
+                <StatPill label="Students" value={loading ? '…' : (stats?.students ?? inst.students ?? 0)} color="text-teal-600" />
+                <StatPill label="Staff" value={loading ? '…' : (stats?.staff ?? inst.staff ?? 0)} color="text-violet-600" />
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {showEdit && (
-        <EditInstituteModal
-          inst={inst}
-          onClose={() => setShowEdit(false)}
-          onSaved={() => { setShowEdit(false); onRefresh(); }}
-        />
-      )}
-    </Card>
+            {/* Admin info */}
+            <div className="rounded-xl bg-muted/40 p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Institute Admin</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-sm">{inst.adminName || '—'}</div>
+                  <div className="text-xs text-muted-foreground">{inst.adminEmail || '—'}</div>
+                </div>
+                <Button size="sm" variant="outline" onClick={onEdit}><Edit className="h-3.5 w-3.5 mr-1" /> Edit</Button>
+              </div>
+            </div>
+
+            {/* Branches list */}
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center justify-between">
+                <span>Branches ({branches.length})</span>
+              </div>
+              {loading ? (
+                <LoadingState label="Loading branches…" className="py-4" />
+              ) : branches.length === 0 ? (
+                <div className="text-xs text-muted-foreground py-3 text-center bg-muted/30 rounded-lg">No branches yet.</div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto scroll-fancy">
+                  {branches.map((br: any) => <BranchRow key={br.id} br={br} />)}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
   );
 }
 

@@ -154,21 +154,33 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: `Invalid credentials. ${MAX_LOGIN_ATTEMPTS - current.count} attempts left.` });
     }
     if (u.status !== 'Active') return res.status(403).json({ error: 'Account is ' + u.status });
-    if (u.blocked === 1) return res.status(403).json({ error: 'Your account has been blocked. Contact your administrator.' });
 
-    // Check institute/branch block (cascade)
-    if (u.instituteId && u.role !== 'super-admin') {
+    // Check if user/institute/branch is blocked — STILL ALLOW LOGIN but flag it
+    // The user will sign in successfully, then see a "blocked" error page in their portal
+    let blockedMessage = null;
+    if (u.blocked === 1) {
+      blockedMessage = 'Your account has been blocked by your administration. Please contact your administrator.';
+    } else if (u.instituteId && u.role !== 'super-admin') {
       const inst = await db.execute({ sql: 'SELECT blocked FROM institutes WHERE id = ?', args: [u.instituteId] });
-      if (inst.rows.length > 0 && inst.rows[0].blocked === 1) return res.status(403).json({ error: 'Institute access blocked. Contact administration.' });
+      if (inst.rows.length > 0 && inst.rows[0].blocked === 1) {
+        blockedMessage = 'Your institute access has been blocked by the platform administration. Please contact your administrator.';
+      }
     }
-    if (u.branchId && u.role !== 'super-admin') {
+    if (!blockedMessage && u.branchId && u.role !== 'super-admin') {
       const br = await db.execute({ sql: 'SELECT blocked FROM branches WHERE id = ?', args: [u.branchId] });
-      if (br.rows.length > 0 && br.rows[0].blocked === 1) return res.status(403).json({ error: 'Branch access blocked.' });
+      if (br.rows.length > 0 && br.rows[0].blocked === 1) {
+        blockedMessage = 'Your branch access has been blocked. Please contact your institute administrator.';
+      }
     }
 
     loginAttempts.delete(rateKey);
     const token = await createSession(u);
-    res.json({ token, user: buildUserProfile(u), mustChangePassword: u.mustChangePassword === 1 });
+    const userProfile = buildUserProfile(u);
+    // If blocked, add the blocked message to the user profile so the frontend can show it
+    if (blockedMessage) {
+      userProfile.blockedMessage = blockedMessage;
+    }
+    res.json({ token, user: userProfile, mustChangePassword: u.mustChangePassword === 1 });
   } catch (e) {
     res.status(500).json({ error: 'Login failed: ' + e.message });
   }
@@ -251,6 +263,26 @@ app.patch('/api/institutes/:id/block', requireAuth, requireRole('super-admin'), 
     await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE instituteId = ?)', args: [req.params.id] });
   }
   res.json({ success: true, blocked });
+});
+
+// DELETE institute (cascades — deletes branches, users, classes, courses, etc.)
+app.delete('/api/institutes/:id', requireAuth, requireRole('super-admin'), async (req, res) => {
+  const instId = req.params.id;
+  // Delete in order (child tables first)
+  await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM teacher_class_courses WHERE teacherId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM course_materials WHERE teacherId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM attendance WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM results WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM diary WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId IN (SELECT id FROM classes WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?))', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM classes WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM courses WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM announcements WHERE instituteId = ?', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM users WHERE instituteId = ? AND role != ?', args: [instId, 'super-admin'] });
+  await db.execute({ sql: 'DELETE FROM branches WHERE instituteId = ?', args: [instId] });
+  await db.execute({ sql: 'DELETE FROM institutes WHERE id = ?', args: [instId] });
+  res.json({ success: true });
 });
 
 // ===================== BRANCHES (Institute Admin) =====================

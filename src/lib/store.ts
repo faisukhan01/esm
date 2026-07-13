@@ -15,6 +15,7 @@ export type AuthUser = {
   status: string;
   mustChangePassword?: boolean;
   blocked?: boolean;
+  blockedMessage?: string;
   instituteId?: string | null;
   instituteName?: string | null;
   instituteShort?: string | null;

@@ -364,7 +364,12 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       const { token, user } = await api.login(email, password, needsName ? name : undefined);
       setToken(token);
       setUser(user);
-      toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
+      // If user is blocked, still let them into the portal — the portal will show the blocked screen
+      if (user.blockedMessage) {
+        toast({ title: 'Access Blocked', description: user.blockedMessage, variant: 'destructive' });
+      } else {
+        toast({ title: `Welcome, ${user.name}`, description: `Signed in as ${user.roleLabel}` });
+      }
       setView('portal');
     } catch (err: any) {
       const msg = err.message || 'Sign in failed';
