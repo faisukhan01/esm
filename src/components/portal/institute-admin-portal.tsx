@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import {
   Building2, Network, Users, Plus, MapPin, CheckCircle2, Lock, Unlock, Edit,
-  Trash2, Megaphone, Send, Loader2,
+  Trash2, Megaphone, Send, Loader2, ChevronRight,
   ArrowLeft, BookOpen, GraduationCap, DollarSign,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -279,19 +279,6 @@ function InstituteOverview({ user, stats, branches, loading, onAddBranch, onSele
 
   return (
     <div className="space-y-6">
-      {/* Welcome banner — only on Dashboard */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Welcome, {user?.name?.split(' ')[0]}</h1>
-            <p className="text-white/80 text-sm mt-1.5">{stats?.branches ? `${stats.branches} branches · ${stats.students} students` : 'Add your first branch to get started.'}</p>
-          </div>
-          <Button className="bg-white text-primary hover:bg-white/90" size="sm" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
-        </div>
-      </motion.div>
-
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
@@ -314,7 +301,7 @@ function InstituteOverview({ user, stats, branches, loading, onAddBranch, onSele
       ) : (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a branch card to open its management page</p></div>
+            <div><h3 className="font-bold text-base">Branches</h3><p className="text-xs text-muted-foreground">Click a branch to manage it</p></div>
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -361,7 +348,7 @@ function BranchCard({ br, instituteId, onRefresh, onSelectBranch }: { br: any; i
 
   return (
     <>
-      <Card className={`p-5 hover:shadow-lg transition relative cursor-pointer border border-border rounded-lg shadow-sm ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`} onClick={() => onSelectBranch(br)}>
+      <Card className={`p-5 hover:shadow-lg transition relative cursor-pointer border border-border rounded-lg shadow-sm group ${isBlocked ? 'ring-1 ring-rose-500/30' : ''}`} onClick={() => onSelectBranch(br)}>
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3 min-w-0">
             <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 grid place-items-center text-primary">
@@ -373,6 +360,10 @@ function BranchCard({ br, instituteId, onRefresh, onSelectBranch }: { br: any; i
               <Badge variant="outline" className={`text-[10px] font-medium mt-1.5 ${statusClass}`}>{statusLabel}</Badge>
             </div>
           </div>
+          <div className="flex items-center gap-1 text-primary opacity-0 group-hover:opacity-100 transition shrink-0">
+            <span className="text-[10px] font-medium">Manage</span>
+            <ChevronRight className="h-4 w-4" />
+          </div>
         </div>
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
           <div className="text-xs">
@@ -381,7 +372,7 @@ function BranchCard({ br, instituteId, onRefresh, onSelectBranch }: { br: any; i
           </div>
           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setShowEdit(true)} title="Edit" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition"><Edit className="h-4 w-4" /></button>
-            <button type="button" onClick={toggleBlock} title={isBlocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg transition ${isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-primary hover:bg-accent0/10'}`}>{isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+            <button type="button" onClick={toggleBlock} title={isBlocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg transition ${isBlocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-primary hover:bg-accent'}`}>{isBlocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
             <button type="button" onClick={() => setShowDelete(true)} title="Delete branch" className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition"><Trash2 className="h-4 w-4" /></button>
           </div>
         </div>

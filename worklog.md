@@ -1774,3 +1774,34 @@ Verification:
 - VLM rated 9/10: "KPI card numbers use clean sans-serif font, welcome banner navy blue, cards clean white with subtle borders, well-organized uncluttered layout"
 - Lint passes clean ✅
 - No Playfair Display loaded — page loads faster with just Inter ✅
+
+---
+Task ID: IA-BANNER-FIX + PASSWORD-FIX
+Agent: Main (Z.ai Code)
+Task: Remove duplicate welcome banner from Institute Admin Branches page + fix password change error + add Manage indicator on branch cards
+
+Work Log:
+- **Removed duplicate welcome banner** from Institute Admin Branches page:
+  - The `InstituteOverview` component had a welcome banner ("Welcome, Numan · 1 branches · 1 students") that showed on both Dashboard and Branches
+  - Removed the entire `<motion.div>` banner section from `InstituteOverview`
+  - Now the page shows: KPI cards → Branch cards (clean, no banner)
+  - The Dashboard still shows the welcome banner (handled by the `institute-overview` module which includes the banner)
+- **Added "Manage" indicator on branch cards**:
+  - Added `group` class to the card and a hover-reveal "Manage →" indicator
+  - Shows `ChevronRight` icon + "Manage" text on hover
+  - Makes it clear to the Institute Admin that clicking the card opens the branch management page
+- **Fixed password change error handling**:
+  - The error handler was checking for `err.message.includes('401')` but the new API client extracts the JSON error message (e.g., "Current password incorrect") without the status code
+  - Updated to check for multiple error patterns: "incorrect", "401", "Current password", "short", "Authentication", "session", "expired"
+  - Shows specific, user-friendly messages:
+    - Wrong password: "The current password you entered is incorrect. Please try again."
+    - Too short: "New password must be at least 4 characters."
+    - Session expired: "Please sign out and sign in again."
+  - Verified: Password change works for both Super Admin and Institute Admin
+
+Verification:
+- Institute Admin portal: no duplicate welcome banner, clean KPI cards + branch cards ✅
+- Branch cards: "Manage →" indicator on hover ✅
+- Password change: works for Super Admin (TestPass999) ✅
+- Password change: works for Institute Admin (NumanNew999) ✅
+- Lint passes clean ✅

@@ -48,8 +48,16 @@ export function SettingsPage({ user }: { user: any }) {
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      const msg = err.message.includes('401') ? 'Current password is incorrect' : err.message;
-      toast({ title: 'Could not update password', description: msg, variant: 'destructive' });
+      const msg = err.message || 'Unknown error';
+      if (msg.includes('incorrect') || msg.includes('401') || msg.includes('Current password')) {
+        toast({ title: 'Wrong password', description: 'The current password you entered is incorrect. Please try again.', variant: 'destructive' });
+      } else if (msg.includes('short')) {
+        toast({ title: 'Password too short', description: 'New password must be at least 4 characters.', variant: 'destructive' });
+      } else if (msg.includes('Authentication') || msg.includes('session') || msg.includes('expired')) {
+        toast({ title: 'Session expired', description: 'Please sign out and sign in again.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Could not update password', description: msg, variant: 'destructive' });
+      }
     } finally {
       setSaving(false);
     }
