@@ -2145,6 +2145,92 @@ app.get('/api/report-cards/generate/:studentId', requireAuth, async (req, res) =
   });
 });
 
+// ===================== ROYALTY / FRANCHISE MANAGEMENT =====================
+// Institute Admin sets royalty method per branch; system auto-calculates royalty invoices.
+
+// Get royalty settings for all branches in an institute
+app.get('/api/royalty/settings', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const instituteId = req.query.instituteId || req.user.instituteId;
+  if (!instituteId) return res.json([]);
+  const r = await db.execute({ sql: 'SELECT rs.*, b.name as branchName FROM royalty_settings rs LEFT JOIN branches b ON rs.branchId = b.id WHERE rs.instituteId = ?', args: [instituteId] });
+  res.json(r.rows);
+});
+
+// Set/update royalty settings for a branch
+app.post('/api/royalty/settings', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const { branchId, method, amount, percentage, effectiveFrom } = req.body || {};
+  if (!branchId || !method) return res.status(400).json({ error: 'branchId and method required' });
+  // Verify branch belongs to this institute
+  const brR = await db.execute({ sql: 'SELECT id FROM branches WHERE id = ? AND instituteId = ?', args: [branchId, req.user.instituteId] });
+  if (brR.rows.length === 0) return res.status(403).json({ error: 'Branch not found in your institute' });
+  // Upsert
+  const existing = await db.execute({ sql: 'SELECT id FROM royalty_settings WHERE branchId = ?', args: [branchId] });
+  const effDate = effectiveFrom || new Date().toISOString().slice(0, 10);
+  if (existing.rows.length > 0) {
+    await db.execute({ sql: 'UPDATE royalty_settings SET method = ?, amount = ?, percentage = ?, effectiveFrom = ? WHERE id = ?', args: [method, Number(amount) || 0, Number(percentage) || 0, effDate, existing.rows[0].id] });
+    res.json({ success: true, id: existing.rows[0].id, updated: true });
+  } else {
+    const id = nextId('RS');
+    await db.execute({ sql: 'INSERT INTO royalty_settings (id, branchId, instituteId, method, amount, percentage, effectiveFrom) VALUES (?, ?, ?, ?, ?, ?, ?)', args: [id, branchId, req.user.instituteId, method, Number(amount) || 0, Number(percentage) || 0, effDate] });
+    res.status(201).json({ success: true, id });
+  }
+});
+
+// Generate royalty invoices for a month/year (auto-calculates based on settings + branch data)
+app.post('/api/royalty/generate', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const { month, year } = req.body || {};
+  if (!month || !year) return res.status(400).json({ error: 'month and year required' });
+  const instituteId = req.user.instituteId;
+  // Get all branches
+  const brR = await db.execute({ sql: 'SELECT id, name FROM branches WHERE instituteId = ?', args: [instituteId] });
+  let generated = 0;
+  for (const br of brR.rows) {
+    // Check if invoice already exists for this branch/month/year
+    const existing = await db.execute({ sql: 'SELECT id FROM royalty_invoices WHERE branchId = ? AND month = ? AND year = ?', args: [br.id, month, year] });
+    if (existing.rows.length > 0) continue;
+    // Get royalty settings
+    const rsR = await db.execute({ sql: 'SELECT * FROM royalty_settings WHERE branchId = ?', args: [br.id] });
+    const settings = rsR.rows[0];
+    if (!settings) continue; // Skip if no royalty configured
+    // Get student count
+    const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE branchId = ? AND role = ?', args: [br.id, 'student'] });
+    const studentCount = stuR.rows[0].count;
+    // Get branch revenue (from fee invoices)
+    const revR = await db.execute({ sql: "SELECT SUM(paidAmount) as total FROM fee_invoices WHERE branchId = ? AND status = 'Paid' AND month = ? AND year = ?", args: [br.id, month, year] });
+    const branchRevenue = revR.rows[0].total || 0;
+    // Calculate royalty
+    let royaltyAmount = 0;
+    if (settings.method === 'per_student') {
+      royaltyAmount = (Number(settings.amount) || 0) * studentCount;
+    } else if (settings.method === 'fixed') {
+      royaltyAmount = Number(settings.amount) || 0;
+    } else if (settings.method === 'percentage') {
+      royaltyAmount = (branchRevenue * (Number(settings.percentage) || 0)) / 100;
+    }
+    const id = nextId('RI');
+    await db.execute({
+      sql: 'INSERT INTO royalty_invoices (id, branchId, instituteId, branchName, month, year, method, studentCount, branchRevenue, royaltyAmount, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, br.id, instituteId, br.name, month, year, settings.method, studentCount, branchRevenue, royaltyAmount, 'Pending'],
+    });
+    generated++;
+  }
+  res.json({ success: true, generated, message: `${generated} royalty invoices generated for ${month} ${year}` });
+});
+
+// Get royalty invoices
+app.get('/api/royalty/invoices', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  const instituteId = req.query.instituteId || req.user.instituteId;
+  if (!instituteId) return res.json([]);
+  const r = await db.execute({ sql: 'SELECT * FROM royalty_invoices WHERE instituteId = ? ORDER BY year DESC, createdAt DESC', args: [instituteId] });
+  res.json(r.rows);
+});
+
+// Mark royalty invoice as paid
+app.patch('/api/royalty/invoices/:id/pay', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  await db.execute({ sql: 'UPDATE royalty_invoices SET status = ?, paidDate = ? WHERE id = ?', args: ['Paid', new Date().toISOString().slice(0, 10), req.params.id] });
+  res.json({ success: true, status: 'Paid' });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     const r = await db.execute('SELECT COUNT(*) as count FROM users');

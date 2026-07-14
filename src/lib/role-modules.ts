@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
-  ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award,
+  ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award, Crown,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -40,7 +40,7 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Institute', items: [
       { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'branches', name: 'Branches', icon: Network, color: 'from-primary to-primary/80' },
-      { id: 'institute-fees', name: 'Fees & Revenue', icon: DollarSign, color: 'from-primary to-primary/80' },
+      { id: 'institute-royalty', name: 'Royalty Management', icon: DollarSign, color: 'from-primary to-primary/80' },
       { id: 'institute-teachers', name: 'Teachers & Salaries', icon: Users, color: 'from-primary to-primary/80' },
       { id: 'institute-students', name: 'Students', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'institute-reports', name: 'Reports', icon: TrendingUp, color: 'from-primary/80 to-primary' },

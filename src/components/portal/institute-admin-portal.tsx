@@ -142,7 +142,7 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
           setLastCreated={setLastCreated}
         />
       )}
-      {activeModule === 'institute-fees' && <InstituteFeesView {...viewProps} />}
+      {activeModule === 'institute-royalty' && <InstituteRoyaltyView finance={finance} branches={branches} loading={loading} user={user} onRefresh={refresh} />}
       {activeModule === 'institute-teachers' && <InstituteTeachersView {...viewProps} />}
       {activeModule === 'institute-students' && <InstituteStudentsView {...viewProps} />}
       {activeModule === 'institute-reports' && <InstituteReportsView {...viewProps} />}
@@ -177,11 +177,11 @@ function KPICard({ icon: Icon, label, value, sub, tone = 'default' }: {
 }) {
   const valueColor = tone === 'positive' ? 'text-emerald-600' : tone === 'negative' ? 'text-rose-600' : 'text-foreground';
   return (
-    <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-      <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center mb-3">
+    <Card className="p-3.5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+      <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3">
         <Icon className="h-5 w-5 text-primary" />
       </div>
-      <div className={`text-xl sm:text-2xl font-bold tabular-nums ${valueColor} leading-tight`}>{value}</div>
+      <div className={`text-lg sm:text-xl font-bold tabular-nums ${valueColor} leading-tight`}>{value}</div>
       <div className="text-xs text-muted-foreground mt-1">{label}</div>
       {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </Card>
@@ -203,6 +203,23 @@ function PageHeader({ title, subtitle, action }: { title: string; subtitle: stri
 // ============== 1. Institute Dashboard ==============
 function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAddBranch, onSelectBranch, setActiveModule }: any) {
   const kpi = finance?.kpi || {};
+  const [royaltyCollected, setRoyaltyCollected] = useState(0);
+
+  // Fetch total royalty collected from royalty invoices (paid invoices only)
+  useEffect(() => {
+    let active = true;
+    if (!user?.instituteId) return;
+    api.getRoyaltyInvoices(user.instituteId)
+      .then((invoices: any[]) => {
+        if (!active || !Array.isArray(invoices)) return;
+        const total = invoices
+          .filter((inv: any) => inv.status === 'paid')
+          .reduce((sum: number, inv: any) => sum + Number(inv.royaltyAmount || 0), 0);
+        setRoyaltyCollected(total);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [user?.instituteId]);
 
   if (loading) {
     return (
@@ -210,17 +227,18 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
     );
   }
 
-  // 4 high-level summary KPI cards (NOT detailed financials — those live on dedicated pages)
+  // 4 high-level summary KPI cards — "Royalty Collected" replaces the old "Total Revenue"
+  // (manual revenue entry has been removed; revenue now comes from royalty invoices)
   const summaryCards = [
     { label: 'Branches', value: String(kpi.branches || branches?.length || 0), icon: Network, sub: 'Active campuses' },
     { label: 'Students', value: String(kpi.students || 0), icon: GraduationCap, sub: 'Across all branches' },
     { label: 'Teachers', value: String(kpi.teachers || 0), icon: Users, sub: 'Teaching staff' },
-    { label: 'Total Revenue', value: formatPKR(kpi.totalRevenue), icon: DollarSign, sub: 'All-time collected' },
+    { label: 'Royalty Collected', value: formatPKR(royaltyCollected), icon: Crown, sub: 'From paid royalty invoices' },
   ];
 
-  // Quick action shortcuts → deep-link to the detailed management pages
+  // Quick action shortcuts — "Royalty Management" replaces "Fees & Revenue"
   const quickActions = [
-    { title: 'Fees & Revenue', sub: 'View fee records & revenue', icon: DollarSign, target: 'institute-fees' },
+    { title: 'Royalty Management', sub: 'Set royalty, generate invoices', icon: Crown, target: 'institute-royalty' },
     { title: 'Teachers & Salaries', sub: 'Manage salaries & payouts', icon: Users, target: 'institute-teachers' },
     { title: 'Students', sub: 'Student records & analytics', icon: GraduationCap, target: 'institute-students' },
     { title: 'Reports', sub: 'Analytics & insights', icon: TrendingUp, target: 'institute-reports' },
@@ -372,205 +390,145 @@ function BranchesView({ user, branches, loading, onAddBranch, onSelectBranch, on
   );
 }
 
-// ============== 3. Fees & Revenue View ==============
-function InstituteFeesView({ finance, loading, branches, onRefresh }: any) {
-  const kpi = finance?.kpi || {};
-  const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
-  const studentFees = Array.isArray(finance?.studentFeeSummary) ? finance.studentFeeSummary : [];
-  const revenueEntries = Array.isArray(finance?.revenueEntries) ? finance.revenueEntries : [];
+// ============== 3. Royalty Management View ==============
+// Replaces the old "Fees & Revenue" page. Manual revenue entry has been removed —
+// the Institute Admin now sets a royalty method per branch (per_student | fixed |
+// percentage), auto-generates royalty invoices each month, and tracks collection.
+function InstituteRoyaltyView({ branches, loading, user, onRefresh }: any) {
+  const [settings, setSettings] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [editingBranch, setEditingBranch] = useState<any | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const now = new Date();
+  const [month, setMonth] = useState<string>(MONTHS[now.getMonth()]);
+  const [year, setYear] = useState<string>(String(now.getFullYear()));
 
-  const [query, setQuery] = useState('');
-  const [sortDesc, setSortDesc] = useState(true);
-
-  // Revenue manual-entry form state
-  const [revBranchId, setRevBranchId] = useState<string>('');
-  const [revMonth, setRevMonth] = useState<string>(MONTHS[new Date().getMonth()]);
-  const [revYear, setRevYear] = useState<string>(String(new Date().getFullYear()));
-  const [revAmount, setRevAmount] = useState<string>('');
-  const [submitting, setSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const thisMonth = monthly[monthly.length - 1];
-  const thisYear = (finance?.yearlyRevenue || []).slice(-1)[0];
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = studentFees;
-    if (q) {
-      list = list.filter((s: any) =>
-        s.name?.toLowerCase().includes(q) ||
-        s.class?.toLowerCase().includes(q) ||
-        s.branch?.toLowerCase().includes(q)
-      );
-    }
-    return [...list].sort((a, b) => sortDesc ? b.pending - a.pending : a.pending - b.pending);
-  }, [studentFees, query, sortDesc]);
-
-  const handleAddRevenue = async () => {
-    if (!revBranchId) { toast({ title: 'Select a branch', description: 'Please choose a branch first.', variant: 'destructive' }); return; }
-    if (!revAmount || Number(revAmount) <= 0) { toast({ title: 'Invalid amount', description: 'Enter a valid amount greater than 0.', variant: 'destructive' }); return; }
-    if (!revYear || Number(revYear) < 2000) { toast({ title: 'Invalid year', description: 'Enter a valid year.', variant: 'destructive' }); return; }
-    const branch = (branches || []).find((b: any) => b.id === revBranchId);
-    if (!branch) { toast({ title: 'Branch not found', variant: 'destructive' }); return; }
-    setSubmitting(true);
+  const refreshRoyalty = async () => {
+    if (!user?.instituteId) { setDataLoading(false); return; }
+    setDataLoading(true);
     try {
-      await api.addRevenue({
-        sourceType: 'branch',
-        sourceId: revBranchId,
-        sourceName: branch.name,
-        amount: Number(revAmount),
-        month: revMonth,
-        year: Number(revYear),
-        notes: '',
-      });
-      toast({ title: 'Revenue added', description: `${branch.name} · ${revMonth} ${revYear} · ${formatPKR(revAmount)}` });
-      setRevAmount('');
-      onRefresh?.();
-    } catch (e: any) {
-      toast({ title: 'Failed to add revenue', description: e?.message || 'Please try again.', variant: 'destructive' });
+      const [s, inv] = await Promise.all([
+        api.getRoyaltySettings(user.instituteId).catch(() => []),
+        api.getRoyaltyInvoices(user.instituteId).catch(() => []),
+      ]);
+      setSettings(Array.isArray(s) ? s : []);
+      setInvoices(Array.isArray(inv) ? inv : []);
     } finally {
-      setSubmitting(false);
+      setDataLoading(false);
     }
   };
 
-  const handleDeleteRevenue = async (id: string) => {
-    setDeletingId(id);
+  useEffect(() => { refreshRoyalty(); }, [user?.instituteId]);
+
+  // Summary calculations from royalty invoices (NOT manual revenue)
+  const paidInvoices = invoices.filter((i: any) => i.status === 'paid');
+  const pendingInvoices = invoices.filter((i: any) => i.status !== 'paid');
+  const totalCollected = paidInvoices.reduce((sum: number, i: any) => sum + Number(i.royaltyAmount || 0), 0);
+  const totalPending = pendingInvoices.reduce((sum: number, i: any) => sum + Number(i.royaltyAmount || 0), 0);
+  const branchesWithRoyalty = settings.length;
+  const thisMonthRoyalty = invoices
+    .filter((i: any) => i.month === month && Number(i.year) === Number(year))
+    .reduce((sum: number, i: any) => sum + Number(i.royaltyAmount || 0), 0);
+
+  const handleGenerate = async () => {
+    const y = Number(year);
+    if (!y || y < 2000) { toast({ title: 'Enter a valid year', variant: 'destructive' }); return; }
+    setGenerating(true);
     try {
-      await api.deleteRevenue(id);
-      toast({ title: 'Revenue entry deleted' });
+      await api.generateRoyaltyInvoices(month, y);
+      toast({ title: 'Royalty invoices generated', description: `${month} ${y} — calculated from each branch's settings, student count, and fee collections.` });
+      refreshRoyalty();
       onRefresh?.();
     } catch (e: any) {
-      toast({ title: 'Failed to delete', description: e?.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: 'Failed to generate', description: e?.message || 'Please try again.', variant: 'destructive' });
     } finally {
-      setDeletingId(null);
+      setGenerating(false);
     }
   };
 
-  if (loading) return <Card className="p-6"><LoadingState label="Loading fee records…" /></Card>;
-  if (!finance) return <EmptyState icon={DollarSign} title="No fee data" desc="Fee invoices will appear here once students are enrolled and invoices generated." />;
+  const handlePay = async (id: string) => {
+    setPayingId(id);
+    try {
+      await api.payRoyaltyInvoice(id);
+      toast({ title: 'Invoice marked as paid' });
+      refreshRoyalty();
+      onRefresh?.();
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setPayingId(null);
+    }
+  };
 
-  const hasBranches = Array.isArray(branches) && branches.length > 0;
+  if (loading || dataLoading) return <Card className="p-6"><LoadingState label="Loading royalty data…" /></Card>;
+
+  // Merge branch list with their royalty settings for the settings table
+  const settingsByBranchId = new Map(settings.map((s: any) => [s.branchId, s]));
+  const branchesWithSettings = (branches || []).map((b: any) => ({
+    branch: b,
+    setting: settingsByBranchId.get(b.id) || null,
+  }));
+
+  const methodLabel = (m: string) => m === 'per_student' ? 'Per Student' : m === 'fixed' ? 'Fixed' : m === 'percentage' ? 'Percentage' : m || '—';
+  const methodValue = (s: any) => {
+    if (!s) return '—';
+    if (s.method === 'per_student') return formatPKR(s.amount) + ' / student';
+    if (s.method === 'fixed') return formatPKR(s.amount) + ' / month';
+    if (s.method === 'percentage') return (s.percentage || 0) + '% of revenue';
+    return '—';
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Fees & Revenue" subtitle="Institute-wide fee records and revenue analytics" action={
-        <Button size="sm" variant="outline" onClick={() => {
-          const rows = (finance?.studentFeeSummary || []).map((s: any) => [s.name, s.class, s.branch, s.invoices, s.paid, s.pending, s.total, s.status]);
-          exportToCSV(`fees-revenue-${new Date().toISOString().slice(0, 10)}`, ['Student', 'Class', 'Branch', 'Invoices', 'Paid (PKR)', 'Pending (PKR)', 'Total (PKR)', 'Status'], rows);
-        }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
-      } />
+      <PageHeader title="Royalty Management" subtitle="Set royalty methods, generate invoices, and track collections per branch" />
 
-      {/* Revenue Management — manual entry form (TOP of page, before KPI strip) */}
-      <Card className="border border-border rounded-lg shadow-sm p-5">
-        <div className="mb-4">
-          <h3 className="font-bold text-base">Revenue Management</h3>
-          <p className="text-xs text-muted-foreground">Enter monthly revenue received from each branch</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Branch</Label>
-            <Select value={revBranchId} onValueChange={setRevBranchId} disabled={!hasBranches}>
-              <SelectTrigger>
-                {!hasBranches
-                  ? <span className="text-muted-foreground">Add branches first</span>
-                  : <SelectValue placeholder="Select branch" />}
-              </SelectTrigger>
-              <SelectContent>
-                {(branches || []).map((b: any) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Month</Label>
-            <Select value={revMonth} onValueChange={setRevMonth}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MONTHS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Year</Label>
-            <Input
-              type="number"
-              value={revYear}
-              onChange={e => setRevYear(e.target.value)}
-              placeholder="e.g. 2026"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Amount (PKR)</Label>
-            <Input
-              type="number"
-              value={revAmount}
-              onChange={e => setRevAmount(e.target.value)}
-              placeholder="e.g. 30000"
-            />
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            className="bg-primary hover:bg-primary/90 text-white"
-            onClick={handleAddRevenue}
-            disabled={submitting || !hasBranches}
-          >
-            {submitting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-            Add Revenue
-          </Button>
-        </div>
-      </Card>
-
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard icon={DollarSign} label="Total Collected" value={formatPKR(kpi.totalRevenue)} sub={`${kpi.paidInvoices || 0} invoices paid`} tone="positive" />
-        <KPICard icon={AlertCircle} label="Pending" value={formatPKR(kpi.pendingFees)} sub={`${kpi.unpaidInvoices || 0} invoices unpaid`} tone="negative" />
-        <KPICard icon={TrendingUp} label="This Month" value={formatPKR(thisMonth?.revenue || 0)} sub={thisMonth ? `${thisMonth.month} ${thisMonth.year}` : '—'} />
-        <KPICard icon={Calendar} label="This Year" value={formatPKR(thisYear?.revenue || 0)} sub={thisYear ? `FY ${thisYear.year}` : '—'} />
+      {/* D. Summary KPIs — 4 compact cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard icon={CheckCircle2} label="Total Royalty Collected" value={formatPKR(totalCollected)} sub={`${paidInvoices.length} paid invoices`} tone="positive" />
+        <KPICard icon={AlertCircle} label="Pending Royalty" value={formatPKR(totalPending)} sub={`${pendingInvoices.length} pending invoices`} tone="negative" />
+        <KPICard icon={Network} label="Branches with Royalty" value={String(branchesWithRoyalty)} sub={`${(branches || []).length} total branches`} />
+        <KPICard icon={Crown} label="This Month's Royalty" value={formatPKR(thisMonthRoyalty)} sub={`${month} ${year}`} />
       </div>
 
-      {/* Revenue Entries table — below the form, reflects manual entries in real-time */}
-      <Card className="border border-border rounded-lg shadow-sm p-5">
+      {/* A. Royalty Settings — table of branches with their current royalty method */}
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
         <div className="mb-4">
-          <h3 className="font-bold text-base">Revenue Entries</h3>
-          <p className="text-xs text-muted-foreground">All manually entered branch revenue records</p>
+          <h3 className="font-bold text-base">Royalty Settings</h3>
+          <p className="text-xs text-muted-foreground">Set the royalty method for each branch</p>
         </div>
-        {revenueEntries.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No revenue entries yet. Add your first entry above.
-          </div>
+        {branchesWithSettings.length === 0 ? (
+          <EmptyState icon={Crown} title="No branches yet" desc="Add branches first to configure royalty methods." />
         ) : (
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Branch</TableHead>
-                  <TableHead className="text-xs">Month</TableHead>
-                  <TableHead className="text-xs">Year</TableHead>
-                  <TableHead className="text-xs text-right">Amount</TableHead>
-                  <TableHead className="text-xs">Notes</TableHead>
+                  <TableHead className="text-xs">Method</TableHead>
+                  <TableHead className="text-xs">Amount / Percentage</TableHead>
+                  <TableHead className="text-xs">Effective From</TableHead>
                   <TableHead className="text-xs text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {revenueEntries.map((r: any) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-sm font-medium">{r.sourceName}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{r.month}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground tabular-nums">{r.year}</TableCell>
-                    <TableCell className="text-sm text-right tabular-nums font-semibold text-emerald-600">{formatPKR(r.amount)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[220px] truncate">{r.notes || '—'}</TableCell>
+                {branchesWithSettings.map(({ branch, setting }: any) => (
+                  <TableRow key={branch.id}>
+                    <TableCell className="text-sm font-medium">{branch.name}</TableCell>
+                    <TableCell>
+                      {setting ? (
+                        <Badge variant="outline" className="text-[10px] text-primary bg-primary/10 border-primary/20">{methodLabel(setting.method)}</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground bg-muted border-border">Not set</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{methodValue(setting)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{setting?.effectiveFrom ? new Date(setting.effectiveFrom).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</TableCell>
                     <TableCell className="text-right">
-                      <button
-                        type="button"
-                        aria-label="Delete revenue entry"
-                        onClick={() => handleDeleteRevenue(r.id)}
-                        disabled={deletingId === r.id}
-                        className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition disabled:opacity-50"
-                      >
-                        {deletingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      </button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setEditingBranch(branch)}>
+                        <Edit className="h-3 w-3 mr-1" /> {setting ? 'Edit' : 'Set Royalty'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -580,93 +538,189 @@ function InstituteFeesView({ finance, loading, branches, onRefresh }: any) {
         )}
       </Card>
 
-      {/* Revenue chart */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-bold text-base">Monthly Revenue (Last 12 Months)</h3>
-            <p className="text-xs text-muted-foreground">Collected fee revenue per month</p>
-          </div>
+      {/* B. Generate Royalty Invoices — auto-calculates from settings + branch data */}
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+        <div className="mb-4">
+          <h3 className="font-bold text-base">Generate Royalty Invoices</h3>
+          <p className="text-xs text-muted-foreground">This auto-calculates royalty for each branch based on their settings, student count, and fee collections.</p>
         </div>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={monthly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-            <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => (v / 1000) + 'k'} />
-            <Tooltip
-              contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }}
-              formatter={(v: any) => formatPKR(v)}
-            />
-            <Bar dataKey="revenue" fill={NAVY} radius={[3, 3, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Month</Label>
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Year</Label>
+            <Input type="number" value={year} onChange={e => setYear(e.target.value)} placeholder="e.g. 2026" />
+          </div>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white h-9"
+            onClick={handleGenerate}
+            disabled={generating}
+          >
+            {generating ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
+            Generate Invoices
+          </Button>
+        </div>
       </Card>
 
-      {/* Per-student fee table */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
+      {/* C. Royalty Collection Report — invoices table */}
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h3 className="font-bold text-base">All Fee Invoices</h3>
-            <p className="text-xs text-muted-foreground">Per-student fee summary across all branches</p>
+            <h3 className="font-bold text-base">Royalty Collection Report</h3>
+            <p className="text-xs text-muted-foreground">All generated royalty invoices across branches</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="h-4 w-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="Search student, class, branch…"
-                className="pl-8 h-9 w-64"
-              />
-            </div>
-            <Button size="sm" variant="outline" onClick={() => setSortDesc(v => !v)}>
-              {sortDesc ? 'Pending ↓' : 'Pending ↑'}
-            </Button>
-          </div>
+          <Button size="sm" variant="outline" onClick={() => {
+            const rows = invoices.map((i: any) => [i.branchName, i.month, i.year, methodLabel(i.method), i.studentCount ?? 0, i.branchRevenue ?? 0, i.royaltyAmount ?? 0, i.status, i.paidDate ? new Date(i.paidDate).toLocaleDateString() : '—']);
+            exportToCSV(`royalty-collection-${new Date().toISOString().slice(0, 10)}`, ['Branch', 'Month', 'Year', 'Method', 'Students', 'Branch Revenue (PKR)', 'Royalty Amount (PKR)', 'Status', 'Paid Date'], rows);
+          }}>
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
+          </Button>
         </div>
-        {filtered.length === 0 ? (
-          <EmptyState icon={FileText} title="No fee records" desc="No students match your search." />
+        {invoices.length === 0 ? (
+          <EmptyState icon={FileText} title="No royalty invoices yet" desc="Generate invoices for a month/year using the section above." />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Student</TableHead>
-                <TableHead className="text-xs">Class</TableHead>
-                <TableHead className="text-xs">Branch</TableHead>
-                <TableHead className="text-xs text-center">Invoices</TableHead>
-                <TableHead className="text-xs text-right">Paid</TableHead>
-                <TableHead className="text-xs text-right">Pending</TableHead>
-                <TableHead className="text-xs text-right">Total</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.slice(0, 100).map((s: any) => (
-                <TableRow key={s.id}>
-                  <TableCell className="text-sm font-medium">{s.name}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{s.class}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{s.branch}</TableCell>
-                  <TableCell className="text-xs text-center tabular-nums">{s.invoices}</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums text-emerald-700">{formatPKR(s.paid)}</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums text-rose-600">{formatPKR(s.pending)}</TableCell>
-                  <TableCell className="text-xs text-right tabular-nums font-semibold">{formatPKR(s.total)}</TableCell>
-                  <TableCell>
-                    {s.pending > 0 ? (
-                      <Badge variant="outline" className="text-[10px] text-rose-600 bg-rose-500/10 border-rose-500/20">Pending</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] text-emerald-700 bg-emerald-500/10 border-emerald-500/20">Settled</Badge>
-                    )}
-                  </TableCell>
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs">Month/Year</TableHead>
+                  <TableHead className="text-xs">Method</TableHead>
+                  <TableHead className="text-xs text-center">Students</TableHead>
+                  <TableHead className="text-xs text-right">Branch Revenue</TableHead>
+                  <TableHead className="text-xs text-right">Royalty Amount</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs text-right">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-        {filtered.length > 100 && (
-          <div className="text-xs text-muted-foreground text-center mt-3">Showing first 100 of {filtered.length} students</div>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((inv: any) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="text-sm font-medium">{inv.branchName}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{inv.month} {inv.year}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] text-primary bg-primary/10 border-primary/20">{methodLabel(inv.method)}</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{inv.studentCount ?? 0}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums">{formatPKR(inv.branchRevenue)}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums font-semibold">{formatPKR(inv.royaltyAmount)}</TableCell>
+                    <TableCell>
+                      {inv.status === 'paid' ? (
+                        <Badge variant="outline" className="text-[10px] text-emerald-700 bg-emerald-500/10 border-emerald-500/20">Paid</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-rose-600 bg-rose-500/10 border-rose-500/20">Pending</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {inv.status === 'paid' ? (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{inv.paidDate ? new Date(inv.paidDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/10" onClick={() => handlePay(inv.id)} disabled={payingId === inv.id}>
+                          {payingId === inv.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                          Mark Paid
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </Card>
+
+      {editingBranch && (
+        <SetRoyaltyModal
+          branch={editingBranch}
+          existing={settingsByBranchId.get(editingBranch.id)}
+          onClose={() => setEditingBranch(null)}
+          onSaved={() => { setEditingBranch(null); refreshRoyalty(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// ============== Set Royalty Modal — choose method (per_student | fixed | percentage) ==============
+function SetRoyaltyModal({ branch, existing, onClose, onSaved }: { branch: any; existing: any; onClose: () => void; onSaved: () => void }) {
+  const [method, setMethod] = useState<string>(existing?.method || 'per_student');
+  const [amount, setAmount] = useState<string>(existing?.amount ? String(existing.amount) : '');
+  const [percentage, setPercentage] = useState<string>(existing?.percentage ? String(existing.percentage) : '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (method === 'percentage') {
+      const p = Number(percentage);
+      if (!p || p <= 0 || p > 100) { toast({ title: 'Enter a valid percentage (1-100)', variant: 'destructive' }); return; }
+    } else {
+      const a = Number(amount);
+      if (!a || a <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    }
+    setSaving(true);
+    try {
+      const body: any = { branchId: branch.id, method };
+      if (method === 'percentage') body.percentage = Number(percentage);
+      else body.amount = Number(amount);
+      await api.setRoyaltySettings(body);
+      toast({ title: 'Royalty settings saved', description: `${branch.name} — ${method === 'per_student' ? 'Per Student' : method === 'fixed' ? 'Fixed' : 'Percentage'}` });
+      onSaved();
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 grid place-items-center p-4 bg-black/50" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md">
+        <Card className="p-6">
+          <h3 className="font-bold text-lg mb-1">Set Royalty Method</h3>
+          <p className="text-sm text-muted-foreground mb-4">{branch.name}</p>
+          <div className="space-y-3">
+            <div>
+              <Label>Royalty Method</Label>
+              <Select value={method} onValueChange={setMethod}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="per_student">Per Student (PKR per student / month)</SelectItem>
+                  <SelectItem value="fixed">Fixed (PKR fixed per month)</SelectItem>
+                  <SelectItem value="percentage">Percentage (% of branch revenue)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {method === 'percentage' ? (
+              <div>
+                <Label>Percentage (%)</Label>
+                <Input type="number" value={percentage} onChange={e => setPercentage(e.target.value)} placeholder="e.g. 5" className="mt-1" autoFocus />
+                <p className="text-[11px] text-muted-foreground mt-1">Branch pays this % of its monthly revenue as royalty.</p>
+              </div>
+            ) : (
+              <div>
+                <Label>Amount (PKR {method === 'per_student' ? 'per student per month' : 'fixed per month'})</Label>
+                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder={method === 'per_student' ? 'e.g. 200' : 'e.g. 25000'} className="mt-1" autoFocus />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {method === 'per_student' ? 'Royalty = amount × number of students in branch.' : 'Fixed monthly royalty regardless of student count.'}
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 mt-5">
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={saving} onClick={save}>
+              {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Saving…</> : 'Save Royalty'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+          </div>
+        </Card>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -1185,14 +1239,14 @@ function InstituteReportsView({ finance, branches, loading }: any) {
       {/* Insights cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center mb-3"><Network className="h-5 w-5 text-primary" /></div>
+          <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><Network className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Branch by Revenue</div>
           <div className="text-lg font-bold mt-1">{topBranch?.name || '—'}</div>
           <div className="text-xs text-emerald-700 font-semibold mt-0.5">{topBranch ? formatPKR(topBranch.revenue) : formatPKR(0)}</div>
           <div className="text-[11px] text-muted-foreground mt-1">{topBranch ? `${topBranch.students} students · ${topBranch.teachers} teachers` : ''}</div>
         </Card>
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center mb-3"><BookOpen className="h-5 w-5 text-primary" /></div>
+          <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><BookOpen className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Class by Students</div>
           <div className="text-lg font-bold mt-1">{topClass?.class || '—'}</div>
           <div className="text-xs text-primary font-semibold mt-0.5">{topClass ? `${topClass.students} students` : ''}</div>

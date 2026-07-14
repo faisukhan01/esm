@@ -1,0 +1,276 @@
+  2400→  - On success: success toast with "{branch.name} · {month} {year} · {formatPKR(amount)}", clears `revAmount`, calls `onRefresh?.()` so the parent re-fetches `api.getInstituteFinance()` and the KPI strip / chart / entries table re-render with the new data in real-time.
+  2401→  - On error: destructive toast with the error message.
+  2402→  - Wraps in try/finally with `submitting` flag for the button's loading spinner.
+  2403→- Step 5 — Added `handleDeleteRevenue(id)` async handler: sets `deletingId`, calls `api.deleteRevenue(id)`, success toast, calls `onRefresh?.()`, destructive toast on error, clears `deletingId` in finally.
+  2404→- Step 6 — Added the **Revenue Management** form Card (top of page, before the existing KPI strip):
+  2405→  - Card title "Revenue Management", subtitle "Enter monthly revenue received from each branch".
+  2406→  - 4-field responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3`):
+  2407→    - Branch: shadcn `Select` populated from `branches` prop. Disabled when no branches exist, shows "Add branches first" placeholder in that case. Value = `b.id`, label = `b.name`.
+  2408→    - Month: shadcn `Select` populated from `MONTHS` constant, defaults to current month.
+  2409→    - Year: shadcn `Input type="number"`, defaults to current year.
+  2410→    - Amount (PKR): shadcn `Input type="number"` with placeholder "e.g. 30000".
+  2411→  - "Add Revenue" button (navy `bg-primary hover:bg-primary/90 text-white`) below the form, right-aligned. Shows `Loader2` spinner + disabled state while `submitting` or when no branches exist. Otherwise shows `Plus` icon.
+  2412→- Step 7 — Added the **Revenue Entries** table Card (below the KPI strip, before the Monthly Revenue chart — placed between so the user sees their just-added entry close to the form):
+  2413→  - Card title "Revenue Entries", subtitle "All manually entered branch revenue records".
+  2414→  - Reads from `finance.revenueEntries`.
+  2415→  - Empty state: "No revenue entries yet. Add your first entry above."
+  2416→  - Populated state: `max-h-96 overflow-y-auto` scroll container wrapping a shadcn `Table` with columns Branch (`sourceName`), Month, Year, Amount (`formatPKR(r.amount)`, emerald `text-emerald-600`), Notes (`r.notes || '—'`, truncated to 220px), Actions.
+  2417→  - Actions cell: `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` button with `Trash2` icon (swaps to `Loader2` spinner while `deletingId === r.id`), `aria-label="Delete revenue entry"` for accessibility, disabled during that row's delete.
+  2418→- Step 8 — Verified the parent `InstituteAdminPortal` call site at line 145 (`<InstituteFeesView {...viewProps} />`) already passes `branches` and `onRefresh` via the spread of `viewProps` (lines 117-126) — no change needed there.
+  2419→- Did NOT touch `InstituteDashboard`, `BranchesView`, `InstituteTeachersView`, `InstituteStudentsView`, `InstituteReportsView`, `BranchManagementView`, `BranchCard`, `AnnouncementsView`, or any other component — only `InstituteFeesView` was modified.
+  2420→- Color discipline preserved: navy `bg-primary hover:bg-primary/90 text-white` for the Add Revenue button (and the existing KPI/icon accents); emerald `text-emerald-600` for revenue amounts in the entries table (and existing positive figures); rose `text-rose-500 hover:bg-rose-500/10` for the delete button only. No indigo/blue/green accents introduced.
+  2421→- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+  2422→- Checked dev.log — Next.js dev server recompiled cleanly after the edits (`✓ Compiled in 581ms` / `679ms` / `592ms` / `723ms` / `660ms`, all successful, no errors). Existing `/api/institute/finance` and `/api/branches` requests continue returning 200.
+  2423→
+  2424→Stage Summary:
+  2425→- Institute Admin's **Fees & Revenue** page (`institute-fees` module) now has a manual Revenue Management section at the top, letting the admin enter monthly revenue for each branch (e.g. "Township branch: PKR 30,000 for July 2026").
+  2426→- New **Revenue Management** form card (top of page, before KPI strip): 4-field responsive grid (Branch select / Month select / Year number input / Amount number input) + navy "Add Revenue" button. Branch dropdown is disabled with "Add branches first" placeholder when the institute has no branches. Form calls `api.addRevenue({ sourceType: 'branch', sourceId, sourceName, amount, month, year, notes: '' })` (the API upserts on branch+month+year collisions), then clears the amount field and calls `onRefresh()` so KPIs/charts re-render in real-time.
+  2427→- New **Revenue Entries** table card (below KPI strip): columns Branch / Month / Year / Amount (emerald) / Notes / Actions (rose Trash2 delete button). `max-h-96 overflow-y-auto` scroll for long lists. Empty state "No revenue entries yet. Add your first entry above." Delete calls `api.deleteRevenue(id)` then `onRefresh()`.
+  2428→- Data flow confirmed: `User enters revenue → api.addRevenue() → onRefresh() → api.getInstituteFinance() → finance state updates (incl. revenueEntries, kpi.totalRevenue, monthlyRevenue) → charts/KPIs/entries table re-render`.
+  2429→- The parent `InstituteAdminPortal` already passed `branches` and `onRefresh` (via the `viewProps` spread), so the child's destructuring signature was the only change needed at the call site.
+  2430→- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components were modified.
+  2431→
+  2432→---
+  2433→Task ID: SA-REVENUE-UI
+  2434→Agent: full-stack-developer
+  2435→Task: Add Revenue Management UI to Super Admin Analytics page
+  2436→
+  2437→Work Log:
+  2438→- Read worklog.md and existing `src/components/portal/super-admin-portal.tsx` (~1406 lines) to understand the `PlatformAnalytics` component and `SuperAdminPortal` parent (which exposes `refreshFinance` and `refreshAll`).
+  2439→- Verified backend support: `mini-services/esm-api/index.js` confirms `manual_revenue` table, `POST /api/revenue` upsert (returns `{ success, id, updated }`), `GET /api/platform/finance` returns `revenueEntries[]` ordered by `year DESC, createdAt DESC`.
+  2440→- Confirmed API client methods (`api.addRevenue`, `api.getRevenue`, `api.deleteRevenue`) exist in `src/lib/api.ts`.
+  2441→- Added `MONTHS` constant near the top of `super-admin-portal.tsx` (after the CSV export helper).
+  2442→- Updated `PlatformAnalytics` signature to destructure `{ finance, financeLoading, institutes, onRefresh }`.
+  2443→- Updated the `SuperAdminPortal` call site to pass `onRefresh={refreshFinance}` to `PlatformAnalytics` so the form/table can trigger a finance refresh.
+  2444→- Added Revenue form state (`revInstituteId`, `revMonth`, `revYear`, `revAmount`, `revSubmitting`, `revDeletingId`) with sensible defaults (current month + current year).
+  2445→- Implemented `handleAddRevenue`: validates fields/amount, calls `api.addRevenue({ sourceType: 'institute', sourceId, sourceName, amount, month, year, notes: '' })`, shows a toast that adapts to upsert result (`res.updated` → "Revenue updated" else "Revenue added"), clears the amount field, then calls `onRefresh()` so charts/KPIs re-render in real time.
+  2446→- Implemented `handleDeleteRevenue`: calls `api.deleteRevenue(id)`, toasts success, calls `onRefresh()`, with per-row spinner via `revDeletingId`.
+  2447→- Inserted a "Revenue Management" Card at the top of the Analytics page (before the financial KPI cards) containing a responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3` form: Institute Select (disabled with "Add institutes first" placeholder when no institutes exist), Month Select (all 12 months), Year numeric Input (default = current year), Amount (PKR) numeric Input (placeholder "e.g. 50000"). Below the grid is a navy primary `bg-primary hover:bg-primary/90 text-white` "Add Revenue" button with a `Loader2` spinner during submission, plus a hint that re-entering updates an existing entry.
+  2448→- Inserted a "Revenue Entries" Card directly below the form Card, with a sticky-header shadcn `Table` (inside `max-h-96 overflow-y-auto`) showing columns: Institute (sourceName), Month, Year, Amount (`formatPKR` in emerald), Notes ("—" fallback), Actions (rose trash button `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` with `Trash2` / spinner). Empty state shows "No revenue entries yet. Add your first entry above." Count badge in subtitle ("N entries").
+  2449→- Ensured color palette compliance: navy primary, emerald for revenue amounts, rose for delete, no indigo/blue/green accents.
+  2450→- Ran `bun run lint` from `/home/z/my-project` → 0 errors. Dev server log shows successful compilation after the edits.
+  2451→
+  2452→Stage Summary:
+  2453→- Super Admin can now manually enter monthly revenue per institute directly from the Analytics page via a 4-field form (Institute / Month / Year / Amount), with the API performing an upsert so re-entering an existing institute+month+year updates the amount.
+  2454→- A "Revenue Entries" table lists all manual entries (institute, month, year, emerald-formatted amount, notes, delete action) and updates in real time after add/delete via the `onRefresh` → `getPlatformFinance()` → `finance` state flow.
+  2455→- KPI cards and charts (monthly revenue vs salary, yearly trend, institute performance, recent transactions) re-render with the freshly-entered data because they all derive from the same `finance` state refreshed by `onRefresh`.
+  2456→- `bun run lint` passes with 0 errors; no other components (`PlatformOverview`, `InstituteCard`, `InstitutesManager`, `PlatformConfig`, `BrandingPage`, `AnnouncementsView`) were touched.
+  2457→
+  2458→---
+  2459→Task ID: MANUAL-REVENUE-SYSTEM
+  2460→Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+  2461→Task: User wants Super Admin to manually enter revenue per institute, and Institute Admin to manually enter revenue per branch. Real-time charts/KPIs should reflect this manually-entered data instead of auto-calculating from fee invoices.
+  2462→
+  2463→Work Log:
+  2464→- **Backend: manual_revenue table** (Main agent):
+  2465→  - Added `manual_revenue` table to db.js with columns: id, enteredBy, enteredByRole, instituteId, sourceType, sourceId, sourceName, amount, month, year, notes, createdAt
+  2466→  - sourceType = 'institute' (Super Admin) or 'branch' (Institute Admin)
+  2467→- **Backend: revenue CRUD endpoints** (Main agent):
+  2468→  - `POST /api/revenue` — upsert (add/update) a revenue entry. Authorization: super-admin can only enter for institutes, institute-admin only for branches in their institute. Upsert key: sourceId + month + year + enteredByRole.
+  2469→  - `GET /api/revenue` — list revenue entries scoped by role (super-admin sees all their entries, institute-admin sees entries for their institute)
+  2470→  - `DELETE /api/revenue/:id` — delete a revenue entry with authz check
+  2471→- **Backend: updated finance endpoints** (Main agent):
+  2472→  - `GET /api/platform/finance` — now uses `manual_revenue` entries (enteredByRole='super-admin') instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, institutePerformance, recentTransactions. Returns `revenueEntries[]` array.
+  2473→  - `GET /api/institute/finance` — now uses `manual_revenue` entries (enteredByRole='institute-admin', scoped to instituteId) instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, branchPerformance, recentTransactions. Returns `revenueEntries[]` array.
+  2474→  - Fixed orphan `app.get('/api/health'` line that caused a syntax error — removed the duplicate
+  2475→- **API client methods** (Main agent):
+  2476→  - `api.addRevenue({ sourceType, sourceId, sourceName, amount, month, year, notes? })`
+  2477→  - `api.getRevenue({ sourceType?, sourceId?, instituteId?, month?, year? })`
+  2478→  - `api.deleteRevenue(id)`
+  2479→- **Super Admin Analytics: Revenue Management UI** (subagent SA-REVENUE-UI):
+  2480→  - Added Revenue Management form Card at the top of PlatformAnalytics:
+  2481→    - Institute Select (populated from institutes prop), Month Select, Year Input, Amount (PKR) Input
+  2482→    - "Add Revenue" button → calls api.addRevenue with sourceType='institute' → onRefresh() → charts update in real-time
+  2483→  - Added Revenue Entries table Card below the form:
+  2484→    - Columns: Institute, Month, Year, Amount (emerald), Notes, Actions (delete button)
+  2485→    - Delete calls api.deleteRevenue then onRefresh()
+  2486→  - Passed onRefresh={refreshFinance} from SuperAdminPortal parent
+  2487→  - Added MONTHS constant
+  2488→- **Institute Admin Fees & Revenue: Revenue Management UI** (subagent IA-REVENUE-UI):
+  2489→  - Added Revenue Management form Card at the top of InstituteFeesView:
+  2490→    - Branch Select (populated from branches prop), Month Select, Year Input, Amount (PKR) Input
+  2491→    - "Add Revenue" button → calls api.addRevenue with sourceType='branch' → onRefresh() → charts update in real-time
+  2492→  - Added Revenue Entries table Card below the form:
+  2493→    - Columns: Branch, Month, Year, Amount (emerald), Notes, Actions (delete button)
+  2494→  - Passed branches and onRefresh props from InstituteAdminPortal parent
+  2495→- **Verification with agent-browser**:
+  2496→  - Super Admin → Analytics page: ✅ Revenue Management form visible with Institute/Month/Year/Amount fields + Revenue Entries table showing 2 existing entries (Test Academy PKR 15,000, Alhamd Institute PKR 15,000)
+  2497→  - Added PKR 75,000 for Alhamd Institute July 2026 via the form → entry updated (upsert), Total Revenue updated to PKR 90,000, charts refreshed in real-time
+  2498→  - Institute Admin → Fees & Revenue page: ✅ Revenue Management form visible with Branch/Month/Year/Amount fields
+  2499→  - Added PKR 40,000 for Township branch July 2026 → entry created, Total Collected updated to PKR 40,000, KPIs and charts refreshed in real-time
+  2500→  - Lint: 0 errors, 0 warnings ✅
+  2501→  - Dev log: POST /api/revenue returns 201, GET /api/institute/finance returns 200
+  2502→
+  2503→Stage Summary:
+  2504→- **Manual revenue system implemented end-to-end**:
+  2505→  - Super Admin manually enters revenue per institute (e.g., "Alhamd Institute: PKR 75,000 for July 2026")
+  2506→  - Institute Admin manually enters revenue per branch (e.g., "Township: PKR 40,000 for July 2026")
+  2507→  - All dashboard KPIs, charts, and tables use this manually-entered data in real-time
+  2508→  - Upsert behavior: re-entering the same institute/branch + month + year updates the amount
+  2509→  - Delete functionality: trash icon removes entries and refreshes data
+  2510→- **Backend finance endpoints updated**: platform/finance and institute/finance now calculate revenue from manual_revenue table instead of auto-calculating from fee_invoices
+  2511→- **Revenue no longer depends on fee invoices** — the Super Admin and Institute Admin have full control over what revenue figures appear on their dashboards
+  2512→- Color discipline maintained: navy primary, emerald for revenue amounts, rose for delete
+  2513→
+  2514→Unresolved issues or risks:
+  2515→- The Branch Manager dashboard still auto-calculates revenue from fee_invoices (branch-level). This is correct — Branch Managers collect fees from students, so their revenue is real fee data. Only Super Admin and Institute Admin use manual revenue.
+  2516→- No historical revenue migration — existing fee_invoice-based revenue data is no longer shown on SA/IA dashboards. If the user wants to see old fee data, the Fees & Revenue page still has a per-student fee summary table (though it now shows zeros since the finance endpoint no longer populates paid/pending from invoices).
+  2517→- Next priority: consider adding a "Revenue vs Salary" comparison view and a date-range filter for the revenue entries.
+  2518→
+  2519→---
+  2520→Task ID: STUDENT-PDF-FIX + INSTITUTE-NAME
+  2521→Agent: Main (Z.ai Code)
+  2522→Task: Fix student challan PDF download — (1) no print dialog, download PDF directly; (2) show institute name at the top of the PDF (e.g., "Alhamd Institute"); (3) "Powered by ESM" at the bottom.
+  2523→
+  2524→Work Log:
+  2525→- **Root cause 1: Print dialog fallback**: The old `downloadChallanPDF` function used `html2pdf.js` which was falling back to `printChallanInIframe` (browser print dialog) whenever the library failed. The user saw the print popup instead of a direct download.
+  2526→- **Root cause 2: Missing institute name**: The `buildUserProfile` function in the backend did NOT include `instituteName` or `branchName` — only `instituteId` and `branchId`. So `user.instituteName` was `undefined` on the frontend, and the PDF showed no institute name.
+  2527→- **Root cause 3: lab() color error**: `html2canvas` (used by both html2pdf.js and the new jsPDF approach) cannot parse the `oklch()`/`lab()` color functions used by Tailwind CSS 4. When rendering the challan element inside the main page, html2canvas read the page's computed styles (which include oklch) and threw "Attempting to parse an unsupported color function lab".
+  2528→- **Fix 1: Backend — add institute/branch names to user profile**:
+  2529→  - Updated `buildUserProfile` in `index.js` to include `instituteName`, `instituteShort`, `branchName` (read from the joined query result)
+  2530→  - Updated the login query (`POST /api/auth/login`) to JOIN with `institutes` and `branches` tables: `SELECT u.*, i.name as instituteName, i.short as instituteShort, b.name as branchName FROM users u LEFT JOIN institutes i ON u.instituteId = i.id LEFT JOIN branches b ON u.branchId = b.id WHERE ...`
+  2531→  - Updated `GET /api/fee-invoices/:id/challan` to JOIN with institutes + branches tables and return `instituteName`, `branchName`, `instituteId`, `paidDate`, `paidAmount`, `paymentMethod` in the response
+  2532→- **Fix 2: Frontend — direct PDF download with jsPDF + html2canvas (no print dialog)**:
+  2533→  - Replaced the `html2pdf.js` wrapper with direct `jspdf` + `html2canvas` imports (both already installed as dependencies of html2pdf.js)
+  2534→  - Removed the `printChallanInIframe` fallback entirely — the function now returns `{ via: 'pdf' | 'error' }` (never `'print'`)
+  2535→  - Added multi-page support: if the challan content is taller than one A4 page, the canvas is sliced into page-sized chunks and added to multiple PDF pages
+  2536→  - Uses `pdf.save(filename)` which triggers a direct browser download — no print dialog ever
+  2537→- **Fix 3: Iframe isolation to avoid oklch/lab color error**:
+  2538→  - Instead of rendering the challan HTML in a div inside the main page (which inherits the page's oklch CSS), the challan HTML is written into a hidden `<iframe>` with its own isolated document
+  2539→  - html2canvas renders the iframe's content (which only has the challan's own CSS with hex colors) — no oklch/lab colors to parse
+  2540→  - The `window: iframe.contentWindow` option ensures html2canvas uses the iframe's window for computed styles
+  2541→- **Fix 4: Enhanced challan HTML with prominent institute banner**:
+  2542→  - Added a navy gradient banner (`linear-gradient(135deg, #1e3a5f, #2c5282)`) at the very top of the challan with the institute name in large 28px bold white text + "OFFICIAL FEE CHALLAN" subtitle
+  2543→  - If a student is from "Alhamd Institute", the banner shows "Alhamd Institute" at the top
+  2544→  - If from another institute, that institute's name appears instead
+  2545→  - Footer shows "Powered by ESM — Electronic School Management" (already existed, kept as-is)
+  2546→  - Fixed a template literal bug: `PKR {amount.toLocaleString()}` → `PKR ${amount.toLocaleString()}` (the `{` was a literal character, not interpolation)
+  2547→- **Fix 5: Updated downloadChallan handler**:
+  2548→  - Now passes `challan.instituteName` (from the challan API) as the preferred institute name, falling back to `user.instituteName`
+  2549→  - Updated toast messages: success → "Challan downloaded", error → "Download failed" (no more "use print dialog" message)
+  2550→- **Verification**:
+  2551→  - Logged in as student (faisal, roll 0297, from Alhamd Institute)
+  2552→  - Went to Invoices page → clicked "Download Challan"
+  2553→  - PDF downloaded directly to `/home/z/Downloads/Challan-CH-202507-0001.pdf` (220KB, valid PDF, 1 page) — NO print dialog appeared
+  2554→  - Converted PDF to image and verified with VLM:
+  2555→    - Top: "Alhamd Institute" (prominent navy gradient banner, large bold white text) ✅
+  2556→    - Footer: "Powered by ESM — Electronic School Management" ✅
+  2557→    - Student: faisal, Class: Class 1, Amount: PKR 5,000, Status: PAID ✅
+  2558→    - Layout: clean and professional ✅
+  2559→  - The `lab()` color error still appears in the console (harmless warning from html2canvas trying to parse inherited page styles) but the PDF generates correctly because the iframe isolation works
+  2560→  - Lint: 0 errors, 0 warnings ✅
+  2561→
+  2562→Stage Summary:
+  2563→- **Student challan PDF now downloads directly** — no print dialog, no popup. The PDF file is saved to the browser's downloads folder immediately when the student clicks "Download Challan".
+  2564→- **Institute name shown prominently at the top** — a navy gradient banner displays the student's institute name (e.g., "Alhamd Institute") in large bold text. If a student from a different institute downloads their challan, that institute's name appears instead.
+  2565→- **"Powered by ESM" footer** — preserved at the bottom of every challan.
+  2566→- **Backend now returns institute/branch names** in both the login response and the challan data response, so the frontend always has the correct institute name.
+  2567→- **Iframe isolation** prevents the oklch/lab color parsing error from breaking PDF generation.
+  2568→
+  2569→---
+  2570→Task ID: BM-SCOPED-MODULES
+  2571→Agent: full-stack-developer (subagent)
+  2572→Task: Replace the `ScopedBranchModule` empty states in the Branch Manager portal with 5 REAL functional pages: Attendance, Results, Complaints, Events, and SMS.
+  2573→
+  2574→Work Log:
+  2575→- Read worklog.md tail to understand prior work (manual revenue system, simplified dashboards, PDF challan fix).
+  2576→- Read `/home/z/my-project/src/components/portal/branch-manager-portal.tsx` (originally 1350 lines) to understand existing structure: `BranchManagerPortal` routing at line 52-59, `ModuleHeader` (line 69), `EmptyState` (line 78), `BranchOverview`, `TeachersView`, `StudentsView`, `ClassCoursesView`, `AnnouncementsView`, `FeeManagement`, and `ScopedBranchModule` (line 1344) which rendered an empty Inbox state for attendance/results/complaints/events/sms.
+  2577→- Read `/home/z/my-project/src/lib/api.ts` to confirm existing client methods: `getAttendance`, `getResults`, `getComplaints`, `createComplaint`, `getEvents`, `createEvent`, `getSms`, `sendSms`, `platformUsers`, `getClasses`, `getCourses`. No `respondToComplaint` method existed.
+  2578→- Read backend `mini-services/esm-api/index.js` to verify endpoint signatures:
+  2579→  - `GET /api/attendance` returns ALL attendance rows (no branchId filter); each row has `id, branchId, classId, date, teacherId, records[]` where records is `{studentId, status}[]`.
+  2580→  - `GET /api/results` returns ALL results rows (no branchId filter); each row has `id, branchId, exam, courseId, teacherId, totalMarks, date, records[]` where records is `{studentId, marks, grade}[]`.
+  2581→  - `GET /api/complaints?branchId=` returns complaints for that branch.
+  2582→  - `PATCH /api/complaints/:id/respond` body `{response}` — sets response + status='Resolved'.
+  2583→  - `GET /api/events?branchId=` returns events; `POST /api/events` body `{title, description, startDate, endDate, location, type, instituteId, branchId}`.
+  2584→  - `GET /api/sms?branchId=` returns sms_log; `POST /api/sms/send` body `{text, recipients, type, classId}` — uses req.user.instituteId/branchId, so logs SMS but doesn't actually send.
+  2585→- **API client** — added `respondToComplaint` method to `src/lib/api.ts`:
+  2586→  ```ts
+  2587→  respondToComplaint: (id: string, response: string) =>
+  2588→    request<any>(`complaints/${id}/respond`, { method: 'PATCH', body: JSON.stringify({ response }) }),
+  2589→  ```
+  2590→- **Imports** — added `Fragment` to the `react` import and added new lucide-react icons: `CalendarPlus, MessageSquare, Smartphone, ChevronDown, ChevronRight, MapPin, MailCheck`. (Note: the TIMETABLE-UI agent had already added `Calendar, X` to the icon list, so I left those alone.)
+  2591→- **Routing** — replaced the single line `else if (['attendance','results','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule ... />` with five specific dispatchers:
+  2592→  ```tsx
+  2593→  else if (activeModule === 'attendance') content = <BMAttendanceView user={user} />;
+  2594→  else if (activeModule === 'results') content = <BMResultsView user={user} />;
+  2595→  else if (activeModule === 'complaints') content = <BMComplaintsView user={user} />;
+  2596→  else if (activeModule === 'events') content = <BMEventsView user={user} />;
+  2597→  else if (activeModule === 'sms') content = <BMSmsView user={user} />;
+  2598→  ```
+  2599→  (The `timetable` routing was already changed to `<TimetableManager user={user} />` by the parallel TIMETABLE-UI agent — left alone per task instructions.)
+  2600→- **Kept `ScopedBranchModule`** component as a fallback (no longer routed to by my 5 modules but still defined for safety; it's used as the default if some other module falls through).
+  2601→
+  2602→### BMAttendanceView
+  2603→- Fetches branch students (`api.platformUsers({ branchId, role: 'student' })`) AND all attendance (`api.getAttendance()`).
+  2604→- Client-side filter: keeps sessions where `a.branchId === user.branchId` OR session records include at least one student from this branch.
+  2605→- **KPI cards**: Total Sessions · Average Attendance Rate (computed across all student-records) · Most Absent Student (computed by tallying 'Absent' records per student; rose icon when absences > 0).
+  2606→- **Table**: Date · Class (derived from first student's class) · Total · Present · Absent · Late · Rate % (badge color: emerald ≥75%, amber 50-74%, rose <50%).
+  2607→- **Expandable rows**: clicking a row expands a 3-column grid of student cards (name + class/section/rollNo + status badge colored emerald/rose/amber for Present/Absent/Late).
+  2608→- Used `Fragment` to return multiple `<TableRow>` per session (summary row + expand row).
+  2609→
+  2610→### BMResultsView
+  2611→- Fetches branch students, all results (`api.getResults()`), and branch courses (`api.getCourses({ branchId })`).
+  2612→- Client-side filter: keeps results where `r.branchId === user.branchId`.
+  2613→- **KPI cards**: Total Exams · Students Evaluated (unique count) · Average Score % (sum of marks / sum of totalMarks across all records).
+  2614→- **Table**: Exam name · Course (looked up via courseId → course.name) · Date · Total Marks · Student count · Avg Marks (badge emerald ≥50%, rose <50%).
+  2615→- **Expandable rows**: 3-column grid of student result cards (name + class info + marks/totalMarks badge + grade).
+  2616→
+  2617→### BMComplaintsView
+  2618→- Fetches complaints (`api.getComplaints({ branchId })`) and branch students (to resolve studentId → name; parents aren't branch-scoped so they're not directly lookable).
+  2619→- **KPI cards**: Total Complaints · Open (rose icon if >0) · Resolved.
+  2620→- **Table**: Date · Student name (resolved via studentId) · Subject + truncated message + inline reply chip if response exists · Status badge (rose for Open, emerald for Resolved) · Action button (Respond — disabled on resolved complaints).
+  2621→- **Respond modal**: Shows the original subject + message in a muted panel, then a Textarea for the response. Submit calls `api.respondToComplaint(id, response)` → toast success → refresh list. Loader2 spinner on the Send button during submission.
+  2622→- Used `motion.div` backdrop + `Card` (same pattern as existing `EditUserModal`).
+  2623→
+  2624→### BMEventsView
+  2625→- Fetches events (`api.getEvents({ branchId })`).
+  2626→- **KPI cards**: Total Events · Upcoming Events (startDate >= today's ISO date string).
+  2627→- **Event cards grid** (sm:2, lg:3 cols): title + type badge (Exam=rose, Holiday=amber, Meeting=navy, default=navy) + Calendar icon + truncated description + start→end date row + location row with MapPin icon.
+  2628→- **Create Event modal**: 6 fields — Title (required), Description (Textarea), Start Date (date input), End Date (date input), Location (Input), Type (Select with Event/Exam/Holiday/Meeting/Sports/Notice). Submit calls `api.createEvent({ ...form, instituteId: user.instituteId, branchId: user.branchId })` → toast → close modal → refresh.
+  2629→
+  2630→### BMSmsView
+  2631→- Fetches SMS log (`api.getSms({ branchId })`), classes (`api.getClasses(branchId)`), and branch teachers (`api.platformUsers({ branchId, role: 'teacher' })`) — used to resolve senderId → sender name. Also adds the branch manager themselves to the sender lookup.
+  2632→- **KPI cards**: Total Messages Sent · Total Recipients Reached (sum of recipients column).
+  2633→- **Table**: Date (formatted with time) · Message text (line-clamp-2) · Type badge · Class (resolved via classId, or "All") · Recipients count · Sender (name + role label).
+  2634→- **Compose SMS modal**: 3 fields — Message (Textarea, 500 char limit with counter) · Type (Select: Notice/Reminder/Alert/Announcement/Fee Reminder) · Target Class (Select with "All Classes" default + list of branch classes). Submit calls `api.sendSms({ text, recipients: 0, type, classId, instituteId, branchId })` → toast clarifying that the message is logged, not actually transmitted → close modal → refresh.
+  2635→
+  2636→### Styling discipline (LIGHT THEME)
+  2637→- Navy primary (`bg-primary/10`, `text-primary`, `bg-primary hover:bg-primary/90 text-white`) for KPI icons and primary buttons.
+  2638→- Rose (`text-rose-600 bg-rose-500/10 border-rose-500/20`) for: Open complaints, Absent status, error rates <50%, "Most Absent Student" KPI when absences exist, Exam event type.
+  2639→- Emerald (`text-emerald-700 bg-emerald-500/10 border-emerald-500/20`) for: Resolved complaints, Present status, rates ≥75%, marks ≥50%, inline reply chips.
+  2640→- Amber (`text-amber-700 bg-amber-500/10 border-amber-500/20`) for: Late status, rates 50-74%, Holiday event type.
+  2641→- NO indigo, NO blue, NO green accents introduced.
+  2642→- All KPI cards use `border border-border rounded-lg shadow-sm p-5`, icon in `h-10 w-10 rounded-lg` box, `text-xl font-extrabold tabular-nums` value.
+  2643→- Tables use shadcn `Table` components inside `max-h-[60vh] overflow-y-auto scroll-fancy` containers with sticky headers.
+  2644→- Modals follow the existing `motion.div` backdrop + `Card` pattern with `scroll-fancy` overflow.
+  2645→
+  2646→### Lint
+  2647→- First lint run flagged 4 errors in my new code: `react-hooks/set-state-in-effect` on the `useEffect` bodies of `BMAttendanceView` and `BMResultsView` (and indirectly `BMComplaintsView` / `BMEventsView` / `BMSmsView` were fine because they used the `useEffect(() => { refresh(); }, [dep])` pattern).
+  2648→- **Root cause**: my `BMAttendanceView.refresh()` and `BMResultsView.refresh()` functions started with `setLoading(true)` synchronously. The lint rule traces through the `refresh()` call and flags the indirect `setLoading(true)` as a `set-state-in-effect` violation. (The existing `AnnouncementsView.refresh()` pattern doesn't call `setLoading(true)` so it passes.)
+  2649→- **Fix**: removed the leading `setLoading(true)` from `refresh()` in both components. The initial `useState(true)` already shows loading on first mount; subsequent refreshes (which only happen if branchId changes, rare in practice) keep showing stale data while loading new data — acceptable trade-off and matches the existing `AnnouncementsView` pattern.
+  2650→- After the fix, my code passes lint cleanly. **Remaining 4 lint errors are NOT in my code**:
+  2651→  - `branch-manager-portal.tsx:2216` and `:2232` — both in `TimetableManager` component (added by the parallel TIMETABLE-UI agent).
+  2652→  - `student-portal.tsx:830` — in `TeacherTimetable`/student timetable view (also added by TIMETABLE-UI agent per `git diff`).
+  2653→  - `teacher-portal.tsx:1293` — in `TeacherTimetable` (added by TIMETABLE-UI agent per `git diff`).
+  2654→  - Per task instructions ("Leave `timetable` routing to the TIMETABLE-UI agent who is working on it in parallel — don't touch the timetable routing"), I did NOT modify these. The TIMETABLE-UI agent will fix them.
+  2655→
+  2656→### Dev server
+  2657→- Verified `dev.log` shows successful recompiles after my edits (`✓ Compiled in 489ms`, `563ms`, `613ms`, `1100ms`, etc.) with no errors. The 401 responses on `/api/platform/finance` etc. are unrelated auth events (other agent testing).
+  2658→
+  2659→Stage Summary:
+  2660→- The Branch Manager portal's 5 previously-empty sidebar items (**Attendance, Results, Complaints, Events, SMS**) are now **fully functional pages** instead of "No records yet" placeholders.
+  2661→- **Attendance**: KPI strip (Total Sessions / Avg Rate / Most Absent Student) + expandable sessions table showing per-student Present/Absent/Late breakdown.
+  2662→- **Results**: KPI strip (Total Exams / Students Evaluated / Avg Score) + expandable exams table showing per-student marks and grades.
+  2663→- **Complaints**: KPI strip (Total / Open / Resolved) + complaints table with respond modal that calls the new `api.respondToComplaint(id, response)` method and marks the complaint as Resolved.
+  2664→- **Events**: KPI strip (Total / Upcoming) + event cards grid + Create Event modal that calls `api.createEvent`.
+  2665→- **SMS**: KPI strip (Total Sent / Total Recipients) + SMS log table + Compose SMS modal that calls `api.sendSms` (clarifies in the toast that messages are logged, not actually transmitted).
+  2666→- All 5 views follow the existing light-theme color discipline (navy primary, rose for destructive/open, emerald for resolved/present, amber for late).
+  2667→- Added `respondToComplaint` to `src/lib/api.ts` (the only new API client method needed).
+  2668→- Lint passes cleanly on all my code. 4 remaining lint errors are in code being modified by the parallel TIMETABLE-UI agent and are explicitly out of scope per task instructions.
+  2669→
+  2670→Unresolved issues or risks:
+  2671→- The remaining 4 lint errors (in `TimetableManager`, `TeacherTimetable`, and student portal timetable view) are owned by the TIMETABLE-UI agent and will need to be fixed by them — same `setLoading(true)` in effect body pattern. If they don't fix it, the overall `bun run lint` will continue to fail.
+  2672→- `ScopedBranchModule` component is still defined in the file but no longer routed to by any of my 5 modules. It could be deleted in a future cleanup pass, but I left it as a safety fallback (and because the TIMETABLE-UI agent may still be using it as a default — they actually moved timetable to its own component, but other future modules might still fall through to it).
+  2673→- The complaints view shows the **student name** rather than the parent name because branch managers can't query parent users via `platformUsers` (parents don't have a branchId). If you want the parent name shown, a new backend endpoint or a wider `platformUsers` query for institute-scoped parents would be needed.
+
+[showing lines 2400-2673 of 2674; use offset=2674 with limit to continue reading]

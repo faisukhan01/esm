@@ -632,7 +632,7 @@ function formatShortDate(d: any): string {
 function InlineEmpty({ icon: Icon, title, desc, action }: any) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-8 px-4">
-      <div className="inline-flex h-11 w-11 rounded-xl bg-muted/50 items-center justify-center mb-3">
+      <div className="inline-flex h-9 w-9 rounded-lg bg-muted/50 items-center justify-center mb-3">
         <Icon className="h-5 w-5 text-muted-foreground" />
       </div>
       <h4 className="font-semibold text-sm">{title}</h4>
@@ -718,9 +718,9 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
+            <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-lg sm:text-xl font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -897,7 +897,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
             >
               <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition h-full">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center">
                     <q.icon className="h-5 w-5 text-primary" />
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
@@ -949,9 +949,9 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{c.value}</div>
+            <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-lg sm:text-xl font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -976,7 +976,7 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
                 <motion.div key={cls.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                   <Card className="p-5 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenClass(cls)}>
                     <div className="flex items-start justify-between mb-3">
-                      <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center">
                         <GraduationCap className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex items-center gap-1.5">

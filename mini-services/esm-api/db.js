@@ -407,6 +407,38 @@ export async function initDB() {
       generatedAt TEXT DEFAULT (datetime('now')),
       FOREIGN KEY (studentId) REFERENCES users(id)
     )`,
+
+    // Royalty settings — Institute Admin sets royalty method per branch
+    // method: 'per_student' (amount × student count), 'fixed' (flat monthly), 'percentage' (% of branch revenue)
+    `CREATE TABLE IF NOT EXISTS royalty_settings (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      instituteId TEXT NOT NULL,
+      method TEXT NOT NULL DEFAULT 'fixed',
+      amount REAL DEFAULT 0,
+      percentage REAL DEFAULT 0,
+      effectiveFrom TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (branchId) REFERENCES branches(id)
+    )`,
+
+    // Royalty invoices — auto-generated monthly per branch based on royalty settings
+    `CREATE TABLE IF NOT EXISTS royalty_invoices (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      instituteId TEXT NOT NULL,
+      branchName TEXT,
+      month TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      method TEXT,
+      studentCount INTEGER DEFAULT 0,
+      branchRevenue REAL DEFAULT 0,
+      royaltyAmount REAL NOT NULL DEFAULT 0,
+      status TEXT DEFAULT 'Pending',
+      paidDate TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (branchId) REFERENCES branches(id)
+    )`,
   ];
 
   for (const sql of statements) {

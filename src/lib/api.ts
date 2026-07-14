@@ -283,6 +283,14 @@ export const api = {
   generateReportCard: (studentId: string, term?: string, examName?: string) =>
     request<any>(`report-cards/generate/${studentId}${term ? `?term=${encodeURIComponent(term)}` : ''}${examName ? `${term ? '&' : '?'}examName=${encodeURIComponent(examName)}` : ''}`),
   saveReportCard: (body: any) => request<any>('report-cards', { method: 'POST', body: JSON.stringify(body) }),
+  // Royalty / Franchise management
+  getRoyaltySettings: (instituteId?: string) => request<any[]>(`royalty/settings${instituteId ? `?instituteId=${instituteId}` : ''}`),
+  setRoyaltySettings: (body: { branchId: string; method: string; amount?: number; percentage?: number; effectiveFrom?: string }) =>
+    request<any>('royalty/settings', { method: 'POST', body: JSON.stringify(body) }),
+  generateRoyaltyInvoices: (month: string, year: number) =>
+    request<any>('royalty/generate', { method: 'POST', body: JSON.stringify({ month, year }) }),
+  getRoyaltyInvoices: (instituteId?: string) => request<any[]>(`royalty/invoices${instituteId ? `?instituteId=${instituteId}` : ''}`),
+  payRoyaltyInvoice: (id: string) => request<any>(`royalty/invoices/${id}/pay`, { method: 'PATCH' }),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),
