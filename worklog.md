@@ -2819,3 +2819,40 @@ Stage Summary:
 - TECH_STACK updated to reflect actual technologies (Recharts instead of Three.js)
 - The "emerald-text" CSS class kept its name but now renders a navy gradient
 - Overall visual consistency achieved between landing page and portal dashboards
+
+---
+Task ID: LANDING-HERO-CLEANUP + MODULE-CARDS-NO-CLICK
+Agent: Main (Z.ai Code)
+Task: Redesign hero section to be cleaner and more professional; remove click navigation from module cards.
+
+Work Log:
+- **Hero section redesigned** for a cleaner, more professional look:
+  - Removed the amber/gold Sparkles icon from the badge → clean text-only uppercase badge
+  - Removed the amber gradient text on "your entire" → clean white headline (no gradient text)
+  - Simplified headline: `text-4xl sm:text-5xl lg:text-6xl font-bold` (was `text-7xl font-extrabold` — too large)
+  - Removed the rotating slide caption at the bottom (unnecessary clutter)
+  - Removed the double gradient overlay → single clean `from-black/80 via-black/50 to-black/90`
+  - Moved slide dots from bottom-center to bottom-right (less distracting)
+  - Made slide dots smaller and cleaner: `h-1.5 w-6` active, `h-1.5 w-1.5` inactive
+  - "Explore Modules" button: changed from `border-2 border-white/40` to `border border-white/20` (thinner, more subtle)
+  - Removed the `ring-offset-background` focus ring boilerplate from the Explore button
+  - Subtitle: `text-white/60` (was `text-white/80` — softer, less competing with headline)
+  - More breathing room: `mt-6` subtitle, `mt-10` buttons (was `mt-5`, `mt-8`)
+  - Max width `max-w-2xl` (was `max-w-3xl` — tighter, more focused)
+- **Navbar cleaned up**:
+  - Removed the amber blur glow behind the logo → clean navy logo box (`bg-gradient-to-br from-primary to-primary/80`)
+  - Changed `font-extrabold` to `font-bold` for ESM text (less heavy)
+  - Added `transition-colors` for smooth color changes on scroll
+- **Module cards — removed click navigation**:
+  - Removed `cursor-pointer` class from module cards
+  - Removed `onClick={() => { setView('login'); }}` handler
+  - Removed the `ArrowUpRight` icon that appeared on hover (indicated clickability)
+  - Cards are now purely informational — no navigation
+- **Removed unused imports**: `Sparkles`, `ArrowUpRight` (no longer used after cleanup)
+- **Verified**: Lint 0 errors. VLM rated hero 8/10 ("Clean, professional, neat. Headline readable. Buttons well-styled. Navbar minimal and uncluttered."). Modules 8/10 ("Cards are clean and informational, not clickable buttons. Layout is professional.")
+
+Stage Summary:
+- Hero section is now clean and professional: single gradient overlay, white headline (no gradient text), minimal badge, subtle buttons, slide dots moved to bottom-right
+- Navbar logo is navy (no amber blur glow)
+- Module cards are informational only — no click navigation, no cursor pointer, no arrow icon
+- Overall landing page is now cohesive with the portal navy theme
