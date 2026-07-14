@@ -2783,3 +2783,39 @@ Stage Summary:
 - **Institute Admin rebuilt**: No more manual revenue entry. Instead, Franchise/Royalty Management with 3 methods (per student, fixed, percentage), auto-generated invoices, collection reports — exactly as the ESM PDF's Franchise Management module describes
 - **Teacher PostResults crash fixed**: classStudents now properly defined in PostResults component scope
 - All lint errors resolved
+
+---
+Task ID: LANDING-PAGE-NAVY-THEME
+Agent: Main (Z.ai Code)
+Task: Update landing page theme from emerald/green to premium navy, remove all fake/dummy data, align with the new slate-navy color scheme.
+
+Work Log:
+- **Updated `src/lib/modules.ts`**: Replaced ALL emerald/teal/green/lime/cyan color gradients with navy family (`from-primary to-primary/80`, `from-primary/80 to-primary`, etc.). Kept amber/yellow only for finance-related modules (Fee Management, Finance, Fixed Assets) as a complementary accent.
+- **Updated `src/app/globals.css`**: Changed `emerald-text` utility class gradient from emerald green to navy (`oklch(0.38 0.10 257)` to `oklch(0.50 0.10 257)`).
+- **Updated `src/components/landing/landing-page.tsx`**:
+  - All emerald/green/teal colors replaced with navy/primary:
+    - Feature badges: `border-emerald-500/40 text-emerald-700` → `border-primary/40 text-primary`
+    - Module filter active: `bg-emerald-600` → `bg-primary`
+    - Feature card icons: `from-emerald-500/15 to-amber-500/10` → `from-primary/10 to-primary/5`
+    - Feature card icon color: `text-emerald-600` → `text-primary`
+    - Section backgrounds: `from-emerald-50/40` → `from-accent`
+    - Connector line: `from-emerald-500/20 via-amber-500/40` → `from-primary/20 via-primary/40`
+    - CTA background: `from-emerald-700 via-emerald-800 to-emerald-950` → `from-primary via-primary to-primary/80`
+    - CTA button: `text-emerald-800 hover:bg-emerald-50` → `text-primary hover:bg-primary/10`
+    - "How it works" step colors: all 4 steps → navy family gradients
+    - Footer logo: `from-emerald-600 to-emerald-800` → `from-primary to-primary/80`
+  - Removed fake feature "Parent mobile app" → replaced with "PDF report cards" (which we actually have)
+  - Removed "interactive demo" wording → "Explore the full ESM platform now"
+  - Updated TECH_STACK: replaced "Three.js / 3D visualizations" with "Recharts / Interactive data visualizations" (we use Recharts, not Three.js)
+  - Kept amber/gold as a complementary accent for the hero text highlight and rocket icon (navy + gold = premium university crest aesthetic)
+- **No fake/dummy data**: The landing page has no fake stats, no "trusted by X schools", no "10,000+ users" — only real platform features and capabilities
+- **Verified**: Lint passes (0 errors). VLM rated the hero 8/10: "Color theme: navy (not green). Premium: Yes." Modules section rated 8/10: "Colors are navy-based. Cards are clean."
+
+Stage Summary:
+- Landing page now uses the same premium slate-navy theme as the portal dashboards
+- All emerald/green/teal colors removed — replaced with navy primary + amber gold accent
+- No fake or dummy data anywhere on the landing page
+- Module catalog colors updated to navy family (21 modules)
+- TECH_STACK updated to reflect actual technologies (Recharts instead of Three.js)
+- The "emerald-text" CSS class kept its name but now renders a navy gradient
+- Overall visual consistency achieved between landing page and portal dashboards

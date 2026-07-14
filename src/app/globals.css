@@ -145,7 +145,7 @@
 }
 
 @utility emerald-text {
-  background: linear-gradient(135deg, oklch(0.55 0.14 158) 0%, oklch(0.42 0.12 165) 100%);
+  background: linear-gradient(135deg, oklch(0.38 0.10 257) 0%, oklch(0.50 0.10 257) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

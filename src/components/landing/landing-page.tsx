@@ -25,7 +25,7 @@ const PLATFORM_FEATURES = [
 
 const TECH_STACK = [
   { label: 'Next.js 16', desc: 'Modern React framework' },
-  { label: 'Three.js', desc: '3D visualizations' },
+  { label: 'Recharts', desc: 'Interactive data visualizations' },
   { label: 'Node.js + Express', desc: 'Scalable backend API' },
   { label: 'TypeScript', desc: 'Type-safe throughout' },
   { label: 'Tailwind CSS', desc: 'Premium responsive UI' },
@@ -101,13 +101,13 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
           className="max-w-3xl"
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 backdrop-blur px-4 py-1.5 text-xs font-medium text-white mb-6">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
             Electronic School Management
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white">
             One platform for{' '}
-            <span className="bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">your entire</span>{' '}
+            <span className="bg-gradient-to-r from-amber-300 to-amber-400 bg-clip-text text-transparent">your entire</span>{' '}
             institution
           </h1>
 
@@ -137,7 +137,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
               transition={{ duration: 0.5 }}
               className="mt-10 text-white/60 text-sm"
             >
-              <span className="font-semibold text-amber-300">{HERO_SLIDES[idx].caption}</span>
+              <span className="font-semibold text-amber-400">{HERO_SLIDES[idx].caption}</span>
               <span className="mx-2">·</span>
               {HERO_SLIDES[idx].sub}
             </motion.div>
@@ -216,7 +216,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       <section id="features" className="py-20 sm:py-28 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">Platform Capabilities</Badge>
+            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">Platform Capabilities</Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Built to run{' '}
               <span className="emerald-text">your entire institution</span>
@@ -236,9 +236,9 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 transition={{ delay: i * 0.08 }}
                 className="group relative rounded-2xl border border-border/60 bg-card p-6 hover:shadow-xl hover:-translate-y-1 transition-all"
               >
-                <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent opacity-0 group-hover:opacity-100 transition" />
-                <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/15 to-amber-500/10 items-center justify-center mb-4 group-hover:scale-110 transition">
-                  <f.icon className="h-6 w-6 text-emerald-600" />
+                <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition" />
+                <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 items-center justify-center mb-4 group-hover:scale-110 transition">
+                  <f.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-bold text-lg mb-2">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
@@ -249,10 +249,10 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       </section>
 
       {/* Modules showcase */}
-      <section id="modules" className="py-20 sm:py-28 relative bg-gradient-to-b from-emerald-50/40 to-background dark:from-emerald-950/20">
+      <section id="modules" className="py-20 sm:py-28 relative bg-gradient-to-b from-accent to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-amber-500/40 text-amber-700 dark:text-amber-300">{MODULES.length} Integrated Modules</Badge>
+            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">{MODULES.length} Integrated Modules</Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Every module your institution needs,{' '}
               <span className="emerald-text">in one place</span>
@@ -270,8 +270,8 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 onClick={() => setActiveGroup(g)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition ${
                   activeGroup === g
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
-                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-emerald-500/40'
+                    ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
+                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
                 }`}
               >
                 {g}
@@ -314,10 +314,10 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       </section>
 
       {/* How it works */}
-      <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-emerald-50/40 dark:to-emerald-950/20">
+      <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-accent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-emerald-500/40 text-emerald-700 dark:text-emerald-300">How It Works</Badge>
+            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">How It Works</Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               From signup to{' '}
               <span className="emerald-text">first day</span>{' '}
@@ -329,12 +329,12 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 relative">
             {/* Connector line */}
-            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-emerald-500/20 via-amber-500/40 to-emerald-500/20" />
+            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
             {[
-              { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-amber-500 to-orange-600' },
-              { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-emerald-500 to-emerald-700' },
-              { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-teal-500 to-cyan-600' },
-              { step: '04', icon: BookOpen, title: 'Teachers & Students', desc: 'Take attendance, post results, track progress — all in real time.', color: 'from-violet-500 to-purple-600' },
+              { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-primary to-primary/80' },
+              { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-primary to-primary/80' },
+              { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-primary/80 to-primary' },
+              { step: '04', icon: BookOpen, title: 'Teachers & Students', desc: 'Take attendance, post results, track progress — all in real time.', color: 'from-primary/70 to-primary' },
             ].map((s, i) => (
               <motion.div
                 key={s.step}
@@ -359,27 +359,27 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       {/* CTA — honest early access */}
       <section className="py-20 sm:py-24">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 p-8 sm:p-12 text-center text-white">
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary via-primary to-primary/80 p-8 sm:p-12 text-center text-white">
             <div className="absolute inset-0 bg-grid-dark opacity-30" />
             <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
-            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
             <div className="relative">
-              <Rocket className="h-8 w-8 mx-auto text-amber-300 mb-4" />
+              <Rocket className="h-8 w-8 mx-auto text-amber-400 mb-4" />
               <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 Ready to modernize your campus?
               </h2>
-              <p className="mt-4 text-emerald-50/90 max-w-xl mx-auto">
-                Explore the full ESM portal now — a live, interactive demo. Provision an
+              <p className="mt-4 text-white/90 max-w-xl mx-auto">
+                Explore the full ESM platform now. Provision an
                 institute, add branches, create teachers and students, and see how each
                 role gets their own scoped experience.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-                <Button size="lg" className="bg-white text-emerald-800 hover:bg-emerald-50" onClick={() => setView('login')}>
+                <Button size="lg" className="bg-white text-primary hover:bg-primary/10" onClick={() => setView('login')}>
                   Launch the Portal <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
                 <button
                   onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-emerald-800 transition-all duration-300"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-11 px-8 border-2 border-white/40 text-white hover:bg-white hover:text-primary transition-all duration-300"
                 >
                   See all modules
                 </button>
@@ -394,7 +394,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 grid place-items-center">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -420,7 +420,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
               <li>Multi-tenant SaaS</li>
               <li>Role-based portals</li>
               <li>Real-time data</li>
-              <li>Parent mobile app</li>
+              <li>PDF report cards</li>
               <li>Secure authentication</li>
             </ul>
           </div>
