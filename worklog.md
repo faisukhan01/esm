@@ -2565,3 +2565,109 @@ Stage Summary:
 - **"Powered by ESM" footer** — preserved at the bottom of every challan.
 - **Backend now returns institute/branch names** in both the login response and the challan data response, so the frontend always has the correct institute name.
 - **Iframe isolation** prevents the oklch/lab color parsing error from breaking PDF generation.
+
+---
+Task ID: BM-SCOPED-MODULES
+Agent: full-stack-developer (subagent)
+Task: Replace the `ScopedBranchModule` empty states in the Branch Manager portal with 5 REAL functional pages: Attendance, Results, Complaints, Events, and SMS.
+
+Work Log:
+- Read worklog.md tail to understand prior work (manual revenue system, simplified dashboards, PDF challan fix).
+- Read `/home/z/my-project/src/components/portal/branch-manager-portal.tsx` (originally 1350 lines) to understand existing structure: `BranchManagerPortal` routing at line 52-59, `ModuleHeader` (line 69), `EmptyState` (line 78), `BranchOverview`, `TeachersView`, `StudentsView`, `ClassCoursesView`, `AnnouncementsView`, `FeeManagement`, and `ScopedBranchModule` (line 1344) which rendered an empty Inbox state for attendance/results/complaints/events/sms.
+- Read `/home/z/my-project/src/lib/api.ts` to confirm existing client methods: `getAttendance`, `getResults`, `getComplaints`, `createComplaint`, `getEvents`, `createEvent`, `getSms`, `sendSms`, `platformUsers`, `getClasses`, `getCourses`. No `respondToComplaint` method existed.
+- Read backend `mini-services/esm-api/index.js` to verify endpoint signatures:
+  - `GET /api/attendance` returns ALL attendance rows (no branchId filter); each row has `id, branchId, classId, date, teacherId, records[]` where records is `{studentId, status}[]`.
+  - `GET /api/results` returns ALL results rows (no branchId filter); each row has `id, branchId, exam, courseId, teacherId, totalMarks, date, records[]` where records is `{studentId, marks, grade}[]`.
+  - `GET /api/complaints?branchId=` returns complaints for that branch.
+  - `PATCH /api/complaints/:id/respond` body `{response}` — sets response + status='Resolved'.
+  - `GET /api/events?branchId=` returns events; `POST /api/events` body `{title, description, startDate, endDate, location, type, instituteId, branchId}`.
+  - `GET /api/sms?branchId=` returns sms_log; `POST /api/sms/send` body `{text, recipients, type, classId}` — uses req.user.instituteId/branchId, so logs SMS but doesn't actually send.
+- **API client** — added `respondToComplaint` method to `src/lib/api.ts`:
+  ```ts
+  respondToComplaint: (id: string, response: string) =>
+    request<any>(`complaints/${id}/respond`, { method: 'PATCH', body: JSON.stringify({ response }) }),
+  ```
+- **Imports** — added `Fragment` to the `react` import and added new lucide-react icons: `CalendarPlus, MessageSquare, Smartphone, ChevronDown, ChevronRight, MapPin, MailCheck`. (Note: the TIMETABLE-UI agent had already added `Calendar, X` to the icon list, so I left those alone.)
+- **Routing** — replaced the single line `else if (['attendance','results','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule ... />` with five specific dispatchers:
+  ```tsx
+  else if (activeModule === 'attendance') content = <BMAttendanceView user={user} />;
+  else if (activeModule === 'results') content = <BMResultsView user={user} />;
+  else if (activeModule === 'complaints') content = <BMComplaintsView user={user} />;
+  else if (activeModule === 'events') content = <BMEventsView user={user} />;
+  else if (activeModule === 'sms') content = <BMSmsView user={user} />;
+  ```
+  (The `timetable` routing was already changed to `<TimetableManager user={user} />` by the parallel TIMETABLE-UI agent — left alone per task instructions.)
+- **Kept `ScopedBranchModule`** component as a fallback (no longer routed to by my 5 modules but still defined for safety; it's used as the default if some other module falls through).
+
+### BMAttendanceView
+- Fetches branch students (`api.platformUsers({ branchId, role: 'student' })`) AND all attendance (`api.getAttendance()`).
+- Client-side filter: keeps sessions where `a.branchId === user.branchId` OR session records include at least one student from this branch.
+- **KPI cards**: Total Sessions · Average Attendance Rate (computed across all student-records) · Most Absent Student (computed by tallying 'Absent' records per student; rose icon when absences > 0).
+- **Table**: Date · Class (derived from first student's class) · Total · Present · Absent · Late · Rate % (badge color: emerald ≥75%, amber 50-74%, rose <50%).
+- **Expandable rows**: clicking a row expands a 3-column grid of student cards (name + class/section/rollNo + status badge colored emerald/rose/amber for Present/Absent/Late).
+- Used `Fragment` to return multiple `<TableRow>` per session (summary row + expand row).
+
+### BMResultsView
+- Fetches branch students, all results (`api.getResults()`), and branch courses (`api.getCourses({ branchId })`).
+- Client-side filter: keeps results where `r.branchId === user.branchId`.
+- **KPI cards**: Total Exams · Students Evaluated (unique count) · Average Score % (sum of marks / sum of totalMarks across all records).
+- **Table**: Exam name · Course (looked up via courseId → course.name) · Date · Total Marks · Student count · Avg Marks (badge emerald ≥50%, rose <50%).
+- **Expandable rows**: 3-column grid of student result cards (name + class info + marks/totalMarks badge + grade).
+
+### BMComplaintsView
+- Fetches complaints (`api.getComplaints({ branchId })`) and branch students (to resolve studentId → name; parents aren't branch-scoped so they're not directly lookable).
+- **KPI cards**: Total Complaints · Open (rose icon if >0) · Resolved.
+- **Table**: Date · Student name (resolved via studentId) · Subject + truncated message + inline reply chip if response exists · Status badge (rose for Open, emerald for Resolved) · Action button (Respond — disabled on resolved complaints).
+- **Respond modal**: Shows the original subject + message in a muted panel, then a Textarea for the response. Submit calls `api.respondToComplaint(id, response)` → toast success → refresh list. Loader2 spinner on the Send button during submission.
+- Used `motion.div` backdrop + `Card` (same pattern as existing `EditUserModal`).
+
+### BMEventsView
+- Fetches events (`api.getEvents({ branchId })`).
+- **KPI cards**: Total Events · Upcoming Events (startDate >= today's ISO date string).
+- **Event cards grid** (sm:2, lg:3 cols): title + type badge (Exam=rose, Holiday=amber, Meeting=navy, default=navy) + Calendar icon + truncated description + start→end date row + location row with MapPin icon.
+- **Create Event modal**: 6 fields — Title (required), Description (Textarea), Start Date (date input), End Date (date input), Location (Input), Type (Select with Event/Exam/Holiday/Meeting/Sports/Notice). Submit calls `api.createEvent({ ...form, instituteId: user.instituteId, branchId: user.branchId })` → toast → close modal → refresh.
+
+### BMSmsView
+- Fetches SMS log (`api.getSms({ branchId })`), classes (`api.getClasses(branchId)`), and branch teachers (`api.platformUsers({ branchId, role: 'teacher' })`) — used to resolve senderId → sender name. Also adds the branch manager themselves to the sender lookup.
+- **KPI cards**: Total Messages Sent · Total Recipients Reached (sum of recipients column).
+- **Table**: Date (formatted with time) · Message text (line-clamp-2) · Type badge · Class (resolved via classId, or "All") · Recipients count · Sender (name + role label).
+- **Compose SMS modal**: 3 fields — Message (Textarea, 500 char limit with counter) · Type (Select: Notice/Reminder/Alert/Announcement/Fee Reminder) · Target Class (Select with "All Classes" default + list of branch classes). Submit calls `api.sendSms({ text, recipients: 0, type, classId, instituteId, branchId })` → toast clarifying that the message is logged, not actually transmitted → close modal → refresh.
+
+### Styling discipline (LIGHT THEME)
+- Navy primary (`bg-primary/10`, `text-primary`, `bg-primary hover:bg-primary/90 text-white`) for KPI icons and primary buttons.
+- Rose (`text-rose-600 bg-rose-500/10 border-rose-500/20`) for: Open complaints, Absent status, error rates <50%, "Most Absent Student" KPI when absences exist, Exam event type.
+- Emerald (`text-emerald-700 bg-emerald-500/10 border-emerald-500/20`) for: Resolved complaints, Present status, rates ≥75%, marks ≥50%, inline reply chips.
+- Amber (`text-amber-700 bg-amber-500/10 border-amber-500/20`) for: Late status, rates 50-74%, Holiday event type.
+- NO indigo, NO blue, NO green accents introduced.
+- All KPI cards use `border border-border rounded-lg shadow-sm p-5`, icon in `h-10 w-10 rounded-lg` box, `text-xl font-extrabold tabular-nums` value.
+- Tables use shadcn `Table` components inside `max-h-[60vh] overflow-y-auto scroll-fancy` containers with sticky headers.
+- Modals follow the existing `motion.div` backdrop + `Card` pattern with `scroll-fancy` overflow.
+
+### Lint
+- First lint run flagged 4 errors in my new code: `react-hooks/set-state-in-effect` on the `useEffect` bodies of `BMAttendanceView` and `BMResultsView` (and indirectly `BMComplaintsView` / `BMEventsView` / `BMSmsView` were fine because they used the `useEffect(() => { refresh(); }, [dep])` pattern).
+- **Root cause**: my `BMAttendanceView.refresh()` and `BMResultsView.refresh()` functions started with `setLoading(true)` synchronously. The lint rule traces through the `refresh()` call and flags the indirect `setLoading(true)` as a `set-state-in-effect` violation. (The existing `AnnouncementsView.refresh()` pattern doesn't call `setLoading(true)` so it passes.)
+- **Fix**: removed the leading `setLoading(true)` from `refresh()` in both components. The initial `useState(true)` already shows loading on first mount; subsequent refreshes (which only happen if branchId changes, rare in practice) keep showing stale data while loading new data — acceptable trade-off and matches the existing `AnnouncementsView` pattern.
+- After the fix, my code passes lint cleanly. **Remaining 4 lint errors are NOT in my code**:
+  - `branch-manager-portal.tsx:2216` and `:2232` — both in `TimetableManager` component (added by the parallel TIMETABLE-UI agent).
+  - `student-portal.tsx:830` — in `TeacherTimetable`/student timetable view (also added by TIMETABLE-UI agent per `git diff`).
+  - `teacher-portal.tsx:1293` — in `TeacherTimetable` (added by TIMETABLE-UI agent per `git diff`).
+  - Per task instructions ("Leave `timetable` routing to the TIMETABLE-UI agent who is working on it in parallel — don't touch the timetable routing"), I did NOT modify these. The TIMETABLE-UI agent will fix them.
+
+### Dev server
+- Verified `dev.log` shows successful recompiles after my edits (`✓ Compiled in 489ms`, `563ms`, `613ms`, `1100ms`, etc.) with no errors. The 401 responses on `/api/platform/finance` etc. are unrelated auth events (other agent testing).
+
+Stage Summary:
+- The Branch Manager portal's 5 previously-empty sidebar items (**Attendance, Results, Complaints, Events, SMS**) are now **fully functional pages** instead of "No records yet" placeholders.
+- **Attendance**: KPI strip (Total Sessions / Avg Rate / Most Absent Student) + expandable sessions table showing per-student Present/Absent/Late breakdown.
+- **Results**: KPI strip (Total Exams / Students Evaluated / Avg Score) + expandable exams table showing per-student marks and grades.
+- **Complaints**: KPI strip (Total / Open / Resolved) + complaints table with respond modal that calls the new `api.respondToComplaint(id, response)` method and marks the complaint as Resolved.
+- **Events**: KPI strip (Total / Upcoming) + event cards grid + Create Event modal that calls `api.createEvent`.
+- **SMS**: KPI strip (Total Sent / Total Recipients) + SMS log table + Compose SMS modal that calls `api.sendSms` (clarifies in the toast that messages are logged, not actually transmitted).
+- All 5 views follow the existing light-theme color discipline (navy primary, rose for destructive/open, emerald for resolved/present, amber for late).
+- Added `respondToComplaint` to `src/lib/api.ts` (the only new API client method needed).
+- Lint passes cleanly on all my code. 4 remaining lint errors are in code being modified by the parallel TIMETABLE-UI agent and are explicitly out of scope per task instructions.
+
+Unresolved issues or risks:
+- The remaining 4 lint errors (in `TimetableManager`, `TeacherTimetable`, and student portal timetable view) are owned by the TIMETABLE-UI agent and will need to be fixed by them — same `setLoading(true)` in effect body pattern. If they don't fix it, the overall `bun run lint` will continue to fail.
+- `ScopedBranchModule` component is still defined in the file but no longer routed to by any of my 5 modules. It could be deleted in a future cleanup pass, but I left it as a safety fallback (and because the TIMETABLE-UI agent may still be using it as a default — they actually moved timetable to its own component, but other future modules might still fall through to it).
+- The complaints view shows the **student name** rather than the parent name because branch managers can't query parent users via `platformUsers` (parents don't have a branchId). If you want the parent name shown, a new backend endpoint or a wider `platformUsers` query for institute-scoped parents would be needed.

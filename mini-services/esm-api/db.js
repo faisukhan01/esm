@@ -366,6 +366,47 @@ export async function initDB() {
       notes TEXT,
       createdAt TEXT DEFAULT (datetime('now'))
     )`,
+
+    // Timetable — weekly class schedule entries (one row per period per day)
+    `CREATE TABLE IF NOT EXISTS timetable (
+      id TEXT PRIMARY KEY,
+      branchId TEXT NOT NULL,
+      classId TEXT,
+      className TEXT,
+      section TEXT DEFAULT 'A',
+      day TEXT NOT NULL,
+      period INTEGER NOT NULL,
+      startTime TEXT,
+      endTime TEXT,
+      subject TEXT,
+      teacherId TEXT,
+      teacherName TEXT,
+      roomId TEXT,
+      roomName TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (branchId) REFERENCES branches(id)
+    )`,
+
+    // Report cards — generated per student per term/exam
+    `CREATE TABLE IF NOT EXISTS report_cards (
+      id TEXT PRIMARY KEY,
+      studentId TEXT NOT NULL,
+      studentName TEXT,
+      class TEXT,
+      section TEXT DEFAULT 'A',
+      branchId TEXT,
+      instituteId TEXT,
+      term TEXT NOT NULL,
+      examName TEXT,
+      totalMarks INTEGER DEFAULT 0,
+      obtainedMarks INTEGER DEFAULT 0,
+      percentage REAL DEFAULT 0,
+      grade TEXT,
+      remarks TEXT,
+      generatedBy TEXT,
+      generatedAt TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (studentId) REFERENCES users(id)
+    )`,
   ];
 
   for (const sql of statements) {

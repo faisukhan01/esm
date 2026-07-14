@@ -2021,6 +2021,130 @@ app.delete('/api/revenue/:id', requireAuth, requireRole('super-admin', 'institut
   res.json({ success: true });
 });
 
+// ===================== TIMETABLE =====================
+// Branch Manager creates weekly timetable; Teachers/Students view their schedule.
+
+app.get('/api/timetable', requireAuth, async (req, res) => {
+  const { branchId, classId, teacherId } = req.query;
+  let sql = 'SELECT * FROM timetable WHERE 1=1';
+  const args = [];
+  if (teacherId) { sql += ' AND teacherId = ?'; args.push(teacherId); }
+  else if (classId) { sql += ' AND classId = ?'; args.push(classId); }
+  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (req.user.branchId) { sql += ' AND branchId = ?'; args.push(req.user.branchId); }
+  sql += ' ORDER BY CASE day WHEN "Monday" THEN 1 WHEN "Tuesday" THEN 2 WHEN "Wednesday" THEN 3 WHEN "Thursday" THEN 4 WHEN "Friday" THEN 5 WHEN "Saturday" THEN 6 WHEN "Sunday" THEN 7 END, period';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/timetable', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  const { classId, className, section, day, period, startTime, endTime, subject, teacherId, teacherName, roomName } = req.body || {};
+  if (!day || period === undefined) return res.status(400).json({ error: 'day and period required' });
+  const id = nextId('TT');
+  const brId = req.user.branchId;
+  // Upsert: if an entry exists for this class + day + period, update it
+  const existing = await db.execute({
+    sql: 'SELECT id FROM timetable WHERE branchId = ? AND classId = ? AND day = ? AND period = ?',
+    args: [brId, classId || null, day, period],
+  });
+  if (existing.rows.length > 0) {
+    await db.execute({
+      sql: 'UPDATE timetable SET classId = ?, className = ?, section = ?, startTime = ?, endTime = ?, subject = ?, teacherId = ?, teacherName = ?, roomName = ? WHERE id = ?',
+      args: [classId || null, className || '', section || 'A', startTime || '', endTime || '', subject || '', teacherId || null, teacherName || '', roomName || '', existing.rows[0].id],
+    });
+    res.json({ success: true, id: existing.rows[0].id, updated: true });
+  } else {
+    await db.execute({
+      sql: 'INSERT INTO timetable (id, branchId, classId, className, section, day, period, startTime, endTime, subject, teacherId, teacherName, roomName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, brId, classId || null, className || '', section || 'A', day, period, startTime || '', endTime || '', subject || '', teacherId || null, teacherName || '', roomName || ''],
+    });
+    res.status(201).json({ success: true, id });
+  }
+});
+
+app.delete('/api/timetable/:id', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  await db.execute({ sql: 'DELETE FROM timetable WHERE id = ?', args: [req.params.id] });
+  res.json({ success: true });
+});
+
+// ===================== REPORT CARDS =====================
+// Generate and fetch report cards per student.
+
+app.get('/api/report-cards', requireAuth, async (req, res) => {
+  const { studentId, branchId } = req.query;
+  let sql = 'SELECT * FROM report_cards WHERE 1=1';
+  const args = [];
+  if (studentId) { sql += ' AND studentId = ?'; args.push(studentId); }
+  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  else if (req.user.branchId) { sql += ' AND branchId = ?'; args.push(req.user.branchId); }
+  sql += ' ORDER BY generatedAt DESC LIMIT 100';
+  const r = await db.execute({ sql, args });
+  res.json(r.rows);
+});
+
+app.post('/api/report-cards', requireAuth, requireRole('branch-manager', 'institute-admin', 'teacher'), async (req, res) => {
+  const { studentId, studentName, class: cls, section, term, examName, totalMarks, obtainedMarks, percentage, grade, remarks } = req.body || {};
+  if (!studentId || !term) return res.status(400).json({ error: 'studentId and term required' });
+  const id = nextId('RC');
+  const brId = req.user.branchId;
+  await db.execute({
+    sql: `INSERT INTO report_cards (id, studentId, studentName, class, section, branchId, instituteId, term, examName, totalMarks, obtainedMarks, percentage, grade, remarks, generatedBy)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, studentId, studentName || '', cls || '', section || 'A', brId, req.user.instituteId, term, examName || '',
+           Number(totalMarks) || 0, Number(obtainedMarks) || 0, Number(percentage) || 0, grade || '', remarks || '', req.user.id],
+  });
+  res.status(201).json({ success: true, id });
+});
+
+// Generate report card from existing results data
+app.get('/api/report-cards/generate/:studentId', requireAuth, async (req, res) => {
+  const studentId = req.params.studentId;
+  const { term, examName } = req.query;
+  // Get student details
+  const stuR = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [studentId] });
+  if (stuR.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
+  const student = stuR.rows[0];
+  // Get all results for this student
+  const resR = await db.execute({ sql: 'SELECT * FROM results ORDER BY date DESC LIMIT 50' });
+  let totalMarks = 0, obtainedMarks = 0;
+  const subjects = [];
+  for (const r of resR.rows) {
+    try {
+      const recs = JSON.parse(r.records);
+      const entry = recs.find(rec => rec.studentId === studentId);
+      if (entry) {
+        const max = Number(r.totalMarks) || 100;
+        const obt = Number(entry.marks) || 0;
+        totalMarks += max;
+        obtainedMarks += obt;
+        // Get course name
+        const courseR = await db.execute({ sql: 'SELECT name FROM courses WHERE id = ?', args: [r.courseId] });
+        subjects.push({
+          subject: courseR.rows[0]?.name || r.exam || 'Unknown',
+          exam: r.exam,
+          totalMarks: max,
+          obtainedMarks: obt,
+          grade: entry.grade || (obt / max >= 0.9 ? 'A+' : obt / max >= 0.8 ? 'A' : obt / max >= 0.7 ? 'B' : obt / max >= 0.6 ? 'C' : obt / max >= 0.5 ? 'D' : 'F'),
+          date: r.date,
+        });
+      }
+    } catch {}
+  }
+  const percentage = totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
+  const overallGrade = percentage >= 90 ? 'A+' : percentage >= 80 ? 'A' : percentage >= 70 ? 'B' : percentage >= 60 ? 'C' : percentage >= 50 ? 'D' : 'F';
+  res.json({
+    student: { id: student.id, name: student.name, class: student.class, section: student.section, rollNo: student.rollNo },
+    term: term || 'Current Term',
+    examName: examName || 'All Exams',
+    subjects,
+    totalMarks,
+    obtainedMarks,
+    percentage,
+    grade: overallGrade,
+    remarks: percentage >= 80 ? 'Excellent performance' : percentage >= 60 ? 'Good, keep improving' : percentage >= 40 ? 'Needs improvement' : 'Requires serious attention',
+  });
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     const r = await db.execute('SELECT COUNT(*) as count FROM users');

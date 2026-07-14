@@ -1,0 +1,1350 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useEffect, useMemo, useState } from 'react';
+     4→     4→import { motion } from 'framer-motion';
+     5→     5→import { api } from '@/lib/api';
+     6→     6→import { Card } from '@/components/ui/card';
+     7→     7→import { Badge } from '@/components/ui/badge';
+     8→     8→import { Button } from '@/components/ui/button';
+     9→     9→import { Input } from '@/components/ui/input';
+    10→    10→import { Label } from '@/components/ui/label';
+    11→    11→import { Textarea } from '@/components/ui/textarea';
+    12→    12→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    13→    13→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    14→    14→import {
+    15→    15→  Users, GraduationCap, DollarSign, CalendarCheck, Plus, CheckCircle2, UserPlus, BookOpen,
+    16→    16→  Network, Inbox, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
+    17→    17→  FileText, Wallet, Loader2, Banknote, AlertCircle, Scale,
+    18→    18→} from 'lucide-react';
+    19→    19→import { toast } from '@/hooks/use-toast';
+    20→    20→import { AddUserModal } from './add-user-modal';
+    21→    21→import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+    22→    22→
+    23→    23→const fmtMoney = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
+    24→    24→const NAVY = '#1a365d';
+    25→    25→const ROSE = '#e11d48';
+    26→    26→const EMERALD = '#059669';
+    27→    27→
+    28→    28→export function BranchManagerPortal({ activeModule, user }: { activeModule: string; user: any }) {
+    29→    29→  const [stats, setStats] = useState<any>(null);
+    30→    30→  const [teachers, setTeachers] = useState<any[]>([]);
+    31→    31→  const [students, setStudents] = useState<any[]>([]);
+    32→    32→  const [finance, setFinance] = useState<any>(null);
+    33→    33→  const [financeLoading, setFinanceLoading] = useState(true);
+    34→    34→  const [showAdd, setShowAdd] = useState(false);
+    35→    35→  const [addRole, setAddRole] = useState<'teacher' | 'student'>('teacher');
+    36→    36→
+    37→    37→  const refresh = () => {
+    38→    38→    if (user?.branchId) {
+    39→    39→      api.scopedStats(user.instituteId, user.branchId).then(setStats).catch(() => {});
+    40→    40→      api.platformUsers({ branchId: user.branchId, role: 'teacher' }).then(setTeachers).catch(() => {});
+    41→    41→      api.platformUsers({ branchId: user.branchId, role: 'student' }).then(setStudents).catch(() => {});
+    42→    42→      api.getBranchFinance(user.branchId)
+    43→    43→        .then((d) => setFinance(d))
+    44→    44→        .catch(() => setFinance(null))
+    45→    45→        .finally(() => setFinanceLoading(false));
+    46→    46→    }
+    47→    47→  };
+    48→    48→  useEffect(() => { refresh(); }, [user?.branchId]);
+    49→    49→
+    50→    50→  const openAdd = (role: 'teacher' | 'student') => { setAddRole(role); setShowAdd(true); };
+    51→    51→
+    52→    52→  let content: React.ReactNode;
+    53→    53→  if (activeModule === 'teachers') content = <TeachersView teachers={teachers} onRefresh={refresh} onAdd={() => openAdd('teacher')} />;
+    54→    54→  else if (activeModule === 'branch-students') content = <StudentsView students={students} onRefresh={refresh} onAdd={() => openAdd('student')} />;
+    55→    55→  else if (activeModule === 'announcements') content = <AnnouncementsView user={user} />;
+    56→    56→  else if (activeModule === 'class-courses') content = <ClassCoursesView user={user} />;
+    57→    57→  else if (activeModule === 'fees') content = <FeeManagement user={user} />;
+    58→    58→  else if (['attendance','results','timetable','complaints','events','sms'].includes(activeModule)) content = <ScopedBranchModule activeModule={activeModule} user={user} stats={stats} />;
+    59→    59→  else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
+    60→    60→
+    61→    61→  return (
+    62→    62→    <>
+    63→    63→      {content}
+    64→    64→      <AddUserModal open={showAdd} onClose={() => setShowAdd(false)} role={addRole} instituteId={user?.instituteId} branchId={user?.branchId} onCreated={refresh} />
+    65→    65→    </>
+    66→    66→  );
+    67→    67→}
+    68→    68→
+    69→    69→function ModuleHeader({ title, subtitle, actions }: { title: string; subtitle: string; actions?: React.ReactNode }) {
+    70→    70→  return (
+    71→    71→    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    72→    72→      <div><h1 className="text-2xl font-extrabold tracking-tight">{title}</h1><p className="text-sm text-muted-foreground mt-1">{subtitle}</p></div>
+    73→    73→      {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
+    74→    74→    </div>
+    75→    75→  );
+    76→    76→}
+    77→    77→
+    78→    78→function EmptyState({ icon: Icon, title, desc, action }: any) {
+    79→    79→  return (
+    80→    80→    <Card className="p-10 text-center">
+    81→    81→      <div className="inline-flex h-14 w-14 rounded-2xl bg-muted/60 items-center justify-center mb-4"><Icon className="h-7 w-7 text-muted-foreground" /></div>
+    82→    82→      <h3 className="font-bold text-lg">{title}</h3>
+    83→    83→      <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{desc}</p>
+    84→    84→      {action && <div className="mt-5">{action}</div>}
+    85→    85→    </Card>
+    86→    86→  );
+    87→    87→}
+    88→    88→
+    89→    89→function BranchOverview({ user, stats, teachers, students, finance, financeLoading, onAddTeacher, onAddStudent }: any) {
+    90→    90→  const kpi = finance?.kpi || {};
+    91→    91→  const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
+    92→    92→  const recentTx = Array.isArray(finance?.recentTransactions) ? finance.recentTransactions : [];
+    93→    93→  const feeStatus = finance?.feeStatus || { paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0 };
+    94→    94→
+    95→    95→  const feePieData = [
+    96→    96→    { name: 'Paid', value: Number(feeStatus.paid || 0), amount: Number(feeStatus.paidAmount || 0), color: EMERALD },
+    97→    97→    { name: 'Unpaid', value: Number(feeStatus.unpaid || 0), amount: Number(feeStatus.unpaidAmount || 0), color: ROSE },
+    98→    98→  ];
+    99→    99→
+   100→   100→  const netPositive = (kpi.netBalance || 0) >= 0;
+   101→   101→  const kpiCards = [
+   102→   102→    { label: 'Total Revenue', value: fmtMoney(kpi.totalRevenue), icon: DollarSign, tone: 'default' as const, iconTone: 'primary' as const },
+   103→   103→    { label: 'Pending Fees', value: fmtMoney(kpi.pendingFees), icon: AlertCircle, tone: 'default' as const, iconTone: 'rose' as const },
+   104→   104→    { label: 'Salary Paid', value: fmtMoney(kpi.totalSalaryPaid), icon: Wallet, tone: 'default' as const, iconTone: 'primary' as const },
+   105→   105→    { label: 'Net Balance', value: fmtMoney(kpi.netBalance), icon: Scale, tone: (netPositive ? 'positive' : 'negative'), iconTone: (netPositive ? 'emerald' : 'rose') },
+   106→   106→    { label: 'Attendance Rate', value: (kpi.attendanceRate || 0) + '%', icon: CalendarCheck, tone: 'default' as const, iconTone: 'primary' as const },
+   107→   107→    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, sub: `${kpi.paidInvoices || 0} paid · ${kpi.unpaidInvoices || 0} unpaid`, tone: 'default' as const, iconTone: 'primary' as const },
+   108→   108→  ];
+   109→   109→
+   110→   110→  const sCount = kpi.students ?? stats?.students ?? 0;
+   111→   111→  const tCount = kpi.teachers ?? stats?.teachers ?? 0;
+   112→   112→  const totalRev = Number(kpi.totalRevenue ?? 0);
+   113→   113→  const bannerSub = (sCount || tCount || totalRev)
+   114→   114→    ? `${sCount} students · ${tCount} teachers · PKR ${totalRev.toLocaleString('en-PK')} collected`
+   115→   115→    : 'Add your first teacher or student to get started.';
+   116→   116→
+   117→   117→  return (
+   118→   118→    <div className="space-y-6">
+   119→   119→      {/* Welcome banner */}
+   120→   120→      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+   121→   121→        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
+   122→   122→        <div className="absolute inset-0 bg-grid-dark opacity-25" />
+   123→   123→        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
+   124→   124→        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+   125→   125→          <div>
+   126→   126→            <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-primary/70" /> Branch Manager · {user?.branchName}</div>
+   127→   127→            <h1 className="text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
+   128→   128→            <p className="text-white/80 text-sm mt-1.5 max-w-lg">{bannerSub}</p>
+   129→   129→          </div>
+   130→   130→          <div className="flex gap-2">
+   131→   131→            <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
+   132→   132→            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" size="sm" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Student</Button>
+   133→   133→          </div>
+   134→   134→        </div>
+   135→   135→      </motion.div>
+   136→   136→
+   137→   137→      {/* Financial KPI cards / charts / transactions (loading-aware) */}
+   138→   138→      {financeLoading ? (
+   139→   139→        <FinanceSkeleton />
+   140→   140→      ) : !finance ? (
+   141→   141→        <EmptyState icon={Wallet} title="No financial data yet" desc="Branch financial analytics will appear here once fee invoices and salary payouts are recorded." />
+   142→   142→      ) : (
+   143→   143→        <>
+   144→   144→          {/* KPI cards */}
+   145→   145→          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+   146→   146→            {kpiCards.map((c, i) => (
+   147→   147→              <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+   148→   148→                <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+   149→   149→                  <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
+   150→   150→                    <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
+   151→   151→                  </div>
+   152→   152→                  <div className={`text-xl sm:text-2xl font-extrabold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
+   153→   153→                  <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
+   154→   154→                  {c.sub && <div className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</div>}
+   155→   155→                </Card>
+   156→   156→              </motion.div>
+   157→   157→            ))}
+   158→   158→          </div>
+   159→   159→
+   160→   160→          {/* Charts row */}
+   161→   161→          <div className="grid lg:grid-cols-2 gap-4">
+   162→   162→            <Card className="p-5 border border-border rounded-lg shadow-sm">
+   163→   163→              <div className="mb-4">
+   164→   164→                <h3 className="font-bold text-base">Revenue vs Salary (Last 12 Months)</h3>
+   165→   165→                <p className="text-xs text-muted-foreground">Monthly fee collection vs salary payout</p>
+   166→   166→              </div>
+   167→   167→              <ResponsiveContainer width="100%" height={280}>
+   168→   168→                <BarChart data={monthly} margin={{ top: 5, right: 8, left: -8, bottom: 0 }}>
+   169→   169→                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+   170→   170→                  <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+   171→   171→                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(v: number) => (v / 1000) + 'k'} />
+   172→   172→                  <Tooltip
+   173→   173→                    contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', fontSize: 12 }}
+   174→   174→                    formatter={(v: any, name: any) => [fmtMoney(v), name === 'revenue' ? 'Revenue' : 'Salary']}
+   175→   175→                  />
+   176→   176→                  <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'revenue' ? 'Revenue' : 'Salary')} />
+   177→   177→                  <Bar dataKey="revenue" fill={NAVY} radius={[3, 3, 0, 0]} />
+   178→   178→                  <Bar dataKey="salary" fill={ROSE} radius={[3, 3, 0, 0]} />
+   179→   179→                </BarChart>
+   180→   180→              </ResponsiveContainer>
+   181→   181→            </Card>
+   182→   182→
+   183→   183→            <Card className="p-5 border border-border rounded-lg shadow-sm">
+   184→   184→              <div className="mb-4">
+   185→   185→                <h3 className="font-bold text-base">Fee Status</h3>
+   186→   186→                <p className="text-xs text-muted-foreground">Paid vs unpaid invoices</p>
+   187→   187→              </div>
+   188→   188→              <div className="flex flex-col sm:flex-row items-center gap-4">
+   189→   189→                <ResponsiveContainer width="100%" height={220}>
+   190→   190→                  <PieChart>
+   191→   191→                    <Pie data={feePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
+   192→   192→                      {feePieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+   193→   193→                    </Pie>
+   194→   194→                    <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any, _n: any, p: any) => [`${v} invoices · ${fmtMoney(p?.payload?.amount)}`, p?.payload?.name]} />
+   195→   195→                  </PieChart>
+   196→   196→                </ResponsiveContainer>
+   197→   197→                <div className="space-y-2 flex-1 w-full">
+   198→   198→                  {feePieData.map((d) => (
+   199→   199→                    <div key={d.name} className="rounded-lg border border-border p-3">
+   200→   200→                      <div className="flex items-center gap-2">
+   201→   201→                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+   202→   202→                        <span className="text-sm font-semibold">{d.name}</span>
+   203→   203→                      </div>
+   204→   204→                      <div className="mt-1 text-lg font-extrabold tabular-nums">{d.value} invoices</div>
+   205→   205→                      <div className="text-xs text-muted-foreground">{fmtMoney(d.amount)}</div>
+   206→   206→                    </div>
+   207→   207→                  ))}
+   208→   208→                </div>
+   209→   209→              </div>
+   210→   210→            </Card>
+   211→   211→          </div>
+   212→   212→
+   213→   213→          {/* Recent Transactions */}
+   214→   214→          <Card className="p-5 border border-border rounded-lg shadow-sm">
+   215→   215→            <div className="mb-4">
+   216→   216→              <h3 className="font-bold text-base">Recent Transactions</h3>
+   217→   217→              <p className="text-xs text-muted-foreground">Latest fee payments and salary payouts</p>
+   218→   218→            </div>
+   219→   219→            {recentTx.length === 0 ? (
+   220→   220→              <div className="text-center py-8 text-sm text-muted-foreground">No transactions yet.</div>
+   221→   221→            ) : (
+   222→   222→              <Table>
+   223→   223→                <TableHeader>
+   224→   224→                  <TableRow>
+   225→   225→                    <TableHead className="text-xs">Date</TableHead>
+   226→   226→                    <TableHead className="text-xs">Type</TableHead>
+   227→   227→                    <TableHead className="text-xs">Party</TableHead>
+   228→   228→                    <TableHead className="text-xs">Method</TableHead>
+   229→   229→                    <TableHead className="text-xs text-right">Amount</TableHead>
+   230→   230→                  </TableRow>
+   231→   231→                </TableHeader>
+   232→   232→                <TableBody>
+   233→   233→                  {recentTx.slice(0, 8).map((t: any) => {
+   234→   234→                    const isSalary = t.type === 'Salary Payout';
+   235→   235→                    return (
+   236→   236→                      <TableRow key={t.id}>
+   237→   237→                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+   238→   238→                          {t.date ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+   239→   239→                        </TableCell>
+   240→   240→                        <TableCell>
+   241→   241→                          <Badge variant="outline" className={`text-[10px] ${isSalary ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'}`}>
+   242→   242→                            {t.type}
+   243→   243→                          </Badge>
+   244→   244→                        </TableCell>
+   245→   245→                        <TableCell className="text-sm font-medium">{t.party}</TableCell>
+   246→   246→                        <TableCell className="text-xs text-muted-foreground">{t.method}</TableCell>
+   247→   247→                        <TableCell className={`text-sm font-bold tabular-nums text-right ${isSalary ? 'text-rose-600' : 'text-emerald-700'}`}>
+   248→   248→                          {isSalary ? '-' : '+'}{fmtMoney(t.amount)}
+   249→   249→                        </TableCell>
+   250→   250→                      </TableRow>
+   251→   251→                    );
+   252→   252→                  })}
+   253→   253→                </TableBody>
+   254→   254→              </Table>
+   255→   255→            )}
+   256→   256→          </Card>
+   257→   257→        </>
+   258→   258→      )}
+   259→   259→
+   260→   260→      {/* Compact Teachers + Students lists */}
+   261→   261→      <div className="grid lg:grid-cols-2 gap-4">
+   262→   262→        <Card className="p-5">
+   263→   263→          <div className="flex items-center justify-between mb-3">
+   264→   264→            <h3 className="font-bold text-base">Teachers ({teachers.length})</h3>
+   265→   265→            <Button size="sm" variant="outline" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add</Button>
+   266→   266→          </div>
+   267→   267→          {teachers.length === 0 ? (
+   268→   268→            <div className="text-center py-6 text-sm text-muted-foreground">No teachers yet. Click "Add" to create one.</div>
+   269→   269→          ) : (
+   270→   270→            <div className="space-y-2">
+   271→   271→              {teachers.slice(0, 5).map((t: any) => (
+   272→   272→                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
+   273→   273→                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><Users className="h-4 w-4 text-primary" /></div>
+   274→   274→                  <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{t.name}</div><div className="text-[11px] text-muted-foreground truncate">{t.subjects?.join(', ') || t.email}</div></div>
+   275→   275→                </div>
+   276→   276→              ))}
+   277→   277→              {teachers.length > 5 && (
+   278→   278→                <Button size="sm" variant="ghost" className="w-full text-xs">View all {teachers.length} teachers</Button>
+   279→   279→              )}
+   280→   280→            </div>
+   281→   281→          )}
+   282→   282→        </Card>
+   283→   283→        <Card className="p-5">
+   284→   284→          <div className="flex items-center justify-between mb-3">
+   285→   285→            <h3 className="font-bold text-base">Students ({students.length})</h3>
+   286→   286→            <Button size="sm" variant="outline" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Add</Button>
+   287→   287→          </div>
+   288→   288→          {students.length === 0 ? (
+   289→   289→            <div className="text-center py-6 text-sm text-muted-foreground">No students yet. Click "Add" to create one.</div>
+   290→   290→          ) : (
+   291→   291→            <div className="space-y-2">
+   292→   292→              {students.slice(0, 5).map((s: any) => (
+   293→   293→                <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
+   294→   294→                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><GraduationCap className="h-4 w-4 text-primary" /></div>
+   295→   295→                  <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-[11px] text-muted-foreground truncate">{s.class} {s.section} · {s.rollNo}</div></div>
+   296→   296→                </div>
+   297→   297→              ))}
+   298→   298→              {students.length > 5 && (
+   299→   299→                <Button size="sm" variant="ghost" className="w-full text-xs">View all {students.length} students</Button>
+   300→   300→              )}
+   301→   301→            </div>
+   302→   302→          )}
+   303→   303→        </Card>
+   304→   304→      </div>
+   305→   305→    </div>
+   306→   306→  );
+   307→   307→}
+   308→   308→
+   309→   309→function FinanceSkeleton() {
+   310→   310→  return (
+   311→   311→    <div className="space-y-4">
+   312→   312→      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+   313→   313→        {Array.from({ length: 6 }).map((_, i) => (
+   314→   314→          <Card key={i} className="p-4 border border-border rounded-lg">
+   315→   315→            <div className="h-10 w-10 rounded-lg bg-muted animate-pulse mb-3" />
+   316→   316→            <div className="h-5 w-20 rounded bg-muted animate-pulse" />
+   317→   317→            <div className="h-3 w-16 rounded bg-muted animate-pulse mt-2" />
+   318→   318→          </Card>
+   319→   319→        ))}
+   320→   320→      </div>
+   321→   321→      <div className="grid lg:grid-cols-2 gap-4">
+   322→   322→        <Card className="p-5 border border-border rounded-lg">
+   323→   323→          <div className="h-4 w-48 bg-muted animate-pulse rounded mb-4" />
+   324→   324→          <div className="h-[280px] bg-muted/50 animate-pulse rounded" />
+   325→   325→        </Card>
+   326→   326→        <Card className="p-5 border border-border rounded-lg">
+   327→   327→          <div className="h-4 w-32 bg-muted animate-pulse rounded mb-4" />
+   328→   328→          <div className="h-[280px] bg-muted/50 animate-pulse rounded" />
+   329→   329→        </Card>
+   330→   330→      </div>
+   331→   331→      <Card className="p-5 border border-border rounded-lg">
+   332→   332→        <div className="h-4 w-40 bg-muted animate-pulse rounded mb-4" />
+   333→   333→        <div className="space-y-2">
+   334→   334→          {Array.from({ length: 6 }).map((_, i) => (
+   335→   335→            <div key={i} className="h-8 bg-muted/50 animate-pulse rounded" />
+   336→   336→          ))}
+   337→   337→        </div>
+   338→   338→      </Card>
+   339→   339→    </div>
+   340→   340→  );
+   341→   341→}
+   342→   342→
+   343→   343→// ============ User row actions: View Password / Edit / Block ============
+   344→   344→function UserRowActions({ u, onRefresh }: { u: any; onRefresh: () => void }) {
+   345→   345→  const [showPass, setShowPass] = useState(false);
+   346→   346→  const [pass, setPass] = useState('');
+   347→   347→  const [mustChange, setMustChange] = useState(false);
+   348→   348→  const [showEdit, setShowEdit] = useState(false);
+   349→   349→  const [busy, setBusy] = useState(false);
+   350→   350→
+   351→   351→  const viewPassword = async () => {
+   352→   352→    setBusy(true);
+   353→   353→    try {
+   354→   354→      const r = await api.getUserPassword(u.id);
+   355→   355→      setPass(r.password || '—');
+   356→   356→      setMustChange(r.mustChangePassword === true);
+   357→   357→      setShowPass(true);
+   358→   358→    } catch (e: any) { toast({ title: 'Could not fetch password', description: e.message, variant: 'destructive' }); }
+   359→   359→    finally { setBusy(false); }
+   360→   360→  };
+   361→   361→
+   362→   362→  const toggleBlock = async () => {
+   363→   363→    setBusy(true);
+   364→   364→    try {
+   365→   365→      await api.blockUser(u.id, !u.blocked, !u.blocked ? 'Blocked by Branch Manager' : '');
+   366→   366→      toast({ title: u.blocked ? 'User unblocked' : 'User blocked', description: u.blocked ? 'Access restored' : 'Their session was invalidated' });
+   367→   367→      onRefresh();
+   368→   368→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   369→   369→    finally { setBusy(false); }
+   370→   370→  };
+   371→   371→
+   372→   372→  return (
+   373→   373→    <div className="flex items-center gap-1.5">
+   374→   374→      <button onClick={viewPassword} disabled={busy} title="View Password" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground disabled:opacity-50"><Eye className="h-4 w-4" /></button>
+   375→   375→      <button onClick={() => setShowEdit(true)} title="Edit" className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"><Edit className="h-4 w-4" /></button>
+   376→   376→      <button onClick={toggleBlock} disabled={busy} title={u.blocked ? 'Unblock' : 'Block'} className={`h-8 w-8 grid place-items-center rounded-lg ${u.blocked ? 'text-rose-600 hover:bg-rose-500/10' : 'text-primary hover:bg-accent0/10'} disabled:opacity-50`}>{u.blocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</button>
+   377→   377→      {showPass && (
+   378→   378→        <div className="ml-2 px-2 py-1 rounded-md bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.4] border border-accent dark:border-[oklch(0.25_0.04_260)] text-xs">
+   379→   379→          <span className="text-primary dark:text-primary/70 font-mono">{pass}</span>
+   380→   380→          {mustChange && <span className="text-primary dark:text-[oklch(0.6_0.04_260)] ml-1">· must change</span>}
+   381→   381→        </div>
+   382→   382→      )}
+   383→   383→      {showEdit && <EditUserModal u={u} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
+   384→   384→    </div>
+   385→   385→  );
+   386→   386→}
+   387→   387→
+   388→   388→function EditUserModal({ u, onClose, onSaved }: { u: any; onClose: () => void; onSaved: () => void }) {
+   389→   389→  const [form, setForm] = useState({ name: u.name || '', email: u.email || '', password: '' });
+   390→   390→  const [saving, setSaving] = useState(false);
+   391→   391→
+   392→   392→  const save = async () => {
+   393→   393→    setSaving(true);
+   394→   394→    try {
+   395→   395→      const body: any = { name: form.name };
+   396→   396→      if (form.email) body.email = form.email;
+   397→   397→      if (form.password) body.password = form.password;
+   398→   398→      await api.editUser(u.id, body);
+   399→   399→      toast({ title: 'User updated', description: form.password ? 'Password changed — user must change it on next sign-in' : 'Profile saved' });
+   400→   400→      onSaved();
+   401→   401→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   402→   402→    finally { setSaving(false); }
+   403→   403→  };
+   404→   404→
+   405→   405→  return (
+   406→   406→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={onClose}>
+   407→   407→      <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-md my-4">
+   408→   408→        <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+   409→   409→          <h3 className="font-bold text-lg mb-1">Edit {u.role === 'teacher' ? 'Teacher' : 'Student'}</h3>
+   410→   410→          <p className="text-sm text-muted-foreground mb-4">Update profile details or assign a new password.</p>
+   411→   411→          <div className="space-y-3">
+   412→   412→            <div><Label>Full name</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1" /></div>
+   413→   413→            <div><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="optional" className="mt-1" /></div>
+   414→   414→            <div>
+   415→   415→              <Label>New password</Label>
+   416→   416→              <Input type="text" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder="leave blank to keep current" className="mt-1" />
+   417→   417→              <p className="text-[11px] text-muted-foreground mt-1">If changed, the user must set a new password on next sign-in.</p>
+   418→   418→            </div>
+   419→   419→            {u.class && <div className="text-xs text-muted-foreground pt-1 border-t border-border/40">Class: <span className="font-medium text-foreground">{u.class} · {u.section || 'A'}</span></div>}
+   420→   420→          </div>
+   421→   421→          <div className="flex gap-2 mt-5">
+   422→   422→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</Button>
+   423→   423→            <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+   424→   424→          </div>
+   425→   425→        </Card>
+   426→   426→      </motion.div>
+   427→   427→    </motion.div>
+   428→   428→  );
+   429→   429→}
+   430→   430→
+   431→   431→function TeachersView({ teachers, onAdd, onRefresh }: any) {
+   432→   432→  return (
+   433→   433→    <div className="space-y-6">
+   434→   434→      <ModuleHeader title="Teachers" subtitle={`${teachers.length} teachers in your branch`}
+   435→   435→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
+   436→   436→      {teachers.length === 0 ? (
+   437→   437→        <EmptyState icon={Users} title="No teachers yet" desc="Add your first teacher. A login will be auto-created so they can sign in to their Teacher portal."
+   438→   438→          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
+   439→   439→      ) : (
+   440→   440→        <Card className="p-4">
+   441→   441→          <Table>
+   442→   442→            <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40">
+   443→   443→              <TableHead>Teacher</TableHead><TableHead className="hidden md:table-cell">Roll No</TableHead><TableHead className="hidden md:table-cell">Subjects</TableHead><TableHead className="hidden sm:table-cell">Classes</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+   444→   444→            </TableRow></TableHeader>
+   445→   445→            <TableBody>
+   446→   446→              {teachers.map((t:any) => (
+   447→   447→                <TableRow key={t.id} className="hover:bg-muted/30">
+   448→   448→                  <TableCell><div className="font-medium text-sm">{t.name}</div><div className="text-[11px] text-muted-foreground">{t.email || '—'}</div></TableCell>
+   449→   449→                  <TableCell className="hidden md:table-cell font-mono text-xs">{t.rollNo || '—'}</TableCell>
+   450→   450→                  <TableCell className="hidden md:table-cell">{t.subjects?.length ? t.subjects.map((s:string) => <Badge key={s} variant="secondary" className="mr-1 font-normal text-[10px]">{s}</Badge>) : '—'}</TableCell>
+   451→   451→                  <TableCell className="hidden sm:table-cell text-sm">{t.classes?.length ? t.classes.join(', ') : '—'}</TableCell>
+   452→   452→                  <TableCell><Badge variant="outline" className={t.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{t.blocked ? 'Blocked' : (t.status || 'Active')}</Badge></TableCell>
+   453→   453→                  <TableCell className="text-right"><UserRowActions u={t} onRefresh={onRefresh} /></TableCell>
+   454→   454→                </TableRow>
+   455→   455→              ))}
+   456→   456→            </TableBody>
+   457→   457→          </Table>
+   458→   458→        </Card>
+   459→   459→      )}
+   460→   460→    </div>
+   461→   461→  );
+   462→   462→}
+   463→   463→
+   464→   464→function StudentsView({ students, onAdd, onRefresh }: any) {
+   465→   465→  return (
+   466→   466→    <div className="space-y-6">
+   467→   467→      <ModuleHeader title="Students" subtitle={`${students.length} students in your branch`}
+   468→   468→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
+   469→   469→      {students.length === 0 ? (
+   470→   470→        <EmptyState icon={GraduationCap} title="No students yet" desc="Add your first student. A login will be auto-created so they (or their parents) can sign in to their portal."
+   471→   471→          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>} />
+   472→   472→      ) : (
+   473→   473→        <Card className="p-4">
+   474→   474→          <Table>
+   475→   475→            <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40">
+   476→   476→              <TableHead>Student</TableHead><TableHead>Class</TableHead><TableHead className="hidden sm:table-cell">Roll No</TableHead><TableHead className="hidden md:table-cell">Guardian</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+   477→   477→            </TableRow></TableHeader>
+   478→   478→            <TableBody>
+   479→   479→              {students.map((s:any) => (
+   480→   480→                <TableRow key={s.id} className="hover:bg-muted/30">
+   481→   481→                  <TableCell><div className="font-medium text-sm">{s.name}</div><div className="text-[11px] text-muted-foreground">{s.email || '—'}</div></TableCell>
+   482→   482→                  <TableCell><Badge variant="outline" className="font-normal">{s.class}{s.section ? ` · ${s.section}` : ''}</Badge></TableCell>
+   483→   483→                  <TableCell className="hidden sm:table-cell font-mono text-sm">{s.rollNo || '—'}</TableCell>
+   484→   484→                  <TableCell className="hidden md:table-cell text-sm">{s.guardian || '—'}</TableCell>
+   485→   485→                  <TableCell><Badge variant="outline" className={s.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{s.blocked ? 'Blocked' : (s.status || 'Active')}</Badge></TableCell>
+   486→   486→                  <TableCell className="text-right"><UserRowActions u={s} onRefresh={onRefresh} /></TableCell>
+   487→   487→                </TableRow>
+   488→   488→              ))}
+   489→   489→            </TableBody>
+   490→   490→          </Table>
+   491→   491→        </Card>
+   492→   492→      )}
+   493→   493→    </div>
+   494→   494→  );
+   495→   495→}
+   496→   496→
+   497→   497→// ============ Class & Course Management ============
+   498→   498→// Extract the numeric portion of a class name (e.g. "Class 5" → 5, "Class 12" → 12) for sorting.
+   499→   499→function classNumber(name: string): number {
+   500→   500→  const m = String(name || '').match(/\d+/);
+   501→   501→  return m ? parseInt(m[0], 10) : 0;
+   502→   502→}
+   503→   503→
+   504→   504→type ClassGroup = { name: string; primary: any; sections: any[] };
+   505→   505→
+   506→   506→function groupClassesByName(rows: any[]): ClassGroup[] {
+   507→   507→  const map: Record<string, any[]> = {};
+   508→   508→  for (const c of rows) {
+   509→   509→    const key = c.name || 'Class';
+   510→   510→    if (!map[key]) map[key] = [];
+   511→   511→    map[key].push(c);
+   512→   512→  }
+   513→   513→  return Object.entries(map).map(([name, sections]) => {
+   514→   514→    const sorted = [...sections].sort((a, b) => (a.section || 'A').localeCompare(b.section || 'A'));
+   515→   515→    return { name, primary: sorted[0], sections: sorted };
+   516→   516→  }).sort((a, b) => classNumber(a.name) - classNumber(b.name));
+   517→   517→}
+   518→   518→
+   519→   519→function ClassCoursesView({ user }: { user: any }) {
+   520→   520→  const [classes, setClasses] = useState<any[]>([]);
+   521→   521→  const [allCourses, setAllCourses] = useState<any[]>([]);
+   522→   522→  const [students, setStudents] = useState<any[]>([]);
+   523→   523→  const [loading, setLoading] = useState(true);
+   524→   524→  const [activeClassName, setActiveClassName] = useState<string>('');
+   525→   525→  const [assignedCourseIds, setAssignedCourseIds] = useState<string[]>([]);
+   526→   526→  const [loadingAssigned, setLoadingAssigned] = useState(false);
+   527→   527→  const [saving, setSaving] = useState(false);
+   528→   528→  const [showAssignCourses, setShowAssignCourses] = useState(false);
+   529→   529→  const [showCreateCourse, setShowCreateCourse] = useState(false);
+   530→   530→  const [newCourse, setNewCourse] = useState({ name: '', code: '' });
+   531→   531→  const [creating, setCreating] = useState(false);
+   532→   532→  const [showAddSection, setShowAddSection] = useState(false);
+   533→   533→  const [newSectionLetter, setNewSectionLetter] = useState('');
+   534→   534→  const [creatingSection, setCreatingSection] = useState(false);
+   535→   535→
+   536→   536→  const refresh = () => {
+   537→   537→    setLoading(true);
+   538→   538→    Promise.all([
+   539→   539→      api.getClasses(user.branchId).then(r => Array.isArray(r) ? r : []).catch(() => []),
+   540→   540→      api.getCourses({ branchId: user.branchId }).then(r => Array.isArray(r) ? r : []).catch(() => []),
+   541→   541→      api.platformUsers({ branchId: user.branchId, role: 'student' }).then(r => Array.isArray(r) ? r : []).catch(() => []),
+   542→   542→    ]).then(([cls, crs, stu]) => {
+   543→   543→      setClasses(cls);
+   544→   544→      setAllCourses(crs);
+   545→   545→      setStudents(stu);
+   546→   546→    }).finally(() => setLoading(false));
+   547→   547→  };
+   548→   548→
+   549→   549→  useEffect(() => { refresh(); }, [user.branchId]);
+   550→   550→
+   551→   551→  // When the active class changes, fetch its assigned courses (uses the primary section's classId).
+   552→   552→  useEffect(() => {
+   553→   553→    if (!activeClassName) { setAssignedCourseIds([]); return; }
+   554→   554→    const groups = groupClassesByName(classes);
+   555→   555→    const grp = groups.find(g => g.name === activeClassName);
+   556→   556→    if (!grp) { setAssignedCourseIds([]); return; }
+   557→   557→    let cancelled = false;
+   558→   558→    setLoadingAssigned(true);
+   559→   559→    api.getCourses({ classId: grp.primary.id })
+   560→   560→      .then(r => { if (!cancelled) setAssignedCourseIds((Array.isArray(r) ? r : []).map((c: any) => c.id)); })
+   561→   561→      .catch(() => { if (!cancelled) setAssignedCourseIds([]); })
+   562→   562→      .finally(() => { if (!cancelled) setLoadingAssigned(false); });
+   563→   563→    return () => { cancelled = true; };
+   564→   564→  }, [activeClassName, classes]);
+   565→   565→
+   566→   566→  const grouped = groupClassesByName(classes);
+   567→   567→  const activeGroup = grouped.find(g => g.name === activeClassName) || null;
+   568→   568→
+   569→   569→  const toggleCourse = (id: string) => {
+   570→   570→    setAssignedCourseIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+   571→   571→  };
+   572→   572→
+   573→   573→  const saveAssignment = async () => {
+   574→   574→    if (!activeGroup) return;
+   575→   575→    setSaving(true);
+   576→   576→    try {
+   577→   577→      // Assign to the primary (section A) class row. Sections created later will inherit these courses.
+   578→   578→      await api.assignClassCourses(activeGroup.primary.id, assignedCourseIds);
+   579→   579→      toast({ title: 'Courses assigned', description: `${assignedCourseIds.length} course(s) linked to ${activeGroup.name}` });
+   580→   580→      setShowAssignCourses(false);
+   581→   581→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   582→   582→    finally { setSaving(false); }
+   583→   583→  };
+   584→   584→
+   585→   585→  const createCourse = async () => {
+   586→   586→    if (!newCourse.name) { toast({ title: 'Course name required', variant: 'destructive' }); return; }
+   587→   587→    setCreating(true);
+   588→   588→    try {
+   589→   589→      const res = await api.createCourse({ name: newCourse.name, code: newCourse.code, branchId: user.branchId });
+   590→   590→      toast({ title: 'Course created', description: `${res.name} is now available to assign` });
+   591→   591→      setNewCourse({ name: '', code: '' });
+   592→   592→      setShowCreateCourse(false);
+   593→   593→      refresh();
+   594→   594→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   595→   595→    finally { setCreating(false); }
+   596→   596→  };
+   597→   597→
+   598→   598→  const createSection = async () => {
+   599→   599→    if (!activeGroup) return;
+   600→   600→    setCreatingSection(true);
+   601→   601→    try {
+   602→   602→      const letter = newSectionLetter.trim().toUpperCase();
+   603→   603→      const res = await api.createClassSection(activeGroup.primary.id, letter || undefined);
+   604→   604→      toast({ title: 'Section created', description: `${activeGroup.name} ${res.section} is now available` });
+   605→   605→      setNewSectionLetter('');
+   606→   606→      setShowAddSection(false);
+   607→   607→      refresh();
+   608→   608→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   609→   609→    finally { setCreatingSection(false); }
+   610→   610→  };
+   611→   611→
+   612→   612→  const deleteSection = async (classId: string, label: string) => {
+   613→   613→    if (!confirm(`Delete section ${label}? This cannot be undone.`)) return;
+   614→   614→    try {
+   615→   615→      await api.deleteClassSection(classId);
+   616→   616→      toast({ title: 'Section deleted', description: `${label} was removed` });
+   617→   617→      refresh();
+   618→   618→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   619→   619→  };
+   620→   620→
+   621→   621→  const studentsInSection = (className: string, section: string) =>
+   622→   622→    students.filter(s => s.class === className && (s.section || 'A') === (section || 'A'));
+   623→   623→
+   624→   624→  // -------- Detail view (one class selected) --------
+   625→   625→  if (activeGroup) {
+   626→   626→    const assignedCourses = allCourses.filter(c => assignedCourseIds.includes(c.id));
+   627→   627→    return (
+   628→   628→      <div className="space-y-6">
+   629→   629→        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   630→   630→          <div className="flex items-start gap-3">
+   631→   631→            <button onClick={() => { setActiveClassName(''); setShowAssignCourses(false); setShowCreateCourse(false); setShowAddSection(false); }}
+   632→   632→              className="mt-1 h-9 w-9 grid place-items-center rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition"
+   633→   633→              title="Back to all classes">
+   634→   634→              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+   635→   635→            </button>
+   636→   636→            <div>
+   637→   637→              <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+   638→   638→                <BookOpen className="h-5 w-5 text-primary" /> {activeGroup.name}
+   639→   639→              </h1>
+   640→   640→              <p className="text-sm text-muted-foreground mt-1">
+   641→   641→                {activeGroup.sections.length} section{activeGroup.sections.length === 1 ? '' : 's'} · {assignedCourses.length} course{assignedCourses.length === 1 ? '' : 's'} assigned
+   642→   642→              </p>
+   643→   643→            </div>
+   644→   644→          </div>
+   645→   645→          <div className="flex gap-2 flex-wrap">
+   646→   646→            <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>
+   647→   647→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowAssignCourses(v => !v)}><CheckCircle2 className="h-4 w-4 mr-1.5" /> {showAssignCourses ? 'Hide Course List' : 'Assign Courses'}</Button>
+   648→   648→          </div>
+   649→   649→        </div>
+   650→   650→
+   651→   651→        {/* Create course form (collapsible) */}
+   652→   652→        {showCreateCourse && (
+   653→   653→          <Card className="p-5">
+   654→   654→            <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-primary" /><h3 className="font-bold text-base">Create New Course</h3></div>
+   655→   655→            <div className="grid sm:grid-cols-3 gap-3 items-end">
+   656→   656→              <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
+   657→   657→              <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
+   658→   658→            </div>
+   659→   659→            <div className="flex gap-2 mt-4">
+   660→   660→              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+   661→   661→              <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
+   662→   662→            </div>
+   663→   663→          </Card>
+   664→   664→        )}
+   665→   665→
+   666→   666→        {/* Assigned courses + assign checklist */}
+   667→   667→        <Card className="p-5">
+   668→   668→          <div className="flex items-center justify-between mb-4">
+   669→   669→            <div>
+   670→   670→              <h3 className="font-bold text-base flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /> Assigned Courses</h3>
+   671→   671→              <p className="text-xs text-muted-foreground mt-0.5">These courses are taught in {activeGroup.name}. New sections inherit this list automatically.</p>
+   672→   672→            </div>
+   673→   673→            <Badge variant="outline" className="text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]">{assignedCourseIds.length} assigned</Badge>
+   674→   674→          </div>
+   675→   675→
+   676→   676→          {loadingAssigned ? (
+   677→   677→            <div className="text-sm text-muted-foreground py-4 text-center">Loading assigned courses…</div>
+   678→   678→          ) : assignedCourses.length === 0 ? (
+   679→   679→            <div className="rounded-lg border border-dashed border-[oklch(0.6_0.04_260)] dark:border-blue-700 bg-accent dark:bg-[oklch(0.12_0.03_260)_/_0.4] px-4 py-4 text-sm text-primary dark:text-[oklch(0.8_0.03_260)]">
+   680→   680→              <strong>No courses assigned yet.</strong> Click <em>Assign Courses</em> above to select the subjects taught in this class. You must assign courses before you can add teachers for this class.
+   681→   681→            </div>
+   682→   682→          ) : (
+   683→   683→            <div className="flex flex-wrap gap-2">
+   684→   684→              {assignedCourses.map(c => (
+   685→   685→                <Badge key={c.id} variant="secondary" className="px-3 py-1.5 font-normal text-sm bg-accent0/10 text-primary dark:text-primary/70 border border-[oklch(0.5_0.04_260)_/_0.2]">
+   686→   686→                  <BookOpen className="h-3.5 w-3.5 mr-1.5" /> {c.name}{c.code ? <span className="ml-1.5 text-[10px] uppercase opacity-70">{c.code}</span> : null}
+   687→   687→                </Badge>
+   688→   688→              ))}
+   689→   689→            </div>
+   690→   690→          )}
+   691→   691→
+   692→   692→          {showAssignCourses && (
+   693→   693→            <div className="mt-5 pt-5 border-t border-border/40">
+   694→   694→              <div className="flex items-center justify-between mb-3">
+   695→   695→                <h4 className="font-semibold text-sm">All branch courses — toggle to assign</h4>
+   696→   696→                <span className="text-xs text-muted-foreground">{assignedCourseIds.length} of {allCourses.length} selected</span>
+   697→   697→              </div>
+   698→   698→              {allCourses.length === 0 ? (
+   699→   699→                <div className="text-center py-6 text-sm text-muted-foreground">
+   700→   700→                  No courses created in this branch yet. <button onClick={() => setShowCreateCourse(true)} className="text-primary hover:underline font-medium">Create one now</button>.
+   701→   701→                </div>
+   702→   702→              ) : (
+   703→   703→                <>
+   704→   704→                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-80 overflow-y-auto scroll-fancy pr-1">
+   705→   705→                    {allCourses.map(c => {
+   706→   706→                      const checked = assignedCourseIds.includes(c.id);
+   707→   707→                      return (
+   708→   708→                        <button key={c.id} type="button" onClick={() => toggleCourse(c.id)}
+   709→   709→                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition ${
+   710→   710→                            checked ? 'border-[oklch(0.5_0.04_260)_/_0.4] bg-accent0/10' : 'border-border bg-background hover:bg-muted/50'
+   711→   711→                          }`}>
+   712→   712→                          <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-primary border-blue-700' : 'border-input bg-background'}`}>
+   713→   713→                            {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+   714→   714→                          </span>
+   715→   715→                          <div className="min-w-0 flex-1">
+   716→   716→                            <div className={`text-sm font-medium truncate ${checked ? 'text-primary dark:text-primary/70' : ''}`}>{c.name}</div>
+   717→   717→                            {c.code && <div className="text-[10px] text-muted-foreground uppercase">{c.code}</div>}
+   718→   718→                          </div>
+   719→   719→                        </button>
+   720→   720→                      );
+   721→   721→                    })}
+   722→   722→                  </div>
+   723→   723→                  <div className="flex justify-end mt-4 pt-3 border-t border-border/40 gap-2">
+   724→   724→                    <Button size="sm" variant="outline" onClick={() => setShowAssignCourses(false)}>Cancel</Button>
+   725→   725→                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={saveAssignment}>
+   726→   726→                      {saving ? 'Saving…' : 'Save Assignment'}
+   727→   727→                    </Button>
+   728→   728→                  </div>
+   729→   729→                </>
+   730→   730→              )}
+   731→   731→            </div>
+   732→   732→          )}
+   733→   733→        </Card>
+   734→   734→
+   735→   735→        {/* Sections */}
+   736→   736→        <Card className="p-5">
+   737→   737→          <div className="flex items-center justify-between mb-4">
+   738→   738→            <div>
+   739→   739→              <h3 className="font-bold text-base flex items-center gap-2"><Network className="h-4 w-4 text-primary" /> Sections</h3>
+   740→   740→              <p className="text-xs text-muted-foreground mt-0.5">Each section can have its own students. New sections inherit this class's course list.</p>
+   741→   741→            </div>
+   742→   742→            <Button size="sm" variant="outline" onClick={() => setShowAddSection(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> Add Section</Button>
+   743→   743→          </div>
+   744→   744→
+   745→   745→          {showAddSection && (
+   746→   746→            <div className="mb-4 rounded-lg border border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5 p-4">
+   747→   747→              <div className="grid sm:grid-cols-3 gap-3 items-end">
+   748→   748→                <div className="sm:col-span-2">
+   749→   749→                  <Label>Section letter (optional)</Label>
+   750→   750→                  <Input value={newSectionLetter} onChange={e => setNewSectionLetter(e.target.value)} placeholder="e.g. C — leave blank for the next available letter" className="mt-1" maxLength={2} />
+   751→   751→                </div>
+   752→   752→                <div className="flex gap-2">
+   753→   753→                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={creatingSection} onClick={createSection}>{creatingSection ? 'Creating…' : 'Create Section'}</Button>
+   754→   754→                  <Button size="sm" variant="outline" onClick={() => { setShowAddSection(false); setNewSectionLetter(''); }}>Cancel</Button>
+   755→   755→                </div>
+   756→   756→              </div>
+   757→   757→            </div>
+   758→   758→          )}
+   759→   759→
+   760→   760→          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   761→   761→            {activeGroup.sections.map(sec => {
+   762→   762→              const secStudents = studentsInSection(activeGroup.name, sec.section);
+   763→   763→              const canDelete = activeGroup.sections.length > 1 && secStudents.length === 0;
+   764→   764→              return (
+   765→   765→                <div key={sec.id} className="rounded-xl border border-border bg-card p-4 flex flex-col">
+   766→   766→                  <div className="flex items-start justify-between">
+   767→   767→                    <div className="flex items-center gap-2">
+   768→   768→                      <div className="h-9 w-9 rounded-lg bg-primary grid place-items-center text-white font-bold">{(sec.section || 'A').toUpperCase()}</div>
+   769→   769→                      <div>
+   770→   770→                        <div className="font-bold text-sm">{activeGroup.name} {(sec.section || 'A').toUpperCase()}</div>
+   771→   771→                        <div className="text-[11px] text-muted-foreground">{secStudents.length} student{secStudents.length === 1 ? '' : 's'}</div>
+   772→   772→                      </div>
+   773→   773→                    </div>
+   774→   774→                    {canDelete && (
+   775→   775→                      <button onClick={() => deleteSection(sec.id, `${activeGroup.name} ${sec.section}`)} title="Delete this section" className="h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10">
+   776→   776→                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+   777→   777→                      </button>
+   778→   778→                    )}
+   779→   779→                  </div>
+   780→   780→                  <div className="mt-3 flex-1 min-h-0">
+   781→   781→                    {secStudents.length === 0 ? (
+   782→   782→                      <div className="text-xs text-muted-foreground py-3 text-center border border-dashed border-border/60 rounded-lg">No students assigned</div>
+   783→   783→                    ) : (
+   784→   784→                      <div className="space-y-1.5 max-h-36 overflow-y-auto scroll-fancy">
+   785→   785→                        {secStudents.map(s => (
+   786→   786→                          <div key={s.id} className="flex items-center gap-2 text-xs">
+   787→   787→                            <div className="h-6 w-6 rounded-full bg-accent0/15 grid place-items-center text-primary"><GraduationCap className="h-3 w-3" /></div>
+   788→   788→                            <div className="min-w-0 flex-1"><div className="font-medium truncate">{s.name}</div></div>
+   789→   789→                            <div className="font-mono text-[10px] text-muted-foreground">{s.rollNo}</div>
+   790→   790→                          </div>
+   791→   791→                        ))}
+   792→   792→                      </div>
+   793→   793→                    )}
+   794→   794→                  </div>
+   795→   795→                </div>
+   796→   796→              );
+   797→   797→            })}
+   798→   798→          </div>
+   799→   799→        </Card>
+   800→   800→      </div>
+   801→   801→    );
+   802→   802→  }
+   803→   803→
+   804→   804→  // -------- Grid view (no class selected) --------
+   805→   805→  return (
+   806→   806→    <div className="space-y-6">
+   807→   807→      <ModuleHeader title="Classes & Courses" subtitle="Click a class to manage its courses and sections"
+   808→   808→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowCreateCourse(v => !v)}><BookCopy className="h-4 w-4 mr-1.5" /> New Course</Button>} />
+   809→   809→
+   810→   810→      {showCreateCourse && (
+   811→   811→        <Card className="p-5">
+   812→   812→          <div className="flex items-center gap-2 mb-3"><BookCopy className="h-4 w-4 text-primary" /><h3 className="font-bold text-base">Create New Course</h3></div>
+   813→   813→          <div className="grid sm:grid-cols-3 gap-3 items-end">
+   814→   814→            <div className="sm:col-span-2"><Label>Course name *</Label><Input value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} placeholder="e.g. Mathematics" className="mt-1" /></div>
+   815→   815→            <div><Label>Code</Label><Input value={newCourse.code} onChange={e => setNewCourse({ ...newCourse, code: e.target.value })} placeholder="e.g. MATH-101" className="mt-1" /></div>
+   816→   816→          </div>
+   817→   817→          <div className="flex gap-2 mt-4">
+   818→   818→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={creating} onClick={createCourse}>{creating ? 'Creating…' : 'Create Course'}</Button>
+   819→   819→            <Button size="sm" variant="outline" onClick={() => setShowCreateCourse(false)}>Cancel</Button>
+   820→   820→          </div>
+   821→   821→        </Card>
+   822→   822→      )}
+   823→   823→
+   824→   824→      {loading ? (
+   825→   825→        <Card className="p-10 text-center text-sm text-muted-foreground">Loading classes…</Card>
+   826→   826→      ) : grouped.length === 0 ? (
+   827→   827→        <EmptyState icon={BookOpen} title="No classes found" desc="Classes (Class 1 – Class 12) are auto-created when your branch is provisioned. If you don't see them, ask your Institute Admin." />
+   828→   828→      ) : (
+   829→   829→        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+   830→   830→          {grouped.map((g, idx) => {
+   831→   831→            const studentCount = g.sections.reduce((acc: number, s: any) => acc + studentsInSection(g.name, s.section).length, 0);
+   832→   832→            return (
+   833→   833→              <button key={g.name} onClick={() => { setActiveClassName(g.name); setShowCreateCourse(false); }}
+   834→   834→                className="text-left p-4 rounded-xl border border-border bg-card hover:border-[oklch(0.5_0.04_260)_/_0.4] hover:bg-muted/40 hover:shadow-md transition group">
+   835→   835→                <div className="flex items-center justify-between">
+   836→   836→                  <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center text-primary font-bold">
+   837→   837→                    {classNumber(g.name) || (idx + 1)}
+   838→   838→                  </div>
+   839→   839→                  <Badge variant="outline" className="text-[10px] text-muted-foreground">{g.sections.length} sec{g.sections.length === 1 ? '' : 's'}</Badge>
+   840→   840→                </div>
+   841→   841→                <div className="mt-3 font-bold text-sm">{g.name}</div>
+   842→   842→                <div className="text-[11px] text-muted-foreground mt-0.5">{studentCount} student{studentCount === 1 ? '' : 's'} enrolled</div>
+   843→   843→                <div className="mt-2 text-[11px] text-primary dark:text-[oklch(0.6_0.04_260)] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+   844→   844→                  <BookOpen className="h-3 w-3" /> Click to manage
+   845→   845→                </div>
+   846→   846→              </button>
+   847→   847→            );
+   848→   848→          })}
+   849→   849→        </div>
+   850→   850→      )}
+   851→   851→    </div>
+   852→   852→  );
+   853→   853→}
+   854→   854→
+   855→   855→// ============ Announcements ============
+   856→   856→function AnnouncementsView({ user }: { user: any }) {
+   857→   857→  const [announcements, setAnnouncements] = useState<any[]>([]);
+   858→   858→  const [classes, setClasses] = useState<any[]>([]);
+   859→   859→  const [form, setForm] = useState({ title: '', message: '', targetScope: 'all', selectedClasses: [] as string[] });
+   860→   860→  const [sending, setSending] = useState(false);
+   861→   861→  const [showForm, setShowForm] = useState(false);
+   862→   862→
+   863→   863→  const refresh = () => {
+   864→   864→    api.getAnnouncements().then(r => setAnnouncements(Array.isArray(r) ? r : [])).catch(() => {});
+   865→   865→    api.getClasses(user.branchId).then(r => setClasses(Array.isArray(r) ? r : [])).catch(() => {});
+   866→   866→  };
+   867→   867→  useEffect(() => { refresh(); }, [user.branchId]);
+   868→   868→
+   869→   869→  const send = async () => {
+   870→   870→    if (!form.title || !form.message) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
+   871→   871→    setSending(true);
+   872→   872→    try {
+   873→   873→      const body: any = {
+   874→   874→        title: form.title,
+   875→   875→        message: form.message,
+   876→   876→        targetScope: form.targetScope,
+   877→   877→        targetRole: 'student',
+   878→   878→      };
+   879→   879→      if (form.targetScope === 'specific') {
+   880→   880→        body.targetIds = form.selectedClasses;
+   881→   881→        // Also pass the first classId for filtering convenience
+   882→   882→        if (form.selectedClasses.length > 0) body.classId = form.selectedClasses[0];
+   883→   883→      }
+   884→   884→      await api.createAnnouncement(body);
+   885→   885→      toast({ title: 'Announcement sent!', description: form.targetScope === 'all' ? 'Sent to all classes' : `Sent to ${form.selectedClasses.length} class(es)` });
+   886→   886→      setForm({ title: '', message: '', targetScope: 'all', selectedClasses: [] });
+   887→   887→      setShowForm(false);
+   888→   888→      refresh();
+   889→   889→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+   890→   890→    finally { setSending(false); }
+   891→   891→  };
+   892→   892→
+   893→   893→  return (
+   894→   894→    <div className="space-y-6">
+   895→   895→      <ModuleHeader title="Announcements" subtitle="Send messages to all classes or specific ones"
+   896→   896→        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+   897→   897→
+   898→   898→      {showForm && (
+   899→   899→        <Card className="p-5">
+   900→   900→          <h3 className="font-bold text-base mb-4">New Announcement</h3>
+   901→   901→          <div className="space-y-3">
+   902→   902→            <div><Label>Title</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Annual exams schedule" className="mt-1" /></div>
+   903→   903→            <div><Label>Message</Label><Textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={3} placeholder="Type your announcement…" className="mt-1 resize-none" /></div>
+   904→   904→            <div>
+   905→   905→              <Label>Recipients</Label>
+   906→   906→              <Select value={form.targetScope} onValueChange={v => setForm({ ...form, targetScope: v })}>
+   907→   907→                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+   908→   908→                <SelectContent>
+   909→   909→                  <SelectItem value="all">All Classes</SelectItem>
+   910→   910→                  <SelectItem value="specific">Specific Classes</SelectItem>
+   911→   911→                </SelectContent>
+   912→   912→              </Select>
+   913→   913→            </div>
+   914→   914→            {form.targetScope === 'specific' && (
+   915→   915→              <div>
+   916→   916→                <Label>Select Classes</Label>
+   917→   917→                <div className="mt-2 max-h-48 overflow-y-auto scroll-fancy space-y-1.5 border border-border/60 rounded-lg p-3">
+   918→   918→                  {classes.length === 0 ? (
+   919→   919→                    <div className="text-xs text-muted-foreground text-center py-3">No classes available in your branch.</div>
+   920→   920→                  ) : classes.map(cls => (
+   921→   921→                    <label key={cls.id} className="flex items-center gap-2 cursor-pointer p-1.5 rounded hover:bg-accent">
+   922→   922→                      <input type="checkbox" checked={form.selectedClasses.includes(cls.id)} onChange={e => {
+   923→   923→                        if (e.target.checked) setForm({ ...form, selectedClasses: [...form.selectedClasses, cls.id] });
+   924→   924→                        else setForm({ ...form, selectedClasses: form.selectedClasses.filter((id: string) => id !== cls.id) });
+   925→   925→                      }} className="w-4 h-4 rounded" />
+   926→   926→                      <span className="text-sm">{cls.name}{cls.section ? ` · ${cls.section}` : ''}</span>
+   927→   927→                    </label>
+   928→   928→                  ))}
+   929→   929→                </div>
+   930→   930→              </div>
+   931→   931→            )}
+   932→   932→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><Send className="h-4 w-4 mr-1.5" /> Send Announcement</>}</Button>
+   933→   933→          </div>
+   934→   934→        </Card>
+   935→   935→      )}
+   936→   936→
+   937→   937→      {announcements.length === 0 ? (
+   938→   938→        <EmptyState icon={Megaphone} title="No announcements yet" desc="Send messages to all or specific classes in your branch."
+   939→   939→          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Megaphone className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
+   940→   940→      ) : (
+   941→   941→        <div className="space-y-3">
+   942→   942→          {announcements.map(a => (
+   943→   943→            <Card key={a.id} className="p-4">
+   944→   944→              <div className="flex items-start justify-between mb-2">
+   945→   945→                <div className="flex items-center gap-2">
+   946→   946→                  <Megaphone className="h-4 w-4 text-rose-500" />
+   947→   947→                  <div className="font-medium text-sm">{a.title}</div>
+   948→   948→                </div>
+   949→   949→                <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+   950→   950→              </div>
+   951→   951→              <p className="text-sm text-muted-foreground ml-6">{a.message}</p>
+   952→   952→              <div className="text-[11px] text-muted-foreground mt-2 ml-6">
+   953→   953→                To: {a.targetScope === 'all' ? 'All Classes' : `Specific Classes${a.targetIds ? ` (${JSON.parse(a.targetIds).length})` : ''}`}
+   954→   954→              </div>
+   955→   955→            </Card>
+   956→   956→          ))}
+   957→   957→        </div>
+   958→   958→      )}
+   959→   959→    </div>
+   960→   960→  );
+   961→   961→}
+   962→   962→
+   963→   963→// ============ Fee Management ============
+   964→   964→const FEE_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+   965→   965→const fmtPKR = (n: number) => 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK');
+   966→   966→
+   967→   967→function FeeManagement({ user }: { user: any }) {
+   968→   968→  const [tab, setTab] = useState<'structure' | 'invoices'>('structure');
+   969→   969→  const tabs = [
+   970→   970→    { id: 'structure' as const, label: 'Fee Structure', icon: BookOpen },
+   971→   971→    { id: 'invoices' as const, label: 'Invoices', icon: FileText },
+   972→   972→  ];
+   973→   973→  return (
+   974→   974→    <div className="space-y-6">
+   975→   975→      <ModuleHeader title="Fee Management" subtitle={`Set class fees and generate monthly invoices · ${user?.branchName || ''}`} />
+   976→   976→      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 overflow-x-auto scroll-fancy max-w-md">
+   977→   977→        {tabs.map(t => {
+   978→   978→          const active = tab === t.id;
+   979→   979→          return (
+   980→   980→            <button key={t.id} onClick={() => setTab(t.id)}
+   981→   981→              className={`flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+   982→   982→              <t.icon className="h-4 w-4" /> {t.label}
+   983→   983→            </button>
+   984→   984→          );
+   985→   985→        })}
+   986→   986→      </div>
+   987→   987→      {tab === 'structure' && <FeeStructureTab user={user} />}
+   988→   988→      {tab === 'invoices' && <FeeInvoicesTab user={user} />}
+   989→   989→    </div>
+   990→   990→  );
+   991→   991→}
+   992→   992→
+   993→   993→function FeeStructureTab({ user }: { user: any }) {
+   994→   994→  const [classes, setClasses] = useState<any[]>([]);
+   995→   995→  const [structure, setStructure] = useState<Record<string, any>>({});
+   996→   996→  const [edits, setEdits] = useState<Record<string, { monthly: string; admission: string }>>({});
+   997→   997→  const [loading, setLoading] = useState(true);
+   998→   998→  const [savingId, setSavingId] = useState<string | null>(null);
+   999→   999→
+  1000→  1000→  const refresh = () => {
+  1001→  1001→    setLoading(true);
+  1002→  1002→    Promise.all([
+  1003→  1003→      api.getClasses(user.branchId).then(r => Array.isArray(r) ? r : []).catch(() => []),
+  1004→  1004→      api.getFeeStructure().then(r => Array.isArray(r) ? r : []).catch(() => []),
+  1005→  1005→    ]).then(([cls, struct]) => {
+  1006→  1006→      setClasses(cls);
+  1007→  1007→      const map: Record<string, any> = {};
+  1008→  1008→      for (const s of struct) map[s.classId] = s;
+  1009→  1009→      setStructure(map);
+  1010→  1010→    }).finally(() => setLoading(false));
+  1011→  1011→  };
+  1012→  1012→
+  1013→  1013→  useEffect(() => { refresh(); }, [user?.branchId]);
+  1014→  1014→
+  1015→  1015→  // Group class sections by name — one fee entry per class group (uses the primary section's classId)
+  1016→  1016→  const grouped = useMemo(() => {
+  1017→  1017→    const map: Record<string, any> = {};
+  1018→  1018→    for (const c of classes) {
+  1019→  1019→      const key = c.name || 'Class';
+  1020→  1020→      if (!map[key]) map[key] = c; // first section wins (sections are usually sorted A → Z)
+  1021→  1021→    }
+  1022→  1022→    return Object.values(map).sort((a: any, b: any) => classNumber(a.name) - classNumber(b.name));
+  1023→  1023→  }, [classes]);
+  1024→  1024→
+  1025→  1025→  const getEdits = (cls: any) => {
+  1026→  1026→    const existing = structure[cls.id];
+  1027→  1027→    const e = edits[cls.id];
+  1028→  1028→    return {
+  1029→  1029→      monthly: e?.monthly ?? (existing?.monthlyFee != null ? String(existing.monthlyFee) : ''),
+  1030→  1030→      admission: e?.admission ?? (existing?.admissionFee != null ? String(existing.admissionFee) : ''),
+  1031→  1031→    };
+  1032→  1032→  };
+  1033→  1033→
+  1034→  1034→  const save = async (cls: any) => {
+  1035→  1035→    const { monthly, admission } = getEdits(cls);
+  1036→  1036→    const monthlyNum = Number(monthly);
+  1037→  1037→    if (!monthlyNum || monthlyNum <= 0) {
+  1038→  1038→      toast({ title: 'Invalid amount', description: 'Enter a valid monthly fee greater than 0.', variant: 'destructive' });
+  1039→  1039→      return;
+  1040→  1040→    }
+  1041→  1041→    setSavingId(cls.id);
+  1042→  1042→    try {
+  1043→  1043→      await api.setFeeStructure(cls.id, monthlyNum, admission ? Number(admission) : undefined);
+  1044→  1044→      toast({ title: 'Fee saved', description: `${cls.name} monthly fee set to ${fmtPKR(monthlyNum)}` });
+  1045→  1045→      refresh();
+  1046→  1046→    } catch (e: any) { toast({ title: 'Failed to save', description: e.message, variant: 'destructive' }); }
+  1047→  1047→    finally { setSavingId(null); }
+  1048→  1048→  };
+  1049→  1049→
+  1050→  1050→  if (loading) {
+  1051→  1051→    return <Card className="p-10 text-center text-sm text-muted-foreground">Loading fee structure…</Card>;
+  1052→  1052→  }
+  1053→  1053→
+  1054→  1054→  if (grouped.length === 0) {
+  1055→  1055→    return <EmptyState icon={DollarSign} title="No classes found" desc="Classes (Class 1 – Class 12) are auto-created when your branch is provisioned. Ask your Institute Admin if you don't see them." />;
+  1056→  1056→  }
+  1057→  1057→
+  1058→  1058→  // Summary stats
+  1059→  1059→  const setCount = grouped.filter(g => structure[g.id]?.monthlyFee != null).length;
+  1060→  1060→  const avgMonthly = setCount > 0
+  1061→  1061→    ? Math.round(grouped.reduce((acc, g) => acc + (Number(structure[g.id]?.monthlyFee) || 0), 0) / setCount)
+  1062→  1062→    : 0;
+  1063→  1063→
+  1064→  1064→  return (
+  1065→  1065→    <div className="space-y-5">
+  1066→  1066→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1067→  1067→        <Card className="p-4">
+  1068→  1068→          <div className="text-xs text-muted-foreground">Total Classes</div>
+  1069→  1069→          <div className="text-2xl font-extrabold mt-1">{grouped.length}</div>
+  1070→  1070→        </Card>
+  1071→  1071→        <Card className="p-4">
+  1072→  1072→          <div className="text-xs text-muted-foreground">Fees Configured</div>
+  1073→  1073→          <div className="text-2xl font-extrabold mt-1 text-primary">{setCount}</div>
+  1074→  1074→        </Card>
+  1075→  1075→        <Card className="p-4">
+  1076→  1076→          <div className="text-xs text-muted-foreground">Avg Monthly Fee</div>
+  1077→  1077→          <div className="text-2xl font-extrabold mt-1">{fmtPKR(avgMonthly)}</div>
+  1078→  1078→        </Card>
+  1079→  1079→        <Card className="p-4">
+  1080→  1080→          <div className="text-xs text-muted-foreground">Pending Setup</div>
+  1081→  1081→          <div className="text-2xl font-extrabold mt-1 text-sky-700">{grouped.length - setCount}</div>
+  1082→  1082→        </Card>
+  1083→  1083→      </div>
+  1084→  1084→
+  1085→  1085→      <Card className="p-4">
+  1086→  1086→        <div className="flex items-center gap-2 mb-4">
+  1087→  1087→          <Wallet className="h-4 w-4 text-primary" />
+  1088→  1088→          <h3 className="font-bold text-base">Monthly Fee Structure</h3>
+  1089→  1089→          <span className="text-xs text-muted-foreground ml-1">Edit each class's monthly fee and save.</span>
+  1090→  1090→        </div>
+  1091→  1091→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+  1092→  1092→          {grouped.map((cls: any) => {
+  1093→  1093→            const e = getEdits(cls);
+  1094→  1094→            const isSaving = savingId === cls.id;
+  1095→  1095→            const isSet = structure[cls.id]?.monthlyFee != null;
+  1096→  1096→            return (
+  1097→  1097→              <div key={cls.id} className={`p-4 rounded-xl border ${isSet ? 'border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5' : 'border-dashed border-border'} hover:shadow-sm transition`}>
+  1098→  1098→                <div className="flex items-center justify-between mb-3">
+  1099→  1099→                  <div className="flex items-center gap-2">
+  1100→  1100→                    <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary font-bold text-xs">
+  1101→  1101→                      {classNumber(cls.name) || '—'}
+  1102→  1102→                    </div>
+  1103→  1103→                    <div>
+  1104→  1104→                      <div className="font-bold text-sm">{cls.name}</div>
+  1105→  1105→                      <div className="text-[10px] text-muted-foreground">{isSet ? 'Configured' : 'Not set'}</div>
+  1106→  1106→                    </div>
+  1107→  1107→                  </div>
+  1108→  1108→                  {isSet && <CheckCircle2 className="h-4 w-4 text-primary" />}
+  1109→  1109→                </div>
+  1110→  1110→                <div className="space-y-2">
+  1111→  1111→                  <div>
+  1112→  1112→                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Monthly Fee (Rs.)</Label>
+  1113→  1113→                    <div className="relative mt-0.5">
+  1114→  1114→                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rs.</span>
+  1115→  1115→                      <Input
+  1116→  1116→                        type="number"
+  1117→  1117→                        value={e.monthly}
+  1118→  1118→                        onChange={ev => setEdits(prev => ({ ...prev, [cls.id]: { ...e, monthly: ev.target.value } }))}
+  1119→  1119→                        placeholder="0"
+  1120→  1120→                        className="pl-9 h-9"
+  1121→  1121→                      />
+  1122→  1122→                    </div>
+  1123→  1123→                  </div>
+  1124→  1124→                  <div>
+  1125→  1125→                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Admission Fee (Rs.)</Label>
+  1126→  1126→                    <div className="relative mt-0.5">
+  1127→  1127→                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">Rs.</span>
+  1128→  1128→                      <Input
+  1129→  1129→                        type="number"
+  1130→  1130→                        value={e.admission}
+  1131→  1131→                        onChange={ev => setEdits(prev => ({ ...prev, [cls.id]: { ...e, admission: ev.target.value } }))}
+  1132→  1132→                        placeholder="0"
+  1133→  1133→                        className="pl-9 h-9"
+  1134→  1134→                      />
+  1135→  1135→                    </div>
+  1136→  1136→                  </div>
+  1137→  1137→                  <Button size="sm" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={isSaving} onClick={() => save(cls)}>
+  1138→  1138→                    {isSaving ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Save</>}
+  1139→  1139→                  </Button>
+  1140→  1140→                </div>
+  1141→  1141→              </div>
+  1142→  1142→            );
+  1143→  1143→          })}
+  1144→  1144→        </div>
+  1145→  1145→      </Card>
+  1146→  1146→    </div>
+  1147→  1147→  );
+  1148→  1148→}
+  1149→  1149→
+  1150→  1150→function FeeInvoicesTab({ user }: { user: any }) {
+  1151→  1151→  const [invoices, setInvoices] = useState<any[]>([]);
+  1152→  1152→  const [loading, setLoading] = useState(true);
+  1153→  1153→  const [showGenerate, setShowGenerate] = useState(false);
+  1154→  1154→  const [generating, setGenerating] = useState(false);
+  1155→  1155→  const [genMonth, setGenMonth] = useState<string>(FEE_MONTHS[new Date().getMonth()]);
+  1156→  1156→  const [genYear, setGenYear] = useState<string>(String(new Date().getFullYear()));
+  1157→  1157→  const [payingId, setPayingId] = useState<string | null>(null);
+  1158→  1158→  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
+  1159→  1159→
+  1160→  1160→  const refresh = () => {
+  1161→  1161→    setLoading(true);
+  1162→  1162→    api.getBranchInvoices()
+  1163→  1163→      .then(r => setInvoices(Array.isArray(r) ? r : []))
+  1164→  1164→      .catch(() => setInvoices([]))
+  1165→  1165→      .finally(() => setLoading(false));
+  1166→  1166→  };
+  1167→  1167→
+  1168→  1168→  useEffect(() => { refresh(); }, []);
+  1169→  1169→
+  1170→  1170→  const generate = async () => {
+  1171→  1171→    if (!genMonth || !genYear) { toast({ title: 'Month and year required', variant: 'destructive' }); return; }
+  1172→  1172→    setGenerating(true);
+  1173→  1173→    try {
+  1174→  1174→      const res = await api.generateInvoices(genMonth, Number(genYear));
+  1175→  1175→      const created = res?.generated ?? res?.created ?? res?.count ?? (Array.isArray(res?.invoices) ? res.invoices.length : null);
+  1176→  1176→      toast({ title: 'Invoices generated', description: created != null ? `${created} invoice(s) created for ${genMonth} ${genYear}` : (res?.message || `Invoices for ${genMonth} ${genYear} generated`) });
+  1177→  1177→      setShowGenerate(false);
+  1178→  1178→      refresh();
+  1179→  1179→    } catch (e: any) { toast({ title: 'Failed to generate', description: e.message, variant: 'destructive' }); }
+  1180→  1180→    finally { setGenerating(false); }
+  1181→  1181→  };
+  1182→  1182→
+  1183→  1183→  const markPaid = async (inv: any) => {
+  1184→  1184→    setPayingId(inv.id);
+  1185→  1185→    try {
+  1186→  1186→      await api.markInvoicePaid(inv.id, Number(inv.amount) || 0, 'Cash');
+  1187→  1187→      toast({ title: 'Invoice paid', description: `${inv.studentName}'s ${inv.month} invoice marked as paid` });
+  1188→  1188→      refresh();
+  1189→  1189→    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+  1190→  1190→    finally { setPayingId(null); }
+  1191→  1191→  };
+  1192→  1192→
+  1193→  1193→  const filtered = invoices.filter(inv => {
+  1194→  1194→    if (filter === 'paid') return String(inv.status).toLowerCase() === 'paid';
+  1195→  1195→    if (filter === 'unpaid') return String(inv.status).toLowerCase() !== 'paid';
+  1196→  1196→    return true;
+  1197→  1197→  });
+  1198→  1198→
+  1199→  1199→  const stats = useMemo(() => {
+  1200→  1200→    const total = invoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+  1201→  1201→    const paid = invoices.filter(i => String(i.status).toLowerCase() === 'paid').reduce((acc, i) => acc + (Number(i.paidAmount || i.amount) || 0), 0);
+  1202→  1202→    const pending = total - paid;
+  1203→  1203→    return { total, paid, pending, count: invoices.length };
+  1204→  1204→  }, [invoices]);
+  1205→  1205→
+  1206→  1206→  return (
+  1207→  1207→    <div className="space-y-5">
+  1208→  1208→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1209→  1209→        <Card className="p-4">
+  1210→  1210→          <div className="text-xs text-muted-foreground">Total Invoices</div>
+  1211→  1211→          <div className="text-2xl font-extrabold mt-1">{stats.count}</div>
+  1212→  1212→        </Card>
+  1213→  1213→        <Card className="p-4">
+  1214→  1214→          <div className="text-xs text-muted-foreground">Collected</div>
+  1215→  1215→          <div className="text-xl font-extrabold mt-1 text-primary">{fmtPKR(stats.paid)}</div>
+  1216→  1216→        </Card>
+  1217→  1217→        <Card className="p-4">
+  1218→  1218→          <div className="text-xs text-muted-foreground">Pending</div>
+  1219→  1219→          <div className="text-xl font-extrabold mt-1 text-rose-600">{fmtPKR(stats.pending)}</div>
+  1220→  1220→        </Card>
+  1221→  1221→        <Card className="p-4">
+  1222→  1222→          <div className="text-xs text-muted-foreground">Total Amount</div>
+  1223→  1223→          <div className="text-xl font-extrabold mt-1">{fmtPKR(stats.total)}</div>
+  1224→  1224→        </Card>
+  1225→  1225→      </div>
+  1226→  1226→
+  1227→  1227→      <Card className="p-4">
+  1228→  1228→        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+  1229→  1229→          <div className="flex items-center gap-2">
+  1230→  1230→            <FileText className="h-4 w-4 text-primary" />
+  1231→  1231→            <h3 className="font-bold text-base">Branch Invoices</h3>
+  1232→  1232→          </div>
+  1233→  1233→          <div className="flex gap-2 flex-wrap">
+  1234→  1234→            <div className="flex gap-1 p-1 rounded-lg bg-muted/60 text-xs">
+  1235→  1235→              {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid']] as const).map(([id, label]) => (
+  1236→  1236→                <button key={id} onClick={() => setFilter(id)}
+  1237→  1237→                  className={`px-2.5 py-1 rounded-md font-medium transition ${filter === id ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+  1238→  1238→                  {label}
+  1239→  1239→                </button>
+  1240→  1240→              ))}
+  1241→  1241→            </div>
+  1242→  1242→            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowGenerate(v => !v)}>
+  1243→  1243→              <Plus className="h-4 w-4 mr-1.5" /> Generate Invoices
+  1244→  1244→            </Button>
+  1245→  1245→          </div>
+  1246→  1246→        </div>
+  1247→  1247→
+  1248→  1248→        {showGenerate && (
+  1249→  1249→          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden mb-4">
+  1250→  1250→            <div className="p-4 rounded-xl border border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5">
+  1251→  1251→              <div className="flex items-center gap-2 mb-3"><Banknote className="h-4 w-4 text-primary" /><span className="font-bold text-sm">Generate Monthly Invoices</span></div>
+  1252→  1252→              <p className="text-xs text-muted-foreground mb-3">This creates one invoice per active student for the selected month and year, based on their class's monthly fee.</p>
+  1253→  1253→              <div className="grid sm:grid-cols-3 gap-3 items-end">
+  1254→  1254→                <div>
+  1255→  1255→                  <Label className="text-xs">Month</Label>
+  1256→  1256→                  <Select value={genMonth} onValueChange={setGenMonth}>
+  1257→  1257→                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select month" /></SelectTrigger>
+  1258→  1258→                    <SelectContent>
+  1259→  1259→                      {FEE_MONTHS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+  1260→  1260→                    </SelectContent>
+  1261→  1261→                  </Select>
+  1262→  1262→                </div>
+  1263→  1263→                <div>
+  1264→  1264→                  <Label className="text-xs">Year</Label>
+  1265→  1265→                  <Input type="number" value={genYear} onChange={e => setGenYear(e.target.value)} className="mt-1" />
+  1266→  1266→                </div>
+  1267→  1267→                <div className="flex gap-2">
+  1268→  1268→                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={generating} onClick={generate}>
+  1269→  1269→                    {generating ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Generating…</> : 'Generate'}
+  1270→  1270→                  </Button>
+  1271→  1271→                  <Button size="sm" variant="outline" onClick={() => setShowGenerate(false)}>Cancel</Button>
+  1272→  1272→                </div>
+  1273→  1273→              </div>
+  1274→  1274→            </div>
+  1275→  1275→          </motion.div>
+  1276→  1276→        )}
+  1277→  1277→
+  1278→  1278→        {loading ? (
+  1279→  1279→          <div className="text-center py-10 text-sm text-muted-foreground flex items-center justify-center gap-2">
+  1280→  1280→            <Loader2 className="h-4 w-4 animate-spin" /> Loading invoices…
+  1281→  1281→          </div>
+  1282→  1282→        ) : filtered.length === 0 ? (
+  1283→  1283→          <div className="text-center py-10">
+  1284→  1284→            <div className="inline-flex h-12 w-12 rounded-xl bg-muted/60 items-center justify-center mb-3"><FileText className="h-5 w-5 text-muted-foreground" /></div>
+  1285→  1285→            <div className="font-bold text-sm">{invoices.length === 0 ? 'No invoices yet' : 'No invoices match this filter'}</div>
+  1286→  1286→            <div className="text-xs text-muted-foreground mt-1">{invoices.length === 0 ? 'Click "Generate Invoices" to create monthly invoices for all students.' : 'Try changing the filter above.'}</div>
+  1287→  1287→          </div>
+  1288→  1288→        ) : (
+  1289→  1289→          <div className="max-h-[60vh] overflow-y-auto scroll-fancy -mx-4 px-4">
+  1290→  1290→            <Table>
+  1291→  1291→              <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40 sticky top-0">
+  1292→  1292→                <TableHead>Student</TableHead>
+  1293→  1293→                <TableHead>Class</TableHead>
+  1294→  1294→                <TableHead>Month</TableHead>
+  1295→  1295→                <TableHead className="text-right">Amount</TableHead>
+  1296→  1296→                <TableHead>Status</TableHead>
+  1297→  1297→                <TableHead className="text-right">Action</TableHead>
+  1298→  1298→              </TableRow></TableHeader>
+  1299→  1299→              <TableBody>
+  1300→  1300→                {filtered.map(inv => {
+  1301→  1301→                  const isPaid = String(inv.status).toLowerCase() === 'paid';
+  1302→  1302→                  return (
+  1303→  1303→                    <TableRow key={inv.id} className="hover:bg-muted/30">
+  1304→  1304→                      <TableCell>
+  1305→  1305→                        <div className="font-medium text-sm">{inv.studentName || '—'}</div>
+  1306→  1306→                        <div className="text-[10px] text-muted-foreground font-mono">{inv.challanNo || inv.id?.slice(-8)}</div>
+  1307→  1307→                      </TableCell>
+  1308→  1308→                      <TableCell><Badge variant="outline" className="font-normal text-[11px]">{inv.className || '—'}</Badge></TableCell>
+  1309→  1309→                      <TableCell className="text-sm whitespace-nowrap">{inv.month || '—'}{inv.year ? ` ${inv.year}` : ''}</TableCell>
+  1310→  1310→                      <TableCell className="text-right font-mono text-sm font-semibold">{fmtPKR(Number(inv.amount) || 0)}</TableCell>
+  1311→  1311→                      <TableCell>
+  1312→  1312→                        <Badge variant="outline" className={isPaid ? 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.3]' : 'text-rose-700 bg-rose-500/10 border-rose-500/30'}>
+  1313→  1313→                          {isPaid ? 'Paid' : 'Unpaid'}
+  1314→  1314→                        </Badge>
+  1315→  1315→                        {isPaid && inv.paidDate && <div className="text-[10px] text-muted-foreground mt-0.5">{inv.paidDate}</div>}
+  1316→  1316→                      </TableCell>
+  1317→  1317→                      <TableCell className="text-right">
+  1318→  1318→                        {isPaid ? (
+  1319→  1319→                          <span className="text-[11px] text-primary inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Settled</span>
+  1320→  1320→                        ) : (
+  1321→  1321→                          <Button size="sm" variant="outline" className="h-8 text-xs border-[oklch(0.5_0.04_260)_/_0.4] text-primary hover:bg-accent0/10" disabled={payingId === inv.id} onClick={() => markPaid(inv)}>
+  1322→  1322→                            {payingId === inv.id ? <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Marking…</> : 'Mark Paid'}
+  1323→  1323→                          </Button>
+  1324→  1324→                        )}
+  1325→  1325→                      </TableCell>
+  1326→  1326→                    </TableRow>
+  1327→  1327→                  );
+  1328→  1328→                })}
+  1329→  1329→              </TableBody>
+  1330→  1330→            </Table>
+  1331→  1331→          </div>
+  1332→  1332→        )}
+  1333→  1333→      </Card>
+  1334→  1334→    </div>
+  1335→  1335→  );
+  1336→  1336→}
+  1337→  1337→
+  1338→  1338→function ScopedBranchModule({ activeModule, user, stats }: any) {
+  1339→  1339→  const titles: Record<string,string> = {
+  1340→  1340→    attendance:'Attendance', results:'Results', timetable:'Timetable', fees:'Fees',
+  1341→  1341→    complaints:'Complaints', events:'Events', sms:'SMS Portal',
+  1342→  1342→  };
+  1343→  1343→  return (
+  1344→  1344→    <div className="space-y-6">
+  1345→  1345→      <ModuleHeader title={titles[activeModule] || activeModule} subtitle={`Scoped to ${user?.branchName}`} />
+  1346→  1346→      <EmptyState icon={Inbox} title="No records yet" desc="Records for this module are created by teachers and staff in your branch. Once they start using their portals, data will appear here." />
+  1347→  1347→    </div>
+  1348→  1348→  );
+  1349→  1349→}
+  1350→  1350→

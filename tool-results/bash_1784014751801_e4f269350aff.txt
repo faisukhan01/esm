@@ -1,0 +1,300 @@
+- Kept the navy gradient welcome banner exactly as-is (Crown badge, "Welcome back, {name}", branches/students/teachers count, today's date).
+- Did NOT touch BranchesView, InstituteFeesView, InstituteTeachersView, InstituteStudentsView, InstituteReportsView, BranchManagementView, BranchCard, EditBranchModal, BranchModal, or AnnouncementsView — only InstituteDashboard and the InstituteAdminPortal parent's store hook + viewProps were modified.
+- Color discipline preserved: navy `bg-primary/10 text-primary` for all icon boxes; no emerald/rose on the dashboard anymore (those tones now only appear on the dedicated Fees/Teachers/Reports pages where paid/pending distinctions make sense). No indigo/blue/green.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly (`✓ Compiled in 552ms` / `979ms` / `666ms`) after the edits, and the Institute Admin's `/api/branches` + `/api/institute/finance` calls continue to return 200.
+
+Stage Summary:
+- Institute Admin Dashboard is now a clean, simple landing surface: welcome banner → 4 summary KPIs (Branches, Students, Teachers, Total Revenue) → 4 Quick Action shortcuts (deep-links to Fees & Revenue / Teachers & Salaries / Students / Reports) → compact Branches grid (up to 6 BranchCards + "View all" link, with Add-Branch empty state when none exist).
+- Removed from the Dashboard: 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Monthly Salary Expense, Net Balance, Total Invoices), Revenue vs Salary BarChart, Branch Revenue horizontal BarChart, and Recent Transactions table — all of this data remains available on the dedicated Fees & Revenue / Teachers & Salaries / Reports pages, eliminating the duplication the user complained about.
+- `setActiveModule` is now sourced from the useApp store inside InstituteAdminPortal (Option A) and threaded down to InstituteDashboard via viewProps alongside onAddBranch and onSelectBranch — so Quick Actions and the Branches "View all" link can navigate without touching RolePortal.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components in the file were modified.
+
+---
+Task ID: SA-DASHBOARD-SIMPLIFY
+Agent: full-stack-developer
+Task: Simplify the Super Admin dashboard — move all financial KPIs, charts, and tables off the Dashboard page to a new dedicated Analytics sidebar page. Dashboard should only show welcome banner + 4 basic KPIs + Quick Actions.
+
+Work Log:
+- Read worklog.md tail (saw IA-DASHBOARD-SIMPLIFY followed the same Option-A pattern: pull setActiveModule from useApp store inside the component) and the current super-admin-portal.tsx (~1364 lines pre-edit) to locate PlatformOverview (lines 170-529) and the SuperAdminPortal parent router (lines 44-110).
+- Confirmed useApp store (src/lib/store.ts) exposes `setActiveModule: (m) => set({ activeModule: m })` via `useApp(s => s.setActiveModule)`.
+- Step 1 — role-modules.ts: added `{ id: 'platform-analytics', name: 'Analytics', icon: TrendingUp, color: 'from-primary to-primary/80' }` to the super-admin Platform group, positioned between institutes and announcements. TrendingUp was already imported.
+- Step 2 — super-admin-portal.tsx imports/helpers:
+  - Added `import { useApp } from '@/lib/store';` after the toast import.
+  - Relaxed the existing `formatPKR` signature from `(n: number)` to `(n: any)` to match the spec helper (lets us safely pass `undefined`/strings from finance payloads).
+  - Added a new `exportToCSV(filename, headers, rows)` helper at the top of the file (was not present before). It escapes cells containing commas/quotes/newlines, prepends a UTF-8 BOM, builds a Blob, and triggers a synthetic `<a download>` click.
+- Step 3 — SuperAdminPortal parent router:
+  - Added the new branch `if (activeModule === 'platform-analytics') return <PlatformAnalytics finance={finance} financeLoading={financeLoading} institutes={institutes} />;` right after the institutes branch and before announcements.
+  - Kept the existing `api.getPlatformFinance()` fetch in the parent (refreshFinance) so finance is available to both the dashboard (no longer renders it) and the new Analytics page.
+  - Trimmed the PlatformOverview call site to only pass `{ overview, overviewLoading, onAddInstitute, onRefreshAll, user, showAdd, setShowAdd }` — removed `institutes`, `institutesLoading`, `finance`, `financeLoading` since the dashboard no longer renders them.
+- Step 4 — PlatformOverview rewrite (kept lightweight, ~107 lines):
+  - Kept the navy gradient welcome banner verbatim (Crown badge, "Welcome back, {name}", onboarded count, Provision Institute button).
+  - Kept the 4 basic KPI cards verbatim (Institutions / Branches / Total Students / Total Staff) with the existing skeleton-loading block.
+  - Added a new "Quick Actions" section with 3 shortcut cards in `grid sm:grid-cols-2 lg:grid-cols-3 gap-4`:
+    - View Analytics (TrendingUp) → platform-analytics
+    - Manage Institutes (Building2) → institutes
+    - Send Announcement (MessageSquare) → announcements
+    Each card uses the exact spec styling: `group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5`, icon in `h-11 w-11 shrink-0 rounded-xl bg-primary/10` box, title `font-bold text-base`, subtitle `text-xs text-muted-foreground mt-0.5`, and a ChevronRight (`text-primary opacity-0 group-hover:opacity-100 transition shrink-0`) on the right. Clicking calls `setActiveModule(a.target)` sourced from `useApp(s => s.setActiveModule)`.
+  - Kept the `showAdd && <ProvisionInstituteModal …/>` block so the banner's "Provision Institute" button still opens the modal.
+  - Removed: 6 financial KPI cards, Platform Revenue vs Salary BarChart, Yearly Revenue Trend AreaChart, Institute Performance table, Recent Platform Transactions table, and the Institutes grid (which duplicated InstitutesManager and was the user's secondary complaint).
+- Step 5 — new PlatformAnalytics component (~298 lines):
+  - Page header via ModuleHeader with title "Analytics", subtitle "Revenue, salary and institute performance insights", and an Export CSV button in the actions slot (disabled while loading or when no institute performance rows).
+  - 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Net Balance, Total Invoices, Active Institutes) — same styling as the old dashboard: white bg, border-border rounded-lg shadow-sm, h-11 w-11 icon box, tabular-nums font-extrabold values. Navy `bg-primary/10 text-primary` for positive icons; rose `bg-rose-500/10 text-rose-600` for Pending Fees; conditional emerald/rose for Net Balance.
+  - Charts row (lg:grid-cols-2): Platform Revenue vs Salary BarChart (12 months, navy #1a365d revenue bars, rose #e11d48 salary bars) + Yearly Revenue Trend AreaChart (5 years, navy + rose gradient fills). Both use `formatCompact` for Y-axis and `formatPKR` for tooltips.
+  - Institute Performance table with `max-h-96 overflow-y-auto` scroll, sticky header, and an inline Export CSV button on the right side of the card header (in addition to the page-level one). The export handler maps each institute row to `[name, city, admin, branches, students, revenue, pendingFees, salaryPaid, net, status]` and calls `exportToCSV('institute-performance', [...], rows)`, then fires a success toast.
+  - Recent Platform Transactions table (latest 10 rows) — same styling as before with emerald/rose type badges.
+  - Skeleton loaders for each section during `finLoading` (initial fetch or finance === null).
+- Did NOT touch InstituteCard, PlatformConfig, BrandingPage, AnnouncementsView, InstituteDetailsModal, ProvisionInstituteModal, EditInstituteModal, or any other component — only PlatformOverview was rewritten, PlatformAnalytics was added, and the parent router got one new branch + the slimmer PlatformOverview call site.
+- Color discipline preserved throughout: navy `bg-primary/10 text-primary` for all neutral icons; rose only for Pending Fees / negative Net Balance / salary payouts; emerald only for positive Net Balance / Fee Payment badges. No indigo/blue/green accents.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly (`✓ Compiled in 471ms` / `589ms` / `510ms` / `1581ms` / `597ms`) after the edits, with the typical "Fast Refresh had to perform a full reload" note (expected for a structural rewrite of a top-level component), and the page returned `GET / 200 in 426ms` after the reload.
+
+Stage Summary:
+- Super Admin Dashboard is now a clean, simple landing surface: welcome banner → 4 summary KPIs (Institutions, Branches, Total Students, Total Staff) → 3 Quick Action shortcuts (View Analytics, Manage Institutes, Send Announcement). No financial KPIs, no charts, no tables, no institutes grid.
+- New dedicated Analytics sidebar page (`platform-analytics`) hosts ALL of the financial data that was previously crammed onto the Dashboard: 6 financial KPI cards, Platform Revenue vs Salary BarChart (12 months), Yearly Revenue Trend AreaChart (5 years), Institute Performance table (with `max-h-96 overflow-y-auto` scroll), and Recent Platform Transactions table.
+- Added CSV export capability for the Institute Performance table — two entry points (page-header button + table-header button), both call the new `exportToCSV` helper with a UTF-8 BOM and proper RFC-4180 escaping. Success toast confirms the download.
+- The institutes management grid now only renders on the Institutes sidebar page (InstitutesManager component) — removed the duplicate grid that was on the Dashboard.
+- `setActiveModule` sourced from the useApp store inside PlatformOverview (Option A, same pattern as IA-DASHBOARD-SIMPLIFY) — Quick Actions navigate without needing props threaded from the parent.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components in the file were modified.
+
+---
+Task ID: DASHBOARD-SIMPLIFY + MESSAGE-SQUARE-FIX
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: User complained that Super Admin and Institute Admin dashboards had too much data (financial KPIs, charts, transaction tables) crammed onto the Dashboard page. Moved detailed data to separate Analytics/pages, keeping dashboards clean with only banner + core KPIs + Quick Actions. Also fixed a missing MessageSquare import that crashed the Super Admin portal.
+
+Work Log:
+- **IA-DASHBOARD-SIMPLIFY** (subagent):
+  - Rewrote `InstituteDashboard` component in `institute-admin-portal.tsx`:
+    - KEPT: navy welcome banner
+    - REPLACED 6 financial KPIs with 4 summary KPIs: Branches, Students, Teachers, Total Revenue
+    - ADDED: Quick Actions section with 4 shortcut cards (Fees & Revenue, Teachers & Salaries, Students, Reports) that navigate to the respective pages via `setActiveModule`
+    - ADDED: compact Branches overview grid (reusing BranchCard) with "View all" link
+    - REMOVED: Revenue vs Salary BarChart, Branch Revenue BarChart, Recent Transactions table (all already on separate pages)
+    - Added `useApp` import + `setActiveModule` to `InstituteAdminPortal` parent, passed to `InstituteDashboard`
+- **SA-DASHBOARD-SIMPLIFY** (subagent):
+  - Added new `platform-analytics` sidebar item to `role-modules.ts` (Analytics, TrendingUp icon)
+  - Simplified `PlatformOverview` component (the Dashboard):
+    - KEPT: welcome banner + 4 basic KPI cards (Institutions, Branches, Students, Staff)
+    - ADDED: Quick Actions section with 3 shortcut cards (View Analytics, Manage Institutes, Send Announcement)
+    - REMOVED: 6 financial KPI cards, Platform Revenue vs Salary BarChart, Yearly Revenue Trend AreaChart, Institute Performance table, Recent Platform Transactions table
+    - Added `useApp` import + `setActiveModule` for Quick Actions navigation
+  - Created new `PlatformAnalytics` component:
+    - 6 financial KPI cards (Total Revenue, Pending Fees, Salary Paid, Net Balance, Total Invoices, Active Institutes)
+    - Platform Revenue vs Salary BarChart (12 months)
+    - Yearly Revenue Trend AreaChart (5 years)
+    - Institute Performance table (with Export CSV button)
+    - Recent Platform Transactions table
+  - Added routing: `if (activeModule === 'platform-analytics') return <PlatformAnalytics ...>`
+  - Added `formatPKR` and `exportToCSV` helpers
+- **CRITICAL BUG FIX** (Main agent):
+  - Super Admin portal crashed with "Application error: a client-side exception" after the subagent's changes
+  - Root cause: `MessageSquare` icon was used in the Quick Actions (`Send Announcement` card) but was NOT imported from lucide-react
+  - TypeScript check (`npx tsc --noEmit`) revealed: `src/components/portal/super-admin-portal.tsx(181,13): error TS2304: Cannot find name 'MessageSquare'`
+  - ESLint didn't catch this because the icon was used as a component reference (`icon: MessageSquare`) not a JSX tag
+  - Fix: Added `MessageSquare` to the lucide-react import block in `super-admin-portal.tsx`
+  - Verified: Super Admin portal now loads correctly after login
+- **Verification with agent-browser**:
+  - Super Admin login (faisu577277@gmail.com / QaReLc_61y8): ✅ clean dashboard with banner + 4 KPIs + 3 Quick Actions
+  - Super Admin → Analytics page: ✅ shows 6 financial KPIs + revenue chart + yearly chart + institute performance table + transactions table + Export CSV
+  - Institute Admin login (numan2@gmail.com / 1245): ✅ clean dashboard with banner + 4 KPIs + 4 Quick Actions + branch cards grid
+  - VLM rated Super Admin dashboard 8/10: "Clean and uncluttered, clear hierarchy, intuitive Quick Actions"
+  - VLM rated Institute Admin dashboard 8/10: "Clean and uncluttered with clear hierarchy, intuitive Quick Actions"
+- **Lint**: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- **Super Admin Dashboard simplified**: now shows only banner + 4 core KPIs (Institutions, Branches, Students, Staff) + 3 Quick Actions (View Analytics, Manage Institutes, Send Announcement). All financial data (6 KPIs, 2 charts, 2 tables) moved to a new "Analytics" sidebar page.
+- **Institute Admin Dashboard simplified**: now shows only banner + 4 summary KPIs (Branches, Students, Teachers, Total Revenue) + 4 Quick Actions (Fees & Revenue, Teachers & Salaries, Students, Reports) + compact branch cards grid. All financial charts/tables were already on existing separate pages (Fees & Revenue, Reports) — just removed from the dashboard.
+- **Critical bug fixed**: missing `MessageSquare` import caused Super Admin portal to crash on load — now resolved.
+- New sidebar item: Super Admin now has "Analytics" between "Institutes" and "Announcements".
+- Both dashboards are now clean overview pages, with detailed data on dedicated separate pages as the user requested.
+
+Unresolved issues or risks:
+- Pre-existing TS error in `teacher-portal.tsx`: `classStudents` is used in `PostResults` component (line 1144) but defined in `ClassAttendance` component (line 1026) — this would crash if a teacher tries to post results. Should be fixed in a future round by defining `classStudents` inside `PostResults` or passing it as a prop.
+- The old `dashboard/modules/` files have multiple TS errors but are not used by any active portal (they're legacy files from an earlier dashboard design).
+
+---
+Task ID: IA-REVENUE-UI
+Agent: full-stack-developer
+Task: Add Revenue Management UI to Institute Admin Fees & Revenue page
+
+Work Log:
+- Read worklog.md tail (saw SA-DASHBOARD-SIMPLIFY and IA-DASHBOARD-SIMPLIFY context — both Institute Admin & Super Admin dashboards were simplified, separate Analytics/Fees pages hold the detailed financial data) and the current institute-admin-portal.tsx (1748 lines after edits).
+- Read InstituteFeesView component (originally lines 376-508) to understand the existing layout: PageHeader → KPI strip (4 cards) → Monthly Revenue BarChart → All Fee Invoices table (with search + sort). Confirmed it only received `{ finance, loading }` and did NOT accept `branches` or `onRefresh`.
+- Verified the parent `InstituteAdminPortal` already builds a `viewProps` object (lines 117-126) containing `{ finance, branches, loading, user, onRefresh: refresh, onAddBranch, onSelectBranch, setActiveModule }` and spreads it into `<InstituteFeesView {...viewProps} />` at line 145. This means `branches` and `onRefresh` were already being passed — only the child's destructuring signature needed updating.
+- Verified API client methods exist in src/lib/api.ts: `api.addRevenue({ sourceType, sourceId, sourceName, amount, month, year, notes? })` (line 252), `api.getRevenue(params?)` (line 254), `api.deleteRevenue(id)` (line 263).
+- Verified required imports are all already present: `Card`, `Button`, `Input`, `Label`, `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue`, `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`, `Plus`, `Trash2`, `Loader2` icons, `toast`, `formatPKR` helper, `MONTHS` constant.
+- Step 1 — Updated `InstituteFeesView` signature from `{ finance, loading }: any` to `{ finance, loading, branches, onRefresh }: any`.
+- Step 2 — Added `revenueEntries` derived from `finance?.revenueEntries` (defensive Array.isArray check, defaults to []).
+- Step 3 — Added form state hooks: `revBranchId` (string, default ''), `revMonth` (string, default = MONTHS[currentMonth]), `revYear` (string, default = current year), `revAmount` (string, default ''), `submitting` (boolean), `deletingId` (string | null for per-row delete loading state).
+- Step 4 — Added `handleAddRevenue` async handler:
+  - Validates branch selected, amount > 0, year >= 2000 (destructive toast on failure).
+  - Looks up the branch object from `branches` to get its `name`.
+  - Calls `api.addRevenue({ sourceType: 'branch', sourceId: revBranchId, sourceName: branch.name, amount: Number(revAmount), month: revMonth, year: Number(revYear), notes: '' })`.
+  - On success: success toast with "{branch.name} · {month} {year} · {formatPKR(amount)}", clears `revAmount`, calls `onRefresh?.()` so the parent re-fetches `api.getInstituteFinance()` and the KPI strip / chart / entries table re-render with the new data in real-time.
+  - On error: destructive toast with the error message.
+  - Wraps in try/finally with `submitting` flag for the button's loading spinner.
+- Step 5 — Added `handleDeleteRevenue(id)` async handler: sets `deletingId`, calls `api.deleteRevenue(id)`, success toast, calls `onRefresh?.()`, destructive toast on error, clears `deletingId` in finally.
+- Step 6 — Added the **Revenue Management** form Card (top of page, before the existing KPI strip):
+  - Card title "Revenue Management", subtitle "Enter monthly revenue received from each branch".
+  - 4-field responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3`):
+    - Branch: shadcn `Select` populated from `branches` prop. Disabled when no branches exist, shows "Add branches first" placeholder in that case. Value = `b.id`, label = `b.name`.
+    - Month: shadcn `Select` populated from `MONTHS` constant, defaults to current month.
+    - Year: shadcn `Input type="number"`, defaults to current year.
+    - Amount (PKR): shadcn `Input type="number"` with placeholder "e.g. 30000".
+  - "Add Revenue" button (navy `bg-primary hover:bg-primary/90 text-white`) below the form, right-aligned. Shows `Loader2` spinner + disabled state while `submitting` or when no branches exist. Otherwise shows `Plus` icon.
+- Step 7 — Added the **Revenue Entries** table Card (below the KPI strip, before the Monthly Revenue chart — placed between so the user sees their just-added entry close to the form):
+  - Card title "Revenue Entries", subtitle "All manually entered branch revenue records".
+  - Reads from `finance.revenueEntries`.
+  - Empty state: "No revenue entries yet. Add your first entry above."
+  - Populated state: `max-h-96 overflow-y-auto` scroll container wrapping a shadcn `Table` with columns Branch (`sourceName`), Month, Year, Amount (`formatPKR(r.amount)`, emerald `text-emerald-600`), Notes (`r.notes || '—'`, truncated to 220px), Actions.
+  - Actions cell: `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` button with `Trash2` icon (swaps to `Loader2` spinner while `deletingId === r.id`), `aria-label="Delete revenue entry"` for accessibility, disabled during that row's delete.
+- Step 8 — Verified the parent `InstituteAdminPortal` call site at line 145 (`<InstituteFeesView {...viewProps} />`) already passes `branches` and `onRefresh` via the spread of `viewProps` (lines 117-126) — no change needed there.
+- Did NOT touch `InstituteDashboard`, `BranchesView`, `InstituteTeachersView`, `InstituteStudentsView`, `InstituteReportsView`, `BranchManagementView`, `BranchCard`, `AnnouncementsView`, or any other component — only `InstituteFeesView` was modified.
+- Color discipline preserved: navy `bg-primary hover:bg-primary/90 text-white` for the Add Revenue button (and the existing KPI/icon accents); emerald `text-emerald-600` for revenue amounts in the entries table (and existing positive figures); rose `text-rose-500 hover:bg-rose-500/10` for the delete button only. No indigo/blue/green accents introduced.
+- Ran `bun run lint` from /home/z/my-project — passes with **0 errors, 0 warnings** (exit code 0).
+- Checked dev.log — Next.js dev server recompiled cleanly after the edits (`✓ Compiled in 581ms` / `679ms` / `592ms` / `723ms` / `660ms`, all successful, no errors). Existing `/api/institute/finance` and `/api/branches` requests continue returning 200.
+
+Stage Summary:
+- Institute Admin's **Fees & Revenue** page (`institute-fees` module) now has a manual Revenue Management section at the top, letting the admin enter monthly revenue for each branch (e.g. "Township branch: PKR 30,000 for July 2026").
+- New **Revenue Management** form card (top of page, before KPI strip): 4-field responsive grid (Branch select / Month select / Year number input / Amount number input) + navy "Add Revenue" button. Branch dropdown is disabled with "Add branches first" placeholder when the institute has no branches. Form calls `api.addRevenue({ sourceType: 'branch', sourceId, sourceName, amount, month, year, notes: '' })` (the API upserts on branch+month+year collisions), then clears the amount field and calls `onRefresh()` so KPIs/charts re-render in real-time.
+- New **Revenue Entries** table card (below KPI strip): columns Branch / Month / Year / Amount (emerald) / Notes / Actions (rose Trash2 delete button). `max-h-96 overflow-y-auto` scroll for long lists. Empty state "No revenue entries yet. Add your first entry above." Delete calls `api.deleteRevenue(id)` then `onRefresh()`.
+- Data flow confirmed: `User enters revenue → api.addRevenue() → onRefresh() → api.getInstituteFinance() → finance state updates (incl. revenueEntries, kpi.totalRevenue, monthlyRevenue) → charts/KPIs/entries table re-render`.
+- The parent `InstituteAdminPortal` already passed `branches` and `onRefresh` (via the `viewProps` spread), so the child's destructuring signature was the only change needed at the call site.
+- `bun run lint` passes with 0 errors; dev server compiles cleanly. No other components were modified.
+
+---
+Task ID: SA-REVENUE-UI
+Agent: full-stack-developer
+Task: Add Revenue Management UI to Super Admin Analytics page
+
+Work Log:
+- Read worklog.md and existing `src/components/portal/super-admin-portal.tsx` (~1406 lines) to understand the `PlatformAnalytics` component and `SuperAdminPortal` parent (which exposes `refreshFinance` and `refreshAll`).
+- Verified backend support: `mini-services/esm-api/index.js` confirms `manual_revenue` table, `POST /api/revenue` upsert (returns `{ success, id, updated }`), `GET /api/platform/finance` returns `revenueEntries[]` ordered by `year DESC, createdAt DESC`.
+- Confirmed API client methods (`api.addRevenue`, `api.getRevenue`, `api.deleteRevenue`) exist in `src/lib/api.ts`.
+- Added `MONTHS` constant near the top of `super-admin-portal.tsx` (after the CSV export helper).
+- Updated `PlatformAnalytics` signature to destructure `{ finance, financeLoading, institutes, onRefresh }`.
+- Updated the `SuperAdminPortal` call site to pass `onRefresh={refreshFinance}` to `PlatformAnalytics` so the form/table can trigger a finance refresh.
+- Added Revenue form state (`revInstituteId`, `revMonth`, `revYear`, `revAmount`, `revSubmitting`, `revDeletingId`) with sensible defaults (current month + current year).
+- Implemented `handleAddRevenue`: validates fields/amount, calls `api.addRevenue({ sourceType: 'institute', sourceId, sourceName, amount, month, year, notes: '' })`, shows a toast that adapts to upsert result (`res.updated` → "Revenue updated" else "Revenue added"), clears the amount field, then calls `onRefresh()` so charts/KPIs re-render in real time.
+- Implemented `handleDeleteRevenue`: calls `api.deleteRevenue(id)`, toasts success, calls `onRefresh()`, with per-row spinner via `revDeletingId`.
+- Inserted a "Revenue Management" Card at the top of the Analytics page (before the financial KPI cards) containing a responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3` form: Institute Select (disabled with "Add institutes first" placeholder when no institutes exist), Month Select (all 12 months), Year numeric Input (default = current year), Amount (PKR) numeric Input (placeholder "e.g. 50000"). Below the grid is a navy primary `bg-primary hover:bg-primary/90 text-white` "Add Revenue" button with a `Loader2` spinner during submission, plus a hint that re-entering updates an existing entry.
+- Inserted a "Revenue Entries" Card directly below the form Card, with a sticky-header shadcn `Table` (inside `max-h-96 overflow-y-auto`) showing columns: Institute (sourceName), Month, Year, Amount (`formatPKR` in emerald), Notes ("—" fallback), Actions (rose trash button `h-8 w-8 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition` with `Trash2` / spinner). Empty state shows "No revenue entries yet. Add your first entry above." Count badge in subtitle ("N entries").
+- Ensured color palette compliance: navy primary, emerald for revenue amounts, rose for delete, no indigo/blue/green accents.
+- Ran `bun run lint` from `/home/z/my-project` → 0 errors. Dev server log shows successful compilation after the edits.
+
+Stage Summary:
+- Super Admin can now manually enter monthly revenue per institute directly from the Analytics page via a 4-field form (Institute / Month / Year / Amount), with the API performing an upsert so re-entering an existing institute+month+year updates the amount.
+- A "Revenue Entries" table lists all manual entries (institute, month, year, emerald-formatted amount, notes, delete action) and updates in real time after add/delete via the `onRefresh` → `getPlatformFinance()` → `finance` state flow.
+- KPI cards and charts (monthly revenue vs salary, yearly trend, institute performance, recent transactions) re-render with the freshly-entered data because they all derive from the same `finance` state refreshed by `onRefresh`.
+- `bun run lint` passes with 0 errors; no other components (`PlatformOverview`, `InstituteCard`, `InstitutesManager`, `PlatformConfig`, `BrandingPage`, `AnnouncementsView`) were touched.
+
+---
+Task ID: MANUAL-REVENUE-SYSTEM
+Agent: Main (Z.ai Code) + 2 full-stack-developer subagents
+Task: User wants Super Admin to manually enter revenue per institute, and Institute Admin to manually enter revenue per branch. Real-time charts/KPIs should reflect this manually-entered data instead of auto-calculating from fee invoices.
+
+Work Log:
+- **Backend: manual_revenue table** (Main agent):
+  - Added `manual_revenue` table to db.js with columns: id, enteredBy, enteredByRole, instituteId, sourceType, sourceId, sourceName, amount, month, year, notes, createdAt
+  - sourceType = 'institute' (Super Admin) or 'branch' (Institute Admin)
+- **Backend: revenue CRUD endpoints** (Main agent):
+  - `POST /api/revenue` — upsert (add/update) a revenue entry. Authorization: super-admin can only enter for institutes, institute-admin only for branches in their institute. Upsert key: sourceId + month + year + enteredByRole.
+  - `GET /api/revenue` — list revenue entries scoped by role (super-admin sees all their entries, institute-admin sees entries for their institute)
+  - `DELETE /api/revenue/:id` — delete a revenue entry with authz check
+- **Backend: updated finance endpoints** (Main agent):
+  - `GET /api/platform/finance` — now uses `manual_revenue` entries (enteredByRole='super-admin') instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, institutePerformance, recentTransactions. Returns `revenueEntries[]` array.
+  - `GET /api/institute/finance` — now uses `manual_revenue` entries (enteredByRole='institute-admin', scoped to instituteId) instead of fee_invoices for all revenue calculations: totalRevenue, monthlyRevenue, yearlyRevenue, branchPerformance, recentTransactions. Returns `revenueEntries[]` array.
+  - Fixed orphan `app.get('/api/health'` line that caused a syntax error — removed the duplicate
+- **API client methods** (Main agent):
+  - `api.addRevenue({ sourceType, sourceId, sourceName, amount, month, year, notes? })`
+  - `api.getRevenue({ sourceType?, sourceId?, instituteId?, month?, year? })`
+  - `api.deleteRevenue(id)`
+- **Super Admin Analytics: Revenue Management UI** (subagent SA-REVENUE-UI):
+  - Added Revenue Management form Card at the top of PlatformAnalytics:
+    - Institute Select (populated from institutes prop), Month Select, Year Input, Amount (PKR) Input
+    - "Add Revenue" button → calls api.addRevenue with sourceType='institute' → onRefresh() → charts update in real-time
+  - Added Revenue Entries table Card below the form:
+    - Columns: Institute, Month, Year, Amount (emerald), Notes, Actions (delete button)
+    - Delete calls api.deleteRevenue then onRefresh()
+  - Passed onRefresh={refreshFinance} from SuperAdminPortal parent
+  - Added MONTHS constant
+- **Institute Admin Fees & Revenue: Revenue Management UI** (subagent IA-REVENUE-UI):
+  - Added Revenue Management form Card at the top of InstituteFeesView:
+    - Branch Select (populated from branches prop), Month Select, Year Input, Amount (PKR) Input
+    - "Add Revenue" button → calls api.addRevenue with sourceType='branch' → onRefresh() → charts update in real-time
+  - Added Revenue Entries table Card below the form:
+    - Columns: Branch, Month, Year, Amount (emerald), Notes, Actions (delete button)
+  - Passed branches and onRefresh props from InstituteAdminPortal parent
+- **Verification with agent-browser**:
+  - Super Admin → Analytics page: ✅ Revenue Management form visible with Institute/Month/Year/Amount fields + Revenue Entries table showing 2 existing entries (Test Academy PKR 15,000, Alhamd Institute PKR 15,000)
+  - Added PKR 75,000 for Alhamd Institute July 2026 via the form → entry updated (upsert), Total Revenue updated to PKR 90,000, charts refreshed in real-time
+  - Institute Admin → Fees & Revenue page: ✅ Revenue Management form visible with Branch/Month/Year/Amount fields
+  - Added PKR 40,000 for Township branch July 2026 → entry created, Total Collected updated to PKR 40,000, KPIs and charts refreshed in real-time
+  - Lint: 0 errors, 0 warnings ✅
+  - Dev log: POST /api/revenue returns 201, GET /api/institute/finance returns 200
+
+Stage Summary:
+- **Manual revenue system implemented end-to-end**:
+  - Super Admin manually enters revenue per institute (e.g., "Alhamd Institute: PKR 75,000 for July 2026")
+  - Institute Admin manually enters revenue per branch (e.g., "Township: PKR 40,000 for July 2026")
+  - All dashboard KPIs, charts, and tables use this manually-entered data in real-time
+  - Upsert behavior: re-entering the same institute/branch + month + year updates the amount
+  - Delete functionality: trash icon removes entries and refreshes data
+- **Backend finance endpoints updated**: platform/finance and institute/finance now calculate revenue from manual_revenue table instead of auto-calculating from fee_invoices
+- **Revenue no longer depends on fee invoices** — the Super Admin and Institute Admin have full control over what revenue figures appear on their dashboards
+- Color discipline maintained: navy primary, emerald for revenue amounts, rose for delete
+
+Unresolved issues or risks:
+- The Branch Manager dashboard still auto-calculates revenue from fee_invoices (branch-level). This is correct — Branch Managers collect fees from students, so their revenue is real fee data. Only Super Admin and Institute Admin use manual revenue.
+- No historical revenue migration — existing fee_invoice-based revenue data is no longer shown on SA/IA dashboards. If the user wants to see old fee data, the Fees & Revenue page still has a per-student fee summary table (though it now shows zeros since the finance endpoint no longer populates paid/pending from invoices).
+- Next priority: consider adding a "Revenue vs Salary" comparison view and a date-range filter for the revenue entries.
+
+---
+Task ID: STUDENT-PDF-FIX + INSTITUTE-NAME
+Agent: Main (Z.ai Code)
+Task: Fix student challan PDF download — (1) no print dialog, download PDF directly; (2) show institute name at the top of the PDF (e.g., "Alhamd Institute"); (3) "Powered by ESM" at the bottom.
+
+Work Log:
+- **Root cause 1: Print dialog fallback**: The old `downloadChallanPDF` function used `html2pdf.js` which was falling back to `printChallanInIframe` (browser print dialog) whenever the library failed. The user saw the print popup instead of a direct download.
+- **Root cause 2: Missing institute name**: The `buildUserProfile` function in the backend did NOT include `instituteName` or `branchName` — only `instituteId` and `branchId`. So `user.instituteName` was `undefined` on the frontend, and the PDF showed no institute name.
+- **Root cause 3: lab() color error**: `html2canvas` (used by both html2pdf.js and the new jsPDF approach) cannot parse the `oklch()`/`lab()` color functions used by Tailwind CSS 4. When rendering the challan element inside the main page, html2canvas read the page's computed styles (which include oklch) and threw "Attempting to parse an unsupported color function lab".
+- **Fix 1: Backend — add institute/branch names to user profile**:
+  - Updated `buildUserProfile` in `index.js` to include `instituteName`, `instituteShort`, `branchName` (read from the joined query result)
+  - Updated the login query (`POST /api/auth/login`) to JOIN with `institutes` and `branches` tables: `SELECT u.*, i.name as instituteName, i.short as instituteShort, b.name as branchName FROM users u LEFT JOIN institutes i ON u.instituteId = i.id LEFT JOIN branches b ON u.branchId = b.id WHERE ...`
+  - Updated `GET /api/fee-invoices/:id/challan` to JOIN with institutes + branches tables and return `instituteName`, `branchName`, `instituteId`, `paidDate`, `paidAmount`, `paymentMethod` in the response
+- **Fix 2: Frontend — direct PDF download with jsPDF + html2canvas (no print dialog)**:
+  - Replaced the `html2pdf.js` wrapper with direct `jspdf` + `html2canvas` imports (both already installed as dependencies of html2pdf.js)
+  - Removed the `printChallanInIframe` fallback entirely — the function now returns `{ via: 'pdf' | 'error' }` (never `'print'`)
+  - Added multi-page support: if the challan content is taller than one A4 page, the canvas is sliced into page-sized chunks and added to multiple PDF pages
+  - Uses `pdf.save(filename)` which triggers a direct browser download — no print dialog ever
+- **Fix 3: Iframe isolation to avoid oklch/lab color error**:
+  - Instead of rendering the challan HTML in a div inside the main page (which inherits the page's oklch CSS), the challan HTML is written into a hidden `<iframe>` with its own isolated document
+  - html2canvas renders the iframe's content (which only has the challan's own CSS with hex colors) — no oklch/lab colors to parse
+  - The `window: iframe.contentWindow` option ensures html2canvas uses the iframe's window for computed styles
+- **Fix 4: Enhanced challan HTML with prominent institute banner**:
+  - Added a navy gradient banner (`linear-gradient(135deg, #1e3a5f, #2c5282)`) at the very top of the challan with the institute name in large 28px bold white text + "OFFICIAL FEE CHALLAN" subtitle
+  - If a student is from "Alhamd Institute", the banner shows "Alhamd Institute" at the top
+  - If from another institute, that institute's name appears instead
+  - Footer shows "Powered by ESM — Electronic School Management" (already existed, kept as-is)
+  - Fixed a template literal bug: `PKR {amount.toLocaleString()}` → `PKR ${amount.toLocaleString()}` (the `{` was a literal character, not interpolation)
+- **Fix 5: Updated downloadChallan handler**:
+  - Now passes `challan.instituteName` (from the challan API) as the preferred institute name, falling back to `user.instituteName`
+  - Updated toast messages: success → "Challan downloaded", error → "Download failed" (no more "use print dialog" message)
+- **Verification**:
+  - Logged in as student (faisal, roll 0297, from Alhamd Institute)
+  - Went to Invoices page → clicked "Download Challan"
+  - PDF downloaded directly to `/home/z/Downloads/Challan-CH-202507-0001.pdf` (220KB, valid PDF, 1 page) — NO print dialog appeared
+  - Converted PDF to image and verified with VLM:
+    - Top: "Alhamd Institute" (prominent navy gradient banner, large bold white text) ✅
+    - Footer: "Powered by ESM — Electronic School Management" ✅
+    - Student: faisal, Class: Class 1, Amount: PKR 5,000, Status: PAID ✅
+    - Layout: clean and professional ✅
+  - The `lab()` color error still appears in the console (harmless warning from html2canvas trying to parse inherited page styles) but the PDF generates correctly because the iframe isolation works
+  - Lint: 0 errors, 0 warnings ✅
+
+Stage Summary:
+- **Student challan PDF now downloads directly** — no print dialog, no popup. The PDF file is saved to the browser's downloads folder immediately when the student clicks "Download Challan".
+- **Institute name shown prominently at the top** — a navy gradient banner displays the student's institute name (e.g., "Alhamd Institute") in large bold text. If a student from a different institute downloads their challan, that institute's name appears instead.
+- **"Powered by ESM" footer** — preserved at the bottom of every challan.
+- **Backend now returns institute/branch names** in both the login response and the challan data response, so the frontend always has the correct institute name.
+- **Iframe isolation** prevents the oklch/lab color parsing error from breaking PDF generation.

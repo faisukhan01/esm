@@ -972,7 +972,7 @@ function InstituteDetailsModal({ inst, onClose, onEdit }: { inst: any; onClose: 
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-2xl my-8">
         <Card className="p-0 max-h-[90vh] overflow-y-auto scroll-fancy">
           {/* Header */}
-          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-blue-50 to-slate-50 dark:from-blue-950/20 dark:to-slate-900/10">
+          <div className="p-6 border-b border-border/40 bg-gradient-to-br from-accent to-muted">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
                 <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-md text-white font-extrabold text-lg">

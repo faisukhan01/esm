@@ -155,6 +155,8 @@ export const api = {
     return request<any[]>(q.toString() ? `complaints?${q.toString()}` : 'complaints');
   },
   createComplaint: (body: any) => request<any>('complaints', { method: 'POST', body: JSON.stringify(body) }),
+  respondToComplaint: (id: string, response: string) =>
+    request<any>(`complaints/${id}/respond`, { method: 'PATCH', body: JSON.stringify({ response }) }),
   // events
   getEvents: (params?: { instituteId?: string; branchId?: string }) => {
     const q = new URLSearchParams();
@@ -261,6 +263,26 @@ export const api = {
     return request<any[]>(q.toString() ? `revenue?${q.toString()}` : 'revenue');
   },
   deleteRevenue: (id: string) => request<any>(`revenue/${id}`, { method: 'DELETE' }),
+  // Timetable
+  getTimetable: (params?: { branchId?: string; classId?: string; teacherId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.classId) q.set('classId', params.classId);
+    if (params?.teacherId) q.set('teacherId', params.teacherId);
+    return request<any[]>(q.toString() ? `timetable?${q.toString()}` : 'timetable');
+  },
+  saveTimetableEntry: (body: any) => request<any>('timetable', { method: 'POST', body: JSON.stringify(body) }),
+  deleteTimetableEntry: (id: string) => request<any>(`timetable/${id}`, { method: 'DELETE' }),
+  // Report cards
+  getReportCards: (params?: { studentId?: string; branchId?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.studentId) q.set('studentId', params.studentId);
+    if (params?.branchId) q.set('branchId', params.branchId);
+    return request<any[]>(q.toString() ? `report-cards?${q.toString()}` : 'report-cards');
+  },
+  generateReportCard: (studentId: string, term?: string, examName?: string) =>
+    request<any>(`report-cards/generate/${studentId}${term ? `?term=${encodeURIComponent(term)}` : ''}${examName ? `${term ? '&' : '?'}examName=${encodeURIComponent(examName)}` : ''}`),
+  saveReportCard: (body: any) => request<any>('report-cards', { method: 'POST', body: JSON.stringify(body) }),
   // Teacher salaries
   setTeacherSalary: (teacherId: string, monthlySalary: number, effectiveFrom?: string) =>
     request<any>('salaries', { method: 'POST', body: JSON.stringify({ teacherId, monthlySalary, effectiveFrom }) }),

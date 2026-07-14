@@ -126,6 +126,10 @@ const TABS = [
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
 ] as const;
 
+// Weekly timetable grid constants
+const TIMETABLE_DAYS_TT = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIMETABLE_PERIODS_TT = [1, 2, 3, 4, 5, 6, 7, 8];
+
 function ClassDetail({ cls, user, students, initialTab, onBack }: {
   cls: ClassInfo;
   user: any;
@@ -1132,6 +1136,12 @@ function PostResults({ user, classes, students, onSaved }: any) {
   const cls = classes.find((c: ClassInfo) => c.id === effectiveClassId);
   const effectiveCourseId = courseId || cls?.courses[0]?.id || '';
 
+  // Derive students for the selected class (same logic as ClassAttendance)
+  const classStudents = useMemo(() => {
+    if (!cls) return [];
+    return students.filter((s: any) => s.class === cls.name);
+  }, [students, cls]);
+
   const calcGrade = (m: number, total: number) => {
     const p = (m / total) * 100;
     return p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B' : p >= 60 ? 'C' : p >= 50 ? 'D' : 'F';
@@ -1275,10 +1285,86 @@ function DiaryView({ user, diary, onSaved }: any) {
 }
 
 function TeacherTimetable({ user }: any) {
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    api.getTimetable({ teacherId: user.id })
+      .then(r => setEntries(Array.isArray(r) ? r : []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [user?.id]);
+
+  const entryMap = useMemo(() => {
+    const m = new Map<string, any>();
+    entries.forEach(e => { if (e?.day && e?.period) m.set(`${e.day}-${e.period}`, e); });
+    return m;
+  }, [entries]);
+
   return (
     <div className="space-y-6">
       <ModuleHeader title="My Timetable" subtitle="Your weekly teaching schedule" />
-      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager. Check back soon." />
+
+      {loading ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
+          Loading your timetable…
+        </Card>
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="Timetable not published yet"
+          desc="Your timetable hasn't been published yet. Your Branch Manager will publish it soon."
+        />
+      ) : (
+        <Card className="p-0 overflow-hidden border border-border rounded-lg shadow-sm">
+          <div className="overflow-x-auto scroll-fancy">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="bg-primary text-primary-foreground font-semibold p-2 text-left sticky left-0 z-10 w-20 min-w-[80px]">Period</th>
+                  {TIMETABLE_DAYS_TT.map(d => (
+                    <th key={d} className="bg-primary text-primary-foreground font-semibold p-2 text-left min-w-[160px]">{d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TIMETABLE_PERIODS_TT.map(p => (
+                  <tr key={p}>
+                    <td className="bg-muted/40 font-bold text-primary p-2 sticky left-0 z-10 border-r border-border text-center">P{p}</td>
+                    {TIMETABLE_DAYS_TT.map(d => {
+                      const e = entryMap.get(`${d}-${p}`);
+                      return (
+                        <td key={d} className="border border-border p-2 align-top h-[72px]">
+                          {e ? (
+                            <div className="h-full">
+                              <div className="font-semibold text-primary text-[13px] truncate">{e.subject || '(no subject)'}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {e.className ? e.className : ''}{e.section ? ` · ${e.section}` : ''}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground truncate">
+                                {e.roomName ? `Room ${e.roomName}` : ''}
+                                {e.startTime && e.endTime ? `${e.roomName ? ' · ' : ''}${e.startTime}–${e.endTime}` : ''}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="h-full grid place-items-center text-muted-foreground/40 text-sm">—</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-3 py-2 text-[11px] text-muted-foreground border-t border-border bg-muted/20">
+            {entries.length} class slot{entries.length === 1 ? '' : 's'} this week · Times shown are the official period times.
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { ReportCardDocument, ReportCardActions, type ReportCardData } from './report-card-view';
 
 type Course = { id: string; name: string; code?: string };
 
@@ -91,7 +92,8 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
 
   if (activeModule === 'my-attendance') return <MyAttendance attendance={attendance} />;
   if (activeModule === 'my-results') return <MyResults results={results} />;
-  if (activeModule === 'my-timetable') return <MyTimetable />;
+  if (activeModule === 'my-report-card') return <MyReportCard user={user} />;
+  if (activeModule === 'my-timetable') return <MyTimetable user={user} classId={classId} />;
   if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
   if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
   if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
@@ -125,6 +127,10 @@ function EmptyState({ icon: Icon, title, desc }: any) {
     </Card>
   );
 }
+
+// Weekly timetable grid constants
+const TIMETABLE_DAYS_ST = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIMETABLE_PERIODS_ST = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // ---- Student Overview helpers (analytics) ----
 const ATTENDANCE_COLOR: Record<string, string> = {
@@ -816,11 +822,94 @@ function MyResults({ results }: any) {
   );
 }
 
-function MyTimetable() {
+function MyTimetable({ user, classId }: { user: any; classId: string }) {
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!classId) { return; }
+    api.getTimetable({ classId })
+      .then(r => setEntries(Array.isArray(r) ? r : []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [classId]);
+
+  const entryMap = useMemo(() => {
+    const m = new Map<string, any>();
+    entries.forEach(e => { if (e?.day && e?.period) m.set(`${e.day}-${e.period}`, e); });
+    return m;
+  }, [entries]);
+
+  const subtitle = user?.class
+    ? `Weekly schedule for ${user.class}${user?.section ? ` · ${user.section}` : ''}`
+    : 'Your weekly class schedule';
+
   return (
     <div className="space-y-6">
-      <ModuleHeader title="My Timetable" subtitle="Your weekly class schedule" />
-      <EmptyState icon={Calendar} title="Timetable not published yet" desc="Your timetable will be published by your Branch Manager." />
+      <ModuleHeader title="My Timetable" subtitle={subtitle} />
+
+      {loading ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
+          Loading your timetable…
+        </Card>
+      ) : !classId ? (
+        <EmptyState
+          icon={Calendar}
+          title="Class not resolved"
+          desc="We couldn't resolve your class. Please contact your Branch Manager."
+        />
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="Timetable not published yet"
+          desc="Your timetable hasn't been published yet. Your Branch Manager will publish it soon."
+        />
+      ) : (
+        <Card className="p-0 overflow-hidden border border-border rounded-lg shadow-sm">
+          <div className="overflow-x-auto scroll-fancy">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="bg-primary text-primary-foreground font-semibold p-2 text-left sticky left-0 z-10 w-20 min-w-[80px]">Period</th>
+                  {TIMETABLE_DAYS_ST.map(d => (
+                    <th key={d} className="bg-primary text-primary-foreground font-semibold p-2 text-left min-w-[160px]">{d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TIMETABLE_PERIODS_ST.map(p => (
+                  <tr key={p}>
+                    <td className="bg-muted/40 font-bold text-primary p-2 sticky left-0 z-10 border-r border-border text-center">P{p}</td>
+                    {TIMETABLE_DAYS_ST.map(d => {
+                      const e = entryMap.get(`${d}-${p}`);
+                      return (
+                        <td key={d} className="border border-border p-2 align-top h-[72px]">
+                          {e ? (
+                            <div className="h-full">
+                              <div className="font-semibold text-primary text-[13px] truncate">{e.subject || '(no subject)'}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">{e.teacherName || '—'}</div>
+                              <div className="text-[10px] text-muted-foreground truncate">
+                                {e.roomName ? `Room ${e.roomName}` : ''}
+                                {e.startTime && e.endTime ? `${e.roomName ? ' · ' : ''}${e.startTime}–${e.endTime}` : ''}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="h-full grid place-items-center text-muted-foreground/40 text-sm">—</div>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-3 py-2 text-[11px] text-muted-foreground border-t border-border bg-muted/20">
+            {entries.length} class slot{entries.length === 1 ? '' : 's'} this week · Follow the room and time shown for each period.
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
@@ -1048,7 +1137,7 @@ async function downloadChallanPDF(challan: any, instituteName?: string): Promise
       backgroundColor: '#ffffff',
       logging: false,
       windowWidth: 800,
-      // Pass the iframe's window so computed styles come from the isolated document
+      // @ts-expect-error — html2canvas accepts a `window` option but its types don't expose it
       window: iframe.contentWindow,
     });
 
@@ -1251,6 +1340,61 @@ function MyInvoices({ user }: { user: any }) {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ============== My Report Card ==============
+function MyReportCard({ user }: { user: any }) {
+  const [report, setReport] = useState<ReportCardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    api.generateReportCard(user.id, 'Current Term')
+      .then((r: any) => { if (!cancelled) setReport(r as ReportCardData); })
+      .catch((e: any) => { if (!cancelled) setError(e?.message || 'Failed to load report card'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const instituteName = user?.instituteName;
+  const subjects = Array.isArray(report?.subjects) ? (report?.subjects || []) : [];
+  const isEmpty = !loading && !error && report && subjects.length === 0;
+
+  return (
+    <div className="space-y-6">
+      <ModuleHeader
+        title="My Report Card"
+        subtitle="Auto-generated from your posted exam results · Current Term"
+        actions={
+          <ReportCardActions report={report} instituteName={instituteName} disabled={loading || !!isEmpty} />
+        }
+      />
+
+      {loading && (
+        <Card className="p-12 text-center text-sm text-muted-foreground flex items-center justify-center gap-2 border border-border rounded-lg shadow-sm">
+          <Loader2 className="h-4 w-4 animate-spin" /> Generating your report card…
+        </Card>
+      )}
+
+      {!loading && error && (
+        <EmptyState icon={Award} title="Couldn't load report card" desc={error || 'Please try again later.'} />
+      )}
+
+      {!loading && !error && isEmpty && (
+        <EmptyState
+          icon={Award}
+          title="No results published yet"
+          desc="Your teachers need to post exam results before a report card can be generated."
+        />
+      )}
+
+      {!loading && !error && report && subjects.length > 0 && (
+        <ReportCardDocument report={report} instituteName={instituteName} />
+      )}
     </div>
   );
 }

@@ -34,14 +34,14 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
   const RoleIcon = roleIcon[role] || GraduationCap;
   return (
     <div className="flex flex-col h-full text-sidebar-foreground">
-      <div className={cn('flex items-center gap-2.5 px-4 h-16 border-b border-sidebar-border shrink-0', collapsed && 'justify-center px-2')}>
-        <div className="h-8 w-8 rounded-lg bg-white/10 grid place-items-center shrink-0">
+      <div className={cn('flex items-center gap-2.5 px-4 h-14 border-b border-sidebar-border shrink-0', collapsed && 'justify-center px-2')}>
+        <div className="h-8 w-8 rounded-lg bg-sidebar-primary grid place-items-center shrink-0 shadow-sm">
           <GraduationCap className="h-5 w-5 text-white" />
         </div>
         {!collapsed && (
           <div className="leading-tight min-w-0">
             <div className="font-bold text-base text-white tracking-tight">ESM</div>
-            <div className="text-[10px] text-sidebar-foreground/50 truncate">{user?.roleLabel || 'Portal'}</div>
+            <div className="text-[10px] text-sidebar-foreground/60 truncate">{user?.roleLabel || 'Portal'}</div>
           </div>
         )}
       </div>
@@ -87,20 +87,20 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
         {!collapsed ? (
           <div className="flex items-center gap-2.5 px-2 py-1.5">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-white/10 text-white text-xs font-medium">
+              <AvatarFallback className="bg-sidebar-accent text-white text-xs font-medium">
                 {user?.name?.slice(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-white truncate">{user?.name || 'User'}</div>
-              <div className="text-[10px] text-sidebar-foreground/50 truncate">{user?.roleLabel}</div>
+              <div className="text-[10px] text-sidebar-foreground/60 truncate">{user?.roleLabel}</div>
             </div>
-            <button onClick={logout} title="Sign out" className="h-7 w-7 grid place-items-center rounded-md text-sidebar-foreground/60 hover:text-white hover:bg-rose-500/20 transition">
+            <button onClick={logout} title="Sign out" className="h-7 w-7 grid place-items-center rounded-md text-sidebar-foreground/60 hover:text-rose-400 hover:bg-rose-500/20 transition">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <button onClick={logout} title="Sign out" className="w-full h-9 grid place-items-center rounded-lg text-sidebar-foreground/70 hover:text-white hover:bg-rose-500/20 transition">
+          <button onClick={logout} title="Sign out" className="w-full h-9 grid place-items-center rounded-lg text-sidebar-foreground/70 hover:text-rose-400 hover:bg-rose-500/20 transition">
             <LogOut className="h-4 w-4" />
           </button>
         )}
@@ -145,7 +145,7 @@ export function RolePortal() {
   }, [role]);
 
   const allModules = useMemo(() => groups.flatMap((g: any) => g.items), [groups]);
-  const active = allModules.find((m: any) => m.id === activeModule) || allModules[0] || { id: 'none', name: 'Home', icon: GraduationCap, color: 'from-emerald-500 to-emerald-700' };
+  const active = allModules.find((m: any) => m.id === activeModule) || allModules[0] || { id: 'none', name: 'Home', icon: GraduationCap, color: 'from-primary to-primary/80' };
 
   const renderPortal = () => {
     if (activeModule === 'settings') return <SettingsPage user={user} />;

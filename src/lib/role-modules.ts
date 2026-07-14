@@ -3,7 +3,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
-  ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning,
+  ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -61,6 +61,7 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Academics', items: [
       { id: 'attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'results', name: 'Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
+      { id: 'report-cards', name: 'Report Cards', icon: Award, color: 'from-primary to-primary/80' },
       { id: 'timetable', name: 'Timetable', icon: Calendar, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Operations', items: [
@@ -93,6 +94,7 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
+      { id: 'my-report-card', name: 'Report Card', icon: Award, color: 'from-primary to-primary/80' },
       { id: 'my-invoices', name: 'Invoices', icon: CreditCard, color: 'from-primary/80 to-primary' },
       { id: 'my-timetable', name: 'My Timetable', icon: Calendar, color: 'from-primary/80 to-primary' },
       { id: 'my-diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-primary/80 to-primary' },

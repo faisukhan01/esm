@@ -218,7 +218,7 @@ function WardFees({ ward, fees, user }: any) {
         <h3 className="font-bold text-base mb-3">Make a Payment</h3>
         <div className="flex gap-2">
           <Input type="number" value={amount} onChange={e => setAmount(parseInt(e.target.value) || 0)} className="flex-1" />
-          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={paying} onClick={pay}>{paying ? 'Processing…' : 'Pay Now'}</Button>
+          <Button className="bg-primary hover:bg-primary/90 text-white" disabled={paying} onClick={pay}>{paying ? 'Processing…' : 'Pay Now'}</Button>
         </div>
       </Card>
       {fees.length === 0 ? (
@@ -281,7 +281,7 @@ function ParentComplaints({ user, complaints, onSaved }: any) {
   return (
     <div className="space-y-6">
       <ModuleHeader title="Complaints" subtitle="Raise concerns & track resolution"
-        actions={<Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowForm(v => !v)}><MessageCircleWarning className="h-4 w-4 mr-1.5" /> New Complaint</Button>} />
+        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><MessageCircleWarning className="h-4 w-4 mr-1.5" /> New Complaint</Button>} />
       {showForm && (
         <Card className="p-5">
           <div className="space-y-3">
@@ -298,7 +298,7 @@ function ParentComplaints({ user, complaints, onSaved }: any) {
                 </select>
               </div>
             </div>
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={saving} onClick={submit}>{saving ? 'Submitting…' : 'Submit Complaint'}</Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving} onClick={submit}>{saving ? 'Submitting…' : 'Submit Complaint'}</Button>
           </div>
         </Card>
       )}
