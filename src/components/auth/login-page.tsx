@@ -118,7 +118,7 @@ function CoverPanel() {
           className="mb-4 fade-in-slide flex justify-center"
           style={{ '--delay': '0.2s' } as React.CSSProperties}
         >
-          <img src="/esm-logo.png" alt="ESM Logo" className="h-16 w-16 rounded-2xl shadow-lg object-cover" />
+          <img src="/esm-logo.png" alt="ESM Logo" className="h-16 w-16 object-contain" />
         </motion.div>
 
         <motion.h2

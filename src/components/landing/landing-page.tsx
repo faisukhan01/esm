@@ -140,7 +140,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'glass border-b border-border/60 shadow-sm' : 'bg-transparent'}`}>
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 group">
-            <img src="/esm-logo.png" alt="ESM Logo" className="h-9 w-9 rounded-lg shadow-lg object-cover" />
+            <img src="/esm-logo.png" alt="ESM Logo" className="h-9 w-9 object-contain" />
             <div className="leading-tight">
               <div className={`font-bold text-lg tracking-tight transition-colors ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
               <div className={`text-[10px] -mt-0.5 hidden sm:block transition-colors ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
@@ -371,7 +371,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2.5 mb-3">
-              <img src="/esm-logo.png" alt="ESM Logo" className="h-9 w-9 rounded-lg object-cover" />
+              <img src="/esm-logo.png" alt="ESM Logo" className="h-9 w-9 object-contain" />
               <div>
                 <div className="font-bold text-lg">ESM</div>
                 <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
