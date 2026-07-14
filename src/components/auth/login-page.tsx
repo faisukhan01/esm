@@ -110,15 +110,15 @@ function CoverPanel() {
       <div className="glow-circle absolute w-36 h-36 rounded-full bg-white/10 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
 
       <div className="relative z-10 text-center">
-        {/* Waving cartoon illustration */}
+        {/* ESM Logo */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 150, damping: 12 }}
-          className="mb-2 fade-in-slide"
+          className="mb-4 fade-in-slide flex justify-center"
           style={{ '--delay': '0.2s' } as React.CSSProperties}
         >
-          <WavingPerson />
+          <img src="/esm-logo.png" alt="ESM Logo" className="h-16 w-16 rounded-2xl shadow-lg object-cover" />
         </motion.div>
 
         <motion.h2

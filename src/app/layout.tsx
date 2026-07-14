@@ -10,12 +10,16 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "ESM — Electronic School Management System",
-  description: "Pakistan's No. 1 School Management System. 22 integrated modules: admissions, attendance, fees, results, academics, HR, library, transport, finance & more. Trusted by 10,000+ institutions across 5 countries.",
+  description: "Electronic School Management — a modern, multi-tenant school management platform with 22 integrated modules: admissions, attendance, fees, academics, HR, library, transport, finance & more.",
   keywords: ["school management system", "ESM", "education software", "student information system", "school ERP", "admissions", "attendance", "fee management"],
   authors: [{ name: "Cyber Advance Solutions" }],
+  icons: {
+    icon: '/esm-logo.png',
+    apple: '/esm-logo.png',
+  },
   openGraph: {
     title: "ESM — Electronic School Management System",
-    description: "The complete school management platform. 22 modules, 1M+ students, 10K+ institutions.",
+    description: "The complete school management platform with 22 integrated modules.",
     type: "website",
   },
 };

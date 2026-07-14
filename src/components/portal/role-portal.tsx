@@ -35,9 +35,7 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
   return (
     <div className="flex flex-col h-full text-sidebar-foreground">
       <div className={cn('flex items-center gap-2.5 px-4 h-14 border-b border-sidebar-border shrink-0', collapsed && 'justify-center px-2')}>
-        <div className="h-8 w-8 rounded-lg bg-sidebar-primary grid place-items-center shrink-0 shadow-sm">
-          <GraduationCap className="h-5 w-5 text-white" />
-        </div>
+        <img src="/esm-logo.png" alt="ESM" className="h-8 w-8 rounded-lg shrink-0 object-cover" />
         {!collapsed && (
           <div className="leading-tight min-w-0">
             <div className="font-bold text-base text-white tracking-tight">ESM</div>
