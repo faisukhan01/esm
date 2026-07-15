@@ -236,9 +236,9 @@ function ClassAttendance({ user, cls, students }: { user: any; cls: ClassInfo; s
         </Button>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
-        <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
-        <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+        <Card className="p-2 text-center"><CheckCircle2 className="h-4 w-4 text-primary mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{present}</div><div className="text-[10px] text-muted-foreground">Present</div></Card>
+        <Card className="p-2 text-center"><XCircle className="h-4 w-4 text-rose-600 mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{absent}</div><div className="text-[10px] text-muted-foreground">Absent</div></Card>
+        <Card className="p-2 text-center"><Clock className="h-4 w-4 text-sky-700 mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{late}</div><div className="text-[10px] text-muted-foreground">Late</div></Card>
       </div>
       <Card className="p-4">
         <Table>
@@ -1079,9 +1079,9 @@ function MarkAttendance({ user, classes, students, onSaved }: any) {
           ) : (
             <>
               <div className="grid grid-cols-3 gap-3">
-                <Card className="p-4 text-center"><CheckCircle2 className="h-6 w-6 text-primary mx-auto mb-1" /><div className="text-2xl font-bold">{present}</div><div className="text-xs text-muted-foreground">Present</div></Card>
-                <Card className="p-4 text-center"><XCircle className="h-6 w-6 text-rose-600 mx-auto mb-1" /><div className="text-2xl font-bold">{absent}</div><div className="text-xs text-muted-foreground">Absent</div></Card>
-                <Card className="p-4 text-center"><Clock className="h-6 w-6 text-sky-700 mx-auto mb-1" /><div className="text-2xl font-bold">{late}</div><div className="text-xs text-muted-foreground">Late</div></Card>
+                <Card className="p-2 text-center"><CheckCircle2 className="h-4 w-4 text-primary mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{present}</div><div className="text-[10px] text-muted-foreground">Present</div></Card>
+                <Card className="p-2 text-center"><XCircle className="h-4 w-4 text-rose-600 mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{absent}</div><div className="text-[10px] text-muted-foreground">Absent</div></Card>
+                <Card className="p-2 text-center"><Clock className="h-4 w-4 text-sky-700 mx-auto" /><div className="text-sm font-bold tabular-nums mt-0.5">{late}</div><div className="text-[10px] text-muted-foreground">Late</div></Card>
               </div>
               <Card className="p-4">
                 <Table>

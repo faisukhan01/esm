@@ -113,7 +113,7 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
     { label: 'Salary Paid', value: fmtMoney(kpi.totalSalaryPaid), icon: Wallet, tone: 'default' as const, iconTone: 'primary' as const },
     { label: 'Net Balance', value: fmtMoney(kpi.netBalance), icon: Scale, tone: (netPositive ? 'positive' : 'negative'), iconTone: (netPositive ? 'emerald' : 'rose') },
     { label: 'Attendance Rate', value: (kpi.attendanceRate || 0) + '%', icon: CalendarCheck, tone: 'default' as const, iconTone: 'primary' as const },
-    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, sub: `${kpi.paidInvoices || 0} paid · ${kpi.unpaidInvoices || 0} unpaid`, tone: 'default' as const, iconTone: 'primary' as const },
+    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, tone: 'default', iconTone: 'primary' },
   ];
 
   const sCount = kpi.students ?? stats?.students ?? 0;
@@ -153,8 +153,8 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-                  <div className={`h-9 w-9 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
-                    <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
+                  <div className={`h-8 w-8 rounded-lg grid place-items-center mb-2 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
+                    <c.icon className={`h-4 w-4 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
                   </div>
                   <div className={`text-base font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
@@ -642,7 +642,7 @@ function ClassCoursesView({ user }: { user: any }) {
             </button>
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" /> {activeGroup.name}
+                <BookOpen className="h-4 w-4 text-primary" /> {activeGroup.name}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {activeGroup.sections.length} section{activeGroup.sections.length === 1 ? '' : 's'} · {assignedCourses.length} course{assignedCourses.length === 1 ? '' : 's'} assigned
@@ -1288,7 +1288,7 @@ function FeeInvoicesTab({ user }: { user: any }) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
-            <div className="inline-flex h-12 w-12 rounded-xl bg-muted/60 items-center justify-center mb-3"><FileText className="h-5 w-5 text-muted-foreground" /></div>
+            <div className="inline-flex h-12 w-12 rounded-xl bg-muted/60 items-center justify-center mb-3"><FileText className="h-4 w-4 text-muted-foreground" /></div>
             <div className="font-bold text-sm">{invoices.length === 0 ? 'No invoices yet' : 'No invoices match this filter'}</div>
             <div className="text-xs text-muted-foreground mt-1">{invoices.length === 0 ? 'Click "Generate Invoices" to create monthly invoices for all students.' : 'Try changing the filter above.'}</div>
           </div>
@@ -1424,7 +1424,7 @@ function BMAttendanceView({ user }: { user: any }) {
         {kpis.map(k => (
           <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
             <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${k.rose ? 'bg-rose-500/10' : 'bg-primary/10'}`}>
-              <k.icon className={`h-5 w-5 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
+              <k.icon className={`h-4 w-4 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
             </div>
             <div className="text-xl font-extrabold tabular-nums leading-tight truncate">{k.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -1582,7 +1582,7 @@ function BMResultsView({ user }: { user: any }) {
         {kpis.map(k => (
           <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
-              <k.icon className="h-5 w-5 text-primary" />
+              <k.icon className="h-4 w-4 text-primary" />
             </div>
             <div className="text-xl font-extrabold tabular-nums leading-tight">{k.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -1742,7 +1742,7 @@ function BMComplaintsView({ user }: { user: any }) {
         {kpis.map(k => (
           <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
             <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${k.rose ? 'bg-rose-500/10' : 'bg-primary/10'}`}>
-              <k.icon className={`h-5 w-5 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
+              <k.icon className={`h-4 w-4 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
             </div>
             <div className="text-xl font-extrabold tabular-nums leading-tight">{k.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -1915,7 +1915,7 @@ function BMEventsView({ user }: { user: any }) {
         {kpis.map(k => (
           <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
-              <k.icon className="h-5 w-5 text-primary" />
+              <k.icon className="h-4 w-4 text-primary" />
             </div>
             <div className="text-xl font-extrabold tabular-nums leading-tight">{k.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -2092,7 +2092,7 @@ function BMSmsView({ user }: { user: any }) {
         {kpis.map(k => (
           <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
-              <k.icon className="h-5 w-5 text-primary" />
+              <k.icon className="h-4 w-4 text-primary" />
             </div>
             <div className="text-xl font-extrabold tabular-nums leading-tight">{k.value}</div>
             <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -2324,7 +2324,7 @@ function TimetableManager({ user }: { user: any }) {
                           ) : e ? (
                             <div className="p-2 relative group h-[72px]">
                               <button
-                                className="absolute top-1 right-1 h-5 w-5 rounded grid place-items-center text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                className="absolute top-1 right-1 h-4 w-4 rounded grid place-items-center text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
                                 onClick={() => handleDelete(e.id)}
                                 title="Clear entry"
                                 aria-label={`Clear ${d} period ${p}`}
