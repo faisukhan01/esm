@@ -52,3 +52,14 @@ prompt
 server.log
 # Skills directory
 /skills/
+# ESM project specific
+/mini-services/
+/upload/
+/tool-results/
+/agent-ctx/
+/download/
+preview-*.png
+audit-*.png
+api.log
+*.db
+db/
