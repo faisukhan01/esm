@@ -96,6 +96,7 @@ export const ROLE_MODULES: RoleModules = {
   'student': [
     { group: 'My Portal', items: [
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
+      { id: 'my-courses', name: 'My Courses', icon: BookOpen, color: 'from-primary to-primary/80' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'my-report-card', name: 'Report Card', icon: Award, color: 'from-primary to-primary/80' },

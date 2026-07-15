@@ -91,6 +91,7 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
     );
   }
 
+  if (activeModule === 'my-courses') return <MyCoursesPage courses={courses} onOpenCourse={(course: any) => setSelectedCourse({ course, initialTab: 'materials' })} />;
   if (activeModule === 'my-attendance') return <MyAttendance attendance={attendance} />;
   if (activeModule === 'my-results') return <MyResults results={results} />;
   if (activeModule === 'my-report-card') return <MyReportCard user={user} />;
@@ -229,9 +230,9 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-lg sm:text-xl font-bold tabular-nums">{c.value}</div>
+            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -258,11 +259,11 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
         </div>
       </div>
 
-      {/* 4. My Courses */}
+      {/* 4. My Courses — larger cards on dashboard */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-bold text-base">My Courses</h2>
-          <span className="text-xs text-muted-foreground">{courses?.length || 0} enrolled</span>
+          <button onClick={() => setActiveModule('my-courses')} className="text-xs text-primary hover:underline font-medium">View all →</button>
         </div>
         {courses?.length === 0 ? (
           <Card className="p-8 text-center">
@@ -270,14 +271,14 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
             <p className="text-sm text-muted-foreground">No courses assigned yet. Your Branch Manager will assign courses to your class.</p>
           </Card>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courses?.map((c: any) => (
-              <Card key={c.id} className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer group" onClick={() => onOpenCourse?.(c)}>
-                <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {courses?.slice(0, 4).map((c: any) => (
+              <Card key={c.id} className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer group" onClick={() => onOpenCourse?.(c)}>
+                <div className="flex items-center gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center shrink-0"><BookOpen className="h-5 w-5 text-primary" /></div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-sm truncate">{c.name}</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+                    <h3 className="font-bold text-sm truncate">{c.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
                 </div>
@@ -297,6 +298,35 @@ const COURSE_TABS = [
   { id: 'results', label: 'Results', icon: GraduationCap },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
 ] as const;
+
+function MyCoursesPage({ courses, onOpenCourse }: { courses: any[]; onOpenCourse?: (c: any) => void }) {
+  return (
+    <div className="space-y-6">
+      <ModuleHeader title="My Courses" subtitle={`${courses?.length || 0} course${courses?.length === 1 ? '' : 's'} enrolled this term`} />
+      {courses?.length === 0 ? (
+        <EmptyState icon={BookOpen} title="No courses assigned yet" desc="Your Branch Manager will assign courses to your class." />
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {courses.map((c: any) => (
+            <Card key={c.id} className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer group" onClick={() => onOpenCourse?.(c)}>
+              <div className="flex items-center gap-4 mb-3">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center shrink-0"><BookOpen className="h-5 w-5 text-primary" /></div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-sm truncate">{c.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-3 border-t border-border/40">
+                <span className="text-xs text-muted-foreground">Click to view materials, results & attendance</span>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CourseDetail({ course, classId, studentId, initialTab, onBack }: {
   course: Course;
@@ -1032,8 +1062,8 @@ function MyInvoices({ user }: { user: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
             </Card>

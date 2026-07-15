@@ -152,11 +152,11 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+                <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
                   <div className={`h-9 w-9 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
                     <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
                   </div>
-                  <div className={`text-lg sm:text-xl font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
+                  <div className={`text-base font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
                   {c.sub && <div className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</div>}
                 </Card>
