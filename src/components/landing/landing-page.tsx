@@ -8,7 +8,7 @@ import {
   GraduationCap, ArrowRight, ShieldCheck, Users, Building2,
   Menu, X, Zap,
   Smartphone, Mail,
-  Layers, Globe, Rocket, Crown, BookOpen,
+  Layers, Globe, Rocket, Crown, BookOpen, DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,56 +51,163 @@ export function LandingPage() {
 
 function HeroSlider({ setView }: { setView: (v: any) => void }) {
   return (
-    <section id="top" className="relative min-h-[640px] w-full overflow-hidden flex items-center justify-center">
-      {/* Clean navy gradient background — no images */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0f1e3a] via-[#1a365d] to-[#0f1e3a]" />
+    <section id="top" className="relative w-full overflow-hidden bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16 lg:pt-32 lg:pb-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-      {/* Subtle decorative grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: `linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)`,
-        backgroundSize: '60px 60px',
-      }} />
+          {/* LEFT: Headline + CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-left"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#1a365d]/5 border border-[#1a365d]/10 px-3.5 py-1.5 text-[11px] font-semibold text-[#1a365d] mb-6 tracking-wide uppercase">
+              Electronic School Management
+            </div>
 
-      {/* Soft glow circles for depth */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#2c5282]/20 blur-[120px]" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#1a365d]/30 blur-[120px]" />
+            <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold tracking-tight leading-[1.15] text-[#0f1e3a]">
+              Manage your entire institution from a single platform
+            </h1>
 
-      {/* Clean centered content */}
-      <div className="relative z-10 text-center px-4 py-32">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-2xl mx-auto"
-        >
-          {/* Clean badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 backdrop-blur-sm px-4 py-1.5 text-[11px] font-medium text-white/80 mb-8 tracking-wide uppercase">
-            Electronic School Management
-          </div>
+            <p className="mt-5 text-base sm:text-lg text-gray-500 leading-relaxed max-w-md">
+              Admissions, attendance, fees, academics, and parent communication — all in one place. Built for multi-campus institutions.
+            </p>
 
-          {/* Clean headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] text-white">
-            One platform for your entire institution
-          </h1>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Button size="lg" className="bg-[#1a365d] text-white hover:bg-[#0f1e3a] font-semibold rounded-lg shadow-sm" onClick={() => setView('login')}>
+                Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <button
+                onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Explore Modules
+              </button>
+            </div>
 
-          {/* Clean subtitle */}
-          <p className="mt-6 text-base sm:text-lg text-white/60 max-w-lg mx-auto leading-relaxed">
-            Admissions, attendance, fees, academics, and parent communication — unified in one elegant platform.
-          </p>
+            {/* Trust indicators — real, not fake */}
+            <div className="mt-10 flex items-center gap-6 text-xs text-gray-400">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                22 integrated modules
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Multi-tenant architecture
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Role-based access
+              </div>
+            </div>
+          </motion.div>
 
-          {/* Clean CTAs */}
-          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" className="bg-white text-[#1a365d] hover:bg-white/90 shadow-2xl font-semibold" onClick={() => setView('login')}>
-              Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-            <button
-              onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium h-11 px-7 border border-white/20 text-white/90 hover:bg-white/10 hover:border-white/40 transition-all duration-300"
-            >
-              Explore Modules
-            </button>
-          </div>
-        </motion.div>
+          {/* RIGHT: Product preview — CSS dashboard mockup */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="relative"
+          >
+            {/* Browser frame */}
+            <div className="rounded-xl border border-gray-200 shadow-xl overflow-hidden bg-white">
+              {/* Browser top bar */}
+              <div className="flex items-center gap-2 px-4 h-9 bg-gray-50 border-b border-gray-200">
+                <div className="flex gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-gray-300" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-gray-300" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-gray-300" />
+                </div>
+                <div className="flex-1 text-center text-[10px] text-gray-400 font-medium tracking-wide">esm.portal/dashboard</div>
+              </div>
+
+              {/* Dashboard content */}
+              <div className="flex h-[360px]">
+                {/* Mini sidebar */}
+                <div className="w-40 shrink-0 bg-[#1a365d] p-3 hidden sm:block">
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="h-6 w-6 rounded-md bg-white/15 grid place-items-center">
+                      <GraduationCap className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <span className="text-white text-xs font-bold">ESM</span>
+                  </div>
+                  <div className="space-y-1">
+                    {['Dashboard', 'Institutes', 'Analytics', 'Announcements'].map((item, i) => (
+                      <div key={item} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] ${i === 0 ? 'bg-white/15 text-white' : 'text-white/60'}`}>
+                        <div className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Main content */}
+                <div className="flex-1 p-4 overflow-hidden">
+                  {/* KPI row */}
+                  <div className="grid grid-cols-3 gap-2.5 mb-3">
+                    {[
+                      { label: 'Institutions', value: '3', icon: Building2 },
+                      { label: 'Students', value: '1,247', icon: Users },
+                      { label: 'Revenue', value: 'PKR 890K', icon: DollarSign },
+                    ].map(kpi => (
+                      <div key={kpi.label} className="border border-gray-200 rounded-lg p-2.5">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="h-6 w-6 rounded-md bg-[#1a365d]/8 grid place-items-center">
+                            <kpi.icon className="h-3 w-3 text-[#1a365d]" />
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold text-[#0f1e3a] tabular-nums">{kpi.value}</div>
+                        <div className="text-[9px] text-gray-400 mt-0.5">{kpi.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Chart mockup */}
+                  <div className="border border-gray-200 rounded-lg p-3 mb-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-semibold text-gray-600">Revenue vs Salary</span>
+                      <span className="text-[9px] text-gray-400">Last 6 months</span>
+                    </div>
+                    <div className="flex items-end gap-1.5 h-20">
+                      {[45, 60, 50, 75, 65, 85].map((h, i) => (
+                        <div key={i} className="flex-1 flex flex-col gap-0.5 items-center">
+                          <div className="w-full bg-[#1a365d] rounded-t-sm" style={{ height: `${h}%` }} />
+                          <div className="w-full bg-[#e11d48]/40 rounded-b-sm" style={{ height: `${h * 0.35}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Table mockup */}
+                  <div className="border border-gray-200 rounded-lg p-2.5">
+                    <div className="text-[10px] font-semibold text-gray-600 mb-2">Institute Performance</div>
+                    <div className="space-y-1.5">
+                      {[
+                        { name: 'Alhamd Institute', rev: 'PKR 450K', pct: '75%' },
+                        { name: 'Liberty School', rev: 'PKR 280K', pct: '48%' },
+                      ].map(row => (
+                        <div key={row.name} className="flex items-center justify-between text-[10px]">
+                          <span className="text-gray-700 font-medium">{row.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 tabular-nums">{row.rev}</span>
+                            <div className="w-12 h-1 rounded-full bg-gray-100">
+                              <div className="h-full rounded-full bg-[#1a365d]" style={{ width: row.pct }} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Subtle shadow under the browser frame */}
+            <div className="absolute -bottom-2 left-4 right-4 h-4 bg-[#1a365d]/5 blur-xl rounded-full" />
+          </motion.div>
+
+        </div>
       </div>
     </section>
   );
@@ -111,34 +218,34 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Navbar */}
-      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'glass border-b border-border/60 shadow-sm' : 'bg-transparent'}`}>
+      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white border-b border-gray-100 shadow-sm' : 'bg-white/80 backdrop-blur-sm'}`}>
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 group">
             <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-lg">
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <div className="leading-tight">
-              <div className={`font-bold text-lg tracking-tight transition-colors ${scrolled ? 'text-foreground' : 'text-white'}`}>ESM</div>
-              <div className={`text-[10px] -mt-0.5 hidden sm:block transition-colors ${scrolled ? 'text-muted-foreground' : 'text-white/60'}`}>Electronic School Management</div>
+              <div className="font-bold text-lg tracking-tight text-[#0f1e3a]">ESM</div>
+              <div className="text-[10px] -mt-0.5 hidden sm:block text-gray-400">Electronic School Management</div>
             </div>
           </a>
 
           <div className="hidden md:flex items-center gap-1">
             {['Modules', 'Features', 'Tech'].map(item => (
-              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className={`px-3 py-2 text-sm font-medium rounded-lg transition ${scrolled ? 'text-muted-foreground hover:text-foreground hover:bg-accent/60' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
+              <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} className="px-3 py-2 text-sm font-medium rounded-lg transition text-gray-600 hover:text-[#0f1e3a] hover:bg-gray-50">
                 {item}
               </a>
             ))}
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className={`hidden sm:flex ${scrolled ? '' : 'text-white hover:bg-white/10 hover:text-white'}`} onClick={() => setView('login')}>
+            <Button variant="ghost" size="sm" className="hidden sm:flex text-gray-600 hover:text-[#0f1e3a]" onClick={() => setView('login')}>
               Sign in
             </Button>
-            <Button size="sm" className="bg-white text-slate-900 hover:bg-white/90 shadow-md" onClick={() => setView('login')}>
+            <Button size="sm" className="bg-[#1a365d] text-white hover:bg-[#0f1e3a] shadow-sm" onClick={() => setView('login')}>
               Launch Portal <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button variant="ghost" size="icon" className={`md:hidden ${scrolled ? '' : 'text-white hover:bg-white/10'}`} onClick={() => setMenuOpen(v => !v)}>
+            <Button variant="ghost" size="icon" className="md:hidden text-gray-600" onClick={() => setMenuOpen(v => !v)}>
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
@@ -153,7 +260,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
             >
               <div className="px-4 py-3 space-y-1">
                 {['Modules', 'Features', 'Tech'].map(item => (
-                  <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-accent/60 text-sm font-medium">
+                  <a key={item} href={`#${item.toLowerCase().replace(' ', '-')}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">
                     {item}
                   </a>
                 ))}
