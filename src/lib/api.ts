@@ -1,9 +1,6 @@
-// eSM API client — talks to the Express backend via the gateway.
-const API_PORT = 3001;
-
+// eSM API client — talks to the in-process Next.js API routes directly (no port).
 function apiUrl(path: string) {
-  const sep = path.includes('?') ? '&' : '?';
-  return `/api/${path.replace(/^\//, '')}${sep}XTransformPort=${API_PORT}`;
+  return '/api/' + path.replace(/^\//, '');
 }
 
 // Get the stored auth token (from zustand persist — uses sessionStorage for per-tab sessions)

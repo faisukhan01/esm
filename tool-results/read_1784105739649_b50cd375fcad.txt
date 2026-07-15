@@ -1,0 +1,2002 @@
+     1→import express from 'express';
+     2→import cors from 'cors';
+     3→import crypto from 'crypto';
+     4→import { db, initDB } from './db.js';
+     5→
+     6→const app = express();
+     7→const PORT = 3001;
+     8→
+     9→app.use(cors({ origin: '*' }));
+    10→app.use(express.json({ limit: '50mb' })); // large limit for file uploads
+    11→
+    12→const ROLE_LABELS = {
+    13→  'super-admin': 'Super Admin',
+    14→  'institute-admin': 'Institute Admin',
+    15→  'branch-manager': 'Branch Manager',
+    16→  'teacher': 'Teacher',
+    17→  'student': 'Student',
+    18→};
+    19→
+    20→// ===================== SECURITY =====================
+    21→const SESSION_TTL = 8 * 60 * 60 * 1000;
+    22→const loginAttempts = new Map();
+    23→const MAX_LOGIN_ATTEMPTS = 10;
+    24→const LOCKOUT_DURATION = 2 * 60 * 1000; // 2 min lockout (was 5)
+    25→
+    26→// Auto-clear expired rate-limit locks every 30 seconds so users aren't stuck
+    27→setInterval(() => {
+    28→  const now = Date.now();
+    29→  for (const [key, val] of loginAttempts.entries()) {
+    30→    if (val.lockedUntil && now > val.lockedUntil) {
+    31→      loginAttempts.delete(key);
+    32→    }
+    33→    // Also clear old attempt counts after 10 minutes of inactivity
+    34→    if (!val.lockedUntil && val.count > 0 && now - (val.lastAttempt || 0) > 10 * 60 * 1000) {
+    35→      loginAttempts.delete(key);
+    36→    }
+    37→  }
+    38→}, 30 * 1000);
+    39→
+    40→setInterval(async () => {
+    41→  try {
+    42→    await db.execute({ sql: 'DELETE FROM sessions WHERE expiresAt < ?', args: [Date.now()] });
+    43→  } catch {}
+    44→}, 10 * 60 * 1000);
+    45→
+    46→async function createSession(user) {
+    47→  const token = 'esm-' + crypto.randomBytes(32).toString('hex');
+    48→  await db.execute({
+    49→    sql: 'INSERT INTO sessions (token, userId, role, issuedAt, expiresAt) VALUES (?, ?, ?, ?, ?)',
+    50→    args: [token, user.id, user.role, Date.now(), Date.now() + SESSION_TTL],
+    51→  });
+    52→  return token;
+    53→}
+    54→
+    55→async function requireAuth(req, res, next) {
+    56→  const authHeader = req.headers.authorization;
+    57→  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    58→    return res.status(401).json({ error: 'Authentication required' });
+    59→  }
+    60→  const token = authHeader.substring(7);
+    61→  try {
+    62→    const result = await db.execute({ sql: 'SELECT * FROM sessions WHERE token = ?', args: [token] });
+    63→    if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid or expired session' });
+    64→    const session = result.rows[0];
+    65→    if (Date.now() > session.expiresAt) {
+    66→      await db.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [token] });
+    67→      return res.status(401).json({ error: 'Session expired' });
+    68→    }
+    69→    const userResult = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [session.userId] });
+    70→    if (userResult.rows.length === 0) return res.status(401).json({ error: 'User not found' });
+    71→    const user = userResult.rows[0];
+    72→    if (user.status !== 'Active' || user.blocked === 1) {
+    73→      return res.status(403).json({ error: 'Account is blocked or inactive' });
+    74→    }
+    75→    // Check if institute/branch is blocked (cascade)
+    76→    if (user.instituteId) {
+    77→      const inst = await db.execute({ sql: 'SELECT blocked FROM institutes WHERE id = ?', args: [user.instituteId] });
+    78→      if (inst.rows.length > 0 && inst.rows[0].blocked === 1 && user.role !== 'super-admin') {
+    79→        return res.status(403).json({ error: 'Institute access has been blocked' });
+    80→      }
+    81→    }
+    82→    if (user.branchId) {
+    83→      const br = await db.execute({ sql: 'SELECT blocked FROM branches WHERE id = ?', args: [user.branchId] });
+    84→      if (br.rows.length > 0 && br.rows[0].blocked === 1 && user.role !== 'super-admin') {
+    85→        return res.status(403).json({ error: 'Branch access has been blocked' });
+    86→      }
+    87→    }
+    88→    req.user = user;
+    89→    req.token = token;
+    90→    next();
+    91→  } catch (e) {
+    92→    return res.status(401).json({ error: 'Auth failed' });
+    93→  }
+    94→}
+    95→
+    96→function requireRole(...roles) {
+    97→  return (req, res, next) => {
+    98→    if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+    99→    if (!roles.includes(req.user.role)) return res.status(403).json({ error: 'Insufficient permissions' });
+   100→    next();
+   101→  };
+   102→}
+   103→
+   104→function buildUserProfile(u) {
+   105→  return {
+   106→    id: u.id, name: u.name, email: u.email, rollNo: u.rollNo, role: u.role,
+   107→    roleLabel: ROLE_LABELS[u.role] || u.role, title: u.title || '',
+   108→    status: u.status, mustChangePassword: u.mustChangePassword === 1, blocked: u.blocked === 1,
+   109→    instituteId: u.instituteId || null, instituteName: u.instituteName || null, instituteShort: u.instituteShort || null,
+   110→    branchId: u.branchId || null, branchName: u.branchName || null,
+   111→    class: u.class || null, section: u.section || null,
+   112→    guardian: u.guardian || null, ward: u.ward, wardId: u.wardId,
+   113→    subjects: u.subjects ? JSON.parse(u.subjects) : [],
+   114→    classes: u.classes ? JSON.parse(u.classes) : [],
+   115→  };
+   116→}
+   117→
+   118→function nextId(prefix) {
+   119→  return prefix + '-' + crypto.randomBytes(4).toString('hex');
+   120→}
+   121→
+   122→// ===================== AUTH =====================
+   123→// Helper: register a failed attempt and return the proper error response
+   124→function registerFailedAttempt(rateKey) {
+   125→  const current = loginAttempts.get(rateKey) || { count: 0, lockedUntil: 0, lastAttempt: 0 };
+   126→  current.count++;
+   127→  current.lastAttempt = Date.now();
+   128→  // Lock the account when the threshold is reached
+   129→  if (current.count >= MAX_LOGIN_ATTEMPTS) {
+   130→    current.lockedUntil = Date.now() + LOCKOUT_DURATION;
+   131→    current.count = 0; // reset count so after lockout expires they get a fresh slate
+   132→    loginAttempts.set(rateKey, current);
+   133→    const mins = Math.ceil(LOCKOUT_DURATION / 60000);
+   134→    return { status: 429, error: `Too many failed attempts. Account locked for ${mins} min. Please try again later.` };
+   135→  }
+   136→  loginAttempts.set(rateKey, current);
+   137→  const remaining = MAX_LOGIN_ATTEMPTS - current.count;
+   138→  return { status: 401, error: `Invalid credentials. ${remaining} attempt${remaining === 1 ? '' : 's'} left before lockout.` };
+   139→}
+   140→
+   141→app.post('/api/auth/login', async (req, res) => {
+   142→  const { email, password, loginId, name, role: requestedRole } = req.body || {};
+   143→  const identifier = (email || loginId || '').toLowerCase().trim();
+   144→  const userName = (name || '').toLowerCase().trim();
+   145→  if (!identifier || !password) return res.status(400).json({ error: 'Credentials and password required' });
+   146→
+   147→  // Rate limiting key (combine identifier + name for uniqueness)
+   148→  const rateKey = userName ? `${userName}:${identifier}` : identifier;
+   149→  const attempts = loginAttempts.get(rateKey);
+   150→  if (attempts && attempts.lockedUntil && Date.now() < attempts.lockedUntil) {
+   151→    const remaining = Math.ceil((attempts.lockedUntil - Date.now()) / 60000);
+   152→    return res.status(429).json({ error: `Too many failed attempts. Account locked for ${remaining} min. Please try again later.` });
+   153→  }
+   154→
+   155→  try {
+   156→    // Find user by email OR rollNo/ID — JOIN with institutes + branches to get names
+   157→    let result = await db.execute({
+   158→      sql: `SELECT u.*, i.name as instituteName, i.short as instituteShort, b.name as branchName
+   159→            FROM users u
+   160→            LEFT JOIN institutes i ON u.instituteId = i.id
+   161→            LEFT JOIN branches b ON u.branchId = b.id
+   162→            WHERE LOWER(u.email) = ? OR LOWER(u.rollNo) = ?`,
+   163→      args: [identifier, identifier.toLowerCase()],
+   164→    });
+   165→
+   166→    if (result.rows.length === 0) {
+   167→      const r = registerFailedAttempt(rateKey);
+   168→      return res.status(r.status).json({ error: r.error });
+   169→    }
+   170→
+   171→    // If multiple results (e.g. same rollNo across branches), filter by name if provided
+   172→    let u = result.rows[0];
+   173→    if (userName && result.rows.length > 1) {
+   174→      const byName = result.rows.find(r => String(r.name).toLowerCase().trim() === userName);
+   175→      if (byName) u = byName;
+   176→    }
+   177→    // If name provided, verify it matches
+   178→    if (userName && String(u.name).toLowerCase().trim() !== userName) {
+   179→      const r = registerFailedAttempt(rateKey);
+   180→      return res.status(r.status).json({ error: r.error });
+   181→    }
+   182→
+   183→    if (u.password !== password) {
+   184→      const r = registerFailedAttempt(rateKey);
+   185→      return res.status(r.status).json({ error: r.error });
+   186→    }
+   187→    if (u.status !== 'Active') return res.status(403).json({ error: 'Account is ' + u.status });
+   188→
+   189→    // Check if user/institute/branch is blocked — STILL ALLOW LOGIN but flag it
+   190→    // The user will sign in successfully, then see a "blocked" error page in their portal
+   191→    let blockedMessage = null;
+   192→    if (u.blocked === 1) {
+   193→      blockedMessage = 'Your account has been blocked by your administration. Please contact your administrator.';
+   194→    } else if (u.instituteId && u.role !== 'super-admin') {
+   195→      const inst = await db.execute({ sql: 'SELECT blocked FROM institutes WHERE id = ?', args: [u.instituteId] });
+   196→      if (inst.rows.length > 0 && inst.rows[0].blocked === 1) {
+   197→        blockedMessage = 'Your institute access has been blocked by the platform administration. Please contact your administrator.';
+   198→      }
+   199→    }
+   200→    if (!blockedMessage && u.branchId && u.role !== 'super-admin') {
+   201→      const br = await db.execute({ sql: 'SELECT blocked FROM branches WHERE id = ?', args: [u.branchId] });
+   202→      if (br.rows.length > 0 && br.rows[0].blocked === 1) {
+   203→        blockedMessage = 'Your branch access has been blocked. Please contact your institute administrator.';
+   204→      }
+   205→    }
+   206→
+   207→    loginAttempts.delete(rateKey);
+   208→    const token = await createSession(u);
+   209→    const userProfile = buildUserProfile(u);
+   210→    // If blocked, add the blocked message to the user profile so the frontend can show it
+   211→    if (blockedMessage) {
+   212→      userProfile.blockedMessage = blockedMessage;
+   213→    }
+   214→    res.json({ token, user: userProfile, mustChangePassword: u.mustChangePassword === 1 });
+   215→  } catch (e) {
+   216→    res.status(500).json({ error: 'Login failed: ' + e.message });
+   217→  }
+   218→});
+   219→
+   220→app.post('/api/auth/logout', requireAuth, async (req, res) => {
+   221→  await db.execute({ sql: 'DELETE FROM sessions WHERE token = ?', args: [req.token] });
+   222→  res.json({ success: true });
+   223→});
+   224→
+   225→app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+   226→  const { currentPassword, newPassword } = req.body || {};
+   227→  if (!newPassword || newPassword.length < 4) return res.status(400).json({ error: 'Password too short' });
+   228→  if (req.user.password !== currentPassword) return res.status(401).json({ error: 'Current password incorrect' });
+   229→  await db.execute({ sql: 'UPDATE users SET password = ?, mustChangePassword = 0 WHERE id = ?', args: [newPassword, req.user.id] });
+   230→  res.json({ success: true });
+   231→});
+   232→
+   233→// ===================== INSTITUTES (Super Admin) =====================
+   234→app.get('/api/institutes', requireAuth, requireRole('super-admin', 'institute-admin'), async (req, res) => {
+   235→  if (req.user.role === 'institute-admin') {
+   236→    const r = await db.execute({ sql: 'SELECT * FROM institutes WHERE id = ?', args: [req.user.instituteId] });
+   237→    return res.json(r.rows);
+   238→  }
+   239→  const r = await db.execute('SELECT * FROM institutes ORDER BY createdAt DESC');
+   240→  res.json(r.rows);
+   241→});
+   242→
+   243→app.post('/api/institutes', requireAuth, requireRole('super-admin'), async (req, res) => {
+   244→  const { name, city, country, plan, adminName, adminEmail, adminPassword } = req.body || {};
+   245→  if (!name || !adminEmail || !adminPassword) return res.status(400).json({ error: 'Name, admin email and password required' });
+   246→  const existing = await db.execute({ sql: 'SELECT id FROM users WHERE LOWER(email) = ?', args: [adminEmail.toLowerCase()] });
+   247→  if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already in use' });
+   248→
+   249→  const instId = nextId('INST');
+   250→  const short = name.split(' ').map(w => w[0]).slice(0, 3).join('').toUpperCase();
+   251→  const colors = ['emerald','amber','violet','cyan','rose','teal','orange'];
+   252→  await db.execute({
+   253→    sql: `INSERT INTO institutes (id, name, short, city, country, plan, status, adminName, adminEmail, color, domain, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   254→    args: [instId, name, short, city || '', country || 'USA', plan || 'Starter', 'Trial', adminName || 'Admin', adminEmail, colors[Math.floor(Math.random()*colors.length)], adminEmail.split('@')[1] || 'edu', 0],
+   255→  });
+   256→  const adminId = nextId('U');
+   257→  await db.execute({
+   258→    sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   259→    args: [adminId, adminName || 'Admin', adminEmail, adminPassword, 'institute-admin', 'Active', 'Institute Administrator', 1, 0, instId],
+   260→  });
+   261→  res.status(201).json({ institute: { id: instId, name, adminEmail }, adminLogin: { id: adminId, email: adminEmail, password: adminPassword } });
+   262→});
+   263→
+   264→app.patch('/api/institutes/:id', requireAuth, requireRole('super-admin'), async (req, res) => {
+   265→  const { name, plan, status, adminName, adminEmail, adminPassword } = req.body || {};
+   266→  const r = await db.execute({ sql: 'SELECT * FROM institutes WHERE id = ?', args: [req.params.id] });
+   267→  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+   268→  const inst = r.rows[0];
+   269→  if (name) await db.execute({ sql: 'UPDATE institutes SET name = ? WHERE id = ?', args: [name, inst.id] });
+   270→  if (plan) await db.execute({ sql: 'UPDATE institutes SET plan = ? WHERE id = ?', args: [plan, inst.id] });
+   271→  if (status) await db.execute({ sql: 'UPDATE institutes SET status = ? WHERE id = ?', args: [status, inst.id] });
+   272→  // Update institute admin
+   273→  const adminR = await db.execute({ sql: 'SELECT id FROM users WHERE instituteId = ? AND role = ?', args: [inst.id, 'institute-admin'] });
+   274→  if (adminR.rows.length > 0) {
+   275→    const adminId = adminR.rows[0].id;
+   276→    if (adminName) await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [adminName, adminId] });
+   277→    if (adminEmail) await db.execute({ sql: 'UPDATE users SET email = ? WHERE id = ?', args: [adminEmail, adminId] });
+   278→    if (adminPassword) await db.execute({ sql: 'UPDATE users SET password = ?, mustChangePassword = 1 WHERE id = ?', args: [adminPassword, adminId] });
+   279→    if (adminName) await db.execute({ sql: 'UPDATE institutes SET adminName = ? WHERE id = ?', args: [adminName, inst.id] });
+   280→    if (adminEmail) await db.execute({ sql: 'UPDATE institutes SET adminEmail = ? WHERE id = ?', args: [adminEmail, inst.id] });
+   281→  }
+   282→  res.json({ success: true });
+   283→});
+   284→
+   285→// Block/unblock institute (cascades to branches + staff)
+   286→app.patch('/api/institutes/:id/block', requireAuth, requireRole('super-admin'), async (req, res) => {
+   287→  const { blocked, reason } = req.body || {};
+   288→  await db.execute({ sql: 'UPDATE institutes SET blocked = ?, blockedReason = ? WHERE id = ?', args: [blocked ? 1 : 0, reason || '', req.params.id] });
+   289→  // Cascade: block/unblock all branches + users in this institute
+   290→  await db.execute({ sql: 'UPDATE branches SET blocked = ? WHERE instituteId = ?', args: [blocked ? 1 : 0, req.params.id] });
+   291→  await db.execute({ sql: 'UPDATE users SET blocked = ? WHERE instituteId = ? AND role != ?', args: [blocked ? 1 : 0, req.params.id, 'super-admin'] });
+   292→  // Invalidate sessions
+   293→  if (blocked) {
+   294→    await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE instituteId = ?)', args: [req.params.id] });
+   295→  }
+   296→  res.json({ success: true, blocked });
+   297→});
+   298→
+   299→// DELETE institute (cascades — deletes branches, users, classes, courses, etc.)
+   300→app.delete('/api/institutes/:id', requireAuth, requireRole('super-admin'), async (req, res) => {
+   301→  const instId = req.params.id;
+   302→  // Delete in order (child tables first)
+   303→  await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+   304→  await db.execute({ sql: 'DELETE FROM teacher_class_courses WHERE teacherId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+   305→  await db.execute({ sql: 'DELETE FROM course_materials WHERE teacherId IN (SELECT id FROM users WHERE instituteId = ?)', args: [instId] });
+   306→  await db.execute({ sql: 'DELETE FROM attendance WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+   307→  await db.execute({ sql: 'DELETE FROM results WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+   308→  await db.execute({ sql: 'DELETE FROM diary WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+   309→  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId IN (SELECT id FROM classes WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?))', args: [instId] });
+   310→  await db.execute({ sql: 'DELETE FROM classes WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+   311→  await db.execute({ sql: 'DELETE FROM courses WHERE branchId IN (SELECT id FROM branches WHERE instituteId = ?)', args: [instId] });
+   312→  await db.execute({ sql: 'DELETE FROM announcements WHERE instituteId = ?', args: [instId] });
+   313→  await db.execute({ sql: 'DELETE FROM users WHERE instituteId = ? AND role != ?', args: [instId, 'super-admin'] });
+   314→  await db.execute({ sql: 'DELETE FROM branches WHERE instituteId = ?', args: [instId] });
+   315→  await db.execute({ sql: 'DELETE FROM institutes WHERE id = ?', args: [instId] });
+   316→  res.json({ success: true });
+   317→});
+   318→
+   319→// ===================== BRANCHES (Institute Admin) =====================
+   320→app.get('/api/branches', requireAuth, requireRole('super-admin', 'institute-admin', 'branch-manager'), async (req, res) => {
+   321→  let sql = 'SELECT * FROM branches';
+   322→  let args = [];
+   323→  if (req.user.role === 'institute-admin') { sql += ' WHERE instituteId = ?'; args = [req.user.instituteId]; }
+   324→  else if (req.user.role === 'branch-manager') { sql += ' WHERE id = ?'; args = [req.user.branchId]; }
+   325→  const r = await db.execute({ sql, args });
+   326→  res.json(r.rows);
+   327→});
+   328→
+   329→app.post('/api/branches', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+   330→  const { instituteId, name, city, managerName, managerEmail, managerPassword } = req.body || {};
+   331→  const instId = instituteId || req.user.instituteId;
+   332→  if (!instId || !name || !managerEmail || !managerPassword) return res.status(400).json({ error: 'Institute, name, manager email and password required' });
+   333→  const existing = await db.execute({ sql: 'SELECT id FROM users WHERE LOWER(email) = ?', args: [managerEmail.toLowerCase()] });
+   334→  if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already in use' });
+   335→
+   336→  const brId = nextId('BR');
+   337→  await db.execute({
+   338→    sql: `INSERT INTO branches (id, instituteId, name, city, manager, managerEmail, status, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+   339→    args: [brId, instId, name, city || '', managerName || 'Manager', managerEmail, 'Active', 0],
+   340→  });
+   341→  const mgrId = nextId('U');
+   342→  await db.execute({
+   343→    sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   344→    args: [mgrId, managerName || 'Manager', managerEmail, managerPassword, 'branch-manager', 'Active', 'Branch Manager', 1, 0, instId, brId],
+   345→  });
+   346→  await db.execute({ sql: 'UPDATE institutes SET branches = branches + 1 WHERE id = ?', args: [instId] });
+   347→
+   348→  // Auto-create classes 1-12 for this branch
+   349→  for (let i = 1; i <= 12; i++) {
+   350→    const clsId = nextId('CLS');
+   351→    await db.execute({ sql: 'INSERT INTO classes (id, branchId, name, section) VALUES (?, ?, ?, ?)', args: [clsId, brId, `Class ${i}`, 'A'] });
+   352→  }
+   353→
+   354→  res.status(201).json({ branch: { id: brId, name }, managerLogin: { id: mgrId, email: managerEmail, password: managerPassword } });
+   355→});
+   356→
+   357→app.patch('/api/branches/:id/block', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+   358→  const { blocked, reason } = req.body || {};
+   359→  await db.execute({ sql: 'UPDATE branches SET blocked = ?, blockedReason = ? WHERE id = ?', args: [blocked ? 1 : 0, reason || '', req.params.id] });
+   360→  await db.execute({ sql: 'UPDATE users SET blocked = ? WHERE branchId = ? AND role IN (?, ?)', args: [blocked ? 1 : 0, req.params.id, 'teacher', 'student'] });
+   361→  if (blocked) await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE branchId = ?)', args: [req.params.id] });
+   362→  res.json({ success: true });
+   363→});
+   364→
+   365→// DELETE branch (cascades — deletes teachers, students, classes, courses, etc.)
+   366→app.delete('/api/branches/:id', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+   367→  const brId = req.params.id;
+   368→  await db.execute({ sql: 'DELETE FROM sessions WHERE userId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+   369→  await db.execute({ sql: 'DELETE FROM teacher_class_courses WHERE teacherId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+   370→  await db.execute({ sql: 'DELETE FROM course_materials WHERE teacherId IN (SELECT id FROM users WHERE branchId = ?)', args: [brId] });
+   371→  await db.execute({ sql: 'DELETE FROM attendance WHERE branchId = ?', args: [brId] });
+   372→  await db.execute({ sql: 'DELETE FROM results WHERE branchId = ?', args: [brId] });
+   373→  await db.execute({ sql: 'DELETE FROM diary WHERE branchId = ?', args: [brId] });
+   374→  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId IN (SELECT id FROM classes WHERE branchId = ?)', args: [brId] });
+   375→  await db.execute({ sql: 'DELETE FROM classes WHERE branchId = ?', args: [brId] });
+   376→  await db.execute({ sql: 'DELETE FROM courses WHERE branchId = ?', args: [brId] });
+   377→  await db.execute({ sql: 'DELETE FROM announcements WHERE branchId = ?', args: [brId] });
+   378→  await db.execute({ sql: 'DELETE FROM fees WHERE branchId = ?', args: [brId] });
+   379→  await db.execute({ sql: 'DELETE FROM users WHERE branchId = ?', args: [brId] });
+   380→  // Decrement institute branch count
+   381→  const br = await db.execute({ sql: 'SELECT instituteId FROM branches WHERE id = ?', args: [brId] });
+   382→  if (br.rows.length > 0) {
+   383→    await db.execute({ sql: 'UPDATE institutes SET branches = MAX(branches - 1, 0) WHERE id = ?', args: [br.rows[0].instituteId] });
+   384→  }
+   385→  await db.execute({ sql: 'DELETE FROM branches WHERE id = ?', args: [brId] });
+   386→  res.json({ success: true });
+   387→});
+   388→
+   389→// ===================== PLATFORM USERS =====================
+   390→app.get('/api/platform/users', requireAuth, async (req, res) => {
+   391→  const { role, branchId, instituteId } = req.query;
+   392→  let sql = 'SELECT * FROM users WHERE role != ?';
+   393→  let args = ['super-admin'];
+   394→  if (req.user.role === 'institute-admin') { sql += ' AND instituteId = ?'; args.push(req.user.instituteId); }
+   395→  if (req.user.role === 'branch-manager') { sql += ' AND branchId = ?'; args.push(req.user.branchId); }
+   396→  if (role) { sql += ' AND role = ?'; args.push(role); }
+   397→  if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+   398→  if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+   399→  sql += ' ORDER BY createdAt DESC';
+   400→  const r = await db.execute({ sql, args });
+   401→  res.json(r.rows.map(buildUserProfile));
+   402→});
+   403→
+   404→// Add teacher or student (by Branch Manager)
+   405→app.post('/api/platform/users', requireAuth, requireRole('branch-manager', 'institute-admin', 'super-admin'), async (req, res) => {
+   406→  const { name, email, password, role, instituteId, branchId, rollNo, class: cls, section, subjects, classes, classId, courseIds } = req.body || {};
+   407→  if (!name || !password || !role) return res.status(400).json({ error: 'Name, password and role required' });
+   408→  if (role === 'teacher' || role === 'student') {
+   409→    if (!rollNo) return res.status(400).json({ error: 'Roll Number/ID is required' });
+   410→  }
+   411→  const instId = instituteId || req.user.instituteId;
+   412→  const brId = branchId || req.user.branchId;
+   413→
+   414→  // Check email uniqueness if email provided
+   415→  if (email) {
+   416→    const existing = await db.execute({ sql: 'SELECT id FROM users WHERE LOWER(email) = ?', args: [email.toLowerCase()] });
+   417→    if (existing.rows.length > 0) return res.status(409).json({ error: 'Email already in use' });
+   418→  }
+   419→  // Check rollNo uniqueness within branch
+   420→  if (rollNo) {
+   421→    const existingRoll = await db.execute({ sql: 'SELECT id FROM users WHERE rollNo = ? AND branchId = ?', args: [rollNo, brId] });
+   422→    if (existingRoll.rows.length > 0) return res.status(409).json({ error: 'Roll Number already exists in this branch' });
+   423→  }
+   424→
+   425→  const id = nextId('U');
+   426→  const subjectsJson = subjects ? JSON.stringify(subjects) : null;
+   427→  const classesJson = classes ? JSON.stringify(classes) : null;
+   428→
+   429→  await db.execute({
+   430→    sql: `INSERT INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, class, section, guardian, subjects, classes, createdById)
+   431→          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   432→    args: [id, name, email || null, rollNo || null, password, role, 'Active',
+   433→      role === 'teacher' ? 'Teacher' : role === 'student' ? 'Student' : role, 1, 0,
+   434→      instId, brId, cls || null, section || 'A', null, subjectsJson, classesJson, req.user.id],
+   435→  });
+   436→
+   437→  // Update counts
+   438→  if (brId) {
+   439→    if (role === 'teacher') await db.execute({ sql: 'UPDATE branches SET teachers = teachers + 1 WHERE id = ?', args: [brId] });
+   440→    if (role === 'student') await db.execute({ sql: 'UPDATE branches SET students = students + 1 WHERE id = ?', args: [brId] });
+   441→  }
+   442→  if (instId) {
+   443→    if (role === 'student') await db.execute({ sql: 'UPDATE institutes SET students = students + 1 WHERE id = ?', args: [instId] });
+   444→    if (role === 'teacher') await db.execute({ sql: 'UPDATE institutes SET staff = staff + 1 WHERE id = ?', args: [instId] });
+   445→  }
+   446→
+   447→  // Assign teacher to class + courses
+   448→  if (role === 'teacher' && classId && courseIds && courseIds.length > 0) {
+   449→    for (const courseId of courseIds) {
+   450→      const tccId = nextId('TCC');
+   451→      await db.execute({ sql: 'INSERT INTO teacher_class_courses (id, teacherId, classId, courseId) VALUES (?, ?, ?, ?)', args: [tccId, id, classId, courseId] });
+   452→    }
+   453→  }
+   454→
+   455→  res.status(201).json({ user: { id, name, rollNo, email, role }, defaultPassword: password });
+   456→});
+   457→
+   458→// Edit user (admin sees new password)
+   459→app.patch('/api/platform/users/:id', requireAuth, async (req, res) => {
+   460→  const { name, email, password, blocked, classId, addCourseIds } = req.body || {};
+   461→  const r = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [req.params.id] });
+   462→  if (r.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+   463→  const target = r.rows[0];
+   464→  // Permission check: only the creator's role level or above can edit
+   465→  if (req.user.role === 'branch-manager' && target.branchId !== req.user.branchId) return res.status(403).json({ error: 'Can only edit users in your branch' });
+   466→  if (req.user.role === 'institute-admin' && target.instituteId !== req.user.instituteId) return res.status(403).json({ error: 'Can only edit users in your institute' });
+   467→
+   468→  if (name) await db.execute({ sql: 'UPDATE users SET name = ? WHERE id = ?', args: [name, target.id] });
+   469→  if (email) await db.execute({ sql: 'UPDATE users SET email = ? WHERE id = ?', args: [email, target.id] });
+   470→  if (password) await db.execute({ sql: 'UPDATE users SET password = ?, mustChangePassword = 1 WHERE id = ?', args: [password, target.id] });
+   471→  if (blocked !== undefined) {
+   472→    await db.execute({ sql: 'UPDATE users SET blocked = ? WHERE id = ?', args: [blocked ? 1 : 0, target.id] });
+   473→    if (blocked) await db.execute({ sql: 'DELETE FROM sessions WHERE userId = ?', args: [target.id] });
+   474→  }
+   475→  // Assign teacher to additional class+courses
+   476→  if (classId && addCourseIds && addCourseIds.length > 0) {
+   477→    for (const courseId of addCourseIds) {
+   478→      const tccId = nextId('TCC');
+   479→      await db.execute({ sql: 'INSERT INTO teacher_class_courses (id, teacherId, classId, courseId) VALUES (?, ?, ?, ?)', args: [tccId, target.id, classId, courseId] });
+   480→    }
+   481→  }
+   482→  res.json({ success: true });
+   483→});
+   484→
+   485→// Block/unblock user
+   486→app.patch('/api/platform/users/:id/block', requireAuth, async (req, res) => {
+   487→  const { blocked, reason } = req.body || {};
+   488→  const r = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [req.params.id] });
+   489→  if (r.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+   490→  const target = r.rows[0];
+   491→  if (req.user.role === 'branch-manager' && target.branchId !== req.user.branchId) return res.status(403).json({ error: 'Can only edit users in your branch' });
+   492→  if (req.user.role === 'institute-admin' && target.instituteId !== req.user.instituteId) return res.status(403).json({ error: 'Can only edit users in your institute' });
+   493→  await db.execute({ sql: 'UPDATE users SET blocked = ? WHERE id = ?', args: [blocked ? 1 : 0, target.id] });
+   494→  if (blocked) await db.execute({ sql: 'DELETE FROM sessions WHERE userId = ?', args: [target.id] });
+   495→  res.json({ success: true, blocked });
+   496→});
+   497→
+   498→// Get user passwords (for admin to see current passwords of users they manage)
+   499→app.get('/api/platform/users/:id/password', requireAuth, async (req, res) => {
+   500→  const r = await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [req.params.id] });
+   501→  if (r.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+   502→  const target = r.rows[0];
+   503→  // Only the managing admin can see the password
+   504→  if (req.user.role === 'branch-manager' && target.branchId !== req.user.branchId) return res.status(403).json({ error: 'Not authorized' });
+   505→  if (req.user.role === 'institute-admin' && target.instituteId !== req.user.instituteId) return res.status(403).json({ error: 'Not authorized' });
+   506→  res.json({ password: target.password, mustChangePassword: target.mustChangePassword === 1 });
+   507→});
+   508→
+   509→// ===================== CLASSES & COURSES =====================
+   510→app.get('/api/classes', requireAuth, async (req, res) => {
+   511→  const { branchId } = req.query;
+   512→  const brId = branchId || req.user.branchId;
+   513→  if (!brId) return res.json([]);
+   514→  const r = await db.execute({ sql: 'SELECT * FROM classes WHERE branchId = ? ORDER BY name', args: [brId] });
+   515→  res.json(r.rows);
+   516→});
+   517→
+   518→app.get('/api/courses', requireAuth, async (req, res) => {
+   519→  const { branchId, classId } = req.query;
+   520→  if (classId) {
+   521→    const r = await db.execute({
+   522→      sql: `SELECT c.* FROM courses c JOIN class_courses cc ON c.id = cc.courseId WHERE cc.classId = ?`,
+   523→      args: [classId]
+   524→    });
+   525→    return res.json(r.rows);
+   526→  }
+   527→  const brId = branchId || req.user.branchId;
+   528→  if (!brId) return res.json([]);
+   529→  const r = await db.execute({ sql: 'SELECT * FROM courses WHERE branchId = ? ORDER BY name', args: [brId] });
+   530→  res.json(r.rows);
+   531→});
+   532→
+   533→// Add course to a class
+   534→app.post('/api/class-courses', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+   535→  const { classId, courseId } = req.body || {};
+   536→  if (!classId || !courseId) return res.status(400).json({ error: 'classId and courseId required' });
+   537→  const id = nextId('CC');
+   538→  await db.execute({ sql: 'INSERT INTO class_courses (id, classId, courseId) VALUES (?, ?, ?)', args: [id, classId, courseId] });
+   539→  res.status(201).json({ success: true });
+   540→});
+   541→
+   542→// Create course
+   543→app.post('/api/courses', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+   544→  const { name, code, branchId } = req.body || {};
+   545→  if (!name) return res.status(400).json({ error: 'Course name required' });
+   546→  const brId = branchId || req.user.branchId;
+   547→  const id = nextId('CRS');
+   548→  await db.execute({ sql: 'INSERT INTO courses (id, branchId, name, code) VALUES (?, ?, ?, ?)', args: [id, brId, name, code || ''] });
+   549→  res.status(201).json({ id, name, code });
+   550→});
+   551→
+   552→// Assign multiple courses to a class at once
+   553→app.post('/api/classes/:id/courses', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+   554→  const { courseIds } = req.body || {};
+   555→  if (!courseIds || !Array.isArray(courseIds)) return res.status(400).json({ error: 'courseIds array required' });
+   556→  // Clear existing
+   557→  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId = ?', args: [req.params.id] });
+   558→  for (const courseId of courseIds) {
+   559→    const id = nextId('CC');
+   560→    await db.execute({ sql: 'INSERT INTO class_courses (id, classId, courseId) VALUES (?, ?, ?)', args: [id, req.params.id, courseId] });
+   561→  }
+   562→  res.json({ success: true, count: courseIds.length });
+   563→});
+   564→
+   565→// Create a new section inside an existing class (e.g. add "Class 1B" to a class that has "Class 1A").
+   566→// The new section is a new row in the classes table with the same `name` but a different `section` letter.
+   567→// Course assignments from the parent class are copied so the new section inherits the same curriculum.
+   568→app.post('/api/classes/:id/sections', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+   569→  const parent = await db.execute({ sql: 'SELECT * FROM classes WHERE id = ?', args: [req.params.id] });
+   570→  if (parent.rows.length === 0) return res.status(404).json({ error: 'Class not found' });
+   571→  const parentClass = parent.rows[0];
+   572→
+   573→  // Determine the next section letter (A, B, C, ...)
+   574→  const existing = await db.execute({ sql: 'SELECT section FROM classes WHERE branchId = ? AND name = ?', args: [parentClass.branchId, parentClass.name] });
+   575→  const usedLetters = new Set(existing.rows.map(r => (r.section || 'A').toUpperCase()));
+   576→  let nextLetter = 'A';
+   577→  while (usedLetters.has(nextLetter) && nextLetter.charCodeAt(0) < 90) {
+   578→    nextLetter = String.fromCharCode(nextLetter.charCodeAt(0) + 1);
+   579→  }
+   580→
+   581→  // Optionally accept a custom section letter from the body
+   582→  const customSection = (req.body?.section || '').trim().toUpperCase();
+   583→  const section = customSection && !usedLetters.has(customSection) ? customSection : nextLetter;
+   584→
+   585→  const id = nextId('CLS');
+   586→  await db.execute({ sql: 'INSERT INTO classes (id, branchId, name, section) VALUES (?, ?, ?, ?)', args: [id, parentClass.branchId, parentClass.name, section] });
+   587→
+   588→  // Copy course assignments from the parent class so the new section inherits the same curriculum
+   589→  const parentCourses = await db.execute({ sql: 'SELECT courseId FROM class_courses WHERE classId = ?', args: [parentClass.id] });
+   590→  for (const row of parentCourses.rows) {
+   591→    const ccId = nextId('CC');
+   592→    await db.execute({ sql: 'INSERT INTO class_courses (id, classId, courseId) VALUES (?, ?, ?)', args: [ccId, id, row.courseId] });
+   593→  }
+   594→
+   595→  res.status(201).json({ id, branchId: parentClass.branchId, name: parentClass.name, section, courseCount: parentCourses.rows.length });
+   596→});
+   597→
+   598→// Delete a section (only if it has no students assigned)
+   599→app.delete('/api/classes/:id', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+   600→  const cls = await db.execute({ sql: 'SELECT * FROM classes WHERE id = ?', args: [req.params.id] });
+   601→  if (cls.rows.length === 0) return res.status(404).json({ error: 'Class not found' });
+   602→  const c = cls.rows[0];
+   603→  // Don't allow deleting the only remaining section for a class name
+   604→  const siblings = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [c.branchId, c.name] });
+   605→  if (siblings.rows.length <= 1) return res.status(400).json({ error: 'Cannot delete the only section for this class' });
+   606→  // Block deletion if any students are assigned
+   607→  const students = await db.execute({ sql: 'SELECT id FROM users WHERE class = ? AND section = ? AND role = ?', args: [c.name, c.section, 'student'] });
+   608→  if (students.rows.length > 0) return res.status(400).json({ error: 'Cannot delete section with students assigned' });
+   609→  await db.execute({ sql: 'DELETE FROM class_courses WHERE classId = ?', args: [req.params.id] });
+   610→  await db.execute({ sql: 'DELETE FROM classes WHERE id = ?', args: [req.params.id] });
+   611→  res.json({ success: true });
+   612→});
+   613→
+   614→// Get teacher's classes + courses
+   615→app.get('/api/teacher/classes', requireAuth, requireRole('teacher'), async (req, res) => {
+   616→  const r = await db.execute({
+   617→    sql: `SELECT DISTINCT c.*, tcc.courseId FROM classes c
+   618→          JOIN teacher_class_courses tcc ON c.id = tcc.classId
+   619→          WHERE tcc.teacherId = ?`,
+   620→    args: [req.user.id]
+   621→  });
+   622→  // Group by class
+   623→  const classMap = {};
+   624→  for (const row of r.rows) {
+   625→    if (!classMap[row.id]) {
+   626→      classMap[row.id] = { id: row.id, name: row.name, section: row.section, branchId: row.branchId, courses: [] };
+   627→    }
+   628→    const courseR = await db.execute({ sql: 'SELECT * FROM courses WHERE id = ?', args: [row.courseId] });
+   629→    if (courseR.rows.length > 0) classMap[row.id].courses.push(courseR.rows[0]);
+   630→  }
+   631→  res.json(Object.values(classMap));
+   632→});
+   633→
+   634→// Get student's courses (from their class)
+   635→app.get('/api/student/courses', requireAuth, requireRole('student'), async (req, res) => {
+   636→  // Find student's class
+   637→  const classR = await db.execute({ sql: 'SELECT * FROM classes WHERE branchId = ? AND name = ?', args: [req.user.branchId, req.user.class] });
+   638→  if (classR.rows.length === 0) return res.json([]);
+   639→  const classId = classR.rows[0].id;
+   640→  const r = await db.execute({
+   641→    sql: `SELECT c.* FROM courses c JOIN class_courses cc ON c.id = cc.courseId WHERE cc.classId = ?`,
+   642→    args: [classId]
+   643→  });
+   644→  res.json(r.rows);
+   645→});
+   646→
+   647→// ===================== TEACHER ANALYTICS =====================
+   648→// Comprehensive academic + activity analytics for the Teacher dashboard.
+   649→app.get('/api/teacher/analytics', requireAuth, requireRole('teacher'), async (req, res) => {
+   650→  const teacherId = req.user.id;
+   651→  try {
+   652→    // 1. Teacher's classes + courses
+   653→    const tccR = await db.execute({
+   654→      sql: `SELECT tcc.classId, tcc.courseId, c.name as className, c.section, c.branchId,
+   655→                   co.name as courseName, co.code as courseCode
+   656→            FROM teacher_class_courses tcc
+   657→            LEFT JOIN classes c ON tcc.classId = c.id
+   658→            LEFT JOIN courses co ON tcc.courseId = co.id
+   659→            WHERE tcc.teacherId = ?`,
+   660→      args: [teacherId],
+   661→    });
+   662→    const assignments = tccR.rows;
+   663→    const classIds = [...new Set(assignments.map(a => a.classId))];
+   664→    const courseIds = [...new Set(assignments.map(a => a.courseId))];
+   665→
+   666→    // 2. Total students across all the teacher's classes (unique by classId)
+   667→    let totalStudents = 0;
+   668→    const classStudentCounts = [];
+   669→    for (const cid of classIds) {
+   670→      const cntR = await db.execute({
+   671→        sql: 'SELECT COUNT(*) as count FROM users WHERE role = ? AND branchId = ? AND class = (SELECT name FROM classes WHERE id = ?)',
+   672→        args: ['student', assignments.find(a => a.classId === cid)?.branchId, cid],
+   673→      });
+   674→      const n = cntR.rows[0]?.count || 0;
+   675→      totalStudents += n;
+   676→      const cls = assignments.find(a => a.classId === cid);
+   677→      classStudentCounts.push({ classId: cid, className: cls?.className, section: cls?.section, students: n });
+   678→    }
+   679→
+   680→    // 3. Attendance sessions taken by this teacher
+   681→    const attR = await db.execute({
+   682→      sql: 'SELECT id, date, classId, records FROM attendance WHERE teacherId = ? ORDER BY date DESC LIMIT 50',
+   683→      args: [teacherId],
+   684→    });
+   685→    const attendanceSessions = attR.rows;
+   686→    let attendanceRecords = 0, presentCount = 0, absentCount = 0, lateCount = 0;
+   687→    for (const s of attendanceSessions) {
+   688→      try {
+   689→        const recs = JSON.parse(s.records);
+   690→        for (const r of recs) {
+   691→          attendanceRecords++;
+   692→          if (r.status === 'Present') presentCount++;
+   693→          else if (r.status === 'Absent') absentCount++;
+   694→          else if (r.status === 'Late') lateCount++;
+   695→        }
+   696→      } catch {}
+   697→    }
+   698→    const attendanceRate = attendanceRecords > 0 ? Math.round((presentCount / attendanceRecords) * 100) : 0;
+   699→
+   700→    // 4. Results posted by this teacher
+   701→    const resR = await db.execute({
+   702→      sql: 'SELECT id, exam, courseId, classId, totalMarks, date, records FROM results WHERE teacherId = ? ORDER BY date DESC LIMIT 50',
+   703→      args: [teacherId],
+   704→    });
+   705→    const resultsPosted = resR.rows;
+   706→    let totalResultsRecords = 0;
+   707→    let totalMarksObtained = 0;
+   708→    let totalMaxMarks = 0;
+   709→    const examBreakdown = [];
+   710→    for (const r of resultsPosted) {
+   711→      try {
+   712→        const recs = JSON.parse(r.records);
+   713→        for (const rec of recs) {
+   714→          totalResultsRecords++;
+   715→          totalMarksObtained += Number(rec.marks) || 0;
+   716→          totalMaxMarks += Number(r.totalMarks) || 100;
+   717→        }
+   718→        examBreakdown.push({
+   719→          id: r.id, exam: r.exam, date: r.date,
+   720→          courseId: r.courseId, classId: r.classId,
+   721→          totalMarks: r.totalMarks, students: recs.length,
+   722→          avgMarks: recs.length > 0 ? Math.round((recs.reduce((s, x) => s + (Number(x.marks) || 0), 0) / recs.length) * 10) / 10 : 0,
+   723→        });
+   724→      } catch {}
+   725→    }
+   726→    const avgScore = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+   727→
+   728→    // 5. Diary entries by this teacher
+   729→    const diaryR = await db.execute({
+   730→      sql: 'SELECT id, title, subject, classId, courseId, due, createdAt FROM diary WHERE teacherId = ? ORDER BY createdAt DESC LIMIT 20',
+   731→      args: [teacherId],
+   732→    });
+   733→    const diaryEntries = diaryR.rows;
+   734→
+   735→    // 6. Course materials uploaded
+   736→    const matR = await db.execute({
+   737→      sql: 'SELECT COUNT(*) as count FROM course_materials WHERE teacherId = ?',
+   738→      args: [teacherId],
+   739→    });
+   740→    const materialsCount = matR.rows[0]?.count || 0;
+   741→
+   742→    // 7. Attendance trend (last 8 sessions) for chart
+   743→    const attendanceTrend = attendanceSessions.slice(0, 8).reverse().map((s, i) => {
+   744→      try {
+   745→        const recs = JSON.parse(s.records);
+   746→        const present = recs.filter(r => r.status === 'Present').length;
+   747→        const total = recs.length;
+   748→        return {
+   749→          label: s.date ? s.date.slice(5) : `S${i + 1}`,
+   750→          rate: total > 0 ? Math.round((present / total) * 100) : 0,
+   751→          present, absent: recs.filter(r => r.status === 'Absent').length, total,
+   752→        };
+   753→      } catch {
+   754→        return { label: `S${i + 1}`, rate: 0, present: 0, absent: 0, total: 0 };
+   755→      }
+   756→    });
+   757→
+   758→    // 8. Class performance (avg score per class)
+   759→    const classPerformance = classStudentCounts.map(cs => {
+   760→      const classResults = resultsPosted.filter(r => r.classId === cs.classId);
+   761→      let sum = 0, count = 0;
+   762→      for (const r of classResults) {
+   763→        try {
+   764→          const recs = JSON.parse(r.records);
+   765→          for (const rec of recs) { sum += Number(rec.marks) || 0; count++; }
+   766→        } catch {}
+   767→      }
+   768→      return {
+   769→        classId: cs.classId,
+   770→        className: cs.className,
+   771→        section: cs.section,
+   772→        students: cs.students,
+   773→        avgScore: count > 0 ? Math.round((sum / count / (classResults[0]?.totalMarks || 100)) * 100) : 0,
+   774→        examsConducted: classResults.length,
+   775→      };
+   776→    });
+   777→
+   778→    res.json({
+   779→      kpi: {
+   780→        totalClasses: classIds.length,
+   781→        totalCourses: courseIds.length,
+   782→        totalStudents,
+   783→        attendanceSessions: attendanceSessions.length,
+   784→        attendanceRate,
+   785→        attendanceRecords,
+   786→        presentCount,
+   787→        absentCount,
+   788→        lateCount,
+   789→        resultsPosted: resultsPosted.length,
+   790→        totalResultsRecords,
+   791→        avgScore,
+   792→        diaryEntries: diaryEntries.length,
+   793→        materialsUploaded: materialsCount,
+   794→      },
+   795→      assignments,
+   796→      attendanceTrend,
+   797→      classPerformance,
+   798→      examBreakdown: examBreakdown.slice(0, 10),
+   799→      recentDiary: diaryEntries.slice(0, 5),
+   800→      recentResults: examBreakdown.slice(0, 5),
+   801→    });
+   802→  } catch (e) {
+   803→    console.error('Teacher analytics error:', e);
+   804→    res.status(500).json({ error: 'Failed to load teacher analytics: ' + e.message });
+   805→  }
+   806→});
+   807→
+   808→// ===================== STUDENT ANALYTICS =====================
+   809→// Comprehensive academic + fee analytics for the Student dashboard.
+   810→app.get('/api/student/analytics', requireAuth, requireRole('student'), async (req, res) => {
+   811→  const studentId = req.user.id;
+   812→  try {
+   813→    // 1. Attendance records for this student
+   814→    const attR = await db.execute({
+   815→      sql: 'SELECT id, date, classId, records FROM attendance ORDER BY date DESC LIMIT 100',
+   816→      args: [],
+   817→    });
+   818→    let presentCount = 0, absentCount = 0, lateCount = 0, totalSessions = 0;
+   819→    const attendanceTrend = [];
+   820→    for (const s of attR.rows) {
+   821→      try {
+   822→        const recs = JSON.parse(s.records);
+   823→        const entry = recs.find(r => r.studentId === studentId);
+   824→        if (entry) {
+   825→          totalSessions++;
+   826→          if (entry.status === 'Present') presentCount++;
+   827→          else if (entry.status === 'Absent') absentCount++;
+   828→          else if (entry.status === 'Late') lateCount++;
+   829→          attendanceTrend.push({
+   830→            date: s.date,
+   831→            status: entry.status,
+   832→            label: s.date ? s.date.slice(5) : '',
+   833→          });
+   834→        }
+   835→      } catch {}
+   836→    }
+   837→    const attendanceRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+   838→
+   839→    // 2. Results for this student
+   840→    const resR = await db.execute({
+   841→      sql: 'SELECT id, exam, courseId, classId, totalMarks, date, records FROM results ORDER BY date DESC LIMIT 50',
+   842→      args: [],
+   843→    });
+   844→    const studentResults = [];
+   845→    let totalMarksObtained = 0, totalMaxMarks = 0;
+   846→    for (const r of resR.rows) {
+   847→      try {
+   848→        const recs = JSON.parse(r.records);
+   849→        const entry = recs.find(rec => rec.studentId === studentId);
+   850→        if (entry) {
+   851→          studentResults.push({
+   852→            id: r.id, exam: r.exam, courseId: r.courseId, classId: r.classId,
+   853→            date: r.date, totalMarks: r.totalMarks, marks: entry.marks, grade: entry.grade,
+   854→          });
+   855→          totalMarksObtained += Number(entry.marks) || 0;
+   856→          totalMaxMarks += Number(r.totalMarks) || 100;
+   857→        }
+   858→      } catch {}
+   859→    }
+   860→    const avgScore = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+   861→
+   862→    // 3. Fee invoices
+   863→    const invR = await db.execute({
+   864→      sql: 'SELECT id, month, year, amount, status, paidDate, paidAmount, challanNo, createdAt FROM fee_invoices WHERE studentId = ? ORDER BY year DESC, createdAt DESC',
+   865→      args: [studentId],
+   866→    });
+   867→    const invoices = invR.rows;
+   868→    const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+   869→    const totalPending = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+   870→
+   871→    // 4. Diary entries for student's class
+   872→    const diaryR = await db.execute({
+   873→      sql: 'SELECT id, title, subject, classId, courseId, due, createdAt FROM diary WHERE branchId = ? ORDER BY createdAt DESC LIMIT 10',
+   874→      args: [req.user.branchId],
+   875→    });
+   876→    const diaryEntries = diaryR.rows;
+   877→
+   878→    // 5. Course materials for student's courses
+   879→    const matR = await db.execute({
+   880→      sql: 'SELECT COUNT(*) as count FROM course_materials WHERE classId IN (SELECT id FROM classes WHERE branchId = ? AND name = ?)',
+   881→      args: [req.user.branchId, req.user.class],
+   882→    });
+   883→    const materialsCount = matR.rows[0]?.count || 0;
+   884→
+   885→    // 6. Grade distribution
+   886→    const gradeDistribution = {};
+   887→    for (const r of studentResults) {
+   888→      const grade = r.grade || (r.marks / r.totalMarks >= 0.9 ? 'A+' : r.marks / r.totalMarks >= 0.8 ? 'A' : r.marks / r.totalMarks >= 0.7 ? 'B' : r.marks / r.totalMarks >= 0.6 ? 'C' : r.marks / r.totalMarks >= 0.5 ? 'D' : 'F');
+   889→      gradeDistribution[grade] = (gradeDistribution[grade] || 0) + 1;
+   890→    }
+   891→
+   892→    // 7. Attendance trend (last 10 sessions) for chart
+   893→    const recentAttendanceTrend = attendanceTrend.slice(0, 10).reverse();
+   894→
+   895→    res.json({
+   896→      kpi: {
+   897→        attendanceRate,
+   898→        totalSessions,
+   899→        presentCount,
+   900→        absentCount,
+   901→        lateCount,
+   902→        avgScore,
+   903→        totalResults: studentResults.length,
+   904→        totalInvoices: invoices.length,
+   905→        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+   906→        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+   907→        totalPaid,
+   908→        totalPending,
+   909→        diaryEntries: diaryEntries.length,
+   910→        materialsCount,
+   911→      },
+   912→      attendanceTrend: recentAttendanceTrend,
+   913→      recentResults: studentResults.slice(0, 5),
+   914→      gradeDistribution: Object.entries(gradeDistribution).map(([grade, count]) => ({ grade, count })),
+   915→      recentDiary: diaryEntries.slice(0, 5),
+   916→    });
+   917→  } catch (e) {
+   918→    console.error('Student analytics error:', e);
+   919→    res.status(500).json({ error: 'Failed to load student analytics: ' + e.message });
+   920→  }
+   921→});
+   922→
+   923→// ===================== ANNOUNCEMENTS =====================
+   924→app.get('/api/announcements', requireAuth, async (req, res) => {
+   925→  let sql = 'SELECT * FROM announcements WHERE 1=1';
+   926→  let args = [];
+   927→
+   928→  if (req.user.role === 'super-admin') {
+   929→    // Super admin only sees announcements sent BY super-admin (to institutes)
+   930→    sql += ' AND senderRole = ?';
+   931→    args = ['super-admin'];
+   932→  } else if (req.user.role === 'institute-admin') {
+   933→    // Institute admin sees: announcements from super-admin targeted to their institute + their own
+   934→    sql += ' AND ((senderRole = ? AND (targetScope = ? OR instituteId = ?)) OR senderId = ?)';
+   935→    args = ['super-admin', 'all', req.user.instituteId, req.user.id];
+   936→  } else if (req.user.role === 'branch-manager') {
+   937→    // Branch manager sees: announcements from institute-admin targeted to them + their own
+   938→    sql += ' AND ((senderRole = ? AND (targetScope = ? OR targetRole IN (?, ?) OR branchId = ?)) OR senderId = ?)';
+   939→    args = ['institute-admin', 'all', 'branch-manager', 'all', req.user.branchId, req.user.id];
+   940→  } else if (req.user.role === 'teacher') {
+   941→    // Teacher sees: announcements targeted to teachers in their branch/class + from branch-manager
+   942→    sql += ' AND ((senderRole = ? AND (targetRole = ? OR targetScope = ?)) OR (senderRole = ? AND (branchId = ? OR classId IN (SELECT id FROM classes WHERE branchId = ?))))';
+   943→    args = ['institute-admin', 'teacher', 'all', 'branch-manager', req.user.branchId, req.user.branchId];
+   944→    // Also add class-specific announcements
+   945→    // Get teacher's class IDs from teacher_class_courses
+   946→    const teacherClasses = await db.execute({ sql: 'SELECT DISTINCT classId FROM teacher_class_courses WHERE teacherId = ?', args: [req.user.id] });
+   947→    const classIds = teacherClasses.rows.map(r => r.classId);
+   948→    if (classIds.length > 0) {
+   949→      const placeholders = classIds.map(() => '?').join(',');
+   950→      sql += ` OR classId IN (${placeholders})`;
+   951→      args.push(...classIds);
+   952→    }
+   953→  } else if (req.user.role === 'student') {
+   954→    // Student sees: announcements targeted to students in their branch/class
+   955→    sql += ' AND (targetRole = ? OR (senderRole = ? AND (branchId = ? OR classId = ?)))';
+   956→    args = ['student', 'branch-manager', req.user.branchId, null];
+   957→    // Also get class-specific announcements for the student's class
+   958→    const classR = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [req.user.branchId, req.user.class] });
+   959→    if (classR.rows.length > 0) {
+   960→      sql += ' OR classId = ?';
+   961→      args.push(classR.rows[0].id);
+   962→    }
+   963→  }
+   964→
+   965→  sql += ' ORDER BY createdAt DESC LIMIT 50';
+   966→  const r = await db.execute({ sql, args });
+   967→  res.json(r.rows);
+   968→});
+   969→
+   970→app.post('/api/announcements', requireAuth, async (req, res) => {
+   971→  const { title, message, targetRole, targetScope, targetIds, classId } = req.body || {};
+   972→  if (!title || !message) return res.status(400).json({ error: 'Title and message required' });
+   973→  const id = nextId('ANN');
+   974→  await db.execute({
+   975→    sql: `INSERT INTO announcements (id, senderId, senderRole, title, message, targetRole, targetScope, targetIds, instituteId, branchId, classId)
+   976→          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+   977→    args: [id, req.user.id, req.user.role, title, message, targetRole || null, targetScope || 'all',
+   978→      targetIds ? JSON.stringify(targetIds) : null, req.user.instituteId || null, req.user.branchId || null, classId || null],
+   979→  });
+   980→  res.status(201).json({ id, success: true });
+   981→});
+   982→
+   983→// ===================== COURSE MATERIALS =====================
+   984→app.get('/api/course-materials', requireAuth, async (req, res) => {
+   985→  const { classId, courseId, teacherId } = req.query;
+   986→  let sql = 'SELECT * FROM course_materials WHERE 1=1';
+   987→  let args = [];
+   988→  if (classId) { sql += ' AND classId = ?'; args.push(classId); }
+   989→  if (courseId) { sql += ' AND courseId = ?'; args.push(courseId); }
+   990→  if (teacherId) { sql += ' AND teacherId = ?'; args.push(teacherId); }
+   991→  sql += ' ORDER BY createdAt DESC';
+   992→  const r = await db.execute({ sql, args });
+   993→  // Don't send fileData in list view
+   994→  res.json(r.rows.map(m => ({ ...m, fileData: undefined })));
+   995→});
+   996→
+   997→app.post('/api/course-materials', requireAuth, requireRole('teacher'), async (req, res) => {
+   998→  const { classId, courseId, title, description, fileType, fileName, fileData, linkUrl } = req.body || {};
+   999→  if (!classId || !courseId || !title) return res.status(400).json({ error: 'classId, courseId and title required' });
+  1000→  const id = nextId('MAT');
+  1001→  await db.execute({
+  1002→    sql: `INSERT INTO course_materials (id, teacherId, classId, courseId, title, description, fileType, fileName, fileData, linkUrl)
+  1003→          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  1004→    args: [id, req.user.id, classId, courseId, title, description || '', fileType || '', fileName || '', fileData || '', linkUrl || ''],
+  1005→  });
+  1006→  res.status(201).json({ id, title, success: true });
+  1007→});
+  1008→
+  1009→app.get('/api/course-materials/:id/download', requireAuth, async (req, res) => {
+  1010→  const r = await db.execute({ sql: 'SELECT * FROM course_materials WHERE id = ?', args: [req.params.id] });
+  1011→  if (r.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+  1012→  const mat = r.rows[0];
+  1013→  if (mat.linkUrl) return res.json({ linkUrl: mat.linkUrl });
+  1014→  if (!mat.fileData) return res.status(404).json({ error: 'No file data' });
+  1015→  const buffer = Buffer.from(mat.fileData, 'base64');
+  1016→  res.setHeader('Content-Type', mat.fileType || 'application/octet-stream');
+  1017→  res.setHeader('Content-Disposition', `attachment; filename="${mat.fileName || 'download'}"`);
+  1018→  res.send(buffer);
+  1019→});
+  1020→
+  1021→// ===================== PLATFORM OVERVIEW =====================
+  1022→app.get('/api/platform/overview', requireAuth, requireRole('super-admin'), async (req, res) => {
+  1023→  const instR = await db.execute('SELECT COUNT(*) as count FROM institutes');
+  1024→  const brR = await db.execute('SELECT COUNT(*) as count FROM branches');
+  1025→  const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role = ?', args: ['student'] });
+  1026→  const staffR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role IN (?, ?, ?)', args: ['teacher', 'branch-manager', 'institute-admin'] });
+  1027→  const feeR = await db.execute({ sql: 'SELECT COALESCE(SUM(amount), 0) as total FROM fees WHERE status = ?', args: ['Paid'] });
+  1028→  const activeR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM institutes WHERE blocked = 0' });
+  1029→  res.json({
+  1030→    institutes: instR.rows[0].count,
+  1031→    branches: brR.rows[0].count,
+  1032→    totalStudents: stuR.rows[0].count,
+  1033→    totalStaff: staffR.rows[0].count,
+  1034→    totalRevenue: feeR.rows[0].total,
+  1035→    activeInstitutes: activeR.rows[0].count,
+  1036→    platformUsers: stuR.rows[0].count + staffR.rows[0].count + 1,
+  1037→  });
+  1038→});
+  1039→
+  1040→// ===================== SCOPED STATS =====================
+  1041→app.get('/api/scoped/stats', requireAuth, async (req, res) => {
+  1042→  const { instituteId, branchId } = req.query;
+  1043→  if (branchId) {
+  1044→    const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'student'] });
+  1045→    const tchR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'teacher'] });
+  1046→    res.json({ students: stuR.rows[0].count, teachers: tchR.rows[0].count });
+  1047→  } else if (instituteId) {
+  1048→    const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'student'] });
+  1049→    const staffR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE instituteId = ? AND role IN (?, ?)', args: [instituteId, 'teacher', 'branch-manager'] });
+  1050→    const brR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM branches WHERE instituteId = ?', args: [instituteId] });
+  1051→    res.json({ students: stuR.rows[0].count, staff: staffR.rows[0].count, branches: brR.rows[0].count });
+  1052→  } else {
+  1053→    res.json({ students: 0, staff: 0, branches: 0 });
+  1054→  }
+  1055→});
+  1056→
+  1057→// ===================== INSTITUTE FINANCE & ANALYTICS =====================
+  1058→// Comprehensive finance + analytics for the Institute Admin dashboard.
+  1059→// Returns: KPIs, monthly revenue, yearly revenue, branch performance, recent transactions, salary totals.
+  1060→app.get('/api/institute/finance', requireAuth, requireRole('institute-admin', 'super-admin'), async (req, res) => {
+  1061→  const instituteId = req.query.instituteId || req.user.instituteId;
+  1062→  if (!instituteId) return res.json({ kpi: {}, monthlyRevenue: [], branchPerformance: [], recentTransactions: [] });
+  1063→
+  1064→  try {
+  1065→    // 1. Manual revenue entries entered by Institute Admin (per branch in this institute)
+  1066→    const revR = await db.execute({ sql: 'SELECT * FROM manual_revenue WHERE instituteId = ? AND enteredByRole = ? ORDER BY year DESC, createdAt DESC', args: [instituteId, 'institute-admin'] });
+  1067→    const revenueEntries = revR.rows;
+  1068→
+  1069→    // 2. All salary payments for this institute
+  1070→    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments WHERE instituteId = ? ORDER BY createdAt DESC', args: [instituteId] });
+  1071→    const salaries = salR.rows;
+  1072→
+  1073→    // 3. Branches with student/teacher counts
+  1074→    const brR = await db.execute({ sql: 'SELECT id, name, city, manager, students, teachers, status, blocked FROM branches WHERE instituteId = ?', args: [instituteId] });
+  1075→    const branches = brR.rows;
+  1076→
+  1077→    // 4. All teachers (for salary structure lookup)
+  1078→    const tchR = await db.execute({ sql: 'SELECT id, name, email, branchId, status, blocked FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'teacher'] });
+  1079→    const teachers = tchR.rows;
+  1080→
+  1081→    // 5. Salary structures (latest monthly salary per teacher)
+  1082→    const salStructR = await db.execute({ sql: 'SELECT teacherId, monthlySalary FROM teacher_salaries WHERE instituteId = ?', args: [instituteId] });
+  1083→    const salaryStruct = salStructR.rows;
+  1084→
+  1085→    // 6. All students (count + class distribution)
+  1086→    const stuR = await db.execute({ sql: 'SELECT id, name, class, section, branchId, status, blocked FROM users WHERE instituteId = ? AND role = ?', args: [instituteId, 'student'] });
+  1087→    const students = stuR.rows;
+  1088→
+  1089→    // ===== Compute KPIs (from manual revenue) =====
+  1090→    const totalRevenue = revenueEntries.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1091→    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  1092→    const monthlySalaryExpense = teachers.reduce((sum, t) => {
+  1093→      const ss = salaryStruct.find(s => s.teacherId === t.id);
+  1094→      return sum + (ss ? Number(ss.monthlySalary) || 0 : 0);
+  1095→    }, 0);
+  1096→    const netBalance = totalRevenue - totalSalaryPaid;
+  1097→
+  1098→    // ===== Monthly revenue (last 12 months) — from manual revenue entries =====
+  1099→    const now = new Date();
+  1100→    const months = [];
+  1101→    for (let i = 11; i >= 0; i--) {
+  1102→      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  1103→      const monthName = d.toLocaleString('en-US', { month: 'short' });
+  1104→      const year = d.getFullYear();
+  1105→      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+  1106→      const monthRev = revenueEntries.filter(r => r.year === year && r.month === monthFull);
+  1107→      const revenue = monthRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1108→      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+  1109→      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+  1110→      months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
+  1111→    }
+  1112→
+  1113→    // ===== Yearly revenue (last 5 years) =====
+  1114→    const currentYear = now.getFullYear();
+  1115→    const years = [];
+  1116→    for (let y = currentYear - 4; y <= currentYear; y++) {
+  1117→      const yearRev = revenueEntries.filter(r => r.year === y);
+  1118→      const revenue = yearRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1119→      const yearSal = salaries.filter(sal => sal.year === y);
+  1120→      const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+  1121→      years.push({ year: y, revenue, salary, net: revenue - salary });
+  1122→    }
+  1123→
+  1124→    // ===== Branch performance — from manual revenue per branch =====
+  1125→    const branchPerformance = branches.map(br => {
+  1126→      const brRev = revenueEntries.filter(r => r.sourceId === br.id);
+  1127→      const brRevenue = brRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1128→      const brSal = salaries.filter(s => s.branchId === br.id).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  1129→      const stuCount = students.filter(s => s.branchId === br.id).length;
+  1130→      const tchCount = teachers.filter(t => t.branchId === br.id).length;
+  1131→      return {
+  1132→        id: br.id,
+  1133→        name: br.name,
+  1134→        city: br.city || '',
+  1135→        manager: br.manager || '—',
+  1136→        status: br.blocked === 1 ? 'Blocked' : (br.status || 'Active'),
+  1137→        students: stuCount,
+  1138→        teachers: tchCount,
+  1139→        revenue: brRevenue,
+  1140→        pendingFees: 0,
+  1141→        salaryPaid: brSal,
+  1142→        net: brRevenue - brSal,
+  1143→        invoices: brRev.length,
+  1144→      };
+  1145→    });
+  1146→
+  1147→    // ===== Recent transactions — from manual revenue entries =====
+  1148→    const recentTransactions = revenueEntries
+  1149→      .slice(0, 12)
+  1150→      .map(r => ({
+  1151→        id: r.id,
+  1152→        type: 'Revenue Entry',
+  1153→        date: r.createdAt,
+  1154→        party: r.sourceName,
+  1155→        branchId: r.sourceId,
+  1156→        amount: Number(r.amount) || 0,
+  1157→        method: r.month + ' ' + r.year,
+  1158→        status: 'Received',
+  1159→      }));
+  1160→
+  1161→    // ===== Class distribution (for students analytics) =====
+  1162→    const classMap = {};
+  1163→    for (const s of students) {
+  1164→      const c = s.class || 'Unassigned';
+  1165→      if (!classMap[c]) classMap[c] = { class: c, students: 0, paid: 0, pending: 0 };
+  1166→      classMap[c].students++;
+  1167→    }
+  1168→    const classDistribution = Object.values(classMap).sort((a, b) => b.students - a.students);
+  1169→
+  1170→    // ===== Per-student fee summary =====
+  1171→    const studentFeeSummary = students.map(s => {
+  1172→      const branch = branches.find(b => b.id === s.branchId);
+  1173→      return {
+  1174→        id: s.id,
+  1175→        name: s.name,
+  1176→        class: s.class || '—',
+  1177→        section: s.section || 'A',
+  1178→        branch: branch?.name || '—',
+  1179→        branchId: s.branchId,
+  1180→        status: s.blocked === 1 ? 'Blocked' : (s.status || 'Active'),
+  1181→        invoices: 0,
+  1182→        paid: 0,
+  1183→        pending: 0,
+  1184→        total: 0,
+  1185→      };
+  1186→    }).sort((a, b) => a.name.localeCompare(b.name));
+  1187→
+  1188→    // ===== Per-teacher salary summary =====
+  1189→    const teacherSalarySummary = teachers.map(t => {
+  1190→      const ss = salaryStruct.find(s => s.teacherId === t.id);
+  1191→      const monthlySalary = ss ? Number(ss.monthlySalary) || 0 : 0;
+  1192→      const tPayments = salaries.filter(p => p.teacherId === t.id);
+  1193→      const totalPaid = tPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  1194→      const lastPayment = tPayments[0];
+  1195→      const branch = branches.find(b => b.id === t.branchId);
+  1196→      return {
+  1197→        id: t.id,
+  1198→        name: t.name,
+  1199→        email: t.email || '—',
+  1200→        branch: branch?.name || '—',
+  1201→        branchId: t.branchId,
+  1202→        status: t.blocked === 1 ? 'Blocked' : (t.status || 'Active'),
+  1203→        monthlySalary,
+  1204→        totalPaid,
+  1205→        lastPaidDate: lastPayment?.paidDate || null,
+  1206→        paymentsCount: tPayments.length,
+  1207→      };
+  1208→    }).sort((a, b) => b.monthlySalary - a.monthlySalary);
+  1209→
+  1210→    res.json({
+  1211→      kpi: {
+  1212→        branches: branches.length,
+  1213→        students: students.length,
+  1214→        teachers: teachers.length,
+  1215→        totalRevenue,
+  1216→        pendingFees: 0,
+  1217→        totalSalaryPaid,
+  1218→        monthlySalaryExpense,
+  1219→        netBalance,
+  1220→        totalInvoices: revenueEntries.length,
+  1221→        paidInvoices: revenueEntries.length,
+  1222→        unpaidInvoices: 0,
+  1223→        revenueEntries: revenueEntries.length,
+  1224→      },
+  1225→      monthlyRevenue: months,
+  1226→      yearlyRevenue: years,
+  1227→      branchPerformance,
+  1228→      recentTransactions,
+  1229→      classDistribution,
+  1230→      studentFeeSummary,
+  1231→      teacherSalarySummary,
+  1232→      revenueEntries,
+  1233→    });
+  1234→  } catch (e) {
+  1235→    console.error('Institute finance error:', e);
+  1236→    res.status(500).json({ error: 'Failed to load finance data: ' + e.message });
+  1237→  }
+  1238→});
+  1239→
+  1240→// ===================== BRANCH FINANCE & ANALYTICS =====================
+  1241→// Branch-level finance for the Branch Manager dashboard.
+  1242→// Returns: KPIs, monthly revenue, fee status breakdown, recent transactions, salary totals, class performance.
+  1243→app.get('/api/branch/finance', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1244→  const branchId = req.query.branchId || req.user.branchId;
+  1245→  if (!branchId) return res.json({ kpi: {}, monthlyRevenue: [], recentTransactions: [], classPerformance: [] });
+  1246→
+  1247→  try {
+  1248→    // 1. All fee invoices for this branch
+  1249→    const invR = await db.execute({ sql: 'SELECT id, studentId, studentName, className, month, year, amount, status, paidDate, paidAmount, paymentMethod, challanNo, createdAt FROM fee_invoices WHERE branchId = ? ORDER BY createdAt DESC', args: [branchId] });
+  1250→    const invoices = invR.rows;
+  1251→
+  1252→    // 2. All salary payments for this branch
+  1253→    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments WHERE branchId = ? ORDER BY createdAt DESC', args: [branchId] });
+  1254→    const salaries = salR.rows;
+  1255→
+  1256→    // 3. Teachers + students
+  1257→    const tchR = await db.execute({ sql: 'SELECT id, name, email, status, blocked FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'teacher'] });
+  1258→    const teachers = tchR.rows;
+  1259→    const stuR = await db.execute({ sql: 'SELECT id, name, class, section, rollNo, status, blocked FROM users WHERE branchId = ? AND role = ?', args: [branchId, 'student'] });
+  1260→    const students = stuR.rows;
+  1261→
+  1262→    // 4. Salary structures
+  1263→    const salStructR = await db.execute({ sql: 'SELECT teacherId, monthlySalary FROM teacher_salaries WHERE branchId = ?', args: [branchId] });
+  1264→    const salaryStruct = salStructR.rows;
+  1265→
+  1266→    // 5. Attendance records (for attendance rate)
+  1267→    const attR = await db.execute({ sql: 'SELECT records FROM attendance WHERE branchId = ? ORDER BY date DESC LIMIT 30', args: [branchId] });
+  1268→    let totalAtt = 0, presentAtt = 0;
+  1269→    for (const a of attR.rows) {
+  1270→      try {
+  1271→        const recs = JSON.parse(a.records);
+  1272→        for (const r of recs) {
+  1273→          totalAtt++;
+  1274→          if (r.status === 'Present') presentAtt++;
+  1275→        }
+  1276→      } catch {}
+  1277→    }
+  1278→    const attendanceRate = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : 0;
+  1279→
+  1280→    // ===== KPIs =====
+  1281→    const totalRevenue = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
+  1282→    const pendingFees = invoices.filter(i => i.status !== 'Paid').reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  1283→    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  1284→    const monthlySalaryExpense = teachers.reduce((sum, t) => {
+  1285→      const ss = salaryStruct.find(s => s.teacherId === t.id);
+  1286→      return sum + (ss ? Number(ss.monthlySalary) || 0 : 0);
+  1287→    }, 0);
+  1288→    const netBalance = totalRevenue - totalSalaryPaid;
+  1289→
+  1290→    // ===== Monthly revenue (last 12 months) =====
+  1291→    const now = new Date();
+  1292→    const months = [];
+  1293→    for (let i = 11; i >= 0; i--) {
+  1294→      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  1295→      const monthName = d.toLocaleString('en-US', { month: 'short' });
+  1296→      const year = d.getFullYear();
+  1297→      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+  1298→      const monthInv = invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status === 'Paid');
+  1299→      const revenue = monthInv.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+  1300→      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+  1301→      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+  1302→      months.push({ month: monthName, year, revenue, salary, net: revenue - salary, paid: monthInv.length, unpaid: invoices.filter(inv => inv.year === year && inv.month === monthFull && inv.status !== 'Paid').length });
+  1303→    }
+  1304→
+  1305→    // ===== Fee status breakdown =====
+  1306→    const feeStatus = {
+  1307→      paid: invoices.filter(i => i.status === 'Paid').length,
+  1308→      unpaid: invoices.filter(i => i.status !== 'Paid').length,
+  1309→      paidAmount: totalRevenue,
+  1310→      unpaidAmount: pendingFees,
+  1311→    };
+  1312→
+  1313→    // ===== Class performance =====
+  1314→    const classMap = {};
+  1315→    for (const s of students) {
+  1316→      const c = s.class || 'Unassigned';
+  1317→      if (!classMap[c]) classMap[c] = { class: c, students: 0, paid: 0, pending: 0 };
+  1318→      classMap[c].students++;
+  1319→      const sInv = invoices.filter(i => i.studentId === s.id);
+  1320→      classMap[c].paid += sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+  1321→      classMap[c].pending += sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  1322→    }
+  1323→    const classPerformance = Object.values(classMap).sort((a, b) => b.students - a.students);
+  1324→
+  1325→    // ===== Recent transactions =====
+  1326→    const recentPaidInvoices = invoices
+  1327→      .filter(i => i.status === 'Paid')
+  1328→      .slice(0, 8)
+  1329→      .map(i => ({
+  1330→        id: i.id, type: 'Fee Payment', date: i.paidDate || i.createdAt,
+  1331→        party: i.studentName || 'Student', amount: Number(i.paidAmount) || 0,
+  1332→        method: i.paymentMethod || 'Cash', status: 'Paid',
+  1333→      }));
+  1334→    const recentSalaries = salaries
+  1335→      .slice(0, 8)
+  1336→      .map(s => ({
+  1337→        id: s.id, type: 'Salary Payout', date: s.paidDate || s.createdAt,
+  1338→        party: s.teacherName || 'Teacher', amount: Number(s.amount) || 0,
+  1339→        method: s.paymentMethod || 'Bank Transfer', status: s.status || 'Paid',
+  1340→      }));
+  1341→    const recentTransactions = [...recentPaidInvoices, ...recentSalaries]
+  1342→      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  1343→      .slice(0, 10);
+  1344→
+  1345→    // ===== Per-student fee summary =====
+  1346→    const studentFeeSummary = students.map(s => {
+  1347→      const sInv = invoices.filter(i => i.studentId === s.id);
+  1348→      const paid = sInv.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (Number(i.paidAmount) || 0), 0);
+  1349→      const pending = sInv.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  1350→      return {
+  1351→        id: s.id, name: s.name, class: s.class || '—', section: s.section || 'A', rollNo: s.rollNo || '—',
+  1352→        status: s.blocked === 1 ? 'Blocked' : (s.status || 'Active'),
+  1353→        invoices: sInv.length, paid, pending, total: paid + pending,
+  1354→      };
+  1355→    }).sort((a, b) => b.pending - a.pending);
+  1356→
+  1357→    // ===== Per-teacher salary summary =====
+  1358→    const teacherSalarySummary = teachers.map(t => {
+  1359→      const ss = salaryStruct.find(s => s.teacherId === t.id);
+  1360→      const monthlySalary = ss ? Number(ss.monthlySalary) || 0 : 0;
+  1361→      const tPayments = salaries.filter(p => p.teacherId === t.id);
+  1362→      const totalPaid = tPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  1363→      const lastPayment = tPayments[0];
+  1364→      return {
+  1365→        id: t.id, name: t.name, email: t.email || '—',
+  1366→        status: t.blocked === 1 ? 'Blocked' : (t.status || 'Active'),
+  1367→        monthlySalary, totalPaid, lastPaidDate: lastPayment?.paidDate || null, paymentsCount: tPayments.length,
+  1368→      };
+  1369→    }).sort((a, b) => b.monthlySalary - a.monthlySalary);
+  1370→
+  1371→    res.json({
+  1372→      kpi: {
+  1373→        students: students.length,
+  1374→        teachers: teachers.length,
+  1375→        totalRevenue,
+  1376→        pendingFees,
+  1377→        totalSalaryPaid,
+  1378→        monthlySalaryExpense,
+  1379→        netBalance,
+  1380→        attendanceRate,
+  1381→        totalInvoices: invoices.length,
+  1382→        paidInvoices: invoices.filter(i => i.status === 'Paid').length,
+  1383→        unpaidInvoices: invoices.filter(i => i.status !== 'Paid').length,
+  1384→      },
+  1385→      monthlyRevenue: months,
+  1386→      feeStatus,
+  1387→      classPerformance,
+  1388→      recentTransactions,
+  1389→      studentFeeSummary,
+  1390→      teacherSalarySummary,
+  1391→    });
+  1392→  } catch (e) {
+  1393→    console.error('Branch finance error:', e);
+  1394→    res.status(500).json({ error: 'Failed to load branch finance: ' + e.message });
+  1395→  }
+  1396→});
+  1397→
+  1398→// ===================== PLATFORM FINANCE (Super Admin) =====================
+  1399→// Platform-wide finance across all institutes for the Super Admin dashboard.
+  1400→app.get('/api/platform/finance', requireAuth, requireRole('super-admin'), async (req, res) => {
+  1401→  try {
+  1402→    // 1. Manual revenue entries entered by Super Admin (per institute)
+  1403→    const revR = await db.execute({ sql: "SELECT * FROM manual_revenue WHERE enteredByRole = ? ORDER BY year DESC, createdAt DESC", args: ['super-admin'] });
+  1404→    const revenueEntries = revR.rows;
+  1405→
+  1406→    // 2. All salary payments
+  1407→    const salR = await db.execute({ sql: 'SELECT id, teacherId, teacherName, branchId, instituteId, month, year, amount, status, paidDate, paymentMethod, createdAt FROM salary_payments ORDER BY createdAt DESC LIMIT 500' });
+  1408→    const salaries = salR.rows;
+  1409→
+  1410→    // 3. All institutes
+  1411→    const instR = await db.execute({ sql: 'SELECT id, name, city, adminName, adminEmail, branches, students, staff, revenue, status, blocked FROM institutes ORDER BY createdAt DESC' });
+  1412→    const institutes = instR.rows;
+  1413→
+  1414→    // 4. All branches
+  1415→    const brR = await db.execute({ sql: 'SELECT id, instituteId, name, city, manager, students, teachers, status, blocked FROM branches' });
+  1416→    const branches = brR.rows;
+  1417→
+  1418→    // 5. Count all users by role
+  1419→    const stuR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role = ?', args: ['student'] });
+  1420→    const tchR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM users WHERE role = ?', args: ['teacher'] });
+  1421→    const totalStudents = stuR.rows[0].count;
+  1422→    const totalTeachers = tchR.rows[0].count;
+  1423→
+  1424→    // ===== KPIs (from manual revenue) =====
+  1425→    const totalRevenue = revenueEntries.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1426→    const totalSalaryPaid = salaries.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  1427→    const netBalance = totalRevenue - totalSalaryPaid;
+  1428→
+  1429→    // ===== Monthly revenue (last 12 months) — from manual revenue entries =====
+  1430→    const now = new Date();
+  1431→    const months = [];
+  1432→    for (let i = 11; i >= 0; i--) {
+  1433→      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  1434→      const monthName = d.toLocaleString('en-US', { month: 'short' });
+  1435→      const year = d.getFullYear();
+  1436→      const monthFull = d.toLocaleString('en-US', { month: 'long' });
+  1437→      const monthRev = revenueEntries.filter(r => r.year === year && r.month === monthFull);
+  1438→      const revenue = monthRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1439→      const monthSal = salaries.filter(sal => sal.year === year && sal.month === monthFull);
+  1440→      const salary = monthSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+  1441→      months.push({ month: monthName, year, revenue, salary, net: revenue - salary });
+  1442→    }
+  1443→
+  1444→    // ===== Yearly revenue (last 5 years) =====
+  1445→    const currentYear = now.getFullYear();
+  1446→    const years = [];
+  1447→    for (let y = currentYear - 4; y <= currentYear; y++) {
+  1448→      const yearRev = revenueEntries.filter(r => r.year === y);
+  1449→      const revenue = yearRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1450→      const yearSal = salaries.filter(sal => sal.year === y);
+  1451→      const salary = yearSal.reduce((s, sal) => s + (Number(sal.amount) || 0), 0);
+  1452→      years.push({ year: y, revenue, salary, net: revenue - salary });
+  1453→    }
+  1454→
+  1455→    // ===== Institute performance — from manual revenue per institute =====
+  1456→    const institutePerformance = institutes.map(inst => {
+  1457→      const instRev = revenueEntries.filter(r => r.sourceId === inst.id);
+  1458→      const instSal = salaries.filter(s => s.instituteId === inst.id);
+  1459→      const instBranches = branches.filter(b => b.instituteId === inst.id);
+  1460→      const instRevenue = instRev.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  1461→      const instSalPaid = instSal.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  1462→      return {
+  1463→        id: inst.id,
+  1464→        name: inst.name,
+  1465→        city: inst.city || '',
+  1466→        admin: inst.adminName || inst.adminEmail || '—',
+  1467→        branches: instBranches.length,
+  1468→        students: inst.students || 0,
+  1469→        staff: inst.staff || 0,
+  1470→        revenue: instRevenue,
+  1471→        pendingFees: 0,
+  1472→        salaryPaid: instSalPaid,
+  1473→        net: instRevenue - instSalPaid,
+  1474→        status: inst.blocked === 1 ? 'Blocked' : (inst.status || 'Active'),
+  1475→      };
+  1476→    }).sort((a, b) => b.revenue - a.revenue);
+  1477→
+  1478→    // ===== Recent transactions — from manual revenue entries =====
+  1479→    const recentTransactions = revenueEntries
+  1480→      .slice(0, 15)
+  1481→      .map(r => ({
+  1482→        id: r.id,
+  1483→        type: 'Revenue Entry',
+  1484→        date: r.createdAt,
+  1485→        party: r.sourceName,
+  1486→        instituteId: r.sourceId,
+  1487→        branchId: null,
+  1488→        amount: Number(r.amount) || 0,
+  1489→        method: r.month + ' ' + r.year,
+  1490→        status: 'Received',
+  1491→      }));
+  1492→
+  1493→    res.json({
+  1494→      kpi: {
+  1495→        institutes: institutes.length,
+  1496→        activeInstitutes: institutes.filter(i => i.blocked !== 1).length,
+  1497→        branches: branches.length,
+  1498→        students: totalStudents,
+  1499→        teachers: totalTeachers,
+  1500→        totalRevenue,
+  1501→        pendingFees: 0,
+  1502→        totalSalaryPaid,
+  1503→        netBalance,
+  1504→        totalInvoices: revenueEntries.length,
+  1505→        paidInvoices: revenueEntries.length,
+  1506→        unpaidInvoices: 0,
+  1507→        revenueEntries: revenueEntries.length,
+  1508→      },
+  1509→      monthlyRevenue: months,
+  1510→      yearlyRevenue: years,
+  1511→      institutePerformance,
+  1512→      recentTransactions,
+  1513→      revenueEntries,
+  1514→    });
+  1515→  } catch (e) {
+  1516→    console.error('Platform finance error:', e);
+  1517→    res.status(500).json({ error: 'Failed to load platform finance: ' + e.message });
+  1518→  }
+  1519→});
+  1520→
+  1521→// ===================== TEACHER SALARIES =====================
+  1522→// Set / update a teacher's monthly salary
+  1523→app.post('/api/salaries', requireAuth, requireRole('institute-admin', 'branch-manager'), async (req, res) => {
+  1524→  const { teacherId, monthlySalary, effectiveFrom } = req.body || {};
+  1525→  if (!teacherId || monthlySalary === undefined) return res.status(400).json({ error: 'teacherId and monthlySalary required' });
+  1526→  // Look up the teacher
+  1527→  const tchR = await db.execute({ sql: 'SELECT id, instituteId, branchId FROM users WHERE id = ? AND role = ?', args: [teacherId, 'teacher'] });
+  1528→  if (tchR.rows.length === 0) return res.status(404).json({ error: 'Teacher not found' });
+  1529→  const t = tchR.rows[0];
+  1530→  // Authorization: institute admin can only set salaries for teachers in their institute; branch manager only for their branch
+  1531→  if (req.user.role === 'institute-admin' && t.instituteId !== req.user.instituteId) {
+  1532→    return res.status(403).json({ error: 'Not authorized to set salary for this teacher' });
+  1533→  }
+  1534→  if (req.user.role === 'branch-manager' && t.branchId !== req.user.branchId) {
+  1535→    return res.status(403).json({ error: 'Not authorized to set salary for this teacher' });
+  1536→  }
+  1537→  // Upsert: if a salary record exists, update it; otherwise insert
+  1538→  const existing = await db.execute({ sql: 'SELECT id FROM teacher_salaries WHERE teacherId = ?', args: [teacherId] });
+  1539→  const effDate = effectiveFrom || new Date().toISOString().slice(0, 10);
+  1540→  if (existing.rows.length > 0) {
+  1541→    await db.execute({ sql: 'UPDATE teacher_salaries SET monthlySalary = ?, effectiveFrom = ? WHERE id = ?', args: [Number(monthlySalary), effDate, existing.rows[0].id] });
+  1542→    res.json({ success: true, updated: true });
+  1543→  } else {
+  1544→    const id = nextId('TS');
+  1545→    await db.execute({
+  1546→      sql: 'INSERT INTO teacher_salaries (id, teacherId, instituteId, branchId, monthlySalary, effectiveFrom) VALUES (?, ?, ?, ?, ?, ?)',
+  1547→      args: [id, teacherId, t.instituteId, t.branchId, Number(monthlySalary), effDate],
+  1548→    });
+  1549→    res.status(201).json({ success: true, id });
+  1550→  }
+  1551→});
+  1552→
+  1553→// Record a salary payment (pay a teacher for a month)
+  1554→app.post('/api/salaries/pay', requireAuth, requireRole('institute-admin', 'branch-manager'), async (req, res) => {
+  1555→  const { teacherId, month, year, amount, paymentMethod, notes } = req.body || {};
+  1556→  if (!teacherId || !month || !year || amount === undefined) return res.status(400).json({ error: 'teacherId, month, year and amount required' });
+  1557→  const tchR = await db.execute({ sql: 'SELECT id, name, instituteId, branchId FROM users WHERE id = ? AND role = ?', args: [teacherId, 'teacher'] });
+  1558→  if (tchR.rows.length === 0) return res.status(404).json({ error: 'Teacher not found' });
+  1559→  const t = tchR.rows[0];
+  1560→  if (req.user.role === 'institute-admin' && t.instituteId !== req.user.instituteId) {
+  1561→    return res.status(403).json({ error: 'Not authorized to pay this teacher' });
+  1562→  }
+  1563→  if (req.user.role === 'branch-manager' && t.branchId !== req.user.branchId) {
+  1564→    return res.status(403).json({ error: 'Not authorized to pay this teacher' });
+  1565→  }
+  1566→  const id = nextId('SAL');
+  1567→  const paidDate = new Date().toISOString().slice(0, 10);
+  1568→  await db.execute({
+  1569→    sql: `INSERT INTO salary_payments (id, teacherId, teacherName, instituteId, branchId, month, year, amount, status, paidDate, paymentMethod, notes)
+  1570→          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  1571→    args: [id, teacherId, t.name, t.instituteId, t.branchId, month, year, Number(amount), 'Paid', paidDate, paymentMethod || 'Bank Transfer', notes || ''],
+  1572→  });
+  1573→  res.status(201).json({ success: true, id, paidDate });
+  1574→});
+  1575→
+  1576→// List salary payments (filterable by instituteId / branchId / teacherId)
+  1577→app.get('/api/salaries', requireAuth, async (req, res) => {
+  1578→  const { instituteId, branchId, teacherId } = req.query;
+  1579→  let sql = 'SELECT * FROM salary_payments WHERE 1=1';
+  1580→  const args = [];
+  1581→  if (teacherId) { sql += ' AND teacherId = ?'; args.push(teacherId); }
+  1582→  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  1583→  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  1584→  sql += ' ORDER BY createdAt DESC LIMIT 200';
+  1585→  const r = await db.execute({ sql, args });
+  1586→  res.json(r.rows);
+  1587→});
+  1588→
+  1589→// ===================== ATTENDANCE =====================
+  1590→app.post('/api/attendance', requireAuth, requireRole('teacher'), async (req, res) => {
+  1591→  const { classId, date, records } = req.body || {};
+  1592→  if (!date || !records || !Array.isArray(records)) return res.status(400).json({ error: 'date and records array are required' });
+  1593→  const id = nextId('ATT');
+  1594→  await db.execute({
+  1595→    sql: 'INSERT INTO attendance (id, branchId, classId, date, teacherId, records) VALUES (?, ?, ?, ?, ?, ?)',
+  1596→    args: [id, req.user.branchId, classId || null, date, req.user.id, JSON.stringify(records)],
+  1597→  });
+  1598→  res.status(201).json({ id, success: true });
+  1599→});
+  1600→
+  1601→app.get('/api/attendance', requireAuth, async (req, res) => {
+  1602→  const { classId, studentId } = req.query;
+  1603→  let sql = 'SELECT * FROM attendance WHERE 1=1';
+  1604→  let args = [];
+  1605→  if (classId) { sql += ' AND classId = ?'; args.push(classId); }
+  1606→  sql += ' ORDER BY date DESC LIMIT 50';
+  1607→  const r = await db.execute({ sql, args });
+  1608→  let entries = [];
+  1609→  for (const rec of r.rows) {
+  1610→    const records = JSON.parse(rec.records);
+  1611→    if (studentId) {
+  1612→      const entry = records.find(e => e.studentId === studentId);
+  1613→      if (entry) entries.push({ id: rec.id, date: rec.date, status: entry.status });
+  1614→    } else {
+  1615→      entries.push({ ...rec, records });
+  1616→    }
+  1617→  }
+  1618→  if (studentId) {
+  1619→    res.json({ entries, total: entries.length, present: entries.filter(e=>e.status==='Present').length, absent: entries.filter(e=>e.status==='Absent').length, late: entries.filter(e=>e.status==='Late').length });
+  1620→  } else {
+  1621→    res.json(entries);
+  1622→  }
+  1623→});
+  1624→
+  1625→// ===================== RESULTS =====================
+  1626→app.post('/api/results', requireAuth, requireRole('teacher'), async (req, res) => {
+  1627→  const { exam, courseId, totalMarks, date, records, classId } = req.body || {};
+  1628→  if (!exam || !records) return res.status(400).json({ error: 'exam and records required' });
+  1629→  const id = nextId('RES');
+  1630→  await db.execute({
+  1631→    sql: 'INSERT INTO results (id, branchId, exam, courseId, teacherId, totalMarks, date, records) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  1632→    args: [id, req.user.branchId, exam, courseId || null, req.user.id, totalMarks || 100, date || new Date().toISOString().slice(0,10), JSON.stringify(records)],
+  1633→  });
+  1634→  res.status(201).json({ id, success: true });
+  1635→});
+  1636→
+  1637→app.get('/api/results', requireAuth, async (req, res) => {
+  1638→  const { courseId, studentId } = req.query;
+  1639→  let sql = 'SELECT * FROM results WHERE 1=1';
+  1640→  let args = [];
+  1641→  if (courseId) { sql += ' AND courseId = ?'; args.push(courseId); }
+  1642→  sql += ' ORDER BY date DESC LIMIT 50';
+  1643→  const r = await db.execute({ sql, args });
+  1644→  let entries = [];
+  1645→  for (const rec of r.rows) {
+  1646→    const records = JSON.parse(rec.records);
+  1647→    if (studentId) {
+  1648→      const entry = records.find(e => e.studentId === studentId);
+  1649→      if (entry) entries.push({ id: rec.id, exam: rec.exam, courseId: rec.courseId, totalMarks: rec.totalMarks, marks: entry.marks, grade: entry.grade, date: rec.date });
+  1650→    } else {
+  1651→      entries.push({ ...rec, records });
+  1652→    }
+  1653→  }
+  1654→  res.json(entries);
+  1655→});
+  1656→
+  1657→// ===================== FEE STRUCTURE (Branch Manager) =====================
+  1658→// Get fee structure for a branch (or specific class)
+  1659→app.get('/api/fee-structure', requireAuth, async (req, res) => {
+  1660→  const { branchId, classId } = req.query;
+  1661→  const brId = branchId || req.user.branchId;
+  1662→  if (!brId) return res.json([]);
+  1663→  let sql = 'SELECT fs.*, c.name as className FROM fee_structure fs LEFT JOIN classes c ON fs.classId = c.id WHERE fs.branchId = ?';
+  1664→  let args = [brId];
+  1665→  if (classId) { sql += ' AND fs.classId = ?'; args.push(classId); }
+  1666→  const r = await db.execute({ sql, args });
+  1667→  res.json(r.rows);
+  1668→});
+  1669→
+  1670→// Set/update fee structure for a class
+  1671→app.post('/api/fee-structure', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1672→  const { classId, monthlyFee, admissionFee } = req.body || {};
+  1673→  const brId = req.user.branchId;
+  1674→  if (!classId || monthlyFee === undefined) return res.status(400).json({ error: 'classId and monthlyFee required' });
+  1675→  // Check if structure already exists for this class
+  1676→  const existing = await db.execute({ sql: 'SELECT id FROM fee_structure WHERE branchId = ? AND classId = ?', args: [brId, classId] });
+  1677→  if (existing.rows.length > 0) {
+  1678→    await db.execute({ sql: 'UPDATE fee_structure SET monthlyFee = ?, admissionFee = ? WHERE id = ?', args: [monthlyFee, admissionFee || 0, existing.rows[0].id] });
+  1679→    res.json({ success: true, updated: true });
+  1680→  } else {
+  1681→    const id = nextId('FS');
+  1682→    await db.execute({ sql: 'INSERT INTO fee_structure (id, branchId, classId, monthlyFee, admissionFee) VALUES (?, ?, ?, ?, ?)', args: [id, brId, classId, monthlyFee, admissionFee || 0] });
+  1683→    res.status(201).json({ success: true, id });
+  1684→  }
+  1685→});
+  1686→
+  1687→// ===================== FEE INVOICES =====================
+  1688→// Get invoices for a student (student portal)
+  1689→app.get('/api/fee-invoices', requireAuth, async (req, res) => {
+  1690→  const { studentId } = req.query;
+  1691→  const sid = studentId || req.user.id;
+  1692→  let sql = 'SELECT * FROM fee_invoices WHERE studentId = ? ORDER BY year DESC, createdAt DESC';
+  1693→  const r = await db.execute({ sql, args: [sid] });
+  1694→  res.json(r.rows);
+  1695→});
+  1696→
+  1697→// Get all invoices for a branch (branch manager view)
+  1698→app.get('/api/fee-invoices/branch', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1699→  const brId = req.user.branchId;
+  1700→  const r = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  1701→  res.json(r.rows);
+  1702→});
+  1703→
+  1704→// Generate monthly invoices for all students in a branch (Branch Manager clicks "Generate Invoices")
+  1705→app.post('/api/fee-invoices/generate', requireAuth, requireRole('branch-manager'), async (req, res) => {
+  1706→  const { month, year } = req.body || {};
+  1707→  const brId = req.user.branchId;
+  1708→  if (!month || !year) return res.status(400).json({ error: 'month and year required' });
+  1709→  // Get all students in this branch
+  1710→  const students = await db.execute({ sql: 'SELECT id, name, class, branchId, instituteId FROM users WHERE branchId = ? AND role = ?', args: [brId, 'student'] });
+  1711→  if (students.rows.length === 0) return res.json({ success: true, generated: 0, message: 'No students found' });
+  1712→  let generated = 0;
+  1713→  for (const student of students.rows) {
+  1714→    // Check if invoice already exists for this student/month/year
+  1715→    const existing = await db.execute({ sql: 'SELECT id FROM fee_invoices WHERE studentId = ? AND month = ? AND year = ?', args: [student.id, month, year] });
+  1716→    if (existing.rows.length > 0) continue; // Skip if already generated
+  1717→    // Get fee structure for the student's class
+  1718→    const classR = await db.execute({ sql: 'SELECT id FROM classes WHERE branchId = ? AND name = ?', args: [brId, student.class] });
+  1719→    let amount = 0;
+  1720→    if (classR.rows.length > 0) {
+  1721→      const feeR = await db.execute({ sql: 'SELECT monthlyFee FROM fee_structure WHERE branchId = ? AND classId = ?', args: [brId, classR.rows[0].id] });
+  1722→      if (feeR.rows.length > 0) amount = feeR.rows[0].monthlyFee;
+  1723→    }
+  1724→    if (amount === 0) amount = 5000; // Default fee in PKR
+  1725→    const id = nextId('INV');
+  1726→    const challanNo = 'CH-' + year + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(generated + 1).padStart(4, '0');
+  1727→    await db.execute({
+  1728→      sql: `INSERT INTO fee_invoices (id, studentId, studentName, className, branchId, instituteId, month, year, amount, type, status, challanNo)
+  1729→            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  1730→      args: [id, student.id, student.name, student.class || '', brId, student.instituteId, month, year, amount, 'Tuition', 'Unpaid', challanNo],
+  1731→    });
+  1732→    generated++;
+  1733→  }
+  1734→  res.json({ success: true, generated, message: `${generated} invoices generated for ${month} ${year}` });
+  1735→});
+  1736→
+  1737→// Mark invoice as paid (Branch Manager)
+  1738→app.patch('/api/fee-invoices/:id/pay', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1739→  const { paidAmount, paymentMethod } = req.body || {};
+  1740→  const inv = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE id = ?', args: [req.params.id] });
+  1741→  if (inv.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+  1742→  const amount = paidAmount || inv.rows[0].amount;
+  1743→  await db.execute({
+  1744→    sql: 'UPDATE fee_invoices SET status = ?, paidDate = ?, paidAmount = ?, paymentMethod = ? WHERE id = ?',
+  1745→    args: ['Paid', new Date().toISOString().slice(0, 10), amount, paymentMethod || 'Cash', req.params.id],
+  1746→  });
+  1747→  res.json({ success: true, status: 'Paid' });
+  1748→});
+  1749→
+  1750→// Get challan data for PDF
+  1751→app.get('/api/fee-invoices/:id/challan', requireAuth, async (req, res) => {
+  1752→  const inv = await db.execute({ sql: 'SELECT * FROM fee_invoices WHERE id = ?', args: [req.params.id] });
+  1753→  if (inv.rows.length === 0) return res.status(404).json({ error: 'Invoice not found' });
+  1754→  const invoice = inv.rows[0];
+  1755→  // Get student details + institute name
+  1756→  const stu = await db.execute({
+  1757→    sql: `SELECT u.*, i.name as instituteName, b.name as branchName
+  1758→          FROM users u
+  1759→          LEFT JOIN institutes i ON u.instituteId = i.id
+  1760→          LEFT JOIN branches b ON u.branchId = b.id
+  1761→          WHERE u.id = ?`,
+  1762→    args: [invoice.studentId],
+  1763→  });
+  1764→  const student = stu.rows[0] || {};
+  1765→  res.json({
+  1766→    challanNo: invoice.challanNo,
+  1767→    studentName: invoice.studentName || student.name,
+  1768→    studentId: invoice.studentId,
+  1769→    rollNo: student.rollNo,
+  1770→    className: invoice.className || student.class,
+  1771→    branch: student.branchId,
+  1772→    branchName: student.branchName,
+  1773→    instituteId: student.instituteId,
+  1774→    instituteName: student.instituteName,
+  1775→    month: invoice.month,
+  1776→    year: invoice.year,
+  1777→    amount: invoice.amount,
+  1778→    status: invoice.status,
+  1779→    type: invoice.type,
+  1780→    paidDate: invoice.paidDate,
+  1781→    paidAmount: invoice.paidAmount,
+  1782→    paymentMethod: invoice.paymentMethod,
+  1783→    generatedAt: invoice.createdAt,
+  1784→  });
+  1785→});
+  1786→
+  1787→// ===================== DIARY (Teacher homework + notes) =====================
+  1788→app.get('/api/diary', requireAuth, async (req, res) => {
+  1789→  const { teacherId, branchId, classId, class: className } = req.query;
+  1790→  let sql = 'SELECT d.*, c.name as className, co.name as courseName FROM diary d LEFT JOIN classes c ON d.classId = c.id LEFT JOIN courses co ON d.courseId = co.id WHERE 1=1';
+  1791→  const args = [];
+  1792→  if (teacherId) { sql += ' AND d.teacherId = ?'; args.push(teacherId); }
+  1793→  else if (branchId) { sql += ' AND d.branchId = ?'; args.push(branchId); }
+  1794→  if (classId) { sql += ' AND d.classId = ?'; args.push(classId); }
+  1795→  sql += ' ORDER BY d.createdAt DESC LIMIT 100';
+  1796→  const r = await db.execute({ sql, args });
+  1797→  res.json(r.rows);
+  1798→});
+  1799→
+  1800→app.post('/api/diary', requireAuth, requireRole('teacher', 'branch-manager'), async (req, res) => {
+  1801→  const { teacherId, branchId, classId, courseId, subject, title, description, due } = req.body || {};
+  1802→  if (!title) return res.status(400).json({ error: 'title required' });
+  1803→  const id = nextId('DR');
+  1804→  const tId = teacherId || req.user.id;
+  1805→  const brId = branchId || req.user.branchId;
+  1806→  await db.execute({
+  1807→    sql: 'INSERT INTO diary (id, teacherId, branchId, classId, courseId, subject, title, description, due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  1808→    args: [id, tId, brId, classId || null, courseId || null, subject || '', title, description || '', due || null],
+  1809→  });
+  1810→  res.status(201).json({ id, success: true });
+  1811→});
+  1812→
+  1813→// ===================== SMS LOG =====================
+  1814→app.get('/api/sms', requireAuth, async (req, res) => {
+  1815→  const { senderId, instituteId, branchId } = req.query;
+  1816→  let sql = 'SELECT * FROM sms_log WHERE 1=1';
+  1817→  const args = [];
+  1818→  if (senderId) { sql += ' AND senderId = ?'; args.push(senderId); }
+  1819→  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  1820→  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  1821→  sql += ' ORDER BY createdAt DESC LIMIT 100';
+  1822→  const r = await db.execute({ sql, args });
+  1823→  res.json(r.rows);
+  1824→});
+  1825→
+  1826→app.post('/api/sms/send', requireAuth, requireRole('teacher', 'branch-manager', 'institute-admin'), async (req, res) => {
+  1827→  const { text, recipients, type, classId } = req.body || {};
+  1828→  if (!text) return res.status(400).json({ error: 'text required' });
+  1829→  const id = nextId('SMS');
+  1830→  await db.execute({
+  1831→    sql: 'INSERT INTO sms_log (id, senderId, senderRole, text, recipients, type, instituteId, branchId, classId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  1832→    args: [id, req.user.id, req.user.role, text, recipients || 0, type || 'Notice', req.user.instituteId, req.user.branchId, classId || null],
+  1833→  });
+  1834→  res.status(201).json({ id, success: true });
+  1835→});
+  1836→
+  1837→// ===================== COMPLAINTS =====================
+  1838→app.get('/api/complaints', requireAuth, async (req, res) => {
+  1839→  const { parentId, instituteId, branchId } = req.query;
+  1840→  let sql = 'SELECT * FROM complaints WHERE 1=1';
+  1841→  const args = [];
+  1842→  if (parentId) { sql += ' AND parentId = ?'; args.push(parentId); }
+  1843→  else if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  1844→  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  1845→  sql += ' ORDER BY createdAt DESC LIMIT 100';
+  1846→  const r = await db.execute({ sql, args });
+  1847→  res.json(r.rows);
+  1848→});
+  1849→
+  1850→app.post('/api/complaints', requireAuth, requireRole('parent', 'student'), async (req, res) => {
+  1851→  const { parentId, studentId, instituteId, branchId, subject, message } = req.body || {};
+  1852→  if (!subject || !message) return res.status(400).json({ error: 'subject and message required' });
+  1853→  const id = nextId('CMP');
+  1854→  const pId = parentId || req.user.id;
+  1855→  const iId = instituteId || req.user.instituteId;
+  1856→  const bId = branchId || req.user.branchId;
+  1857→  await db.execute({
+  1858→    sql: 'INSERT INTO complaints (id, parentId, studentId, instituteId, branchId, subject, message) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  1859→    args: [id, pId, studentId || null, iId, bId, subject, message],
+  1860→  });
+  1861→  res.status(201).json({ id, success: true });
+  1862→});
+  1863→
+  1864→app.patch('/api/complaints/:id/respond', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1865→  const { response } = req.body || {};
+  1866→  if (!response) return res.status(400).json({ error: 'response required' });
+  1867→  await db.execute({
+  1868→    sql: 'UPDATE complaints SET response = ?, respondedAt = ?, status = ? WHERE id = ?',
+  1869→    args: [response, new Date().toISOString().slice(0, 10), 'Resolved', req.params.id],
+  1870→  });
+  1871→  res.json({ success: true });
+  1872→});
+  1873→
+  1874→// ===================== EVENTS =====================
+  1875→app.get('/api/events', requireAuth, async (req, res) => {
+  1876→  const { instituteId, branchId } = req.query;
+  1877→  let sql = 'SELECT * FROM events WHERE 1=1';
+  1878→  const args = [];
+  1879→  if (branchId) { sql += ' AND branchId = ?'; args.push(branchId); }
+  1880→  else if (instituteId) { sql += ' AND instituteId = ?'; args.push(instituteId); }
+  1881→  sql += ' ORDER BY startDate DESC LIMIT 100';
+  1882→  const r = await db.execute({ sql, args });
+  1883→  res.json(r.rows);
+  1884→});
+  1885→
+  1886→app.post('/api/events', requireAuth, requireRole('branch-manager', 'institute-admin', 'super-admin'), async (req, res) => {
+  1887→  const { title, description, startDate, endDate, location, type, instituteId, branchId } = req.body || {};
+  1888→  if (!title) return res.status(400).json({ error: 'title required' });
+  1889→  const id = nextId('EVT');
+  1890→  const iId = instituteId || req.user.instituteId;
+  1891→  const bId = branchId || req.user.branchId;
+  1892→  await db.execute({
+  1893→    sql: 'INSERT INTO events (id, title, description, startDate, endDate, location, type, instituteId, branchId, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  1894→    args: [id, title, description || '', startDate || null, endDate || null, location || '', type || 'Event', iId, bId, req.user.id],
+  1895→  });
+  1896→  res.status(201).json({ id, success: true });
+  1897→});
+  1898→
+  1899→// ===================== LIBRARY =====================
+  1900→app.get('/api/library/books', requireAuth, async (req, res) => {
+  1901→  const { branchId } = req.query;
+  1902→  const brId = branchId || req.user.branchId;
+  1903→  if (!brId) return res.json([]);
+  1904→  const r = await db.execute({ sql: 'SELECT * FROM library_books WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  1905→  res.json(r.rows);
+  1906→});
+  1907→
+  1908→app.post('/api/library/books', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1909→  const { title, author, isbn, category, totalCopies, shelf } = req.body || {};
+  1910→  if (!title) return res.status(400).json({ error: 'title required' });
+  1911→  const id = nextId('BK');
+  1912→  const brId = req.user.branchId;
+  1913→  const copies = totalCopies || 1;
+  1914→  await db.execute({
+  1915→    sql: 'INSERT INTO library_books (id, branchId, title, author, isbn, category, totalCopies, availableCopies, shelf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+  1916→    args: [id, brId, title, author || '', isbn || '', category || '', copies, copies, shelf || ''],
+  1917→  });
+  1918→  res.status(201).json({ id, success: true });
+  1919→});
+  1920→
+  1921→// ===================== TRANSPORT =====================
+  1922→app.get('/api/transport/routes', requireAuth, async (req, res) => {
+  1923→  const { branchId } = req.query;
+  1924→  const brId = branchId || req.user.branchId;
+  1925→  if (!brId) return res.json([]);
+  1926→  const r = await db.execute({ sql: 'SELECT * FROM transport_routes WHERE branchId = ? ORDER BY createdAt DESC', args: [brId] });
+  1927→  res.json(r.rows);
+  1928→});
+  1929→
+  1930→app.post('/api/transport/routes', requireAuth, requireRole('branch-manager', 'institute-admin'), async (req, res) => {
+  1931→  const { routeName, driver, vehicleNo, fare, stops, capacity } = req.body || {};
+  1932→  if (!routeName) return res.status(400).json({ error: 'routeName required' });
+  1933→  const id = nextId('TR');
+  1934→  const brId = req.user.branchId;
+  1935→  await db.execute({
+  1936→    sql: 'INSERT INTO transport_routes (id, branchId, routeName, driver, vehicleNo, fare, stops, capacity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+  1937→    args: [id, brId, routeName, driver || '', vehicleNo || '', Number(fare) || 0, stops || '', Number(capacity) || 30],
+  1938→  });
+  1939→  res.status(201).json({ id, success: true });
+  1940→});
+  1941→
+  1942→// ===================== MANUAL REVENUE =====================
+  1943→// Super Admin enters revenue per institute; Institute Admin enters revenue per branch.
+  1944→// POST /api/revenue — add/update a revenue entry (upsert by sourceId + month + year)
+  1945→// GET /api/revenue — list revenue entries (filtered by role/scope)
+  1946→// DELETE /api/revenue/:id — delete a revenue entry
+  1947→
+  1948→app.post('/api/revenue', requireAuth, requireRole('super-admin', 'institute-admin'), async (req, res) => {
+  1949→  const { sourceType, sourceId, sourceName, amount, month, year, notes } = req.body || {};
+  1950→  if (!sourceType || !sourceId || !sourceName || amount === undefined || !month || !year) {
+  1951→    return res.status(400).json({ error: 'sourceType, sourceId, sourceName, amount, month, year required' });
+  1952→  }
+  1953→  // Authorization: super-admin enters revenue for institutes; institute-admin enters for branches in their institute
+  1954→  let instituteId = null;
+  1955→  if (req.user.role === 'super-admin') {
+  1956→    if (sourceType !== 'institute') return res.status(403).json({ error: 'Super Admin can only enter revenue for institutes' });
+  1957→    instituteId = sourceId;
+  1958→  } else if (req.user.role === 'institute-admin') {
+  1959→    if (sourceType !== 'branch') return res.status(403).json({ error: 'Institute Admin can only enter revenue for branches' });
+  1960→    instituteId = req.user.instituteId;
+  1961→    // Verify the branch belongs to this institute
+  1962→    const brR = await db.execute({ sql: 'SELECT id FROM branches WHERE id = ? AND instituteId = ?', args: [sourceId, instituteId] });
+  1963→    if (brR.rows.length === 0) return res.status(403).json({ error: 'Branch does not belong to your institute' });
+  1964→  }
+  1965→
+  1966→  // Upsert: if an entry exists for this source + month + year, update it; otherwise insert
+  1967→  const existing = await db.execute({
+  1968→    sql: 'SELECT id FROM manual_revenue WHERE sourceId = ? AND month = ? AND year = ? AND enteredByRole = ?',
+  1969→    args: [sourceId, month, year, req.user.role],
+  1970→  });
+  1971→  if (existing.rows.length > 0) {
+  1972→    await db.execute({
+  1973→      sql: 'UPDATE manual_revenue SET amount = ?, sourceName = ?, notes = ?, instituteId = ? WHERE id = ?',
+  1974→      args: [Number(amount), sourceName, notes || '', instituteId, existing.rows[0].id],
+  1975→    });
+  1976→    res.json({ success: true, id: existing.rows[0].id, updated: true });
+  1977→  } else {
+  1978→    const id = nextId('REV');
+  1979→    await db.execute({
+  1980→      sql: `INSERT INTO manual_revenue (id, enteredBy, enteredByRole, instituteId, sourceType, sourceId, sourceName, amount, month, year, notes)
+  1981→            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  1982→      args: [id, req.user.id, req.user.role, instituteId, sourceType, sourceId, sourceName, Number(amount), month, year, notes || ''],
+  1983→    });
+  1984→    res.status(201).json({ success: true, id });
+  1985→  }
+  1986→});
+  1987→
+  1988→app.get('/api/revenue', requireAuth, async (req, res) => {
+  1989→  const { sourceType, sourceId, instituteId, month, year } = req.query;
+  1990→  let sql = 'SELECT * FROM manual_revenue WHERE 1=1';
+  1991→  const args = [];
+  1992→  // Scope by role
+  1993→  if (req.user.role === 'super-admin') {
+  1994→    // Super Admin sees all revenue they entered (sourceType = institute)
+  1995→    sql += ' AND enteredByRole = ?';
+  1996→    args.push('super-admin');
+  1997→  } else if (req.user.role === 'institute-admin') {
+  1998→    // Institute Admin sees revenue for their institute only
+  1999→    sql += ' AND instituteId = ? AND enteredByRole = ?';
+  2000→    args.push(req.user.instituteId, 'institute-admin');
+
+[showing lines 1-2000 of 2333; use offset=2001 with limit to continue reading]

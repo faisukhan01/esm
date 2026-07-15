@@ -49,62 +49,36 @@ export function LandingPage() {
   return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} activeGroup={activeGroup} setActiveGroup={setActiveGroup} scrolled={scrolled} filteredModules={filteredModules} />;
 }
 
-// ===== Hero Slider — 3 rotating educational background images =====
-const HERO_SLIDES = [
-  { img: 'https://sfile.chatglm.cn/images-ppt/157d0a5aed9f.jpg', caption: 'Modern campuses', sub: 'Libraries built for focus' },
-  { img: 'https://sfile.chatglm.cn/images-ppt/96fea72cbfed.jpg', caption: 'Graduation day', sub: 'Celebrating every milestone' },
-  { img: '/hero-campus.jpg', caption: 'Connected classrooms', sub: 'Technology that empowers' },
-];
-
 function HeroSlider({ setView }: { setView: (v: any) => void }) {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % HERO_SLIDES.length), 6000);
-    return () => clearInterval(t);
-  }, []);
-
   return (
-    <section id="top" className="relative h-screen min-h-[600px] w-full overflow-hidden">
-      {/* Background images */}
-      {HERO_SLIDES.map((s, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 transition-opacity duration-[1500ms] ease-in-out"
-          style={{ opacity: i === idx ? 1 : 0 }}
-        >
-          <img src={s.img} alt={s.caption} className="w-full h-full object-cover" />
-        </div>
-      ))}
+    <section id="top" className="relative min-h-[640px] w-full overflow-hidden flex items-center justify-center">
+      {/* Clean navy gradient background — no images */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0f1e3a] via-[#1a365d] to-[#0f1e3a]" />
 
-      {/* Clean dark overlay — single gradient, not double */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black/90" />
+      {/* Subtle decorative grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)`,
+        backgroundSize: '60px 60px',
+      }} />
 
-      {/* Slide dots — minimal, bottom right */}
-      <div className="absolute bottom-8 right-8 z-20 flex gap-2">
-        {HERO_SLIDES.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setIdx(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-6 bg-white' : 'w-1.5 bg-white/30 hover:bg-white/60'}`}
-            aria-label={`Slide ${i + 1}`}
-          />
-        ))}
-      </div>
+      {/* Soft glow circles for depth */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#2c5282]/20 blur-[120px]" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#1a365d]/30 blur-[120px]" />
 
       {/* Clean centered content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+      <div className="relative z-10 text-center px-4 py-32">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="max-w-2xl"
+          className="max-w-2xl mx-auto"
         >
           {/* Clean badge */}
           <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 backdrop-blur-sm px-4 py-1.5 text-[11px] font-medium text-white/80 mb-8 tracking-wide uppercase">
             Electronic School Management
           </div>
 
-          {/* Clean headline — no gradient text, just white */}
+          {/* Clean headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] text-white">
             One platform for your entire institution
           </h1>
@@ -116,7 +90,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
 
           {/* Clean CTAs */}
           <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" className="bg-white text-slate-900 hover:bg-white/90 shadow-2xl font-semibold" onClick={() => setView('login')}>
+            <Button size="lg" className="bg-white text-[#1a365d] hover:bg-white/90 shadow-2xl font-semibold" onClick={() => setView('login')}>
               Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
             <button
