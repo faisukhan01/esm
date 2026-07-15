@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import {
   User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield,
-  Crown, Building2, Users, BookOpen, GraduationCap, ArrowLeft,
+  Building2, Users, BookOpen, GraduationCap, ArrowLeft,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -144,10 +144,9 @@ function CoverPanel() {
 }
 
 // ==================== Role Definitions ====================
-type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student';
+type Role = 'institute-admin' | 'branch-manager' | 'teacher' | 'student';
 
 const ROLES: { id: Role; label: string; icon: any; note: string }[] = [
-  { id: 'super-admin', label: 'Super Admin', icon: Crown, note: 'Owns the platform. Provisions institutions and manages everything.' },
   { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin. Sign in with your email and password.' },
   { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin. Sign in with your email and password.' },
   { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Sign in with your Name, Teacher ID, and Password.' },
@@ -286,7 +285,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
 function LoginForm({ setView }: { setView: (v: any) => void }) {
   const setUser = useApp(s => s.setUser);
   const setToken = useApp(s => s.setToken);
-  const [role, setRole] = useState<Role>('super-admin');
+  const [role, setRole] = useState<Role>('institute-admin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
