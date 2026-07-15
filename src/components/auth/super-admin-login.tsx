@@ -111,7 +111,7 @@ export function SuperAdminLoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Email */}
-              <div className="login-input-wrapper">
+              <div className="relative">
                 <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><User size={18} /></div>
                 <input
                   id="sa-email"
@@ -122,11 +122,10 @@ export function SuperAdminLoginPage() {
                   placeholder="Email"
                   autoComplete="username"
                 />
-                <label className="floating-label">Email</label>
               </div>
 
               {/* Password */}
-              <div className="login-input-wrapper">
+              <div className="relative">
                 <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
                 <input
                   id="sa-password"
@@ -134,11 +133,10 @@ export function SuperAdminLoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
-                  placeholder=" "
+                  placeholder="Password"
                   autoComplete="current-password"
                 />
-                <label className="floating-label">Password</label>
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>

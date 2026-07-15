@@ -52,19 +52,18 @@ function WavingPerson() {
   );
 }
 
-// ==================== Floating Input ====================
+// ==================== Input (simple placeholder, no floating label) ====================
 function FloatingInput({ id, type, placeholder, icon, value, onChange, success, togglePassword, showPassword, autoComplete }: any) {
   return (
-    <div className="login-input-wrapper">
+    <div className="relative">
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10">{icon}</div>
       <input
         id={id} type={type} value={value} onChange={onChange} autoComplete={autoComplete}
-        className={`login-input w-full h-12 pl-11 ${togglePassword ? 'pr-11' : 'pr-4'} rounded-xl text-gray-800 text-sm outline-none transition-all`}
-        placeholder=" "
+        className="login-input w-full h-12 pl-11 pr-4 rounded-xl text-gray-800 text-sm outline-none transition-all"
+        placeholder={placeholder}
       />
-      <label className="floating-label">{placeholder}</label>
       {togglePassword && (
-        <button type="button" onClick={togglePassword} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+        <button type="button" onClick={togglePassword} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
           {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       )}
@@ -220,44 +219,41 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
         </div>
 
         <div className="space-y-3">
-          <div className="login-input-wrapper">
+          <div className="relative">
             <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
             <input
               id="cp-current" type={showCurrent ? 'text' : 'password'} value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password"
               className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
-              placeholder=" "
+              placeholder="Current password"
             />
-            <label className="floating-label">Current password</label>
-            <button type="button" onClick={() => setShowCurrent(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+            <button type="button" onClick={() => setShowCurrent(s => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
               {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
-          <div className="login-input-wrapper">
+          <div className="relative">
             <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
             <input
               id="cp-new" type={showNew ? 'text' : 'password'} value={newPassword}
               onChange={e => setNewPassword(e.target.value)} autoComplete="new-password"
               className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
-              placeholder=" "
+              placeholder="New password"
             />
-            <label className="floating-label">New password</label>
-            <button type="button" onClick={() => setShowNew(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+            <button type="button" onClick={() => setShowNew(s => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
               {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
 
-          <div className="login-input-wrapper">
+          <div className="relative">
             <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10"><Lock size={18} /></div>
             <input
               id="cp-confirm" type={showConfirm ? 'text' : 'password'} value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password"
               className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
-              placeholder=" "
+              placeholder="Confirm new password"
             />
-            <label className="floating-label">Confirm new password</label>
-            <button type="button" onClick={() => setShowConfirm(s => !s)} className="eye-toggle absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+            <button type="button" onClick={() => setShowConfirm(s => !s)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400">
               {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
