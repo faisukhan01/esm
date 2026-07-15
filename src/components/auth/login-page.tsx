@@ -358,24 +358,41 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
         <p className="text-gray-400 text-xs sm:text-sm mb-4">Select your role and enter credentials</p>
       </div>
 
-      {/* Role selector grid */}
-      <div className="grid grid-cols-3 gap-2 mb-5 slide-up slide-up-delay-1">
-        {ROLES.map(r => {
-          const isActive = role === r.id;
-          return (
-            <button
-              key={r.id} type="button" onClick={() => pickRole(r.id)}
-              className={`role-pill flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
-                isActive
-                  ? 'bg-gradient-to-br from-primary to-primary/80 border-transparent shadow-md text-white'
-                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
-              }`}
-            >
-              <r.icon className="h-4 w-4" />
-              <span className="text-[10px] font-semibold">{r.label}</span>
-            </button>
-          );
-        })}
+      {/* Role selector — 3 in first row, 1 full-width in second row */}
+      <div className="mb-5 slide-up slide-up-delay-1">
+        {/* First row: 3 roles */}
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          {ROLES.slice(0, 3).map(r => {
+            const isActive = role === r.id;
+            return (
+              <button
+                key={r.id} type="button" onClick={() => pickRole(r.id)}
+                className={`role-pill flex flex-col items-center gap-1.5 py-2 px-2 rounded-xl border transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-br from-primary to-primary/80 border-transparent shadow-md text-white'
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
+                }`}
+              >
+                <r.icon className="h-4 w-4" />
+                <span className="text-[10px] font-semibold">{r.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {/* Second row: 1 role, full width */}
+        {(() => { const r4 = ROLES[3]; if (!r4) return null; const R4Icon = r4.icon; const isActive4 = role === r4.id; return (
+          <button
+            type="button" onClick={() => pickRole(r4.id)}
+            className={`role-pill w-full flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl border transition-all ${
+              isActive4
+                ? 'bg-gradient-to-br from-primary to-primary/80 border-transparent shadow-md text-white'
+                : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
+            }`}
+          >
+            <R4Icon className="h-4 w-4" />
+            <span className="text-[10px] font-semibold">{r4.label}</span>
+          </button>
+        ); })()}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">

@@ -375,7 +375,7 @@
   transform: translateY(-50%);
   font-size: 0.75rem;
   color: var(--primary);
-  background: white;
+  background: transparent;
   padding: 0 6px;
   left: 12px;
 }
