@@ -367,17 +367,21 @@
   pointer-events: none;
   color: #9ca3af;
   font-size: 0.9rem;
+  background: white;
+  padding: 0 4px;
+  z-index: 1;
 }
 
 .login-input:focus ~ .floating-label,
 .login-input:not(:placeholder-shown) ~ .floating-label {
   top: 0;
   transform: translateY(-50%);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--primary);
-  background: transparent;
+  background: white;
   padding: 0 6px;
   left: 12px;
+  z-index: 2;
 }
 
 .btn-gradient {

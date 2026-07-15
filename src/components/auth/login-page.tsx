@@ -285,7 +285,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
 function LoginForm({ setView }: { setView: (v: any) => void }) {
   const setUser = useApp(s => s.setUser);
   const setToken = useApp(s => s.setToken);
-  const [role, setRole] = useState<Role>('institute-admin');
+  const [role, setRole] = useState<Role | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -293,9 +293,10 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const activeRole = ROLES.find(r => r.id === role)!;
+  const activeRole = role ? ROLES.find(r => r.id === role) : null;
   const needsName = role === 'teacher' || role === 'student';
   const idLabel = role === 'teacher' ? 'Teacher ID' : role === 'student' ? 'Roll Number' : 'Email or ID';
+  const noRoleSelected = !role;
 
   const pickRole = (r: Role) => {
     setRole(r);
@@ -434,11 +435,11 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
 
         <div className="slide-up slide-up-delay-4">
           <motion.button
-            ref={buttonRef} type="submit" disabled={isLoading}
+            ref={buttonRef} type="submit" disabled={isLoading || noRoleSelected}
             whileTap={{ scale: 0.98 }}
-            className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-70"
+            className="btn-gradient w-full h-12 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {isLoading ? <div className="spinner" /> : <>Sign in as {activeRole.label} <ArrowRight size={18} /></>}
+            {isLoading ? <div className="spinner" /> : <>{noRoleSelected ? 'Select a role to continue' : <>Sign in as {activeRole?.label} <ArrowRight size={18} /></>}</>}
           </motion.button>
         </div>
       </form>
@@ -446,7 +447,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
       {/* Role-specific info (no demo credentials shown) */}
       <div className="slide-up slide-up-delay-5 mt-4">
         <div className="rounded-xl bg-accent border border-accent p-3 text-center">
-          <p className="text-primary text-[11px]">{activeRole.note}</p>
+          <p className="text-primary text-[11px]">{noRoleSelected ? 'Please select your role above to sign in.' : activeRole?.note}</p>
         </div>
       </div>
     </div>
