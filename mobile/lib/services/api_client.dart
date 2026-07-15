@@ -4,9 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  static const String baseUrl = kIsWeb
-      ? ''
-      : 'https://esm-client.vercel.app';
+  static const String baseUrl = '';
 
   static String? _token;
 
