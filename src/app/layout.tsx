@@ -13,10 +13,6 @@ export const metadata: Metadata = {
   description: "Electronic School Management — a modern, multi-tenant school management platform with 22 integrated modules: admissions, attendance, fees, academics, HR, library, transport, finance & more.",
   keywords: ["school management system", "ESM", "education software", "student information system", "school ERP", "admissions", "attendance", "fee management"],
   authors: [{ name: "Cyber Advance Solutions" }],
-  icons: {
-    icon: '/esm-logo.png',
-    apple: '/esm-logo.png',
-  },
   openGraph: {
     title: "ESM — Electronic School Management System",
     description: "The complete school management platform with 22 integrated modules.",

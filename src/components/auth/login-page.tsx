@@ -6,14 +6,14 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import {
   User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield,
-  Crown, Building2, Users, BookOpen, Sparkles, GraduationCap, ArrowLeft,
+  Crown, Building2, Users, BookOpen, GraduationCap, ArrowLeft,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // ==================== Waving Person Illustration (from uploaded design) ====================
 function WavingPerson() {
   return (
-    <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full max-w-[280px] mx-auto">
+    <svg viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full max-w-[360px] mx-auto">
       {/* Legs */}
       <rect x="175" y="210" width="14" height="70" rx="6" fill="#1a2744" />
       <rect x="210" y="210" width="14" height="70" rx="6" fill="#1a2744" />
@@ -110,23 +110,12 @@ function CoverPanel() {
       <div className="glow-circle absolute w-36 h-36 rounded-full bg-white/10 -bottom-8 -right-8" style={{ animationDelay: '2s' }} />
 
       <div className="relative z-10 text-center">
-        {/* ESM Logo */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 150, damping: 12 }}
-          className="mb-2 fade-in-slide flex justify-center"
-          style={{ '--delay': '0.1s' } as React.CSSProperties}
-        >
-          <img src="/esm-logo.png" alt="ESM Logo" className="h-14 w-14 object-contain" />
-        </motion.div>
-
-        {/* Waving cartoon illustration */}
+        {/* Waving cartoon illustration — larger */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 150, damping: 12 }}
-          className="mb-2 fade-in-slide"
+          className="mb-4 fade-in-slide"
           style={{ '--delay': '0.2s' } as React.CSSProperties}
         >
           <WavingPerson />
@@ -149,26 +138,6 @@ function CoverPanel() {
           Electronic School Management — one platform for your entire institution.
         </motion.p>
 
-        {/* Feature bullets */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.9, duration: 0.6 }}
-          className="mt-6 space-y-2.5 text-left max-w-[220px] mx-auto"
-        >
-          {[
-            { icon: Shield, text: 'Role-based secure access' },
-            { icon: Building2, text: 'Multi-tenant by design' },
-            { icon: Sparkles, text: '22 integrated modules' },
-          ].map(f => (
-            <div key={f.text} className="flex items-center gap-2.5 text-white/80 text-sm">
-              <div className="h-7 w-7 rounded-lg bg-white/10 grid place-items-center shrink-0">
-                <f.icon className="h-3.5 w-3.5 text-primary/70" />
-              </div>
-              {f.text}
-            </div>
-          ))}
-        </motion.div>
       </div>
     </div>
   );
