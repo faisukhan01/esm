@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   static const String baseUrl = kIsWeb
-      ? 'http://localhost:81'
+      ? ''
       : 'https://esm-client.vercel.app';
 
   static String? _token;
@@ -49,9 +49,7 @@ class ApiClient {
   }
 
   static String _buildUrl(String path, [Map<String, dynamic>? query]) {
-    String url = kIsWeb 
-        ? '$baseUrl/api/$path?XTransformPort=3000'
-        : '$baseUrl/api/$path';
+    String url = '$baseUrl/api/$path';
     if (query != null && query.isNotEmpty) {
       final params = query.entries
           .where((e) => e.value != null && e.value.toString().isNotEmpty)
