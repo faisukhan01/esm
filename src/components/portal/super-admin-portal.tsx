@@ -213,8 +213,8 @@ function PlatformOverview({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {overviewLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="p-4">
-              <div className="h-9 w-9 rounded-lg bg-muted/60 animate-pulse" />
+            <Card key={i} className="p-5">
+              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
               <div className="mt-4 h-7 w-16 rounded bg-muted/60 animate-pulse" />
               <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
             </Card>
@@ -223,7 +223,7 @@ function PlatformOverview({
           cards.map((c, i) => (
             <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
               <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
                   <c.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="mt-4">
@@ -515,7 +515,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="p-5 border border-border rounded-lg shadow-sm">
-              <div className="h-9 w-9 rounded-lg bg-muted/60 animate-pulse" />
+              <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
               <div className="mt-4 h-6 w-20 rounded bg-muted/60 animate-pulse" />
               <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
             </Card>
@@ -525,7 +525,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Total Revenue */}
           <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
               <DollarSign className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -545,7 +545,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
           </Card>
           {/* Salary Paid */}
           <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
               <Wallet className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -565,7 +565,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
           </Card>
           {/* Total Invoices */}
           <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
               <FileText className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -576,7 +576,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
           </Card>
           {/* Active Institutes */}
           <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
+            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">

@@ -185,11 +185,11 @@ function KPICard({ icon: Icon, label, value, sub, tone = 'default' }: {
 }) {
   const valueColor = tone === 'positive' ? 'text-emerald-600' : tone === 'negative' ? 'text-rose-600' : 'text-foreground';
   return (
-    <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-      <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3">
+    <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+      <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3">
         <Icon className="h-5 w-5 text-primary" />
       </div>
-      <div className={`text-base font-bold tabular-nums ${valueColor} leading-tight`}>{value}</div>
+      <div className={`text-lg font-bold tabular-nums ${valueColor} leading-tight`}>{value}</div>
       <div className="text-xs text-muted-foreground mt-1">{label}</div>
       {sub && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </Card>
@@ -881,7 +881,7 @@ function RecentSalaryPayments({ finance }: { finance: any }) {
           {salaries.map((s: any) => (
             <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border border-border/60 hover:bg-accent/30 transition">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary shrink-0">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center text-primary shrink-0">
                   <Wallet className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
@@ -1247,14 +1247,14 @@ function InstituteReportsView({ finance, branches, loading }: any) {
       {/* Insights cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3"><Network className="h-5 w-5 text-primary" /></div>
+          <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><Network className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Branch by Revenue</div>
           <div className="text-lg font-bold mt-1">{topBranch?.name || '—'}</div>
           <div className="text-xs text-emerald-700 font-semibold mt-0.5">{topBranch ? formatPKR(topBranch.revenue) : formatPKR(0)}</div>
           <div className="text-[11px] text-muted-foreground mt-1">{topBranch ? `${topBranch.students} students · ${topBranch.teachers} teachers` : ''}</div>
         </Card>
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3"><BookOpen className="h-5 w-5 text-primary" /></div>
+          <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><BookOpen className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Class by Students</div>
           <div className="text-lg font-bold mt-1">{topClass?.class || '—'}</div>
           <div className="text-xs text-primary font-semibold mt-0.5">{topClass ? `${topClass.students} students` : ''}</div>

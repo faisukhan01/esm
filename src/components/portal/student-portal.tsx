@@ -79,7 +79,7 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
 
   useEffect(() => { refresh(); }, [user?.id, user?.branchId]);
 
-  if (activeModule === 'student-overview' && selectedCourse) {
+  if ((activeModule === 'student-overview' || activeModule === 'my-courses') && selectedCourse) {
     return (
       <CourseDetail
         course={selectedCourse.course}
@@ -230,9 +230,9 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-base font-bold tabular-nums">{c.value}</div>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-lg font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -1062,8 +1062,8 @@ function MyInvoices({ user }: { user: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
+            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>
             </Card>
