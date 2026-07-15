@@ -227,10 +227,10 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       </motion.div>
 
       {/* 2. KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {kpiCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+            <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
@@ -243,10 +243,10 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
       {/* 3. Quick Actions */}
       <div>
         <h2 className="font-bold text-base mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {quickActions.map((a, i) => (
             <motion.div key={a.module} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <div onClick={() => setActiveModule(a.module)} className="group cursor-pointer border border-border rounded-lg shadow-sm hover:shadow-md transition p-4 flex items-center gap-3">
+              <div onClick={() => setActiveModule(a.module)} className="group cursor-pointer border border-border rounded-lg shadow-sm hover:shadow-md transition p-3 sm:p-4 flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center shrink-0"><a.icon className="h-4 w-4 text-primary" /></div>
                 <div className="min-w-0">
                   <div className="font-semibold text-sm">{a.label}</div>
@@ -1062,7 +1062,7 @@ function MyInvoices({ user }: { user: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+            <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-2xl font-extrabold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label} · {c.sub}</div>

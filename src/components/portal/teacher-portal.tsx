@@ -715,10 +715,10 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       </motion.div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+            <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
@@ -940,10 +940,10 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+            <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
               <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
               <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>

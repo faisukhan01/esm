@@ -185,8 +185,8 @@ function KPICard({ icon: Icon, label, value, sub, tone = 'default' }: {
 }) {
   const valueColor = tone === 'positive' ? 'text-emerald-600' : tone === 'negative' ? 'text-rose-600' : 'text-foreground';
   return (
-    <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-      <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3">
+    <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+      <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2">
         <Icon className="h-5 w-5 text-primary" />
       </div>
       <div className={`text-base font-bold tabular-nums ${valueColor} leading-tight`}>{value}</div>
@@ -281,7 +281,7 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
       </motion.div>
 
       {/* Core summary KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {summaryCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
             <KPICard icon={c.icon} label={c.label} value={c.value} sub={c.sub} />
@@ -295,13 +295,13 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
           <h2 className="text-lg font-bold tracking-tight">Quick Actions</h2>
           <p className="text-xs text-muted-foreground">Jump straight to the detailed management pages</p>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {quickActions.map((a, i) => (
             <motion.div
               key={a.target}
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
               onClick={() => setActiveModule?.(a.target)}
-              className="group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-5"
+              className="group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-3 sm:p-4"
             >
               <div className="flex items-start justify-between">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary">
@@ -309,7 +309,7 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
                 </div>
                 <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition" />
               </div>
-              <h3 className="font-bold text-base mt-3">{a.title}</h3>
+              <h3 className="font-bold text-sm mt-2">{a.title}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p>
             </motion.div>
           ))}
@@ -337,7 +337,7 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
             action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>}
           />
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
             {branches.slice(0, 6).map((br: any) => (
               <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} onSelectBranch={onSelectBranch} />
             ))}
@@ -362,7 +362,7 @@ function BranchesView({ user, branches, loading, onAddBranch, onSelectBranch, on
       />
 
       {/* Small KPI strip */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <KPICard icon={Network} label="Total Branches" value={String(branches.length)} />
         <KPICard icon={CheckCircle2} label="Active Branches" value={String(active)} sub="Operational" />
         <KPICard icon={Lock} label="Blocked Branches" value={String(blocked)} sub="Access suspended" tone={blocked > 0 ? 'negative' : 'default'} />
@@ -379,7 +379,7 @@ function BranchesView({ user, branches, loading, onAddBranch, onSelectBranch, on
           action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>}
         />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {branches.map((br: any) => (
             <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} onSelectBranch={onSelectBranch} />
           ))}
@@ -493,7 +493,7 @@ function InstituteRoyaltyView({ branches, loading, user, onRefresh }: any) {
       <PageHeader title="Royalty Management" subtitle="Set royalty methods, generate invoices, and track collections per branch" />
 
       {/* D. Summary KPIs — 4 compact cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <KPICard icon={CheckCircle2} label="Total Royalty Collected" value={formatPKR(totalCollected)} sub={`${paidInvoices.length} paid invoices`} tone="positive" />
         <KPICard icon={AlertCircle} label="Pending Royalty" value={formatPKR(totalPending)} sub={`${pendingInvoices.length} pending invoices`} tone="negative" />
         <KPICard icon={Network} label="Branches with Royalty" value={String(branchesWithRoyalty)} sub={`${(branches || []).length} total branches`} />
@@ -501,7 +501,7 @@ function InstituteRoyaltyView({ branches, loading, user, onRefresh }: any) {
       </div>
 
       {/* A. Royalty Settings — table of branches with their current royalty method */}
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="mb-4">
           <h3 className="font-bold text-base">Royalty Settings</h3>
           <p className="text-xs text-muted-foreground">Set the royalty method for each branch</p>
@@ -547,7 +547,7 @@ function InstituteRoyaltyView({ branches, loading, user, onRefresh }: any) {
       </Card>
 
       {/* B. Generate Royalty Invoices — auto-calculates from settings + branch data */}
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="mb-4">
           <h3 className="font-bold text-base">Generate Royalty Invoices</h3>
           <p className="text-xs text-muted-foreground">This auto-calculates royalty for each branch based on their settings, student count, and fee collections.</p>
@@ -578,7 +578,7 @@ function InstituteRoyaltyView({ branches, loading, user, onRefresh }: any) {
       </Card>
 
       {/* C. Royalty Collection Report — invoices table */}
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="font-bold text-base">Royalty Collection Report</h3>
@@ -767,7 +767,7 @@ function InstituteTeachersView({ finance, loading, onRefresh }: any) {
       } />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <KPICard icon={Users} label="Total Teachers" value={String(kpi.teachers || 0)} sub="Across all branches" />
         <KPICard icon={TrendingDown} label="Monthly Salary Expense" value={formatPKR(kpi.monthlySalaryExpense)} sub="Recurring / month" />
         <KPICard icon={Wallet} label="Total Salary Paid" value={formatPKR(kpi.totalSalaryPaid)} sub="All-time payouts" />
@@ -1247,14 +1247,14 @@ function InstituteReportsView({ finance, branches, loading }: any) {
       {/* Insights cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3"><Network className="h-5 w-5 text-primary" /></div>
+          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><Network className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Branch by Revenue</div>
           <div className="text-lg font-bold mt-1">{topBranch?.name || '—'}</div>
           <div className="text-xs text-emerald-700 font-semibold mt-0.5">{topBranch ? formatPKR(topBranch.revenue) : formatPKR(0)}</div>
           <div className="text-[11px] text-muted-foreground mt-1">{topBranch ? `${topBranch.students} students · ${topBranch.teachers} teachers` : ''}</div>
         </Card>
         <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-3"><BookOpen className="h-5 w-5 text-primary" /></div>
+          <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><BookOpen className="h-5 w-5 text-primary" /></div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top Class by Students</div>
           <div className="text-lg font-bold mt-1">{topClass?.class || '—'}</div>
           <div className="text-xs text-primary font-semibold mt-0.5">{topClass ? `${topClass.students} students` : ''}</div>
@@ -1781,14 +1781,14 @@ function InstituteFeeManagement({ finance, branches, loading }: any) {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <KPICard icon={DollarSign} label="Total Collected" value={formatPKR(totalCollected)} sub={`${branchesWithCollections} branches`} tone="positive" />
         <KPICard icon={AlertCircle} label="Total Pending" value={formatPKR(totalPending)} sub="Unpaid invoices" tone={totalPending > 0 ? 'negative' : 'default'} />
         <KPICard icon={Network} label="Branches with Collections" value={String(branchesWithCollections)} sub={`${rows.length} total branches`} />
         <KPICard icon={Scale} label="Avg Collection / Branch" value={formatPKR(avgPerBranch)} sub="Mean across branches" />
       </div>
 
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="mb-4">
           <h3 className="font-bold text-base">Branch-wise Fee Collection</h3>
           <p className="text-xs text-muted-foreground">Real fee data per branch — collected, pending, and net balance</p>
@@ -1916,7 +1916,7 @@ function InstituteAcademics({ user, branches }: any) {
       <PageHeader title="Academics" subtitle="Cross-branch attendance and results overview" />
 
       {/* Attendance Overview */}
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-4">
           <CalendarCheck className="h-4 w-4 text-primary" />
           <div>
@@ -1963,7 +1963,7 @@ function InstituteAcademics({ user, branches }: any) {
       </Card>
 
       {/* Results Overview */}
-      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+      <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-4">
           <Award className="h-4 w-4 text-primary" />
           <div>
@@ -2077,7 +2077,7 @@ function InstituteComplaints({ user }: { user: any }) {
       {complaints.length === 0 ? (
         <EmptyState icon={MessageCircleWarning} title="No complaints received" desc="When parents or students raise a concern via their portal, it will appear here for you to respond to." />
       ) : (
-        <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+        <Card className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-4">
             <MessageCircleWarning className="h-4 w-4 text-primary" />
             <div>
@@ -2235,7 +2235,7 @@ function InstituteEvents({ user }: { user: any }) {
         <EmptyState icon={Trophy} title="No events yet" desc="Create your first institute event — exams, holidays, meetings, or any announcement parents and students should know about."
           action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowCreate(true)}><CalendarPlus className="h-4 w-4 mr-1.5" /> Create Event</Button>} />
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {events.map((e: any) => (
             <Card key={e.id} className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition flex flex-col">
               <div className="flex items-start justify-between gap-2 mb-2">

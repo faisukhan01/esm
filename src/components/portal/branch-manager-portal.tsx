@@ -149,10 +149,10 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
       ) : (
         <>
           {/* KPI cards — compact: p-4, h-9 w-9 icons, text-lg/xl values */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+                <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
                   <div className={`h-8 w-8 rounded-lg grid place-items-center mb-2 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
                     <c.icon className={`h-4 w-4 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
                   </div>
@@ -316,7 +316,7 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
 function FinanceSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="p-4 border border-border rounded-lg">
             <div className="h-9 w-9 rounded-lg bg-muted animate-pulse mb-3" />
@@ -1422,7 +1422,7 @@ function BMAttendanceView({ user }: { user: any }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kpis.map(k => (
-          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
+          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
             <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${k.rose ? 'bg-rose-500/10' : 'bg-primary/10'}`}>
               <k.icon className={`h-4 w-4 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
             </div>
@@ -1580,7 +1580,7 @@ function BMResultsView({ user }: { user: any }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kpis.map(k => (
-          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
+          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
               <k.icon className="h-4 w-4 text-primary" />
             </div>
@@ -1740,7 +1740,7 @@ function BMComplaintsView({ user }: { user: any }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kpis.map(k => (
-          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
+          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
             <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${k.rose ? 'bg-rose-500/10' : 'bg-primary/10'}`}>
               <k.icon className={`h-4 w-4 ${k.rose ? 'text-rose-600' : 'text-primary'}`} />
             </div>
@@ -1913,7 +1913,7 @@ function BMEventsView({ user }: { user: any }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {kpis.map(k => (
-          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
+          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
               <k.icon className="h-4 w-4 text-primary" />
             </div>
@@ -2090,7 +2090,7 @@ function BMSmsView({ user }: { user: any }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {kpis.map(k => (
-          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-5">
+          <Card key={k.label} className="border border-border rounded-lg shadow-sm p-3 sm:p-4">
             <div className="h-10 w-10 rounded-lg grid place-items-center mb-3 bg-primary/10">
               <k.icon className="h-4 w-4 text-primary" />
             </div>
