@@ -59,9 +59,7 @@ function FloatingInput({ id, type, placeholder, icon, value, onChange, success, 
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10">{icon}</div>
       <input
         id={id} type={type} value={value} onChange={onChange} autoComplete={autoComplete}
-        className={`login-input w-full h-12 pl-11 ${togglePassword ? 'pr-11' : 'pr-4'} rounded-xl border bg-white text-gray-800 text-sm outline-none transition-all ${
-          success ? 'border-primary/50' : 'border-gray-200 focus:border-primary'
-        }`}
+        className={`login-input w-full h-12 pl-11 ${togglePassword ? 'pr-11' : 'pr-4'} rounded-xl text-gray-800 text-sm outline-none transition-all`}
         placeholder=" "
       />
       <label className="floating-label">{placeholder}</label>
@@ -227,7 +225,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-current" type={showCurrent ? 'text' : 'password'} value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)} autoComplete="current-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-primary bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">Current password</label>
@@ -241,7 +239,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-new" type={showNew ? 'text' : 'password'} value={newPassword}
               onChange={e => setNewPassword(e.target.value)} autoComplete="new-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-primary bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">New password</label>
@@ -255,7 +253,7 @@ function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onCl
             <input
               id="cp-confirm" type={showConfirm ? 'text' : 'password'} value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)} autoComplete="new-password"
-              className="login-input w-full h-12 pl-11 pr-11 rounded-xl border border-gray-200 focus:border-primary bg-white text-gray-800 text-sm outline-none transition-all"
+              className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
               placeholder=" "
             />
             <label className="floating-label">Confirm new password</label>

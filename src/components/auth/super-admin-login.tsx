@@ -118,7 +118,7 @@ export function SuperAdminLoginPage() {
                   type="text"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="login-input w-full h-12 pl-11 pr-4 rounded-xl border bg-white text-gray-800 text-sm outline-none transition-all border-gray-200 focus:border-primary"
+                  className="login-input w-full h-12 pl-11 pr-4 rounded-xl text-gray-800 text-sm outline-none transition-all"
                   placeholder="Email"
                   autoComplete="username"
                 />
@@ -133,7 +133,7 @@ export function SuperAdminLoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="login-input w-full h-12 pl-11 pr-11 rounded-xl border bg-white text-gray-800 text-sm outline-none transition-all border-gray-200 focus:border-primary"
+                  className="login-input w-full h-12 pl-11 pr-11 rounded-xl text-gray-800 text-sm outline-none transition-all"
                   placeholder=" "
                   autoComplete="current-password"
                 />
