@@ -11,9 +11,10 @@ import {
   CalendarCheck, GraduationCap, Calendar, ClipboardList,
   CheckCircle2, XCircle, Clock, BookOpen, Award, Inbox,
   ArrowLeft, FileText, Link2, Download, Loader2,
-  Wallet, DollarSign,
+  Wallet, DollarSign, ChevronRight, CreditCard,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useApp } from '@/lib/store';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -184,7 +185,6 @@ function AttendanceTrendTooltip({ active, payload }: any) {
 
 // ============== Student Overview (course cards + analytics) ==============
 function StudentOverview({ user, attendance, results, courses, announcements, onOpenCourse }: any) {
-  // Fetch analytics on mount (academic + fee)
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -196,82 +196,28 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
   }, []);
 
   const kpi = analytics?.kpi;
-  const attendanceTrend: any[] = analytics?.attendanceTrend || [];
-  const recentResults: any[] = analytics?.recentResults || [];
-  const gradeDistributionRaw: any[] = analytics?.gradeDistribution || [];
 
-  // Sort grade distribution into canonical order (A+, A, B, C, D, F)
-  const gradeDistribution = gradeDistributionRaw.slice().sort((a, b) => {
-    const ai = GRADE_ORDER.indexOf(a.grade);
-    const bi = GRADE_ORDER.indexOf(b.grade);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-  });
-
-  // Attendance chart data: numeric value per status, colored via Cell
-  const attData = attendanceTrend.map(a => ({
-    label: a.label,
-    status: a.status,
-    value: ATTENDANCE_VALUE[a.status] || 0,
-  }));
-
-  // Grade pie data
-  const pieData = gradeDistribution.map(g => ({
-    name: g.grade,
-    value: g.count,
-    color: GRADE_COLORS[g.grade] || '#64748b',
-  }));
-
-  // KPI cards (driven by analytics; show "—" while loading)
   const kpiCards = [
-    {
-      label: 'Attendance',
-      value: kpi ? kpi.attendanceRate + '%' : '—',
-      sub: kpi ? `${kpi.totalSessions} sessions · ${kpi.presentCount} present` : 'Loading…',
-      icon: CalendarCheck,
-    },
-    {
-      label: 'Avg Score',
-      value: kpi ? kpi.avgScore + '%' : '—',
-      sub: kpi ? `from ${kpi.totalResults} results` : 'Loading…',
-      icon: GraduationCap,
-    },
-    {
-      label: 'Results',
-      value: kpi ? kpi.totalResults : '—',
-      sub: kpi ? 'exams attempted' : 'Loading…',
-      icon: Award,
-    },
-    {
-      label: 'Fee Status',
-      value: kpi ? `${kpi.paidInvoices}/${kpi.totalInvoices} paid` : '—',
-      sub: kpi ? (Number(kpi.totalPending) > 0 ? `${fmtPKR(kpi.totalPending)} pending` : 'All cleared') : 'Loading…',
-      icon: Wallet,
-    },
+    { label: 'Attendance', value: kpi ? kpi.attendanceRate + '%' : '—', sub: kpi ? `${kpi.totalSessions} sessions` : 'Loading…', icon: CalendarCheck },
+    { label: 'Avg Score', value: kpi ? kpi.avgScore + '%' : '—', sub: kpi ? `${kpi.totalResults} results` : 'Loading…', icon: GraduationCap },
+    { label: 'Fee Status', value: kpi ? `${kpi.paidInvoices}/${kpi.totalInvoices} paid` : '—', sub: kpi ? (Number(kpi.totalPending) > 0 ? `${fmtPKR(kpi.totalPending)} pending` : 'All cleared') : 'Loading…', icon: Wallet },
+    { label: 'Courses', value: courses?.length || 0, sub: 'enrolled this term', icon: BookOpen },
   ];
 
-  // Group recent results by subject/course so we can show "recent marks" per course card
-  const recentByCourse = useMemo(() => {
-    const map: Record<string, any> = {};
-    // results can be a flat array (from API) or an object with .entries
-    const entries = Array.isArray(results) ? results : (results?.entries || []);
-    if (Array.isArray(entries)) {
-      for (const r of entries) {
-        const key = r.courseId || r.subject;
-        if (!map[key]) map[key] = r;
-      }
-    }
-    return map;
-  }, [results]);
+  const quickActions = [
+    { label: 'My Attendance', icon: CalendarCheck, desc: 'View attendance history', module: 'my-attendance' },
+    { label: 'My Results', icon: GraduationCap, desc: 'Check exam results', module: 'my-results' },
+    { label: 'Invoices', icon: CreditCard, desc: 'Download fee challan', module: 'my-invoices' },
+    { label: 'Report Card', icon: Award, desc: 'View your report card', module: 'my-report-card' },
+  ];
 
-  const pendingFees = kpi ? Number(kpi.totalPending) || 0 : 0;
+  const setActiveModule = useApp(s => s.setActiveModule);
 
   return (
     <div className="space-y-6">
-      {/* 1. Welcome banner (navy gradient) */}
+      {/* 1. Welcome banner */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
-        <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><GraduationCap className="h-3 w-3 text-primary/70" /> Student · {user?.class} {user?.section} · Roll #{user?.rollNo}</div>
           <h1 className="text-2xl sm:text-3xl font-extrabold">Hi, {user?.name?.split(' ')[0]}!</h1>
@@ -279,7 +225,7 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
         </div>
       </motion.div>
 
-      {/* 2. KPI cards (Attendance, Avg Score, Results, Fee Status) */}
+      {/* 2. KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiCards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
@@ -293,247 +239,57 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
         ))}
       </div>
 
-      {/* 3. Attendance Trend chart (full width) */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <div>
-            <h2 className="text-base font-bold">My Attendance (Last 10 Sessions)</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Present, Late and Absent over your recent sessions.</p>
-          </div>
-          <div className="hidden sm:flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: ATTENDANCE_COLOR.Present }} /> Present</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: ATTENDANCE_COLOR.Late }} /> Late</span>
-            <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: ATTENDANCE_COLOR.Absent }} /> Absent</span>
-          </div>
+      {/* 3. Quick Actions */}
+      <div>
+        <h2 className="font-bold text-base mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((a, i) => (
+            <motion.div key={a.module} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+              <div onClick={() => setActiveModule(a.module)} className="group cursor-pointer border border-border rounded-lg shadow-sm hover:shadow-md transition p-4 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center shrink-0"><a.icon className="h-4 w-4 text-primary" /></div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm">{a.label}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{a.desc}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
+              </div>
+            </motion.div>
+          ))}
         </div>
-        {loading ? (
-          <div className="h-[220px] w-full rounded-lg bg-muted/40 animate-pulse" />
-        ) : attData.length === 0 ? (
-          <div className="h-[220px] grid place-items-center text-center">
-            <div>
-              <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><CalendarCheck className="h-6 w-6 text-muted-foreground" /></div>
-              <p className="text-sm text-muted-foreground max-w-sm">No attendance records yet. Your teachers will mark your attendance in class.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="h-[220px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={attData} margin={{ top: 8, right: 12, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} />
-                <YAxis domain={[0, 3]} ticks={[0, 1, 2, 3]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} tickFormatter={(v: number) => (v === 3 ? 'P' : v === 2 ? 'L' : v === 1 ? 'A' : '')} />
-                <Tooltip content={<AttendanceTrendTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={36}>
-                  {attData.map((entry, idx) => (
-                    <Cell key={idx} fill={ATTENDANCE_COLOR[entry.status] || '#94a3b8'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
-
-      {/* 4. 2-column: Grade Distribution (left) | Fee Summary (right) */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Grade Distribution (donut pie) */}
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><Award className="h-4 w-4 text-primary" /></div>
-            <div>
-              <h2 className="text-base font-bold">Grade Distribution</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Breakdown of your published grades.</p>
-            </div>
-          </div>
-          {loading ? (
-            <div className="h-[200px] w-full rounded-lg bg-muted/40 animate-pulse" />
-          ) : pieData.length === 0 ? (
-            <div className="h-[200px] grid place-items-center text-center">
-              <div>
-                <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><Award className="h-6 w-6 text-muted-foreground" /></div>
-                <p className="text-sm text-muted-foreground max-w-sm">No results published yet.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="h-[200px] w-full sm:w-1/2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={2} stroke="hsl(var(--card))" strokeWidth={2}>
-                      {pieData.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', fontSize: 12 }}
-                      formatter={(value: any, name: any) => [`${value} result${value === 1 ? '' : 's'}`, `Grade ${name}`]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 w-full sm:w-1/2 grid grid-cols-2 gap-2">
-                {pieData.map(g => (
-                  <div key={g.name} className="flex items-center gap-2 rounded-md border border-border px-2.5 py-2">
-                    <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: g.color }} />
-                    <span className="text-sm font-semibold">{g.name}</span>
-                    <span className="text-xs text-muted-foreground ml-auto tabular-nums">{g.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
-
-        {/* Fee Summary */}
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><Wallet className="h-4 w-4 text-primary" /></div>
-            <div>
-              <h2 className="text-base font-bold">Fee Summary</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Your invoice and payment overview.</p>
-            </div>
-          </div>
-          {loading ? (
-            <div className="space-y-2.5">
-              <div className="h-[60px] rounded-lg bg-muted/40 animate-pulse" />
-              <div className="h-[60px] rounded-lg bg-muted/40 animate-pulse" />
-              <div className="h-[60px] rounded-lg bg-muted/40 animate-pulse" />
-            </div>
-          ) : !kpi || kpi.totalInvoices === 0 ? (
-            <div className="h-[200px] grid place-items-center text-center">
-              <div>
-                <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><Wallet className="h-6 w-6 text-muted-foreground" /></div>
-                <p className="text-sm text-muted-foreground max-w-sm">No fee invoices yet.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2.5 rounded-lg border border-border px-4 py-3">
-                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 grid place-items-center shrink-0"><CheckCircle2 className="h-4 w-4 text-emerald-600" /></div>
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground">Total Paid</div>
-                  <div className="text-sm font-semibold text-emerald-700 tabular-nums">{fmtPKR(kpi.totalPaid)}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 rounded-lg border border-border px-4 py-3">
-                <div className="h-8 w-8 rounded-lg bg-rose-500/10 grid place-items-center shrink-0"><Clock className={`h-4 w-4 ${pendingFees > 0 ? 'text-rose-600' : 'text-muted-foreground'}`} /></div>
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground">Total Pending</div>
-                  <div className={`text-sm font-semibold tabular-nums ${pendingFees > 0 ? 'text-rose-700' : 'text-muted-foreground'}`}>{fmtPKR(kpi.totalPending)}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 rounded-lg border border-border px-4 py-3">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center shrink-0"><FileText className="h-4 w-4 text-primary" /></div>
-                <div className="min-w-0">
-                  <div className="text-xs text-muted-foreground">Invoices</div>
-                  <div className="text-sm font-semibold tabular-nums">{kpi.paidInvoices} paid / {kpi.unpaidInvoices} unpaid</div>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground pt-1">{kpi.totalInvoices} total invoice{kpi.totalInvoices === 1 ? '' : 's'}</p>
-            </div>
-          )}
-        </Card>
       </div>
 
-      {/* 5. Recent Results table (full width) */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center"><Award className="h-4 w-4 text-primary" /></div>
-          <div>
-            <h2 className="text-base font-bold">Recent Results</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Your latest published exam results.</p>
-          </div>
-        </div>
-        {loading ? (
-          <div className="space-y-2">
-            {[0, 1, 2, 3].map(i => <div key={i} className="h-10 rounded-md bg-muted/40 animate-pulse" />)}
-          </div>
-        ) : recentResults.length === 0 ? (
-          <div className="py-8 grid place-items-center text-center">
-            <div>
-              <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><Award className="h-6 w-6 text-muted-foreground" /></div>
-              <p className="text-sm text-muted-foreground max-w-sm">No results published yet. Your teachers will post exam results here.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead>Exam</TableHead>
-                  <TableHead className="w-[110px]">Date</TableHead>
-                  <TableHead className="w-[90px] text-right">Marks</TableHead>
-                  <TableHead className="w-[90px] text-right">Total</TableHead>
-                  <TableHead className="w-[90px] text-right">Grade</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentResults.map((r, idx) => (
-                  <TableRow key={r.id || idx}>
-                    <TableCell className="text-sm font-medium">{r.exam || 'Exam'}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{r.date || '—'}</TableCell>
-                    <TableCell className="text-sm text-right font-mono tabular-nums">{r.marks ?? '—'}</TableCell>
-                    <TableCell className="text-sm text-right font-mono tabular-nums text-muted-foreground">{r.totalMarks ?? '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="outline" className={`font-bold ${gradeBadgeClass(r.grade)}`}>{r.grade || '—'}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </Card>
-
-      {/* 6. My Courses (kept as-is) */}
+      {/* 4. My Courses */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold">My Courses</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Click a course to view materials, results, and attendance.</p>
-          </div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-base">My Courses</h2>
+          <span className="text-xs text-muted-foreground">{courses?.length || 0} enrolled</span>
         </div>
-        {courses.length === 0 ? (
-          <EmptyState icon={BookOpen} title="No courses assigned" desc="Your class doesn't have any courses assigned yet. Check back later." />
+        {courses?.length === 0 ? (
+          <Card className="p-8 text-center">
+            <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><BookOpen className="h-6 w-6 text-muted-foreground" /></div>
+            <p className="text-sm text-muted-foreground">No courses assigned yet. Your Branch Manager will assign courses to your class.</p>
+          </Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courses.map((c: Course, i: number) => {
-              const recent = recentByCourse[c.id];
-              return (
-                <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenCourse(c, 'materials')}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      {recent && <Badge variant="outline" className="font-mono text-[10px]">{recent.marks}/{recent.totalMarks}</Badge>}
-                    </div>
-                    <h3 className="font-bold text-lg">{c.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
-                    <div className="grid grid-cols-2 gap-2 mt-4">
-                      <div className="p-2 rounded-md bg-accent0/10">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Recent Mark</div>
-                        <div className="text-sm font-bold text-primary mt-0.5">{recent ? `${recent.marks}/${recent.totalMarks}` : '—'}</div>
-                      </div>
-                      <div className="p-2 rounded-md bg-accent0/10">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Attendance</div>
-                        <div className="text-sm font-bold text-primary mt-0.5">{attendance?.rate != null ? attendance.rate + '%' : '—'}</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> Materials</span>
-                      <span className="text-primary font-medium group-hover:underline">Open →</span>
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
+            {courses?.map((c: any) => (
+              <Card key={c.id} className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer group" onClick={() => onOpenCourse?.(c)}>
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center shrink-0"><BookOpen className="h-4 w-4 text-primary" /></div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-sm truncate">{c.name}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
+                </div>
+              </Card>
+            ))}
           </div>
         )}
       </div>
     </div>
   );
 }
+
 
 // ============== Course Detail (Materials / Results / Attendance tabs) ==============
 const COURSE_TABS = [
