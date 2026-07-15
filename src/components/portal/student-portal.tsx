@@ -986,68 +986,84 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
 <meta charset="utf-8" />
 <title>Fee Challan ${escape(challan.challanNo || '')}</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #ffffff; color: #1f2937; }
-  .challan { max-width: 720px; margin: 0 auto; background: #fff; border: 2px solid #1e3a5f; border-radius: 14px; padding: 36px; box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
-  .institute-banner { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); color: #fff; text-align: center; padding: 22px 24px; border-radius: 12px; margin-bottom: 22px; }
-  .institute-name { font-size: 28px; font-weight: 900; letter-spacing: 0.5px; margin: 0; }
-  .institute-sub { font-size: 11px; color: #c3d4e8; margin-top: 4px; letter-spacing: 1px; }
-  .header { text-align: center; border-bottom: 2px dashed #b6c5d8; padding-bottom: 18px; margin-bottom: 22px; }
-  .brand { font-size: 11px; letter-spacing: 3px; color: #1e3a5f; font-weight: 700; }
-  .title { font-size: 26px; font-weight: 800; margin-top: 8px; color: #0f1e3a; letter-spacing: 0.5px; }
-  .sub { font-size: 11px; color: #6b7280; margin-top: 4px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin: 8px 0 18px; }
-  .field { display: flex; flex-direction: column; }
-  .label { font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-  .value { font-size: 14px; font-weight: 600; color: #111827; }
-  .amount-row { display: flex; justify-content: space-between; align-items: center; background: #eef2f8; border: 1px solid #b6c5d8; border-radius: 10px; padding: 16px 22px; margin: 18px 0; }
-  .amount-label { font-size: 12px; color: #1e3a5f; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-  .amount-value { font-size: 22px; font-weight: 800; color: #0f1e3a; }
-  .status-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-  .status { display: inline-block; padding: 4px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-  .status-paid { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
-  .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-  .signature { margin-top: 64px; padding-top: 14px; border-top: 2px dashed #9ca3af; display: flex; justify-content: space-between; gap: 24px; }
-  .sig-label { font-size: 12px; color: #6b7280; padding-top: 6px; }
-  .footer { text-align: center; margin-top: 22px; padding-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; letter-spacing: 0.3px; font-weight: 600; }
-  .footer-brand { color: #1e3a5f; font-weight: 800; }
-  @media print {
-    body { padding: 0; background: #fff; }
-    .challan { box-shadow: none; border: 2px solid #1e3a5f; }
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, Helvetica, sans-serif; background: #ffffff; color: #1f2937; padding: 20px; }
+  .challan { max-width: 680px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+  .top-bar { background: #1a365d; color: #fff; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; }
+  .top-bar .inst { font-size: 22px; font-weight: 700; }
+  .top-bar .inst-sub { font-size: 10px; color: #a0aec0; margin-top: 2px; letter-spacing: 1px; text-transform: uppercase; }
+  .top-bar .challan-title { text-align: right; }
+  .top-bar .challan-title h2 { font-size: 18px; font-weight: 700; }
+  .top-bar .challan-title span { font-size: 10px; color: #a0aec0; }
+  .body { padding: 28px 32px; }
+  .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; min-width: 140px; }
+  .info-value { font-size: 13px; font-weight: 600; color: #111827; text-align: right; flex: 1; }
+  .amount-box { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 24px 0; display: flex; justify-content: space-between; align-items: center; }
+  .amount-box .lbl { font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .amount-box .val { font-size: 24px; font-weight: 800; color: #1a365d; }
+  .status-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .badge-paid { background: #d1fae5; color: #065f46; }
+  .badge-unpaid { background: #fee2e2; color: #991b1b; }
+  .signatures { display: flex; justify-content: space-between; margin-top: 48px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+  .sig { text-align: center; }
+  .sig-line { width: 200px; height: 1px; background: #d1d5db; margin: 0 auto 6px; }
+  .sig-label { font-size: 11px; color: #6b7280; }
+  .footer { background: #f9fafb; padding: 12px 32px; text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #e5e7eb; }
+  .footer strong { color: #1a365d; }
 </style>
 </head>
 <body>
   <div class="challan">
-    ${institute ? `<div class="institute-banner"><div class="institute-name">${escape(institute)}</div><div class="institute-sub">OFFICIAL FEE CHALLAN</div></div>` : ''}
-    <div class="header">
-      <div class="brand">ESM — ELECTRONIC SCHOOL MANAGEMENT</div>
-      <div class="title">FEE CHALLAN</div>
-      <div class="sub">Cyber Advance Solutions (Pvt.) Ltd. · Pakistan's No. 1 School Management System</div>
+    <div class="top-bar">
+      <div>
+        <div class="inst">${escape(institute || 'ESM Institute')}</div>
+        <div class="inst-sub">Official Fee Challan</div>
+      </div>
+      <div class="challan-title">
+        <h2>FEE CHALLAN</h2>
+        <span>${escape(challan.challanNo || '—')}</span>
+      </div>
     </div>
-    <div class="grid">
-      <div class="field"><span class="label">Challan No.</span><span class="value">${escape(challan.challanNo || '—')}</span></div>
-      <div class="field"><span class="label">Date</span><span class="value">${today}</span></div>
-      <div class="field"><span class="label">Student Name</span><span class="value">${escape(challan.studentName || challan.student || '—')}</span></div>
-      <div class="field"><span class="label">Class</span><span class="value">${escape(challan.className || challan.class || '—')}</span></div>
-      <div class="field"><span class="label">Roll No.</span><span class="value">${escape(challan.rollNo || '—')}</span></div>
-      <div class="field"><span class="label">Month / Year</span><span class="value">${escape(challan.month || '—')}${challan.year ? ' ' + escape(challan.year) : ''}</span></div>
+    <div class="body">
+      <div class="info-row">
+        <span class="info-label">Student Name</span>
+        <span class="info-value">${escape(challan.studentName || challan.student || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Class</span>
+        <span class="info-value">${escape(challan.className || challan.class || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Roll No</span>
+        <span class="info-value">${escape(challan.rollNo || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Month / Year</span>
+        <span class="info-value">${escape(challan.month || '—')}${challan.year ? ' ' + escape(challan.year) : ''}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date Issued</span>
+        <span class="info-value">${today}</span>
+      </div>
+      <div class="amount-box">
+        <span class="lbl">Amount Payable</span>
+        <span class="val">PKR ${amount.toLocaleString('en-PK')}</span>
+      </div>
+      <div class="status-bar">
+        <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Status</span>
+        <span class="badge ${isPaid ? 'badge-paid' : 'badge-unpaid'}">${status.toUpperCase()}</span>
+        ${challan.paidDate ? `<span style="font-size:12px;color:#374151;">Paid on ${escape(challan.paidDate)}</span>` : ''}
+        ${challan.paymentMethod ? `<span style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
+      </div>
+      <div class="signatures">
+        <div class="sig"><div class="sig-line"></div><div class="sig-label">Student / Parent Signature</div></div>
+        <div class="sig"><div class="sig-line"></div><div class="sig-label">Authorized Signature</div></div>
+      </div>
     </div>
-    <div class="amount-row">
-      <span class="amount-label">Amount Payable</span>
-      <span class="amount-value">PKR ${amount.toLocaleString('en-PK')}</span>
-    </div>
-    <div class="status-row">
-      <span class="label" style="margin:0">Status</span>
-      <span class="status ${isPaid ? 'status-paid' : 'status-unpaid'}">${status.toUpperCase()}</span>
-      ${challan.paidDate ? `<span class="value" style="font-size:12px;color:#374151;">Paid on ${escape(challan.paidDate)}</span>` : ''}
-      ${challan.paymentMethod ? `<span class="value" style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
-    </div>
-    <div class="signature">
-      <div><div class="sig-label">Student / Parent Signature</div></div>
-      <div><div class="sig-label">Authorized Signature</div></div>
-    </div>
-    <div class="footer">Powered by <span class="footer-brand">ESM — Electronic School Management</span></div>
+    <div class="footer">Powered by <strong>ESM — Electronic School Management</strong></div>
   </div>
 </body>
 </html>`;

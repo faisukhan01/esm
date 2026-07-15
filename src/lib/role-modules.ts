@@ -41,9 +41,13 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'institute-overview', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'branches', name: 'Branches', icon: Network, color: 'from-primary to-primary/80' },
       { id: 'institute-royalty', name: 'Royalty Management', icon: DollarSign, color: 'from-primary to-primary/80' },
+      { id: 'institute-fees', name: 'Fee Management', icon: CreditCard, color: 'from-primary to-primary/80' },
       { id: 'institute-teachers', name: 'Teachers & Salaries', icon: Users, color: 'from-primary to-primary/80' },
       { id: 'institute-students', name: 'Students', icon: GraduationCap, color: 'from-primary to-primary/80' },
+      { id: 'institute-academics', name: 'Academics', icon: BookOpen, color: 'from-primary/80 to-primary' },
       { id: 'institute-reports', name: 'Reports', icon: TrendingUp, color: 'from-primary/80 to-primary' },
+      { id: 'institute-complaints', name: 'Complaints', icon: MessageCircleWarning, color: 'from-rose-500 to-rose-700' },
+      { id: 'institute-events', name: 'Events', icon: Trophy, color: 'from-primary/80 to-primary' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Account', items: [

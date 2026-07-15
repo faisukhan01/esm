@@ -72,11 +72,7 @@ export function AddUserModal({ open, onClose, role, instituteId, branchId, onCre
     if (!form.rollNo) { toast({ title: 'Roll No / ID is required', variant: 'destructive' }); return; }
     if (!form.password || form.password.length < 4) { toast({ title: 'Assign a password', description: 'At least 4 characters', variant: 'destructive' }); return; }
     if (!form.classId) { toast({ title: 'Please select a class', variant: 'destructive' }); return; }
-    // Teacher must have at least one course assigned (so they can actually teach something)
-    if (role === 'teacher' && selectedCourseIds.length === 0) {
-      toast({ title: 'Assign at least one course', description: 'If the list is empty, please assign courses to this class first in Classes & Courses.', variant: 'destructive' });
-      return;
-    }
+    // Course assignment is OPTIONAL — teacher can be assigned courses later
 
     setCreating(true);
     try {

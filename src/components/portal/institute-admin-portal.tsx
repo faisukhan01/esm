@@ -21,6 +21,8 @@ import {
   ArrowLeft, BookOpen, GraduationCap, DollarSign,
   Wallet, TrendingUp, TrendingDown, Scale, FileText, AlertCircle,
   Search, Crown, Calendar, Download,
+  CreditCard, CalendarCheck, Award, MessageCircleWarning, MailCheck,
+  Trophy, CalendarPlus, MessageSquare,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useApp } from '@/lib/store';
@@ -102,6 +104,12 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
 
   if (activeModule === 'announcements') return <AnnouncementsView user={user} />;
   if (activeModule === 'settings') return null;
+
+  // New Institute Admin modules — fee management, academics, complaints, events
+  if (activeModule === 'institute-fees') return <InstituteFeeManagement finance={finance} branches={branches} loading={loading} />;
+  if (activeModule === 'institute-academics') return <InstituteAcademics user={user} branches={branches} />;
+  if (activeModule === 'institute-complaints') return <InstituteComplaints user={user} />;
+  if (activeModule === 'institute-events') return <InstituteEvents user={user} />;
 
   if (selectedBranch) {
     return (
@@ -1691,6 +1699,611 @@ function BranchModal({ show, setShow, instituteId, onRefresh, lastCreated, setLa
         </Card>
       </motion.div>
     </motion.div>
+  );
+}
+
+// ============== Fee Management View (institute-wide) ==============
+// Institute-wide fee collection dashboard. Uses real data from the institute
+// finance endpoint (`finance.branchPerformance`) plus per-branch fee finance
+// (paid/pending invoices) fetched in parallel for accurate figures.
+function InstituteFeeManagement({ finance, branches, loading }: any) {
+  const [branchFees, setBranchFees] = useState<Record<string, any>>({});
+  const [feeLoading, setFeeLoading] = useState(false);
+
+  const branchPerf = Array.isArray(finance?.branchPerformance) ? finance.branchPerformance : [];
+
+  // Fetch each branch's real fee finance (paid invoices, pending fees) in parallel.
+  // These give us real pending fee figures the institute endpoint doesn't track.
+  const refreshBranchFees = async () => {
+    if (!branches || branches.length === 0) return;
+    setFeeLoading(true);
+    try {
+      const results: any[] = await Promise.all(
+        branches.map((br: any) =>
+          api.getBranchFinance(br.id)
+            .then((d: any) => [br.id, d])
+            .catch(() => [br.id, null])
+        )
+      );
+      const map: Record<string, any> = {};
+      for (const [id, d] of results) if (d) map[id as string] = d;
+      setBranchFees(map);
+    } finally {
+      setFeeLoading(false);
+    }
+  };
+
+  useEffect(() => { refreshBranchFees(); }, [branches]);
+
+  // Build a unified per-branch fee row combining institute-level revenue with branch-level fee detail
+  const rows = branchPerf.map((br: any) => {
+    const bf = branchFees[br.id];
+    const pendingFees = bf?.kpi?.pendingFees ?? br.pendingFees ?? 0;
+    const totalCollected = bf?.kpi?.totalRevenue ?? br.revenue ?? 0;
+    const paidInvoices = bf?.kpi?.paidInvoices ?? 0;
+    const unpaidInvoices = bf?.kpi?.unpaidInvoices ?? 0;
+    const totalInvoices = bf?.kpi?.totalInvoices ?? 0;
+    const net = (br.net ?? 0) || (totalCollected - (bf?.kpi?.totalSalaryPaid ?? 0));
+    return {
+      id: br.id,
+      name: br.name,
+      city: br.city,
+      students: br.students ?? 0,
+      teachers: br.teachers ?? 0,
+      collected: totalCollected,
+      pending: pendingFees,
+      net,
+      totalInvoices,
+      paidInvoices,
+      unpaidInvoices,
+      status: br.status,
+    };
+  });
+
+  const totalCollected = rows.reduce((s: number, r: any) => s + Number(r.collected || 0), 0);
+  const totalPending = rows.reduce((s: number, r: any) => s + Number(r.pending || 0), 0);
+  const branchesWithCollections = rows.filter((r: any) => Number(r.collected) > 0).length;
+  const avgPerBranch = rows.length > 0 ? Math.round(totalCollected / rows.length) : 0;
+
+  if (loading) return <Card className="p-6"><LoadingState label="Loading fee data…" /></Card>;
+  if (!finance && !feeLoading) return <EmptyState icon={CreditCard} title="No fee data" desc="Fee collection analytics will appear here once branches start generating invoices." />;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Fee Management"
+        subtitle="Institute-wide fee collection across all branches"
+        action={
+          <Button size="sm" variant="outline" onClick={() => {
+            const rows2 = rows.map((r: any) => [r.name, r.city || '—', r.students, r.teachers, r.collected, r.pending, r.net, r.paidInvoices, r.unpaidInvoices, r.totalInvoices, r.status]);
+            exportToCSV(`institute-fees-${new Date().toISOString().slice(0, 10)}`, ['Branch', 'City', 'Students', 'Teachers', 'Collected (PKR)', 'Pending (PKR)', 'Net (PKR)', 'Paid Invoices', 'Unpaid Invoices', 'Total Invoices', 'Status'], rows2);
+          }}><Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV</Button>
+        }
+      />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard icon={DollarSign} label="Total Collected" value={formatPKR(totalCollected)} sub={`${branchesWithCollections} branches`} tone="positive" />
+        <KPICard icon={AlertCircle} label="Total Pending" value={formatPKR(totalPending)} sub="Unpaid invoices" tone={totalPending > 0 ? 'negative' : 'default'} />
+        <KPICard icon={Network} label="Branches with Collections" value={String(branchesWithCollections)} sub={`${rows.length} total branches`} />
+        <KPICard icon={Scale} label="Avg Collection / Branch" value={formatPKR(avgPerBranch)} sub="Mean across branches" />
+      </div>
+
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+        <div className="mb-4">
+          <h3 className="font-bold text-base">Branch-wise Fee Collection</h3>
+          <p className="text-xs text-muted-foreground">Real fee data per branch — collected, pending, and net balance</p>
+        </div>
+        {rows.length === 0 ? (
+          <EmptyState icon={Network} title="No branches yet" desc="Add branches to see fee collection analytics." />
+        ) : (
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs text-center">Students</TableHead>
+                  <TableHead className="text-xs text-right">Collected</TableHead>
+                  <TableHead className="text-xs text-right">Pending</TableHead>
+                  <TableHead className="text-xs text-center">Invoices (Paid / Total)</TableHead>
+                  <TableHead className="text-xs text-right">Net</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm font-medium">{r.name}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{r.students}</TableCell>
+                    <TableCell className="text-xs text-right tabular-nums text-emerald-700">{formatPKR(r.collected)}</TableCell>
+                    <TableCell className={`text-xs text-right tabular-nums ${r.pending > 0 ? 'text-rose-600' : 'text-muted-foreground'}`}>{formatPKR(r.pending)}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{r.paidInvoices} / {r.totalInvoices}</TableCell>
+                    <TableCell className={`text-xs text-right tabular-nums font-semibold ${r.net >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>{formatPKR(r.net)}</TableCell>
+                    <TableCell>
+                      {r.status === 'Blocked' ? (
+                        <Badge variant="outline" className="text-[10px] text-rose-600 bg-rose-500/10 border-rose-500/20">Blocked</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-primary bg-primary/10 border-primary/20">Active</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============== Academics View (cross-branch attendance + results) ==============
+function InstituteAcademics({ user, branches }: any) {
+  const [loading, setLoading] = useState(true);
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [results, setResults] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      api.getAttendance().then(r => Array.isArray(r) ? r : []).catch(() => []),
+      api.getResults().then(r => Array.isArray(r) ? r : []).catch(() => []),
+    ]).then(([att, res]) => {
+      if (!active) return;
+      setAttendance(att);
+      setResults(res);
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user?.instituteId]);
+
+  // Group attendance sessions by branchId
+  const attendanceByBranch = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const s of attendance) {
+      const bid = s.branchId || 'unknown';
+      if (!map[bid]) map[bid] = [];
+      map[bid].push(s);
+    }
+    return map;
+  }, [attendance]);
+
+  // Group results by branchId
+  const resultsByBranch = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const r of results) {
+      const bid = r.branchId || 'unknown';
+      if (!map[bid]) map[bid] = [];
+      map[bid].push(r);
+    }
+    return map;
+  }, [results]);
+
+  // Per-branch attendance summary rows
+  const attendanceRows = (branches || []).map((br: any) => {
+    const sessions = attendanceByBranch[br.id] || [];
+    let present = 0, absent = 0, late = 0, total = 0;
+    for (const s of sessions) {
+      for (const rec of (Array.isArray(s.records) ? s.records : [])) {
+        total++;
+        if (rec.status === 'Present') present++;
+        else if (rec.status === 'Absent') absent++;
+        else if (rec.status === 'Late') late++;
+      }
+    }
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    return { id: br.id, name: br.name, sessions: sessions.length, present, absent, late, total, rate };
+  });
+
+  // Per-branch results summary rows
+  const resultsRows = (branches || []).map((br: any) => {
+    const exams = resultsByBranch[br.id] || [];
+    let totalMarksSum = 0, marksObtainedSum = 0;
+    const evaluatedStudents = new Set<string>();
+    for (const r of exams) {
+      for (const rec of (Array.isArray(r.records) ? r.records : [])) {
+        if (rec.studentId) evaluatedStudents.add(rec.studentId);
+        totalMarksSum += Number(r.totalMarks) || 0;
+        marksObtainedSum += Number(rec.marks) || 0;
+      }
+    }
+    const avgScore = totalMarksSum > 0 ? Math.round((marksObtainedSum / totalMarksSum) * 100) : 0;
+    return { id: br.id, name: br.name, exams: exams.length, evaluated: evaluatedStudents.size, avgScore };
+  });
+
+  if (loading) return <Card className="p-6"><LoadingState label="Loading academics…" /></Card>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Academics" subtitle="Cross-branch attendance and results overview" />
+
+      {/* Attendance Overview */}
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarCheck className="h-4 w-4 text-primary" />
+          <div>
+            <h3 className="font-bold text-base">Attendance Overview</h3>
+            <p className="text-xs text-muted-foreground">Sessions recorded per branch with present / absent / late counts</p>
+          </div>
+        </div>
+        {!branches || branches.length === 0 ? (
+          <EmptyState icon={CalendarCheck} title="No branches" desc="Add branches to see attendance analytics." />
+        ) : attendanceRows.every((r: any) => r.sessions === 0) ? (
+          <EmptyState icon={CalendarCheck} title="No attendance recorded yet" desc="Once teachers start marking attendance from their portal, sessions will appear here." />
+        ) : (
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs text-center">Sessions</TableHead>
+                  <TableHead className="text-xs text-center">Present</TableHead>
+                  <TableHead className="text-xs text-center">Absent</TableHead>
+                  <TableHead className="text-xs text-center">Late</TableHead>
+                  <TableHead className="text-xs text-center">Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendanceRows.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm font-medium">{r.name}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{r.sessions}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums text-emerald-700">{r.present}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums text-rose-600">{r.absent}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums text-amber-700">{r.late}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={`text-[10px] font-mono ${r.rate >= 75 ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' : r.rate >= 50 ? 'text-amber-700 bg-amber-500/10 border-amber-500/20' : r.rate > 0 ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-muted-foreground bg-muted border-border'}`}>
+                        {r.sessions === 0 ? '—' : r.rate + '%'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+
+      {/* Results Overview */}
+      <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Award className="h-4 w-4 text-primary" />
+          <div>
+            <h3 className="font-bold text-base">Results Overview</h3>
+            <p className="text-xs text-muted-foreground">Exams conducted and average scores per branch</p>
+          </div>
+        </div>
+        {!branches || branches.length === 0 ? (
+          <EmptyState icon={Award} title="No branches" desc="Add branches to see results analytics." />
+        ) : resultsRows.every((r: any) => r.exams === 0) ? (
+          <EmptyState icon={Award} title="No results posted yet" desc="When teachers post exam results from their portal, summaries will appear here." />
+        ) : (
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs text-center">Exams Conducted</TableHead>
+                  <TableHead className="text-xs text-center">Students Evaluated</TableHead>
+                  <TableHead className="text-xs text-center">Avg Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {resultsRows.map((r: any) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-sm font-medium">{r.name}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{r.exams}</TableCell>
+                    <TableCell className="text-xs text-center tabular-nums">{r.evaluated}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={`text-[10px] font-mono ${r.exams === 0 ? 'text-muted-foreground bg-muted border-border' : r.avgScore >= 50 ? 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-600 bg-rose-500/10 border-rose-500/20'}`}>
+                        {r.exams === 0 ? '—' : r.avgScore + '%'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ============== Complaints View (institute-wide) ==============
+function InstituteComplaints({ user }: { user: any }) {
+  const [loading, setLoading] = useState(true);
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [parents, setParents] = useState<Record<string, any>>({});
+  const [branches, setBranches] = useState<any[]>([]);
+  const [responding, setResponding] = useState<any | null>(null);
+  const [responseText, setResponseText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const refresh = () => {
+    if (!user?.instituteId) { setLoading(false); return; }
+    setLoading(true);
+    Promise.all([
+      api.getComplaints({ instituteId: user.instituteId }).then(r => Array.isArray(r) ? r : []).catch(() => []),
+      api.branches(user.instituteId).then(r => Array.isArray(r) ? r : []).catch(() => []),
+    ]).then(([cmp, brs]) => {
+      setComplaints(cmp);
+      setBranches(brs);
+      // Fetch parent users for this institute to map parentId -> name
+      return api.platformUsers({ instituteId: user.instituteId, role: 'parent' })
+        .then(r => {
+          const map: Record<string, any> = {};
+          for (const p of (Array.isArray(r) ? r : [])) map[p.id] = p;
+          setParents(map);
+        }).catch(() => {});
+    }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { refresh(); }, [user?.instituteId]);
+
+  const stats = useMemo(() => {
+    const open = complaints.filter((c: any) => String(c.status || 'Open').toLowerCase() !== 'resolved').length;
+    const resolved = complaints.filter((c: any) => String(c.status || '').toLowerCase() === 'resolved').length;
+    return { total: complaints.length, open, resolved };
+  }, [complaints]);
+
+  const parentName = (pid?: string) => pid ? (parents[pid]?.name || 'Parent') : 'Anonymous';
+  const branchName = (bid?: string) => bid ? (branches.find((b: any) => b.id === bid)?.name || '—') : '—';
+
+  const submit = async () => {
+    if (!responding) return;
+    if (!responseText.trim()) { toast({ title: 'Response is empty', variant: 'destructive' }); return; }
+    setSubmitting(true);
+    try {
+      await api.respondToComplaint(responding.id, responseText.trim());
+      toast({ title: 'Response sent', description: 'Complaint marked as Resolved.' });
+      setResponding(null);
+      setResponseText('');
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to respond', description: e.message, variant: 'destructive' }); }
+    finally { setSubmitting(false); }
+  };
+
+  if (loading) return <Card className="p-6"><LoadingState label="Loading complaints…" /></Card>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Complaints" subtitle={`Parent & student complaints across all branches · ${user?.instituteName || ''}`} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KPICard icon={MessageCircleWarning} label="Total Complaints" value={String(stats.total)} sub="Across all branches" />
+        <KPICard icon={AlertCircle} label="Open" value={String(stats.open)} sub="Awaiting response" tone={stats.open > 0 ? 'negative' : 'default'} />
+        <KPICard icon={MailCheck} label="Resolved" value={String(stats.resolved)} sub="Closed" tone={stats.resolved > 0 ? 'positive' : 'default'} />
+      </div>
+
+      {complaints.length === 0 ? (
+        <EmptyState icon={MessageCircleWarning} title="No complaints received" desc="When parents or students raise a concern via their portal, it will appear here for you to respond to." />
+      ) : (
+        <Card className="border border-border rounded-lg shadow-sm p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageCircleWarning className="h-4 w-4 text-primary" />
+            <div>
+              <h3 className="font-bold text-base">All Complaints</h3>
+              <p className="text-xs text-muted-foreground">{complaints.length} total · institute-wide</p>
+            </div>
+          </div>
+          <div className="max-h-96 overflow-y-auto scroll-fancy">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Parent</TableHead>
+                  <TableHead className="text-xs">Subject</TableHead>
+                  <TableHead className="text-xs">Branch</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {complaints.map((c: any) => {
+                  const isResolved = String(c.status || '').toLowerCase() === 'resolved';
+                  return (
+                    <TableRow key={c.id} className="align-top">
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</TableCell>
+                      <TableCell className="text-sm">{parentName(c.parentId)}</TableCell>
+                      <TableCell>
+                        <div className="font-medium text-sm">{c.subject || '—'}</div>
+                        <div className="text-[11px] text-muted-foreground line-clamp-2 max-w-md">{c.message || ''}</div>
+                        {c.response && (
+                          <div className="mt-1 text-[11px] text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1 inline-block">
+                            <strong>Reply:</strong> {c.response}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{branchName(c.branchId)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={isResolved ? 'text-[10px] text-emerald-700 bg-emerald-500/10 border-emerald-500/20' : 'text-[10px] text-rose-600 bg-rose-500/10 border-rose-500/20'}>
+                          {isResolved ? 'Resolved' : 'Open'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" className="h-8 text-xs" disabled={isResolved}
+                          onClick={() => { setResponding(c); setResponseText(c.response || ''); }}>
+                          {isResolved ? 'Resolved' : <><MessageCircleWarning className="h-3.5 w-3.5 mr-1" /> Respond</>}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      )}
+
+      {responding && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => { setResponding(null); setResponseText(''); }}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-4">
+            <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+              <h3 className="font-bold text-lg mb-1">Respond to Complaint</h3>
+              <p className="text-sm text-muted-foreground mb-3">Your reply will be saved and the complaint will be marked as Resolved.</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-3 mb-4">
+                <div className="text-xs text-muted-foreground">Subject</div>
+                <div className="font-medium text-sm">{responding.subject}</div>
+                <div className="text-xs text-muted-foreground mt-2">Original message</div>
+                <div className="text-sm mt-0.5">{responding.message}</div>
+              </div>
+              <Label>Your Response</Label>
+              <Textarea value={responseText} onChange={e => setResponseText(e.target.value)} rows={4} placeholder="Type your response to the parent/student…" className="mt-1 resize-none" />
+              <div className="flex gap-2 mt-5">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={submitting} onClick={submit}>
+                  {submitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Sending…</> : <><Send className="h-3.5 w-3.5 mr-1.5" /> Send Response</>}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setResponding(null); setResponseText(''); }}>Cancel</Button>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ============== Events View (institute-wide) ==============
+function InstituteEvents({ user }: { user: any }) {
+  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<any[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', startDate: '', location: '', type: 'Event' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const refresh = () => {
+    if (!user?.instituteId) { setLoading(false); return; }
+    setLoading(true);
+    api.getEvents({ instituteId: user.instituteId })
+      .then(r => setEvents(Array.isArray(r) ? r : []))
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { refresh(); }, [user?.instituteId]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const upcoming = events.filter((e: any) => (e.startDate || '') >= todayStr).length;
+    return { total: events.length, upcoming };
+  }, [events]);
+
+  const submit = async () => {
+    if (!form.title.trim()) { toast({ title: 'Title is required', variant: 'destructive' }); return; }
+    setSubmitting(true);
+    try {
+      await api.createEvent({
+        title: form.title.trim(),
+        description: form.description.trim(),
+        startDate: form.startDate || null,
+        location: form.location.trim(),
+        type: form.type,
+        instituteId: user.instituteId,
+        branchId: null, // Institute-level event, not bound to a branch
+      });
+      toast({ title: 'Event created', description: `"${form.title.trim()}" was added to your institute calendar.` });
+      setForm({ title: '', description: '', startDate: '', location: '', type: 'Event' });
+      setShowCreate(false);
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to create event', description: e.message, variant: 'destructive' }); }
+    finally { setSubmitting(false); }
+  };
+
+  const typeTone = (t?: string) => {
+    const v = String(t || '').toLowerCase();
+    if (v.includes('exam')) return 'text-rose-600 bg-rose-500/10 border-rose-500/20';
+    if (v.includes('holiday')) return 'text-amber-700 bg-amber-500/10 border-amber-500/20';
+    if (v.includes('meeting')) return 'text-primary bg-primary/10 border-primary/20';
+    return 'text-primary bg-primary/10 border-primary/20';
+  };
+
+  if (loading) return <Card className="p-6"><LoadingState label="Loading events…" /></Card>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Events"
+        subtitle={`Institute calendar & announcements · ${user?.instituteName || ''}`}
+        action={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowCreate(v => !v)}><CalendarPlus className="h-4 w-4 mr-1.5" /> Create Event</Button>}
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <KPICard icon={Trophy} label="Total Events" value={String(stats.total)} sub="In your institute calendar" />
+        <KPICard icon={CalendarPlus} label="Upcoming Events" value={String(stats.upcoming)} sub="Scheduled today or later" tone={stats.upcoming > 0 ? 'positive' : 'default'} />
+      </div>
+
+      {events.length === 0 ? (
+        <EmptyState icon={Trophy} title="No events yet" desc="Create your first institute event — exams, holidays, meetings, or any announcement parents and students should know about."
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowCreate(true)}><CalendarPlus className="h-4 w-4 mr-1.5" /> Create Event</Button>} />
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {events.map((e: any) => (
+            <Card key={e.id} className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition flex flex-col">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base truncate">{e.title}</h3>
+                  <Badge variant="outline" className={`text-[10px] mt-1 ${typeTone(e.type)}`}>{e.type || 'Event'}</Badge>
+                </div>
+                <Calendar className="h-4 w-4 text-primary shrink-0" />
+              </div>
+              {e.description && <p className="text-sm text-muted-foreground line-clamp-3 mb-3">{e.description}</p>}
+              <div className="mt-auto space-y-1.5 text-xs">
+                {e.startDate && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{new Date(e.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  </div>
+                )}
+                {e.location && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span className="truncate">{e.location}</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {showCreate && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto" onClick={() => setShowCreate(false)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="w-full max-w-lg my-4">
+            <Card className="p-6 max-h-[90vh] overflow-y-auto scroll-fancy">
+              <h3 className="font-bold text-lg mb-1">Create Institute Event</h3>
+              <p className="text-sm text-muted-foreground mb-4">Add an event to your institute calendar. Visible across all branches.</p>
+              <div className="space-y-3">
+                <div><Label>Title *</Label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Annual Sports Day" className="mt-1" /></div>
+                <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Short description of the event…" className="mt-1 resize-none" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Start Date</Label><Input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className="mt-1" /></div>
+                  <div>
+                    <Label>Type</Label>
+                    <Select value={form.type} onValueChange={v => setForm({ ...form, type: v })}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Event">Event</SelectItem>
+                        <SelectItem value="Exam">Exam</SelectItem>
+                        <SelectItem value="Holiday">Holiday</SelectItem>
+                        <SelectItem value="Meeting">Meeting</SelectItem>
+                        <SelectItem value="Sports">Sports</SelectItem>
+                        <SelectItem value="Notice">Notice</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div><Label>Location</Label><Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="e.g. Main Auditorium" className="mt-1" /></div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={submitting} onClick={submit}>
+                  {submitting ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Creating…</> : <><CalendarPlus className="h-3.5 w-3.5 mr-1.5" /> Create Event</>}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              </div>
+            </Card>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
   );
 }
 

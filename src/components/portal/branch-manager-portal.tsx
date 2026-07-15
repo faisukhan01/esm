@@ -125,20 +125,18 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
 
   return (
     <div className="space-y-6">
-      {/* Welcome banner */}
+      {/* Welcome banner — clean navy gradient, no decorative overlays */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-6 sm:p-8 text-white">
-        <div className="absolute inset-0 bg-grid-dark opacity-25" />
-        <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] mb-3 border border-white/15"><Network className="h-3 w-3 text-primary/70" /> Branch Manager · {user?.branchName}</div>
             <h1 className="text-2xl sm:text-3xl font-extrabold">Welcome, {user?.name?.split(' ')[0]}</h1>
             <p className="text-white/80 text-sm mt-1.5 max-w-lg">{bannerSub}</p>
           </div>
           <div className="flex gap-2">
-            <Button className="bg-white text-primary hover:bg-accent" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" size="sm" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Student</Button>
+            <Button className="bg-white text-primary hover:bg-white/90" size="sm" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>
+            <Button className="bg-white/10 text-white border border-white/30 hover:bg-white/20" size="sm" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Add Student</Button>
           </div>
         </div>
       </motion.div>
@@ -150,15 +148,15 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
         <EmptyState icon={Wallet} title="No financial data yet" desc="Branch financial analytics will appear here once fee invoices and salary payouts are recorded." />
       ) : (
         <>
-          {/* KPI cards */}
+          {/* KPI cards — compact: p-4, h-9 w-9 icons, text-lg/xl values */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-                  <div className={`h-10 w-10 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
+                  <div className={`h-9 w-9 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
                     <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
                   </div>
-                  <div className={`text-xl sm:text-2xl font-extrabold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
+                  <div className={`text-lg sm:text-xl font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
                   {c.sub && <div className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</div>}
                 </Card>
@@ -321,7 +319,7 @@ function FinanceSkeleton() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="p-4 border border-border rounded-lg">
-            <div className="h-10 w-10 rounded-lg bg-muted animate-pulse mb-3" />
+            <div className="h-9 w-9 rounded-lg bg-muted animate-pulse mb-3" />
             <div className="h-5 w-20 rounded bg-muted animate-pulse" />
             <div className="h-3 w-16 rounded bg-muted animate-pulse mt-2" />
           </Card>

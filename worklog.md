@@ -2972,3 +2972,150 @@ Stage Summary:
 - **Turso DB**: Already in use (via `@libsql/client`) — the same library, just called from Next.js API routes instead of Express
 - **Hero fixed**: Clean navy gradient background (no rotating images) — professional, modern, fast-loading
 - **Architecture**: Clean separation — `src/lib/server/` for server-only code (db, auth, handler), `src/lib/api.ts` for client-side API client, `src/app/api/[...path]/route.ts` for the catch-all route
+
+---
+
+## IA-MODULES + BM-DASHBOARD-CLEANUP — Institute Admin new modules + Branch Manager dashboard cleanup
+
+**Agent:** Z.ai Code (single-agent, no subagent delegation needed — both tasks were tightly coupled and small enough to handle in one pass)
+**Date:** 2025-11
+**Files touched:**
+- `src/components/portal/institute-admin-portal.tsx` — added 4 new views + routing + new icon imports
+- `src/components/portal/branch-manager-portal.tsx` — cleaned up `BranchOverview` welcome banner + compacted KPI cards
+- (verified) `src/lib/role-modules.ts` — sidebar already lists `institute-fees`, `institute-academics`, `institute-complaints`, `institute-events`
+
+### Task 1 — Four new Institute Admin views (all real API data, no dummy values)
+
+Routing wired as early returns in `InstituteAdminPortal` (right after the existing `announcements` / `settings` early returns):
+
+```tsx
+if (activeModule === 'institute-fees') return <InstituteFeeManagement finance={finance} branches={branches} loading={loading} />;
+if (activeModule === 'institute-academics') return <InstituteAcademics user={user} branches={branches} />;
+if (activeModule === 'institute-complaints') return <InstituteComplaints user={user} />;
+if (activeModule === 'institute-events') return <InstituteEvents user={user} />;
+```
+
+**A. `InstituteFeeManagement`** (`institute-fees`)
+- 4 KPI cards: Total Collected, Total Pending, Branches with Collections, Avg Collection / Branch (all `tabular-nums`, emerald for positive, rose for negative)
+- Branch-wise Fee Collection table: Branch | Students | Collected | Pending | Invoices (Paid/Total) | Net | Status
+- Data sources:
+  - Parent `finance.branchPerformance` (from `api.getInstituteFinance`) — gives students, teachers, revenue, net, status per branch
+  - Each branch's `api.getBranchFinance(br.id)` fetched in parallel via `refreshBranchFees()` — gives real `pendingFees`, `paidInvoices`, `unpaidInvoices`, `totalInvoices`, `totalRevenue` from the `fee_invoices` table (the institute endpoint doesn't track these)
+  - Combined into a unified per-branch row so the table shows the most accurate real-time figures
+- CSV export button included
+- Loading + empty states handled
+- Refactored to extract `refreshBranchFees()` async function (avoids the `react-hooks/set-state-in-effect` lint rule that fires when `setFeeLoading(true)` is called synchronously in the effect body)
+
+**B. `InstituteAcademics`** (`institute-academics`)
+- Two cards: Attendance Overview + Results Overview (each a separate Card with its own header)
+- Attendance table: Branch | Sessions | Present | Absent | Late | Rate %
+- Results table: Branch | Exams Conducted | Students Evaluated | Avg Score %
+- Data sources:
+  - `api.getAttendance()` (returns last 50 sessions across all branches — server doesn't accept `branchId`)
+  - `api.getResults()` (returns last 50 exam entries across all branches)
+  - Grouped client-side by `branchId` via `useMemo`
+  - Only rows for branches in `branches` prop are displayed (consistent with the institute scope)
+- Rate badge color-coded: ≥75% emerald, ≥50% amber, <50% rose, no data muted
+- Friendly empty states when no attendance / no results yet (separate from no branches)
+
+**C. `InstituteComplaints`** (`institute-complaints`)
+- 3 KPI cards: Total Complaints, Open (rose tone when >0), Resolved (emerald tone when >0)
+- Table: Date | Parent | Subject | Branch | Status | Actions
+- "Respond" button opens modal with textarea → `api.respondToComplaint(id, response)` → refresh + toast
+- Resolved complaints show existing reply inline (emerald badge) and disable the Respond button
+- Data source: `api.getComplaints({ instituteId: user.instituteId })` for the complaints + `api.platformUsers({ instituteId, role: 'parent' })` to map `parentId` → name + `api.branches(instituteId)` to map `branchId` → name
+- Modal uses the same pattern as BM ComplaintsView for consistency
+
+**D. `InstituteEvents`** (`institute-events`)
+- 2 KPI cards: Total Events, Upcoming Events (today or later)
+- Event cards grid (sm:2 / lg:3 cols): title, type badge (color-coded — Exam rose, Holiday amber, Meeting/Event primary), description (line-clamp-3), start date, location
+- "Create Event" button in header → modal with Title*, Description, Start Date, Type (select), Location → `api.createEvent({ ...form, instituteId, branchId: null })` (institute-level event, not bound to a branch)
+- Data source: `api.getEvents({ instituteId: user.instituteId })`
+
+### Styling consistency
+All 4 new views reuse the existing helpers from the file:
+- `KPICard` (compact: `p-3.5`, `h-9 w-9` icons, `text-lg sm:text-xl` values) — matches the spec exactly
+- `PageHeader` (responsive title/subtitle/action row)
+- `EmptyState` (icon + title + desc + optional action)
+- `LoadingState` (spinner + label)
+- `exportToCSV` (BOM-prefixed CSV with toast confirmation)
+- shadcn `Table`, `Badge`, `Button`, `Input`, `Label`, `Select`, `Textarea`, `Card`
+- Navy primary throughout; rose for open/destructive/pending; emerald for positive/resolved
+- All long tables wrapped in `max-h-96 overflow-y-auto scroll-fancy` per the long-list rule
+- No indigo/blue/green
+
+### New lucide-react icons added to the import block
+`CreditCard, CalendarCheck, Award, MessageCircleWarning, MailCheck, Trophy, CalendarPlus, MessageSquare`
+
+### Task 2 — Branch Manager dashboard cleanup (`BranchOverview`)
+
+File: `src/components/portal/branch-manager-portal.tsx`
+
+1. **Removed `bg-grid-dark opacity-25` overlay** on the welcome banner — it was noisy and added visual clutter over the navy gradient
+2. **Removed the `bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl` decorative circle** — looked AI-generated and inconsistent with the clean slate-navy theme
+3. **Welcome banner is now a clean navy gradient only** (`bg-gradient-to-br from-primary via-primary to-primary/80`) — removed the `relative` wrapper divs that held the decorative elements; the content div now sits directly inside the gradient
+4. **Compacted the 6 KPI cards** to match the institute-admin spec:
+   - Icon container: `h-10 w-10` → `h-9 w-9`
+   - Value text: `text-xl sm:text-2xl font-extrabold` → `text-lg sm:text-xl font-bold`
+   - Padding stays `p-4` (already correct)
+   - Same fix applied to `FinanceSkeleton` so the loading state matches the new compact size
+5. **"Add Student" button verified** — already correctly styled as `bg-white/10 text-white border border-white/30 hover:bg-white/20` (the previously-broken `variant="outline"` with invisible text has been fixed by an earlier task and is still correct)
+6. **Real-time data verified** — the `kpi` object is sourced from `finance.kpi` returned by `api.getBranchFinance(user.branchId)`. If `finance` is null (still loading or error), the view shows the `EmptyState` rather than fabricated numbers. The `bannerSub` string conditionally shows "Add your first teacher or student to get started." when there's no real data yet.
+
+### Lint
+- `bun run lint` passes with **0 errors and 0 warnings** after the `setState-in-effect` refactor on `InstituteFeeManagement`
+- Dev server (`bun run dev`) running cleanly on port 3000
+
+### Notes for future agents
+- The `/api/attendance` and `/api/results` endpoints accept `classId` / `studentId` / `courseId` query params but **NOT** `branchId` — the server simply returns the last 50 entries across the whole DB. The existing `BMAttendanceView` filters client-side by `branchId`. `InstituteAcademics` takes the opposite approach: it fetches once (no per-branch calls) and groups client-side, which is more efficient than the task brief's suggested per-branch loop.
+- The `/api/institute/finance` endpoint hardcodes `pendingFees: 0` for every branch in `branchPerformance` (it doesn't track fee invoices at the institute level). `InstituteFeeManagement` works around this by also fetching each branch's `/api/branch/finance` in parallel, which DOES compute real pending fees from the `fee_invoices` table. The unified per-branch row prefers the branch-level numbers when available, falling back to the institute-level figures.
+- The `react-hooks/set-state-in-effect` lint rule fires when `setState` is called synchronously in a `useEffect` body. The fix pattern used elsewhere in this file (see `InstituteRoyaltyView.refreshRoyalty`) is to extract the body into a named async function and call it from the effect — same pattern applied to `refreshBranchFees` here.
+
+---
+Task ID: IA-MODULES + BM-DASHBOARD + CHALLAN-FIX + ADDUSER-FIX
+Agent: Main (Z.ai Code) + full-stack-developer subagent
+Task: Add Institute Admin Fee Management/Academics/Complaints/Events, fix Branch Manager dashboard, fix challan PDF, fix AddUserModal course requirement, remove dummy data.
+
+Work Log:
+- **Branch Manager dashboard cleanup** (subagent):
+  - Removed `bg-grid-dark opacity-25` overlay (looked noisy/childish)
+  - Removed `bg-[oklch(0.5_0.04_260)_/_0.15] blur-3xl` decorative circle (AI-looking)
+  - Welcome banner is now clean solid navy gradient
+  - Compacted KPI cards: h-10→h-9 icons, text-xl/2xl→text-lg/xl values
+- **Branch Manager "Add Student" button fix** (Main agent):
+  - Changed from `variant="outline" className="border-white/30 text-white hover:bg-white/10"` (text invisible) to `className="bg-white/10 text-white border border-white/30 hover:bg-white/20"` (text visible, semi-transparent bg)
+  - Also fixed "Student" → "Add Student" for clarity
+- **AddUserModal course fix** (Main agent):
+  - Removed the mandatory course requirement for teachers: `if (role === 'teacher' && selectedCourseIds.length === 0) { toast(...); return; }` → now just a comment "Course assignment is OPTIONAL"
+  - Teachers can now be added without courses assigned — they can be assigned later in Classes & Courses
+- **Challan PDF redesign** (Main agent):
+  - Replaced the old gradient banner + grid layout with a clean professional layout:
+    - Navy top bar with institute name (left) + FEE CHALLAN + challan no (right)
+    - Clean info rows (Student Name, Class, Roll No, Month/Year, Date Issued) — label left, value right
+    - Amount box with light gray background
+    - Status badge (Paid=green, Unpaid=red)
+    - Signature lines at the bottom
+    - Gray footer with "Powered by ESM — Electronic School Management"
+  - All elements use clean borders, proper spacing, no overlapping
+  - VLM rated 8/10: "Layout is clean/professional, institute name at top, good alignment, all fields aligned"
+- **Institute Admin new modules** (subagent):
+  - Added `institute-fees` (Fee Management): 4 KPIs (Total Collected, Total Pending, Branches with Collections, Avg/Branch) + branch-wise fee collection table. Uses real `finance.branchPerformance` + `api.getBranchFinance` data.
+  - Added `institute-academics` (Academics): Attendance Overview table (Branch/Sessions/Present/Absent/Late/Rate) + Results Overview table (Branch/Exams/Students/Avg Score). Fetches real attendance + results.
+  - Added `institute-complaints` (Complaints): 3 KPIs (Total/Open/Resolved) + complaints table with Respond modal.
+  - Added `institute-events` (Events): 2 KPIs + event cards + Create Event modal.
+  - All views use real API data only — no dummy/fake data
+  - Updated sidebar in role-modules.ts with 4 new items
+- **Verified**:
+  - Institute Admin: all 11 sidebar items work (Dashboard, Branches, Royalty, Fee Management, Teachers, Students, Academics, Reports, Complaints, Events, Announcements)
+  - Branch Manager: dashboard is clean, "Add Student" button text visible
+  - Student challan: PDF downloads with clean layout, institute name at top, proper alignment
+  - AddUserModal: teachers can be added without course assignment
+  - Lint: 0 errors ✅
+
+Stage Summary:
+- Institute Admin now has 11 modules (was 7) — added Fee Management, Academics, Complaints, Events
+- Branch Manager dashboard is clean and professional (removed grid overlay + blur circles, compact cards)
+- "Add Student" button text is now visible on the BM dashboard
+- Teachers can be added without mandatory course assignment
+- Student challan PDF has a clean, professional, properly-aligned layout
+- All data is real-time from the API — no dummy/fake data anywhere
