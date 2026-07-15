@@ -718,9 +718,9 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-lg font-bold tabular-nums">{c.value}</div>
+            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -729,7 +729,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       </div>
 
       {/* Attendance Trend chart */}
-      <Card className="p-5 border border-border rounded-lg shadow-sm">
+      <Card className="p-4 border border-border rounded-lg shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CalendarCheck className="h-4 w-4 text-primary" />
@@ -769,7 +769,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
       {/* 2-col: Class Performance | Recent Activity */}
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Class Performance */}
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
+        <Card className="p-4 border border-border rounded-lg shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <GraduationCap className="h-4 w-4 text-primary" />
             <h3 className="font-bold text-base">Class Performance</h3>
@@ -821,7 +821,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
         </Card>
 
         {/* Recent Activity */}
-        <Card className="p-5 border border-border rounded-lg shadow-sm">
+        <Card className="p-4 border border-border rounded-lg shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <ClipboardList className="h-4 w-4 text-primary" />
             <h3 className="font-bold text-base">Recent Activity</h3>
@@ -895,9 +895,9 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
               onClick={() => setActiveModule(q.module)}
               className="text-left group"
             >
-              <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition h-full">
+              <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition h-full">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
                     <q.icon className="h-5 w-5 text-primary" />
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
@@ -943,9 +943,9 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c, i) => (
           <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center mb-3"><c.icon className="h-5 w-5 text-primary" /></div>
-              <div className="text-lg font-bold tabular-nums">{c.value}</div>
+            <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center mb-2"><c.icon className="h-5 w-5 text-primary" /></div>
+              <div className="text-base font-bold tabular-nums">{c.value}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{c.label}</div>
               <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{c.sub}</div>
             </Card>
@@ -968,9 +968,9 @@ function TeacherOverview({ user, students, diary, myResults, classes, onOpenClas
               const studentCount = studentsInClass(cls);
               return (
                 <motion.div key={cls.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Card className="p-5 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenClass(cls)}>
+                  <Card className="p-4 hover:shadow-lg transition cursor-pointer group border border-border rounded-lg shadow-sm" onClick={() => onOpenClass(cls)}>
                     <div className="flex items-start justify-between mb-3">
-                      <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
                         <GraduationCap className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex items-center gap-1.5">

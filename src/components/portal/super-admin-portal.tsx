@@ -213,7 +213,7 @@ function PlatformOverview({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {overviewLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="p-5">
+            <Card key={i} className="p-3">
               <div className="h-11 w-11 rounded-xl bg-muted/60 animate-pulse" />
               <div className="mt-4 h-7 w-16 rounded bg-muted/60 animate-pulse" />
               <div className="mt-1.5 h-3 w-24 rounded bg-muted/40 animate-pulse" />
@@ -222,8 +222,8 @@ function PlatformOverview({
         ) : (
           cards.map((c, i) => (
             <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-                <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+              <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
                   <c.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="mt-4">
@@ -524,8 +524,8 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {/* Total Revenue */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
               <DollarSign className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -534,7 +534,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
             </div>
           </Card>
           {/* Pending Fees */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
             <div className="h-9 w-9 rounded-lg bg-rose-500/10 grid place-items-center">
               <AlertCircle className="h-5 w-5 text-rose-600" />
             </div>
@@ -544,8 +544,8 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
             </div>
           </Card>
           {/* Salary Paid */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
               <Wallet className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -554,7 +554,7 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
             </div>
           </Card>
           {/* Net Balance */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
             <div className={`h-9 w-9 rounded-lg grid place-items-center ${finKpis.netBalance >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
               <Scale className={`h-5 w-5 ${finKpis.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`} />
             </div>
@@ -564,8 +564,8 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
             </div>
           </Card>
           {/* Total Invoices */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
               <FileText className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -575,8 +575,8 @@ function PlatformAnalytics({ finance, financeLoading, institutes, onRefresh }: a
             </div>
           </Card>
           {/* Active Institutes */}
-          <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
-            <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center">
+          <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
             <div className="mt-4">
@@ -1496,7 +1496,7 @@ function PlatformConfig({ overview, loading }: { overview: any; loading: boolean
       <div className="grid sm:grid-cols-2 gap-4">
         {settings.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="p-5 hover:shadow-md transition border border-border rounded-lg shadow-sm">
+            <Card className="p-3 hover:shadow-md transition border border-border rounded-lg shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center shrink-0">
                   <s.icon className="h-5 w-5 text-primary" />

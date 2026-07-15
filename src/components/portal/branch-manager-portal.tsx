@@ -152,11 +152,11 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <Card className="p-5 border border-border rounded-lg shadow-sm hover:shadow-md transition">
+                <Card className="p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
                   <div className={`h-9 w-9 rounded-lg grid place-items-center mb-3 ${c.iconTone === 'rose' ? 'bg-rose-500/10' : c.iconTone === 'emerald' ? 'bg-emerald-500/10' : 'bg-primary/10'}`}>
                     <c.icon className={`h-5 w-5 ${c.iconTone === 'rose' ? 'text-rose-600' : c.iconTone === 'emerald' ? 'text-emerald-600' : 'text-primary'}`} />
                   </div>
-                  <div className={`text-lg font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
+                  <div className={`text-base font-bold tabular-nums leading-tight ${c.tone === 'positive' ? 'text-emerald-600' : c.tone === 'negative' ? 'text-rose-600' : 'text-foreground'}`}>{c.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
                   {c.sub && <div className="text-[11px] text-muted-foreground mt-0.5">{c.sub}</div>}
                 </Card>
@@ -1104,7 +1104,7 @@ function FeeStructureTab({ user }: { user: any }) {
               <div key={cls.id} className={`p-4 rounded-xl border ${isSet ? 'border-[oklch(0.5_0.04_260)_/_0.3] bg-accent0/5' : 'border-dashed border-border'} hover:shadow-sm transition`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-11 w-11 rounded-xl bg-primary/10 grid place-items-center text-primary font-bold text-xs">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary font-bold text-xs">
                       {classNumber(cls.name) || '—'}
                     </div>
                     <div>
