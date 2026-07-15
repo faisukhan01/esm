@@ -114,11 +114,22 @@ function CoverPanel() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 150, damping: 12 }}
+          className="mb-2 fade-in-slide flex justify-center"
+          style={{ '--delay': '0.1s' } as React.CSSProperties}
+        >
+          <img src="/esm-logo.png" alt="ESM Logo" className="h-14 w-14 object-contain" />
+        </motion.div>
+
+        {/* Waving cartoon illustration */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 150, damping: 12 }}
-          className="mb-4 fade-in-slide flex justify-center"
+          className="mb-2 fade-in-slide"
           style={{ '--delay': '0.2s' } as React.CSSProperties}
         >
-          <img src="/esm-logo.png" alt="ESM Logo" className="h-16 w-16 object-contain" />
+          <WavingPerson />
         </motion.div>
 
         <motion.h2
