@@ -4,13 +4,33 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
-  static const String baseUrl = '';
+  /// Base URL of the ESM backend. On the mobile app this MUST be an absolute
+  /// URL (e.g. https://esm.vercel.app) because — unlike a browser — Flutter
+  /// cannot resolve relative URLs. Configurable at runtime via the Server
+  /// Settings dialog on the login screen; persisted in SharedPreferences.
+  static String _baseUrl = '';
+  static String get baseUrl => _baseUrl;
 
   static String? _token;
+  static String? get token => _token;
 
+  static const String _baseUrlKey = 'esm_base_url';
+  static const String _defaultBaseUrl = '';
+
+  /// Called once at startup (in main.dart). Loads the saved base URL + token.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
+    _baseUrl = prefs.getString(_baseUrlKey) ?? _defaultBaseUrl;
     _token = prefs.getString('esm_token');
+  }
+
+  /// Persist a new base URL. Called from the Server Settings dialog.
+  static Future<void> setBaseUrl(String url) async {
+    var cleaned = url.trim();
+    if (cleaned.endsWith('/')) cleaned = cleaned.substring(0, cleaned.length - 1);
+    _baseUrl = cleaned;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_baseUrlKey, cleaned);
   }
 
   static Future<void> saveToken(String token) async {
@@ -40,14 +60,23 @@ class ApiClient {
 
   static Map<String, String> get _headers {
     final headers = {'Content-Type': 'application/json'};
-    if (_token != null) {
-      headers['Authorization'] = 'Bearer $_token';
-    }
+    if (_token != null) headers['Authorization'] = 'Bearer $_token';
     return headers;
   }
 
+  /// Throws a clear, user-readable error if the base URL has not been set.
+  static void _ensureBaseUrl() {
+    if (_baseUrl.isEmpty) {
+      throw ApiException(
+        'Server URL not configured. Tap the gear icon on the login screen '
+        'and enter your ESM server address (e.g. https://your-app.vercel.app).',
+      );
+    }
+  }
+
   static String _buildUrl(String path, [Map<String, dynamic>? query]) {
-    String url = '$baseUrl/api/$path';
+    _ensureBaseUrl();
+    String url = '$_baseUrl/api/$path';
     if (query != null && query.isNotEmpty) {
       final params = query.entries
           .where((e) => e.value != null && e.value.toString().isNotEmpty)
@@ -108,20 +137,24 @@ class ApiClient {
     try {
       data = jsonDecode(response.body);
     } catch (_) {
-      throw ApiException('Invalid response from server');
+      throw ApiException('Invalid response from server (${response.statusCode})');
     }
-    if (status >= 200 && status < 300) {
-      return data;
-    }
+    if (status >= 200 && status < 300) return data;
     throw ApiException(data['error'] ?? data['message'] ?? 'Request failed ($status)');
   }
 
   static String _handleError(dynamic e) {
     if (e is ApiException) return e.message;
-    if (e.toString().contains('Failed to fetch') || e.toString().contains('SocketException')) {
-      return 'Cannot connect to server. Please check your connection.';
+    final s = e.toString();
+    if (s.contains('Failed to fetch') ||
+        s.contains('SocketException') ||
+        s.contains('HandshakeException') ||
+        s.contains('Connection refused') ||
+        s.contains('Network is unreachable')) {
+      return 'Cannot connect to server. Check your internet connection and '
+          'that the server URL is correct.';
     }
-    return e.toString();
+    return s;
   }
 
   // ===== Auth API =====

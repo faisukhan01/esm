@@ -28,7 +28,21 @@ class _LoginScreenState extends State<LoginScreen> {
   ];
 
   bool get _needsName => _selectedRole == 'teacher' || _selectedRole == 'student';
-  bool get _canSubmit => _selectedRole != null && _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
+  bool get _canSubmit =>
+      _selectedRole != null &&
+      _emailController.text.isNotEmpty &&
+      _passwordController.text.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show the server settings dialog automatically if no base URL is set.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (ApiClient.baseUrl.isEmpty) {
+        _showServerDialog(firstRun: true);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -38,8 +52,34 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _showServerDialog({bool firstRun = false}) async {
+    final controller = TextEditingController(text: ApiClient.baseUrl);
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: !firstRun,
+      builder: (ctx) => _ServerSettingsDialog(controller: controller, isFirstRun: firstRun),
+    );
+    if (result != null && result.trim().isNotEmpty) {
+      await ApiClient.setBaseUrl(result.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Server set to ${result.trim()}'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _login() async {
     if (!_canSubmit) return;
+    if (ApiClient.baseUrl.isEmpty) {
+      _showServerDialog(firstRun: true);
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final result = await ApiClient.login(
@@ -76,13 +116,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sign In'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.dns_outlined, size: 20),
+            tooltip: 'Server Settings',
+            onPressed: () => _showServerDialog(),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 48),
+              const SizedBox(height: 16),
               // Logo
               Container(
                 width: 64, height: 64,
@@ -92,11 +142,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: const Icon(Icons.school, color: Colors.white, size: 32),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               const Text('Welcome to ESM', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               const SizedBox(height: 4),
               const Text('Electronic School Management', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+
+              // Server status indicator
+              if (ApiClient.baseUrl.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.success.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.cloud_done_outlined, size: 14, color: AppTheme.success),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          ApiClient.baseUrl,
+                          style: TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Role selector
               const Text('Select your role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
@@ -182,36 +258,130 @@ class _LoginScreenState extends State<LoginScreen> {
                       : Text(_selectedRole == null ? 'Select a role to continue' : 'Sign in as ${_roles.firstWhere((r) => r.id == _selectedRole).label}'),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // Security note
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.accent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.shield_outlined, size: 16, color: AppTheme.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _selectedRole == null
-                            ? 'Please select your role above to sign in.'
-                            : 'Secure login. Your credentials are encrypted.',
-                        style: TextStyle(fontSize: 11, color: AppTheme.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 32),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Modal dialog for configuring the backend server URL.
+class _ServerSettingsDialog extends StatefulWidget {
+  final TextEditingController controller;
+  final bool isFirstRun;
+  const _ServerSettingsDialog({required this.controller, required this.isFirstRun});
+
+  @override
+  State<_ServerSettingsDialog> createState() => _ServerSettingsDialogState();
+}
+
+class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
+  bool _testing = false;
+  String? _testResult;
+  bool _testOk = false;
+
+  Future<void> _testConnection() async {
+    final url = widget.controller.text.trim();
+    if (url.isEmpty) return;
+    setState(() { _testing = true; _testResult = null; });
+    try {
+      var cleaned = url;
+      if (cleaned.endsWith('/')) cleaned = cleaned.substring(0, cleaned.length - 1);
+      await ApiClient.setBaseUrl(cleaned);
+      final result = await ApiClient.getObject('health');
+      final ok = result['ok'] == true;
+      setState(() {
+        _testOk = ok;
+        _testResult = ok
+            ? 'Connected! Service: ${result['service'] ?? 'esm'}'
+            : 'Server responded but health check failed';
+      });
+    } catch (e) {
+      setState(() {
+        _testOk = false;
+        _testResult = e.toString();
+      });
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(widget.isFirstRun ? Icons.wifi : Icons.dns, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Text(widget.isFirstRun ? 'Set Server Address' : 'Server Settings'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.isFirstRun
+                ? 'Enter the ESM server URL to connect. This is the web address where your ESM backend is hosted.'
+                : 'Change the server the app connects to.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: widget.controller,
+            decoration: InputDecoration(
+              hintText: 'https://your-app.vercel.app',
+              prefixIcon: const Icon(Icons.link, size: 20),
+              labelText: 'Server URL',
+            ),
+            keyboardType: TextInputType.url,
+            autocorrect: false,
+            onChanged: (_) => setState(() => _testResult = null),
+          ),
+          const SizedBox(height: 8),
+          if (_testResult != null) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(_testOk ? Icons.check_circle : Icons.error_outline, size: 16, color: _testOk ? AppTheme.success : AppTheme.danger),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(_testResult!, style: TextStyle(fontSize: 12, color: _testOk ? AppTheme.success : AppTheme.danger))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _testing ? null : _testConnection,
+              icon: _testing
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.wifi_find, size: 16),
+              label: Text(_testing ? 'Testing…' : 'Test connection'),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (!widget.isFirstRun)
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () {
+            final url = widget.controller.text.trim();
+            if (url.isNotEmpty) Navigator.pop(context, url);
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }
@@ -239,7 +409,7 @@ class _RoleCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(vertical: isFullWidth ? 12 : 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : Color(0xFFF9FAFB),
+          color: isSelected ? AppTheme.primary : const Color(0xFFF9FAFB),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border),
           boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : null,

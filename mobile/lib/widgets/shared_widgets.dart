@@ -167,8 +167,17 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final String? actionText;
+  final VoidCallback? onAction;
 
-  const EmptyState({super.key, required this.icon, required this.title, required this.description});
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.actionText,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +199,160 @@ class EmptyState extends StatelessWidget {
             Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
             const SizedBox(height: 4),
             Text(description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+            if (actionText != null && onAction != null) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: onAction, child: Text(actionText!)),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Coloured status pill — green for positive states, red for negative,
+/// amber for pending, navy for neutral.
+class StatusBadge extends StatelessWidget {
+  final String text;
+  final String? status;
+
+  const StatusBadge({
+    super.key,
+    required this.text,
+    this.status,
+  });
+
+  Color get _bg {
+    final s = (status ?? text).toLowerCase();
+    if (s.contains('paid') && !s.contains('un')) return AppTheme.success.withOpacity(0.12);
+    if (s.contains('unpaid') || s.contains('pending') || s.contains('overdue')) return AppTheme.danger.withOpacity(0.12);
+    if (s.contains('active') && !s.contains('in')) return AppTheme.success.withOpacity(0.12);
+    if (s.contains('inactive') || s.contains('blocked')) return AppTheme.danger.withOpacity(0.12);
+    if (s.contains('late') || s.contains('absent')) return AppTheme.warning.withOpacity(0.12);
+    return AppTheme.primary.withOpacity(0.10);
+  }
+
+  Color get _fg {
+    final s = (status ?? text).toLowerCase();
+    if (s.contains('paid') && !s.contains('un')) return AppTheme.success;
+    if (s.contains('unpaid') || s.contains('pending') || s.contains('overdue')) return AppTheme.danger;
+    if (s.contains('active') && !s.contains('in')) return AppTheme.success;
+    if (s.contains('inactive') || s.contains('blocked')) return AppTheme.danger;
+    if (s.contains('late') || s.contains('absent')) return AppTheme.warning;
+    return AppTheme.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _fg),
+      ),
+    );
+  }
+}
+
+/// Compact avatar with the user's initials. Used in list rows.
+class AvatarCircle extends StatelessWidget {
+  final String name;
+  final double size;
+  const AvatarCircle({super.key, required this.name, this.size = 40});
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name.trim().split(RegExp(r'\s+')).take(2).map((w) => w.isEmpty ? '' : w[0].toUpperCase()).join();
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(size / 2),
+      ),
+      child: Center(
+        child: Text(
+          initials.isEmpty ? '?' : initials,
+          style: TextStyle(fontSize: size * 0.38, fontWeight: FontWeight.w700, color: AppTheme.primary),
+        ),
+      ),
+    );
+  }
+}
+
+/// A card-style list row with leading avatar, title, subtitle, trailing.
+class ListRowCard extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String? trailing;
+  final Widget? trailingWidget;
+  final IconData? icon;
+  final String? badgeText;
+  final String? badgeStatus;
+  final VoidCallback? onTap;
+
+  const ListRowCard({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.trailingWidget,
+    this.icon,
+    this.badgeText,
+    this.badgeStatus,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, size: 18, color: AppTheme.primary),
+                ),
+                const SizedBox(width: 10),
+              ] else ...[
+                AvatarCircle(name: title),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 1),
+                      Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ],
+                ),
+              ),
+              if (badgeText != null) ...[
+                StatusBadge(text: badgeText!, status: badgeStatus),
+                const SizedBox(width: 6),
+              ],
+              if (trailingWidget != null)
+                trailingWidget!
+              else if (trailing != null)
+                Text(trailing!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textMuted)),
+            ],
+          ),
         ),
       ),
     );
