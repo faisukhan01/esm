@@ -63,3 +63,24 @@ audit-*.png
 api.log
 *.db
 db/
+
+# Flutter/Dart
+/mobile/build/
+/mobile/.dart_tool/
+/mobile/.flutter-plugins
+/mobile/.flutter-plugins-dependencies
+/mobile/.packages
+/mobile/ios/Pods/
+/mobile/ios/Flutter/Flutter.framework
+/mobile/ios/Flutter/Flutter.podspec
+/mobile/android/.gradle/
+/mobile/android/local.properties
+/mobile/android/app/debug/
+/mobile/android/app/profile/
+/mobile/android/app/release/
+
+# Prisma
+prisma/migrations/
+
+# OS files
+Thumbs.db
