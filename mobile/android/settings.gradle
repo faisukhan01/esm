@@ -1,21 +1,28 @@
 pluginManagement {
     def flutterSdkPath = {
-        def properties = new Properties()
-        def localProps = file("local.properties")
-        if (localProps.exists()) {
-            localProps.withReader("UTF-8") { reader ->
-                properties.load(reader)
+        // 1. Try FLUTTER_ROOT env var FIRST — subosito/flutter-action@v2 always
+        //    sets this on CI. This is reliable because Flutter 3.44+ regenerates
+        //    android/local.properties (sometimes with empty flutter.sdk) right
+        //    before invoking Gradle, which can clobber a manually-written file.
+        def sdkPath = System.getenv("FLUTTER_ROOT") ?: System.getenv("FLUTTER_HOME")
+
+        // 2. Fall back to local.properties (local dev only)
+        if (sdkPath == null || sdkPath.trim().isEmpty()) {
+            def properties = new Properties()
+            def localProps = file("local.properties")
+            if (localProps.exists()) {
+                localProps.withReader("UTF-8") { reader ->
+                    properties.load(reader)
+                }
             }
+            sdkPath = properties.getProperty("flutter.sdk")
         }
-        def sdkPath = properties.getProperty("flutter.sdk")
-        if (sdkPath == null) {
-            // CI fallback: subosito/flutter-action@v2 sets FLUTTER_ROOT
-            sdkPath = System.getenv("FLUTTER_ROOT") ?: System.getenv("FLUTTER_HOME")
-        }
-        assert sdkPath != null : "flutter.sdk not set in local.properties and FLUTTER_ROOT env var not set"
-        return sdkPath
+
+        assert sdkPath != null && !sdkPath.trim().isEmpty() : \
+            "flutter.sdk not set. On CI, set FLUTTER_ROOT env var. Locally, run `flutter pub get` to generate local.properties."
+        return sdkPath.trim()
     }
-    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
+    includeBuild("${flutterSdkPath()}/packages/flutter_tools/gradle")
 }
 
 plugins {
