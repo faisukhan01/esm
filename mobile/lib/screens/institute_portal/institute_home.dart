@@ -146,7 +146,7 @@ class _BranchesTab extends StatelessWidget {
                   onAction: onRefresh,
                 )
               : RefreshIndicator(
-                  onRefresh: onRefresh,
+                  onRefresh: () async { onRefresh(); },
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     itemCount: branches.length,
@@ -380,7 +380,7 @@ class _ReportsTab extends StatelessWidget {
           : finance == null
               ? const EmptyState(icon: Icons.trending_up, title: 'No data', description: 'Financial data will appear here once available.')
               : RefreshIndicator(
-                  onRefresh: onRefresh,
+                  onRefresh: () async { onRefresh(); },
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
