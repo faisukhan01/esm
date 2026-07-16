@@ -3786,3 +3786,31 @@ _BranchDashboard({required this.name, required this.branchName, required this.kp
 ### Notes / known limitations
 - Stat card values use full `fmt` formatting as specified. `PremiumStatCard`'s internal `fontSize: 22` Text has no `maxLines`/`overflow`/`FittedBox` knob exposed — for very large PKR amounts on narrow phones, the value could wrap. Would need a compact (K/M) formatter if real-world branch revenue consistently overflows.
 - The dashboard double-fetches `branch/finance` (parent already does). Acceptable since the parent's `kpi` prop is needed for constructor compat; local fetch is needed for `monthlyRevenue`/`recentTransactions` which the parent doesn't pass down.
+
+---
+Task ID: PREMIUM-REDESIGN
+Agent: main + 4 full-stack-developer subagents (parallel)
+Task: Complete premium UI/UX overhaul of the mobile app — Linear/Notion/Stripe quality. Add fl_chart visualizations, gold accent, Inter font, Settings + Notifications screens.
+
+Work Log:
+- Added dependencies: fl_chart ^0.70.2, google_fonts ^6.2.1, shimmer ^3.0.0
+- Rebuilt app_theme.dart: deep navy (#0B1F3A) + warm gold accent (#D4A437), Inter typeface, layered shadows (sm/md/lg/gold), navy/gold/success/danger gradients
+- Rebuilt shared_widgets.dart with premium components: PremiumStatCard (gradient icon + trend badge), GradientHeroCard (decorative circles), ChartCard (fl_chart wrapper), QuickActionTile, ActivityItem, DashboardSkeleton (shimmer), StatusBadge, AvatarCircle, ListRowCard. Legacy KpiCard/WelcomeBanner/QuickActionCard kept for backwards compat.
+- Redesigned splash screen (main.dart): animated logo scale+fade, decorative circles, PREMIUM badge, gold glow
+- Redesigned login screen: 2x2 role grid with per-role colors, server status bar, trust badges, premium spacing
+- Rebuilt all 4 dashboards via parallel subagents:
+  * Institute Admin: hero + 4 stat cards + revenue vs salary grouped bar chart + branch performance horizontal bars + activity feed + quick actions
+  * Branch Manager: hero + 4 stat cards + revenue trend line chart + fee collection progress bar + quick actions + activity feed
+  * Teacher: hero + 4 stat cards + class performance bars + attendance vs results bar chart + class chips + quick actions
+  * Student: hero + 4 stat cards + attendance trend line chart + results bar chart (grade-colored) + course chips + quick actions
+- New SettingsScreen: profile header card, change password dialog, server URL config, about section, logout with confirmation
+- New NotificationsScreen: real /api/notifications data, type-colored icons, unread indicators, relative time labels
+- Wired bell → NotificationsScreen, gear → SettingsScreen, logout into all 4 dashboard AppBars
+- Fixed 5 compile errors: missing 'color:' in _RoleOption, const FlBorderData/BarTouchData/FlTitlesData (not const-constructable in fl_chart 0.70), extra ')' typo in DashboardSkeleton
+- CI build #28 + #29: ✅ SUCCESS — APK 27.2 MB
+
+Stage Summary:
+- The mobile app is now PREMIUM quality — deep navy + gold palette, Inter font, shimmer loading, fl_chart visualizations on every dashboard, gradient hero cards, soft shadows, proper spacing.
+- New features: Settings screen (change password, server config, about, logout), Notifications screen (real data), charts on all 4 dashboards.
+- APK: https://github.com/faisukhan01/esm/actions/runs/29524720848 → Artifacts → esm-app-release (27.2 MB)
+- GitHub repo updated: https://github.com/faisukhan01/esm (commit 6da76d9)
