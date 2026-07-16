@@ -84,3 +84,10 @@ prisma/migrations/
 
 # OS files
 Thumbs.db
+
+# More cleanup
+check-landing.png
+3001
+/examples/
+/.zscripts/
+
