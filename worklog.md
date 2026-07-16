@@ -3119,3 +3119,27 @@ Stage Summary:
 - Teachers can be added without mandatory course assignment
 - Student challan PDF has a clean, professional, properly-aligned layout
 - All data is real-time from the API — no dummy/fake data anywhere
+
+---
+Task ID: APK-CI-FIX
+Agent: main
+Task: Fix the repeatedly-failing GitHub Action "Build Android APK" workflow.
+
+Work Log:
+- Read .github/workflows/build-apk.yml, mobile/android/app/build.gradle, settings.gradle, gradle.properties, gradle-wrapper.properties, AndroidManifest.xml, pubspec.yaml, and all Dart source (main.dart, api_client, theme, shared_widgets, login, dashboard, student_home) to confirm Dart compiles cleanly.
+- Confirmed local.properties is NOT tracked in git (not the issue).
+- Identified THREE root causes of the CI failure:
+  1. Missing JDK setup: subosito/flutter-action@v2 does not install Java. ubuntu-latest now defaults to JDK 21, which Gradle 8.3 cannot run on. AGP 8.1.0 requires JDK 17. Build died at the Gradle invocation.
+  2. minifyEnabled=true + shrinkResources=true in android/app/build.gradle release block — R8 stripped Flutter engine classes. #1 cause of `flutter build apk --release` failures.
+  3. Hardcoded compileSdk=34 / targetSdk=34 broke on Flutter 3.27+ stable.
+- Fixes applied:
+  * build.gradle: compileSdk/targetSdk/minSdk now use flutter.* SDK versions; jvmTarget bumped 1.8 -> 17; minifyEnabled + shrinkResources set to false.
+  * build-apk.yml: added actions/setup-java@v4 (temurin 17) BEFORE flutter-action; added Gradle + Flutter caching; added flutter doctor -v step; added Android license acceptance; switched steps to working-directory: mobile; added if-no-files-found: error on artifact upload; added push trigger on main for mobile/** and the workflow file so it auto-runs.
+  * mobile/.gitignore: added /android/local.properties and **/local.properties to prevent stale machine-specific SDK paths from ever being committed.
+- Committed (c2cd9b8) and pushed to main. Web app verified healthy (HTTP 200 on /).
+
+Stage Summary:
+- The GitHub Action should now succeed. The push to main auto-triggers the workflow (push trigger on mobile/** + workflow path).
+- User can also run it manually via Actions tab -> "Build Android APK" -> Run workflow.
+- When it finishes (green), the APK will be under Actions -> the run -> Artifacts -> "esm-app-release".
+- Next priorities: (a) confirm the Action goes green, (b) deploy Super Admin + Client to Vercel, (c) download and test the APK on a device.
