@@ -23,6 +23,15 @@ pluginManagement {
         return sdkPath.trim()
     }
     includeBuild("${flutterSdkPath()}/packages/flutter_tools/gradle")
+
+    // Plugin resolution repositories — REQUIRED so the plugins {} block below
+    // can find AGP (google()) and Kotlin (mavenCentral()). Without this, Gradle
+    // only searches the Gradle Plugin Portal and fails to find com.android.application.
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
 }
 
 plugins {
