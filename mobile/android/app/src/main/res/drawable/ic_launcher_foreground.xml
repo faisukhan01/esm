@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- School/graduation cap icon in white, centered in the 108x108 adaptive icon safe zone -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,38 L72,46 L54,54 L36,46 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,50 L42,62 C42,65 66,65 66,62 L66,50 L54,55 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,46 L72,58 L70,58 L70,47 Z" />
+</vector>

@@ -6,4 +6,6 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- Navy background for the adaptive launcher icon (matches app primary color #1A365D) -->
+    <color name="ic_launcher_background">#1A365D</color>
 </resources>
