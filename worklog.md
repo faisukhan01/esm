@@ -3969,3 +3969,36 @@ Stage Summary:
 - Loads real events from the ESM backend with graceful fallback to sample data on any failure.
 - Visual showcase: navy/gold palette, Inter typography, layered shadows, animated day cells, gradient date chips, color-coded event cards, shimmer skeleton — all matching the existing ESM design system.
 - Ready to be wired into any dashboard's quick actions with a one-line `Navigator.push`.
+
+---
+Task ID: NEW-FEATURES-WEB-MOBILE
+Agent: main + 4 full-stack-developer subagents
+Task: Add high-level features to BOTH web and mobile apps — notifications, command palette, dark mode, calendar, profile.
+
+Work Log:
+WEB APP — 3 new features (src/components/portal/):
+1. Notifications dropdown (role-portal.tsx): Bell icon now opens a real popover fetching /api/notifications. Type-colored icons (announcement/complaint/fee/result/attendance), unread count badge, relative time, loading skeletons, empty state, click-away + Escape to close.
+2. Command Palette (command-palette.tsx NEW): Cmd+K / Ctrl+K opens a shadcn Command dialog. Search all sidebar modules, quick actions (Dashboard, Settings, Log out), help (shortcuts, About). Replaced decorative search input with a search-pill button.
+3. Dark mode toggle (layout.tsx + role-portal.tsx): next-themes ThemeProvider wired up, Moon/Sun toggle in header. Dark CSS variables already existed in globals.css.
+4. api.ts: added api.logout() helper.
+
+MOBILE APP — 2 new screens (mobile/lib/screens/):
+1. Calendar screen (calendar_screen.dart NEW): full month calendar grid with event dots, day selection (navy circle for today, gold dots for event days), event cards with type-colored left borders, upcoming events horizontal scroll. Falls back to sample events if API empty. Premium shimmer loading.
+2. Profile screen (profile_screen.dart NEW): luxury banking-app style — navy gradient hero with gold-ringed avatar + role badge, 3 stat cards (role-specific), personal info card (role-aware: email, rollNo, institute, branch, class/section, subjects), account actions (change password dialog, notification prefs, privacy, help), app info, logout with confirmation.
+
+WIRING:
+- All 4 mobile dashboards: settings icon → ProfileScreen, timetable quick action → CalendarScreen
+- All 4 mobile dashboards: bell → NotificationsScreen (from previous task)
+
+VERIFICATION:
+- Lint: 0 errors, 0 warnings
+- APK build #31: ✅ SUCCESS — 27.3 MB artifact
+- Vercel: auto-deployed commit c519400, health check 200 OK
+- Live preview: running via auto-restart watchdog (OOM-protected with 1GB heap cap)
+
+Stage Summary:
+- WEB APP now has: real notifications, command palette (Cmd+K), dark mode toggle — all in the header
+- MOBILE APP now has: calendar screen, luxury profile screen, plus all previous premium dashboards with charts
+- APK: https://github.com/faisukhan01/esm/actions/runs/29529693132 → Artifacts → esm-app-release (27.3 MB)
+- Vercel: https://esm-rose.vercel.app — live with all new features
+- GitHub: https://github.com/faisukhan01/esm at commit c519400
