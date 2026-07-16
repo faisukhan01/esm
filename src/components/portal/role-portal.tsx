@@ -1,18 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/lib/store';
 import { ROLE_MODULES, roleAccent } from '@/lib/role-modules';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap, Search, Bell, Menu, LogOut,
   PanelLeftClose, PanelLeft, Crown, Building2, Users, BookOpen, User, Heart, Shield,
+  CheckCircle2, AlertCircle, Receipt, Award, CalendarCheck, X, Moon, Sun,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 import { SuperAdminPortal } from './super-admin-portal';
 import { InstituteAdminPortal } from './institute-admin-portal';
@@ -21,12 +22,48 @@ import { TeacherPortal } from './teacher-portal';
 import { StudentPortal } from './student-portal';
 import { ParentPortal } from './parent-portal';
 import { SettingsPage } from './settings-page';
-import { setOnBlocked } from '@/lib/api';
+import { CommandPalette } from './command-palette';
+import { api, setOnBlocked } from '@/lib/api';
 
 const roleIcon: Record<string, any> = {
   'super-admin': Crown, 'institute-admin': Building2, 'branch-manager': Users,
   'teacher': BookOpen, 'student': User, 'parent': Heart,
 };
+
+// Notification icon + color mapping per type.
+// announcement=primary, complaint=danger, fee=gold, result=success, attendance=info
+const notifIconMap: Record<string, { Icon: any; text: string; bg: string }> = {
+  announcement: { Icon: CheckCircle2, text: 'text-primary', bg: 'bg-primary/10' },
+  complaint:    { Icon: AlertCircle,  text: 'text-rose-500', bg: 'bg-rose-500/10' },
+  fee:          { Icon: Receipt,      text: 'text-gold',     bg: 'bg-gold/10' },
+  result:       { Icon: Award,        text: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  attendance:   { Icon: CalendarCheck, text: 'text-sky-500',  bg: 'bg-sky-500/10' },
+};
+
+function notifMeta(type: string) {
+  return notifIconMap[type] || { Icon: Bell, text: 'text-muted-foreground', bg: 'bg-muted' };
+}
+
+// Relative time formatting: "just now", "3m ago", "2h ago", "1d ago", "3w ago", "5mo ago", "1y ago".
+function formatRelativeTime(iso: string): string {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Math.max(0, Date.now() - then);
+  const sec = Math.floor(diff / 1000);
+  if (sec < 45) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}w ago`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo ago`;
+  return `${Math.floor(day / 365)}y ago`;
+}
 
 function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule, setActiveModule, setMobileOpen, user, logout }: any) {
   const groups = ROLE_MODULES[role] || [];
@@ -113,8 +150,64 @@ export function RolePortal() {
   const { user, activeModule, setActiveModule, logout } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // --- Notifications dropdown state ---
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifItems, setNotifItems] = useState<any[]>([]);
+  const [notifUnread, setNotifUnread] = useState(0);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const fetchNotifs = useCallback(async () => {
+    setNotifLoading(true);
+    try {
+      const data = await api.getNotifications();
+      setNotifItems(Array.isArray(data?.items) ? data.items : []);
+      setNotifUnread(typeof data?.unread === 'number' ? data.unread : 0);
+    } catch {
+      // silent — keep last known state
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
+
+  // Fetch unread count on mount so the bell badge appears without opening the panel.
+  useEffect(() => {
+    fetchNotifs();
+  }, [fetchNotifs]);
+
+  // next-themes hydration guard
+  useEffect(() => setMounted(true), []);
+
+  // Click-away + Escape to close the notifications panel.
+  useEffect(() => {
+    if (!notifOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setNotifOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [notifOpen]);
+
+  const toggleNotifs = () => {
+    const next = !notifOpen;
+    setNotifOpen(next);
+    if (next) fetchNotifs();
+  };
+
   const role = user?.role || 'student';
   const groups = ROLE_MODULES[role] || [];
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>(
@@ -130,6 +223,20 @@ export function RolePortal() {
       setBlockedMsg(msg);
     });
     return () => setOnBlocked(() => {});
+  }, []);
+
+  // Global Cmd+K / Ctrl+K to toggle the command palette.
+  // ignoreKey: prevent opening while typing in inputs that explicitly opt out
+  // (none currently, but the guard keeps the listener defensive).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Check if user has a blockedMessage from login (set by backend when institute/branch is blocked)
@@ -226,14 +333,122 @@ export function RolePortal() {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="pl-9 h-9 w-48 lg:w-64 bg-muted/50 border-0" />
-            </div>
-            <button className="relative h-9 w-9 grid place-items-center rounded-md hover:bg-accent text-muted-foreground">
-              <Bell className="h-[18px] w-[18px]" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500" />
+            <button
+              type="button"
+              onClick={() => setCmdOpen(true)}
+              aria-label="Open command palette"
+              className="group hidden md:flex items-center gap-2 h-9 w-48 lg:w-64 px-3 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground text-sm transition border border-transparent hover:border-border"
+            >
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left truncate">Search…</span>
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 h-5 px-1.5 rounded border border-border bg-background/80 text-[10px] font-medium text-muted-foreground/80">
+                <span className="text-[11px] leading-none">⌘</span>K
+              </kbd>
             </button>
+            {mounted && (
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle theme"
+                className="h-9 w-9 grid place-items-center rounded-md hover:bg-accent text-muted-foreground transition"
+              >
+                {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+              </button>
+            )}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={toggleNotifs}
+                aria-label="Notifications"
+                aria-expanded={notifOpen}
+                className="relative h-9 w-9 grid place-items-center rounded-md hover:bg-accent text-muted-foreground transition"
+              >
+                <Bell className="h-[18px] w-[18px]" />
+                {notifUnread > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-card" />
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-2 w-[360px] max-h-[480px] bg-card border border-border rounded-xl shadow-lg z-50 flex flex-col overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-primary">Notifications</span>
+                      {notifUnread > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-none">
+                          {notifUnread > 99 ? '99+' : notifUnread}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setNotifOpen(false)}
+                      aria-label="Close notifications"
+                      className="h-6 w-6 grid place-items-center rounded-md text-muted-foreground hover:bg-accent transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex-1 overflow-y-auto scroll-fancy">
+                    {notifLoading ? (
+                      <div className="p-2 space-y-1">
+                        {[0, 1, 2].map((i) => (
+                          <div key={i} className="flex items-start gap-3 p-3 rounded-lg">
+                            <div className="h-9 w-9 rounded-full bg-muted animate-pulse shrink-0" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-3 w-2/3 bg-muted rounded animate-pulse" />
+                              <div className="h-2.5 w-full bg-muted rounded animate-pulse" />
+                              <div className="h-2 w-1/3 bg-muted rounded animate-pulse" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : notifItems.length === 0 ? (
+                      <div className="px-4 py-10 text-center">
+                        <div className="mx-auto h-12 w-12 rounded-full bg-muted grid place-items-center mb-3">
+                          <Bell className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="text-sm font-medium text-primary">No notifications</div>
+                        <div className="text-xs text-muted-foreground mt-1">You&rsquo;re all caught up.</div>
+                      </div>
+                    ) : (
+                      <ul className="p-2 space-y-1">
+                        {notifItems.map((n) => {
+                          const { Icon, text, bg } = notifMeta(n?.type);
+                          return (
+                            <li key={n?.id ?? Math.random()}>
+                              <div
+                                className={cn(
+                                  'flex items-start gap-3 p-3 rounded-lg transition cursor-default',
+                                  n?.read ? 'hover:bg-accent' : 'bg-primary/5 hover:bg-primary/10'
+                                )}
+                              >
+                                <div className={cn('h-9 w-9 rounded-full grid place-items-center shrink-0', bg)}>
+                                  <Icon className={cn('h-4 w-4', text)} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium text-primary truncate">{n?.title}</span>
+                                    {!n?.read && (
+                                      <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                                    )}
+                                  </div>
+                                  {n?.message && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+                                  )}
+                                  <div className="text-[10px] text-muted-foreground/70 mt-1">
+                                    {formatRelativeTime(n?.createdAt)}
+                                  </div>
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-border">
               <span className="text-xs text-muted-foreground truncate max-w-[140px]">{user?.campus}</span>
             </div>
@@ -273,6 +488,17 @@ export function RolePortal() {
           <span>© {new Date().getFullYear()} ESM · Electronic School Management</span>
         </footer>
       </div>
+
+      <CommandPalette
+        open={cmdOpen}
+        onOpenChange={setCmdOpen}
+        user={user}
+        modules={groups}
+        onNavigate={(id) => {
+          setActiveModule(id);
+          setCmdOpen(false);
+        }}
+      />
     </div>
   );
 }

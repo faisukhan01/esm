@@ -3839,3 +3839,133 @@ Stage Summary:
 - APK: Valid Android package, 27.2 MB, premium redesign (commit 6da76d9) ✅
 - GitHub: https://github.com/faisukhan01/esm at commit 868f183 ✅
 - Note: The local dev server is memory-constrained (4 GB sandbox). The Vercel deployment is the stable production version.
+
+---
+Task ID: WEB-NOTIF
+Agent: zai-code
+Task: Replace the decorative bell icon in the ESM web app header (src/components/portal/role-portal.tsx) with a real Notifications dropdown backed by GET /api/notifications.
+
+Work Log:
+- Read worklog tail for context: premium theme (--gold/--color-gold registered as Tailwind utilities), Vercel deployment live, mobile app already has Notifications screen.
+- Confirmed api client: `api.getNotifications()` exists at src/lib/api.ts:249, returns `{ items: [{ id, type, title, message, createdAt, read }], unread }`.
+- Modified ONLY src/components/portal/role-portal.tsx:
+  * Imports: added `useCallback, useRef`; added lucide icons `CheckCircle2, AlertCircle, Receipt, Award, CalendarCheck, X`; added `api` to the `@/lib/api` import.
+  * Added module-level helpers after `roleIcon`: `notifIconMap` (type→{Icon,text,bg}), `notifMeta(type)` with fallback, and `formatRelativeTime(iso)` returning "just now / Nm ago / Nh ago / Nd ago / Nw ago / Nmo ago / Ny ago".
+  * Color mapping: announcement=primary, complaint=danger (rose-500), fee=gold (text-gold/bg-gold/10 from premium theme), result=success (emerald-500), attendance=info (sky-500).
+  * Added state inside RolePortal: `notifOpen`, `notifItems`, `notifUnread`, `notifLoading`, `notifRef` (useRef<HTMLDivElement>).
+  * `fetchNotifs` (useCallback) calls `api.getNotifications()`, safely reads items/unread, swallows errors, toggles loading.
+  * Mount effect fetches on mount so the badge shows without opening.
+  * Click-away + Escape effect: adds document `mousedown` (contains-check via notifRef) and `keydown` (Escape) listeners while open; cleans up on close/unmount.
+  * `toggleNotifs()` flips open state and re-fetches on open.
+  * Replaced the static bell <button> (~lines 233-236) with a `relative` wrapper (ref={notifRef}) containing:
+    - Bell button with aria-label/aria-expanded; red dot ONLY when notifUnread > 0 (with ring-2 ring-card for contrast).
+    - Absolute popover: w-[360px] max-h-[480px] bg-card border border-border rounded-xl shadow-lg z-50, positioned right-0 top-full mt-2.
+    - Header: "Notifications" (text-primary) + unread count badge (rose pill, 99+ cap) + X close button.
+    - Body (scroll-fancy): Loading = 3 skeleton rows; Empty = centered Bell + "No notifications" + "You're all caught up."; List = colored circular icon by type, title (truncate, bold primary) + unread dot, 2-line clamped message, relative time; unread items tinted bg-primary/5.
+- Used absolute-positioned div (NOT a Dialog) per spec; uses existing design tokens (bg-card, border-border, rounded-xl, shadow-lg, text-primary, text-muted-foreground, hover:bg-accent, scroll-fancy).
+- Did NOT touch any other part of the file.
+
+Verification:
+- `bun run lint` → clean (zero errors, zero warnings).
+- Work record: /home/z/my-project/agent-ctx/WEB-NOTIF-zai-code.md
+
+Stage Summary:
+- The header bell is now a functional notifications popover: fetches real data on mount + on each open, shows unread badge only when unread > 0, color-codes icons by type, supports click-outside + Escape close, has loading skeletons + empty state. Production-ready, matches the premium design system.
+
+---
+Task ID: WEB-CMDK
+Agent: main
+Task: Add a global Cmd+K / Ctrl+K Command Palette to the ESM web app, replacing the decorative header search input with a working one.
+
+Work Log:
+- Read worklog tail + role-portal.tsx + role-modules.ts + ui/command.tsx + lib/api.ts + lib/store.ts for context.
+- Discovered the header `<Input>` (around line 318) was purely decorative — its `search` state was never consumed anywhere.
+- Added `api.logout()` helper to `src/lib/api.ts` (client-side: clears the `esm-app` sessionStorage entry; auth is stateless JWT so no server round-trip needed). The CommandPalette's "Log out" action calls this then `window.location.href = '/'`.
+- Created `src/components/portal/command-palette.tsx`:
+  * Exports `CommandPalette` with props `{ open, onOpenChange, user, modules, onNavigate }`.
+  * Uses shadcn `CommandDialog` (max-w-xl, with `backdrop-blur-sm`) + `CommandInput` (placeholder "Search modules, actions, or type a command…").
+  * **Modules** group → flatMaps every sidebar module across all groups for the user's role; each item shows the module's Lucide icon + name + the source group as a tiny uppercase hint. Search value includes both module name and group name so cmdk's fuzzy filter hits either. Selecting calls `onNavigate(id)` and closes the palette (navigation deferred via `requestAnimationFrame` so the dialog unmounts cleanly first).
+  * **Quick Actions** group → "Go to Dashboard" (navigates to `modules[0].items[0].id`), "Settings" (navigates to `settings`), "Log out" (calls `api.logout()` then redirects to `/`). Log-out item also displays the user's role label on the right.
+  * **Help** group → "Keyboard shortcuts" (toast: "Press Ctrl+K to open search"), "About ESM" (toast with version + vendor info). Uses the existing `@/hooks/use-toast` `toast()` helper (Toaster is mounted in `app/layout.tsx`).
+  * All handlers memoized with `useCallback`; closes the dialog before side effects.
+- Modified `src/components/portal/role-portal.tsx`:
+  * Imported `CommandPalette`.
+  * Added `const [cmdOpen, setCmdOpen] = useState(false)`.
+  * Added a `useEffect` listening on `window` for `keydown` — fires on `(metaKey || ctrlKey) + K` (case-insensitive), `preventDefault()`s the browser's default Cmd+K, and toggles `cmdOpen`.
+  * Replaced the decorative `<Input>` block with a `<button>` styled exactly the same (Search icon left, "Search…" text, ⌘K `<kbd>` badge on the right). Clicking it calls `setCmdOpen(true)`. Hidden on mobile (`md:flex`) — same as before.
+  * Removed the now-unused `search` state and the `Input` import.
+  * Renders `<CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} user={user} modules={groups} onNavigate={(id) => { setActiveModule(id); setCmdOpen(false); }} />` as the last child of the root flex container so it overlays the entire portal.
+- `bun run lint` → ✅ EXIT 0, no errors/warnings.
+- Dev server (Turbopack) still serving `/` with 200; no compile errors after edits.
+
+Stage Summary:
+- The header "Search…" affordance is now a real command palette trigger (click or Cmd+K / Ctrl+K).
+- Palette lets users fuzzy-jump to any sidebar module for their role, hit Dashboard/Settings/Log-out, or read Help toasts — all keyboard-navigable via cmdk.
+- No new dependencies installed; reuses existing shadcn `Command`, `use-toast`, and `lucide-react` icons.
+
+---
+Task ID: MOBILE-PROFILE
+Agent: zai-code
+Task: Build a premium Profile/Account screen for the ESM Flutter mobile app (`mobile/lib/screens/profile_screen.dart`) — luxury banking-app feel, navy + gold, Inter, soft shadows.
+
+Work Log:
+- Read `worklog.md` tail (WEB-CMDK command-palette task) + `mobile/lib/theme/app_theme.dart` (full brand palette, gradients, shadow helpers) + `mobile/lib/widgets/shared_widgets.dart` (GradientHeroCard decorative-circle pattern, PremiumStatCard, SectionHeader, AvatarCircle) + `mobile/lib/widgets/detail_scaffold.dart` (InfoRow pattern) + existing `mobile/lib/screens/settings_screen.dart` (current basic profile — reused its `_changePassword` and `_logout` flows verbatim so the new screen is a drop-in replacement). Confirmed `LoginScreen` and `ApiClient.post`/`ApiClient.logout` signatures.
+- Created `mobile/lib/screens/profile_screen.dart` (1130 lines, 10 classes: 1 public `ProfileScreen` + 9 private). Layout = `CustomScrollView` with a pinned `SliverAppBar` (collapsing hero as `FlexibleSpaceBar.background`, `expandedHeight = mediaPad.top + 320` so 2-line names never overflow) + a single `SliverToBoxAdapter` body.
+- **Hero (`_HeroHeader`)** — `AppTheme.navyGradient` container with a `Stack` of decorative gold circles (150px gold-outlined ring, 86px gold-10% disc, 96px white-5% disc, 6px gold sparkle dot) mimicking `GradientHeroCard`; 88px outer avatar with `goldGradient` + `shadowGold` + 3px padding (ring), 80px inner `primaryDark` disc with white-22% border + initials (28px Inter w800 white); full name 20px white w800 maxLines 2; role label = Row of [18px gold gradient circle with `Icons.check_rounded` in primaryDark] + 6px gap + [role text white70 13px w500] (the gold "verified" badge); white-outline pill `OutlinedButton.icon` "Edit Profile" → snackbar.
+- **Stats row (`_buildStatsRow`)** — 3 `Expanded` `_StatCard`s (white, 16px radius, `shadowSm`): (1) role-specific stat — "Classes"/"Courses"/"Branches"/"Students"/"Institutes" via `_roleStatLabel`, value from `_roleStatValue` (tries `classesCount`/`totalClasses`/`classes` etc., fallback `—`), role-specific icon; (2) "Member since" — `_yearOf(_string(u,'createdAt', fallback:'2025'))` trims ISO dates to a 4-digit year, calendar icon in gold; (3) "Status" = "Active" with a green-dot icon-widget (`successLight` square + 9px `success` circle with a green glow `BoxShadow`).
+- **Personal Information card (`_buildPersonalInfoCard`)** — `_PremiumCard` (20px radius, `AppTheme.shadow`) of `_InfoRow`s separated by `_RowDivider` (Divider indent 58 / endIndent 14). `_InfoRow` upgrades the InfoRow pattern: 32×32 tinted icon square (color-coded) + label (12px textSecondary w500) on the left, value (13px textPrimary w700, right-aligned, max 2 lines) on the right. Rows: Email (info) · Roll No/Email (gold — uses `Roll #…`+`rollNo` for student/teacher, else email) · Institute (primary, fallback "ESM Institute") · Branch (primaryLight, only if non-empty) · Class & Section (success, students only, appends ` · {section}`) · Subjects (warning, teachers only, `_formatSubjects` joins a List with `, ` or returns a String).
+- **Account Actions card (`_buildAccountActionsCard`)** — `_PremiumCard` of `_ActionTile`s (40×40 tinted icon square + 14px w700 title + 11px muted subtitle + optional trailing). (1) Change Password (lock, navy) → opens `_ChangePasswordDialog` → `ApiClient.post('auth/change-password', …)`; trailing swaps to a 16px spinner while in flight. (2) Notification Preferences (notifications_active, gold) → snackbar "Coming soon". (3) Privacy & Security (shield, success) → snackbar "Your data is encrypted". (4) Help & Support (help, info) → snackbar "Contact support@esm.com".
+- **App Info card (`_buildAppInfoCard`)** — three `_InfoRow`s: Version 1.0.0 (info), Build 100 (primaryLight), Powered by "Cyber Advance Solutions" (primary).
+- **Logout button (`_buildLogoutButton`)** — full-width `Container` with `AppTheme.dangerGradient`, 16px radius, red-glow `BoxShadow`, `Material`+`InkWell`. Row of `[logout_rounded icon or 16px white spinner] + 10px + "Log out"/"Logging out…" (15px white w700)`. Tap → `_logout()` shows an `AlertDialog` (danger-tinted logout icon square, "Log out?" title, "You will need to sign in again to access ESM." body, Cancel + Log out actions). On confirm: `ApiClient.logout()` → `Navigator.pushAndRemoveUntil(… LoginScreen())`.
+- **Change Password dialog (`_ChangePasswordDialog`)** — StatefulWidget, mirrors the existing settings dialog (current/new/confirm fields, visibility toggle, "Passwords do not match" error, canSubmit gate: current non-empty + new ≥ 6 + new == confirm); upgraded title row with a navy-tinted lock icon square.
+- **Footer** — centered "ESM Mobile · Made with care" (11px textMuted w500). Body padding adds `mediaPadding.bottom` for the iOS home indicator.
+- **`_snack(message, {bg})` helper** — floating `SnackBar`, 10px radius, 16px screen margins. Used by all action tiles + change-password success/error paths.
+- Premium styling throughout: Inter via `GoogleFonts.inter(...)` on every Text, `AppTheme.shadow` on cards / `shadowSm` on stat cards / `shadowGold` on avatar / red-tinted shadow on logout / green glow on status dot; 16–20px border radii; gold accents (avatar ring, role badge dot, Member-since icon, Notification tile icon) tie back to the hero; no indigo/blue — only ESM navy + gold + semantic colors.
+- Verified: braces/parens/brackets balanced (65/65, 451/451, 55/55); all 10 classes referenced; all imports used (`material`, `google_fonts`, `services/api_client.dart`, `theme/app_theme.dart`, `screens/login_screen.dart`); follows existing code conventions (`withOpacity`, `GoogleFonts.inter`, `const` constructors, single-quoted strings). `flutter`/`dart` CLI not available in sandbox — verified by manual review + balance check.
+- Wrote agent work record to `/agent-ctx/MOBILE-PROFILE-zai-code.md`.
+
+Stage Summary:
+- `ProfileScreen({required Map<String, dynamic> user})` is a drop-in replacement for `SettingsScreen` — same user-map shape, same logout + change-password flows, but rendered as a luxury banking-app profile (navy hero with gold-ringed avatar + decorative gold circles + role badge, 3-card stats row, role-aware Personal Information card, color-coded Account Actions, App Info, danger-gradient Logout with confirmation).
+- Existing `SettingsScreen` left untouched (backwards compat). Any portal that wants to switch can do `MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user))`.
+- No new packages required; reuses `google_fonts`, `AppTheme`, and the existing `ApiClient` + `LoginScreen` infrastructure.
+
+---
+Task ID: MOBILE-CALENDAR
+Agent: main
+Task: Create a premium Calendar/Events screen for the ESM Flutter mobile app — a brand-new feature with no prior calendar view.
+
+Work Log:
+- Read worklog tail + `mobile/lib/theme/app_theme.dart` + `mobile/lib/widgets/shared_widgets.dart` + `mobile/lib/services/api_client.dart` + `mobile/lib/screens/notifications_screen.dart` for design-system + API patterns.
+- Design system context absorbed: navy `primary` (#0B1F3A), `gold` accent, semantic colors, `shadowSm`/`shadow`, `navyGradient`, 16px card radius convention, google_fonts Inter throughout, shadcn-style borders, `ApiClient.getList(path, query: ...)` returns `List<dynamic>`.
+- Created `mobile/lib/screens/calendar_screen.dart` — `CalendarScreen` is a `StatefulWidget` that accepts `Map<String, dynamic> user`. Standalone route intended for navigation from any dashboard's quick actions: `Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: user)))`.
+
+Implementation details:
+  * **Data layer**: `_load()` calls `ApiClient.getList('events', query: {'instituteId': inst})`. `_instituteId()` resolves from `user['instituteId']` with fallback to nested `user['institute']['id']`. On any exception OR empty list, `_placeholderEvents()` returns 6 realistic sample events (exam/event/meeting/holiday mix) anchored to the *current real-world month* so the calendar is never blank — flagged via `_usingFallback`.
+  * **Offline banner**: a thin amber strip ("Couldn't reach the server — showing sample events…") with a Retry pill appears at the top when `_usingFallback` is true; the user is informed but the UI stays clean.
+  * **AppBar**: navy gradient icon tile + "Calendar" title, plus a "Today" TextButton (jumps focusedMonth + selectedDate to today) and a refresh IconButton.
+  * **Month card** (`_buildMonthCard`): gold-tinted icon + navy bold month title (`DateFormat('MMMM y')` → "July 2026") + subtle "N events this month" subtitle + `_ChevronButton` (Material+InkWell, 34×34, accent bg, navy chevron) for prev/next month. Weekday header is a rounded accent strip with `Mon…Sun` in 10px bold uppercase muted text. Below sits the grid.
+  * **Calendar grid** (`_buildCalendarGrid`): `GridView.builder` with `SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, childAspectRatio: 1.0, mainAxisSpacing: 4, crossAxisSpacing: 4)`, `shrinkWrap: true`, `NeverScrollableScrollPhysics`. Computes Monday-first offset = `firstOfMonth.weekday - 1` and total cells = `((offset + daysInMonth + 6) ~/ 7) * 7`. Each cell is a `_DayCell`:
+      - out-of-month → transparent bg, ~45% muted text, no dot
+      - today → navy filled **circle** (`shape: BoxShape.circle`) with subtle navy glow shadow, white text, white dot if events
+      - selected (not today) → subtle navy tint bg + 1.5px navy border, rounded 10
+      - default → soft `accent.withOpacity(0.45)` bg + thin border, rounded 10
+      - days with events show a 5×5 gold dot below the number (white when today)
+  * **Selected-day section** (`_buildSelectedDaySection`): gold accent bar + `RichText` "Events on **Wednesday, July 15**" (date in navy) + a count pill. Renders `_EventCard` for each event or an empty-state row if none.
+  * **`_EventCard`**: surface bg, 16px radius, `shadowSm`, 1px gray border on 3 sides + a 5px colored left `BorderSide` driven by `_typeColor(type)` (Flutter supports non-uniform Border + borderRadius via its non-uniform paint path). Inside: 40×40 tinted icon tile (`_typeIcon`), bold 14px title, type badge (uppercase, 9px, color-tinted bg), optional 2-line description, then `Wrap` of `_MetaPill` rows for time (`h:mm a`) and location.
+  * **Upcoming Events** (`_buildUpcomingSection`): navy accent bar + "Upcoming Events" header + count. Horizontal `ListView.separated` of `_UpcomingChip` (220px wide, 118px tall). Each chip shows a gradient date tile (day + abbreviated month in white over the type color) + type badge + 2-line title + time row. Tapping a chip sets `_focusedMonth` + `_selectedDate` to that event's date so the user lands on it.
+  * **`_CalendarSkeleton`**: shimmer (baseColor=border, highlightColor=accent) that mirrors the real layout — month header row, weekday strip, 5×7 day-cell grid, section header, two event cards. Provides a polished loading state instead of a bare spinner.
+  * **Type color map** (top-level `_typeColor`): exam→`AppTheme.danger`, holiday→`AppTheme.warning`, meeting→`AppTheme.info`, event→`AppTheme.primary`, default→`AppTheme.gold`. Mirrored by `_typeIcon` (edit_note / beach_access / groups_2 / celebration / event).
+  * Pull-to-refresh wraps the whole content via `RefreshIndicator(onRefresh: _load, color: AppTheme.primary)`.
+
+Polish notes:
+- All cards use 16px (or 20px for the month card) radius + `shadowSm` per design system.
+- Today's circle has a subtle navy glow (`BoxShadow(color: primary.withOpacity(0.30))`) for depth.
+- Section headers use a 4×18 colored vertical bar (gold for selected-day, navy for upcoming) — premium magazine-style marker.
+- Type badge on event card and chip is uppercase with 0.6 letter-spacing for a luxe feel.
+- All `DateTime.parse` calls go through `_parseDate()` which returns `null` on failure rather than throwing — defensive against malformed API dates.
+
+Stage Summary:
+- New file `mobile/lib/screens/calendar_screen.dart` (≈900 LOC) is a complete, self-contained premium calendar screen.
+- Loads real events from the ESM backend with graceful fallback to sample data on any failure.
+- Visual showcase: navy/gold palette, Inter typography, layered shadows, animated day cells, gradient date chips, color-coded event cards, shimmer skeleton — all matching the existing ESM design system.
+- Ready to be wired into any dashboard's quick actions with a one-line `Navigator.push`.

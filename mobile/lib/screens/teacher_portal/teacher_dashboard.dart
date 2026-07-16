@@ -6,7 +6,8 @@ import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import '../notifications_screen.dart';
-import '../settings_screen.dart';
+import '../profile_screen.dart';
+import '../calendar_screen.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
 ///
@@ -131,7 +132,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined, size: 20),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(user: widget.user))),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user))),
           ),
           IconButton(
             tooltip: 'Logout',
@@ -279,7 +280,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         icon: Icons.calendar_today,
                         label: 'Timetable',
                         color: AppTheme.primary,
-                        onTap: () => _showSnack('Timetable — coming soon'),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: widget.user))),
                       ),
                     ],
                   ),

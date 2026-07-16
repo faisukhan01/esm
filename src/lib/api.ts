@@ -61,6 +61,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   login: (email: string, password: string, name?: string) =>
     request<{ token: string; user: any; mustChangePassword?: boolean }>('auth/login', { method: 'POST', body: JSON.stringify({ email, password, name }) }),
+  // Client-side logout — clears the persisted zustand session (auth is stateless JWT,
+  // no server round-trip needed). After calling, redirect to '/' to reload the app.
+  logout: async () => {
+    try { sessionStorage.removeItem('esm-app'); } catch {}
+  },
   changePassword: (currentPassword: string, newPassword: string) =>
     request<any>('auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   // platform

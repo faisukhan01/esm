@@ -9,7 +9,8 @@ import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'student_attendance.dart';
 import '../notifications_screen.dart';
-import '../settings_screen.dart';
+import '../profile_screen.dart';
+import '../calendar_screen.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';
 import 'student_results.dart';
@@ -143,7 +144,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined, size: 20),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(user: widget.user))),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user))),
           ),
           IconButton(
             tooltip: 'Logout',
@@ -328,7 +329,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         icon: Icons.calendar_today_rounded,
                         label: 'Timetable',
                         color: AppTheme.primary,
-                        onTap: () => _showSnack('Timetable coming soon'),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: widget.user))),
                       ),
                     ],
                   ),

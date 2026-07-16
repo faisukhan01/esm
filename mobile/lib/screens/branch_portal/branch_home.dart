@@ -7,7 +7,8 @@ import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'branch_user_detail.dart';
 import '../notifications_screen.dart';
-import '../settings_screen.dart';
+import '../profile_screen.dart';
+import '../calendar_screen.dart';
 
 class BranchHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -162,7 +163,7 @@ class _BranchDashboardState extends State<_BranchDashboard> {
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined, size: 20),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(user: widget.user))),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: widget.user))),
           ),
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
