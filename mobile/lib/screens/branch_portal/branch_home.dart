@@ -310,7 +310,7 @@ class _BranchDashboardState extends State<_BranchDashboard> {
                     ),
                   ),
                 ),
-                borderData: const FlBorderData(show: false),
+                borderData: FlBorderData(show: false),
                 lineBarsData: [
                   LineChartBarData(
                     spots: List.generate(

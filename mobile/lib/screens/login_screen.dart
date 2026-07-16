@@ -21,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final List<_RoleOption> _roles = [
     _RoleOption(id: 'institute-admin', label: 'Institute', icon: Icons.business, color: AppTheme.primary),
-    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.group, AppTheme.info),
+    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.group, color: AppTheme.info),
     _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book, color: AppTheme.success),
     _RoleOption(id: 'student', label: 'Student', icon: Icons.person, color: AppTheme.gold),
   ];

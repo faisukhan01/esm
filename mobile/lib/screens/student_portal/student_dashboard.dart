@@ -425,12 +425,12 @@ class _AttendanceTrendChart extends StatelessWidget {
         minX: 0,
         maxX: (spots.length - 1) > 0 ? (spots.length - 1).toDouble() : 1.0,
         gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(
+        titlesData: FlTitlesData(
           show: true,
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [

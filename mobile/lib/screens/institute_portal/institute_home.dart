@@ -372,8 +372,8 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
                   ),
                 ),
                 gridData: const FlGridData(show: false),
-                borderData: const FlBorderData(show: false),
-                barTouchData: const BarTouchData(enabled: false),
+                borderData: FlBorderData(show: false),
+                barTouchData: BarTouchData(enabled: false),
               ),
             ),
     );

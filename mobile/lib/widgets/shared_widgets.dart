@@ -616,7 +616,7 @@ class DashboardSkeleton extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Container(height: 180, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(16)))),
+          Container(height: 180, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(16))),
         ],
       ),
     );
