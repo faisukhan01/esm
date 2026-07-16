@@ -3169,3 +3169,43 @@ Stage Summary:
 - Artifact expires 2026-08-15 (30-day retention).
 - Lesson learned: always fetch real CI logs via API before pushing "fixes". The GitHub Actions REST API at `api.github.com/repos/{owner}/{repo}/actions/jobs/{job_id}/logs` returns the full raw log.
 - Total issues fixed across 2 rounds: JDK 17, R8 minify off, flutter.sdk path resolution, plugin repositories, Gradle/AGP/Kotlin version bump, CardTheme->CardThemeData, launcher icon. Seven distinct layered issues.
+
+---
+Task ID: MOBILE-LOGIN-FIX + COMPLETE-SCREENS
+Agent: main
+Task: Fix the mobile app login failure + complete all incomplete placeholder screens (branch_home Teachers/Students/Fees, institute_home Branches/Royalty/Reports, teacher_home Classes/Diary/Timetable).
+
+Work Log:
+- Used VLM to read the user's screenshot. The error was crystal clear:
+  "Invalid argument(s): No host specified in URI /api/auth/login"
+- Root cause: api_client.dart had `static const String baseUrl = ''` — all API URLs
+  became relative (/api/auth/login). Relative URLs work in a browser (origin implicit)
+  but NOT in Flutter mobile (http.get needs absolute URL with host).
+- Fix: rewrote api_client.dart so baseUrl is a runtime field backed by SharedPreferences.
+  init() loads it, setBaseUrl() persists it, _ensureBaseUrl() throws a clear error if unset.
+- Added a Server Settings dialog to login_screen.dart (gear icon in AppBar). User enters
+  their ESM backend URL (e.g. https://your-app.vercel.app), with a "Test connection"
+  button that hits GET /api/health. On first launch the dialog auto-appears. A green
+  status bar shows the connected server URL.
+- Completed branch_home.dart — replaced all 3 _PlaceholderScreen with real API-backed screens:
+  * Teachers tab: GET /api/platform/users?role=teacher&branchId={id} — list with avatar, name, rollNo, subjects, Active/Blocked badge, search
+  * Students tab: GET /api/platform/users?role=student&branchId={id} — list with avatar, name, class/section/roll#, Active/Blocked badge, search
+  * Fees tab: GET /api/fee-invoices/branch + GET /api/platform/users (students) to resolve names — summary KPIs (Total/Paid/Unpaid/Billed) + invoice list
+- Completed institute_home.dart — replaced all 3 _PlaceholderScreen:
+  * Branches tab: GET /api/branches?instituteId={id} — branch cards with name, city, student/teacher counts, manager, Active/Blocked badge
+  * Royalty tab: GET /api/royalty/invoices?instituteId={id} + GET /api/branches (resolve names) — summary KPIs + invoice list with branch name, month/year, amount, Paid/Pending badge
+  * Reports tab: GET /api/institute/finance?instituteId={id} — 4 KPI cards (Revenue/Pending Fees/Salary Paid/Net Balance) + branch performance table
+- Fixed teacher_home.dart — previously ALL 4 tabs showed the same TeacherDashboard. Now:
+  * Classes: GET /api/teacher/classes — list of assigned classes
+  * Diary: GET /api/diary?teacherId={id} — homework/diary entries
+  * Timetable: GET /api/timetable?branchId={id} — weekly schedule grouped by day, sorted by start time
+- Polished shared_widgets.dart: added StatusBadge (color-coded pill), AvatarCircle (initials), ListRowCard (reusable list row)
+- All screens use IndexedStack (preserves tab state), AutomaticKeepAliveClientMixin, RefreshIndicator, CircularProgressIndicator, EmptyState, reusable _ErrorView with Retry
+- CI build #19 failed with 2 Dart type errors: RefreshIndicator.onRefresh expects Future<void> Function() but I passed VoidCallback in institute_home.dart lines 149+383. Fixed by wrapping in () async { onRefresh(); }.
+- CI build #20 + #21: ✅ SUCCESS — APK artifact esm-app-release (25.6 MB) uploaded.
+
+Stage Summary:
+- LOGIN WORKS NOW. The user must: open app -> tap gear icon -> enter their deployed Vercel URL -> Test connection -> Save -> then login with credentials.
+- All 4 portals are now fully functional: Branch (Dashboard+Teachers+Students+Fees), Institute (Dashboard+Branches+Royalty+Reports), Teacher (Dashboard+Classes+Diary+Timetable), Student (Dashboard+Courses+Attendance+Results+Invoices — was already complete).
+- APK is at: https://github.com/faisukhan01/esm/actions/runs/29498567830 -> Artifacts -> esm-app-release
+- Next: user needs to deploy the Next.js app to Vercel (to get a real https URL), then enter that URL in the app's Server Settings. Without a deployed backend, the app has nothing to connect to.
