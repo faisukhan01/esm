@@ -15,7 +15,9 @@ class ApiClient {
   static String? get token => _token;
 
   static const String _baseUrlKey = 'esm_base_url';
-  static const String _defaultBaseUrl = '';
+  // Pre-configured production server so the app works out of the box.
+  // Users can still override via the Server Settings dialog on the login screen.
+  static const String _defaultBaseUrl = 'https://esm-rose.vercel.app';
 
   /// Called once at startup (in main.dart). Loads the saved base URL + token.
   static Future<void> init() async {
