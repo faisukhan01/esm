@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
+import 'institute_branch_detail.dart';
 
 class InstituteHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -126,6 +127,15 @@ class _BranchesTab extends StatelessWidget {
 
   const _BranchesTab({required this.user, required this.branches, required this.isLoading, required this.onRefresh});
 
+  void _openDetail(BuildContext context, Map<String, dynamic> branch) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InstituteBranchDetail(branch: branch, user: user),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,64 +169,70 @@ class _BranchesTab extends StatelessWidget {
                       final blocked = b['blocked'] == true || b['blocked'] == 1;
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 40, height: 40,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () => _openDetail(context, b),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 40, height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(Icons.account_tree, size: 20, color: AppTheme.primary),
                                     ),
-                                    child: const Icon(Icons.account_tree, size: 20, color: AppTheme.primary),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                                        Text(city, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                                      ],
-                                    ),
-                                  ),
-                                  StatusBadge(
-                                    text: blocked ? 'Blocked' : 'Active',
-                                    status: blocked ? 'blocked' : 'active',
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
-                                children: [
-                                  _MiniStat(icon: Icons.school, label: 'Students', value: '$students'),
-                                  const SizedBox(width: 12),
-                                  _MiniStat(icon: Icons.group, label: 'Teachers', value: '$teachers'),
-                                  if (b['manager'] != null && b['manager'].toString().isNotEmpty) ...[
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 10),
                                     Expanded(
-                                      child: Row(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Icon(Icons.person_outline, size: 14, color: AppTheme.textMuted),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              b['manager'],
-                                              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
+                                          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                                          Text(city, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                                         ],
                                       ),
                                     ),
+                                    StatusBadge(
+                                      text: blocked ? 'Blocked' : 'Active',
+                                      status: blocked ? 'blocked' : 'active',
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.chevron_right, size: 16, color: AppTheme.textMuted),
                                   ],
-                                ],
-                              ),
-                            ],
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    _MiniStat(icon: Icons.school, label: 'Students', value: '$students'),
+                                    const SizedBox(width: 12),
+                                    _MiniStat(icon: Icons.group, label: 'Teachers', value: '$teachers'),
+                                    if (b['manager'] != null && b['manager'].toString().isNotEmpty) ...[
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.person_outline, size: 14, color: AppTheme.textMuted),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                b['manager'],
+                                                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -284,6 +300,37 @@ class _RoyaltyTabState extends State<_RoyaltyTab> with AutomaticKeepAliveClientM
     return match.isEmpty ? 'Branch' : (match.first['name'] ?? 'Branch');
   }
 
+  Future<void> _markPaid(String? invoiceId) async {
+    if (invoiceId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as Paid?'),
+        content: const Text('Mark this royalty invoice as paid? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Paid')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.patch('royalty/invoices/$invoiceId/pay', body: {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Royalty invoice marked as paid'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -337,6 +384,7 @@ class _RoyaltyTabState extends State<_RoyaltyTab> with AutomaticKeepAliveClientM
                             final amount = double.tryParse('${inv['amount'] ?? 0}') ?? 0;
                             final month = inv['month'] ?? '—';
                             final year = inv['year'] ?? '';
+                            final isPending = status.toLowerCase() != 'paid';
                             return ListRowCard(
                               title: _branchName(inv['branchId']),
                               subtitle: 'Royalty · $month $year',
@@ -344,6 +392,7 @@ class _RoyaltyTabState extends State<_RoyaltyTab> with AutomaticKeepAliveClientM
                               badgeText: status,
                               badgeStatus: status.toLowerCase(),
                               trailing: 'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                              onTap: isPending ? () => _markPaid(inv['id']) : null,
                             );
                           }),
                         ],

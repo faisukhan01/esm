@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
+import 'student_course_detail.dart';
 
 class StudentDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -117,7 +118,14 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                 title: Text(course['name'] ?? 'Course', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                                 subtitle: Text(course['code'] != null ? 'Code: ${course['code']}' : 'Course', style: const TextStyle(fontSize: 12)),
                                 trailing: const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
-                                onTap: () {},
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StudentCourseDetail(course: course, user: widget.user),
+                                    ),
+                                  );
+                                },
                               ),
                             );
                           },

@@ -4,6 +4,7 @@ import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'teacher_dashboard.dart';
+import 'teacher_class_detail.dart';
 
 class TeacherHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -110,6 +111,11 @@ class _TeacherClassesTabState extends State<_TeacherClassesTab> with AutomaticKe
                             subtitle: 'Section $section · $students students',
                             icon: Icons.menu_book,
                             trailing: '${students}',
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => TeacherClassDetail(classData: c, user: widget.user),
+                              ));
+                            },
                           );
                         },
                       ),

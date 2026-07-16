@@ -41,6 +41,95 @@ class _StudentInvoicesState extends State<StudentInvoices> with AutomaticKeepAli
     return NumberFormat('##,###').format(v.toInt());
   }
 
+  void _showInvoiceDetail(BuildContext context, Map<String, dynamic> inv) {
+    final status = (inv['status'] ?? 'Unpaid').toString();
+    final amount = double.tryParse('${inv['amount'] ?? 0}') ?? 0;
+    final month = inv['month'] ?? '—';
+    final year = inv['year'] ?? '';
+    final type = inv['type'] ?? 'Tuition';
+    final isPaid = status.toLowerCase() == 'paid';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Container(
+                  width: 48, height: 48,
+                  decoration: BoxDecoration(
+                    color: (isPaid ? AppTheme.success : AppTheme.danger).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(isPaid ? Icons.paid : Icons.receipt_long, size: 24, color: isPaid ? AppTheme.success : AppTheme.danger),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(type, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text('$month $year', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                StatusBadge(text: status, status: status.toLowerCase()),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppTheme.background, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
+                  Text('Amount', style: TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  const SizedBox(height: 4),
+                  Text('PKR ${_fmtMoney(amount)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (inv['id'] != null) ...[
+              _DetailRow(label: 'Invoice ID', value: '${inv['id']}'),
+              const SizedBox(height: 8),
+            ],
+            if (inv['createdAt'] != null) ...[
+              _DetailRow(label: 'Issued', value: '${inv['createdAt']}'.substring(0, 10)),
+              const SizedBox(height: 8),
+            ],
+            _DetailRow(label: 'Status', value: status),
+            const SizedBox(height: 24),
+            if (!isPaid)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please contact your branch to pay this invoice.'), behavior: SnackBarBehavior.floating),
+                    );
+                  },
+                  icon: const Icon(Icons.payment, size: 18),
+                  label: const Text('Pay Invoice'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -125,37 +214,41 @@ class _StudentInvoicesState extends State<StudentInvoices> with AutomaticKeepAli
                             final isPaid = status.toLowerCase() == 'paid';
                             return Card(
                               margin: const EdgeInsets.only(bottom: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 44, height: 44,
-                                      decoration: BoxDecoration(
-                                        color: (isPaid ? AppTheme.success : AppTheme.danger).withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
+                              child: InkWell(
+                                onTap: () => _showInvoiceDetail(context, i),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44, height: 44,
+                                        decoration: BoxDecoration(
+                                          color: (isPaid ? AppTheme.success : AppTheme.danger).withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Icon(isPaid ? Icons.paid : Icons.receipt_long, size: 22, color: isPaid ? AppTheme.success : AppTheme.danger),
                                       ),
-                                      child: Icon(isPaid ? Icons.paid : Icons.receipt_long, size: 22, color: isPaid ? AppTheme.success : AppTheme.danger),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                                            Text('$month $year', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
-                                          Text(type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                                          Text('$month $year', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                          Text('PKR ${_fmtMoney(amount)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                                          const SizedBox(height: 2),
+                                          StatusBadge(text: status, status: status.toLowerCase()),
                                         ],
                                       ),
-                                    ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text('PKR ${_fmtMoney(amount)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-                                        const SizedBox(height: 2),
-                                        StatusBadge(text: status, status: status.toLowerCase()),
-                                      ],
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             );

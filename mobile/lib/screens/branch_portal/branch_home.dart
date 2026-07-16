@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
+import 'branch_user_detail.dart';
 
 class BranchHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -221,6 +222,11 @@ class _TeachersTabState extends State<_TeachersTab> with AutomaticKeepAliveClien
                                   icon: Icons.menu_book,
                                   badgeText: t['blocked'] == true ? 'Blocked' : 'Active',
                                   badgeStatus: t['blocked'] == true ? 'blocked' : 'active',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => BranchUserDetail(user: t, role: 'teacher'),
+                                    ));
+                                  },
                                 );
                               },
                             ),
@@ -334,6 +340,11 @@ class _StudentsTabState extends State<_StudentsTab> with AutomaticKeepAliveClien
                                   icon: Icons.person,
                                   badgeText: s['blocked'] == true ? 'Blocked' : 'Active',
                                   badgeStatus: s['blocked'] == true ? 'blocked' : 'active',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => BranchUserDetail(user: s, role: 'student'),
+                                    ));
+                                  },
                                 );
                               },
                             ),
@@ -386,6 +397,37 @@ class _FeesTabState extends State<_FeesTab> with AutomaticKeepAliveClientMixin {
     if (id == null) return 'Unknown';
     final match = _students.where((s) => s['id'] == id).toList();
     return match.isEmpty ? 'Student' : (match.first['name'] ?? 'Student');
+  }
+
+  Future<void> _markInvoicePaid(String? invoiceId) async {
+    if (invoiceId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as Paid?'),
+        content: const Text('Mark this fee invoice as paid? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mark Paid')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.patch('fee-invoices/$invoiceId/pay', body: {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invoice marked as paid'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
   }
 
   @override
@@ -443,6 +485,7 @@ class _FeesTabState extends State<_FeesTab> with AutomaticKeepAliveClientMixin {
                             final month = inv['month'] ?? '—';
                             final year = inv['year'] ?? '';
                             final type = inv['type'] ?? 'Tuition';
+                            final isUnpaid = status.toLowerCase() != 'paid';
                             return ListRowCard(
                               title: _studentName(inv['studentId']),
                               subtitle: '$type · $month $year',
@@ -450,6 +493,7 @@ class _FeesTabState extends State<_FeesTab> with AutomaticKeepAliveClientMixin {
                               badgeText: status,
                               badgeStatus: status.toLowerCase(),
                               trailing: 'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                              onTap: isUnpaid ? () => _markInvoicePaid(inv['id']) : null,
                             );
                           }),
                         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
+import 'student_course_detail.dart';
 
 class StudentCourses extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -65,35 +66,46 @@ class _StudentCoursesState extends State<StudentCourses> with AutomaticKeepAlive
                           final desc = c['description'] ?? '';
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 44, height: 44,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.book, size: 22, color: AppTheme.primary),
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => StudentCourseDetail(course: c, user: widget.user),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                                        if (code.toString().isNotEmpty)
-                                          Text('Code: $code', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                                        if (desc.toString().isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(desc, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44, height: 44,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primary.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(Icons.book, size: 22, color: AppTheme.primary),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                                          if (code.toString().isNotEmpty)
+                                            Text('Code: $code', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                          if (desc.toString().isNotEmpty) ...[
+                                            const SizedBox(height: 2),
+                                            Text(desc, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                          ],
                                         ],
-                                      ],
+                                      ),
                                     ),
-                                  ),
-                                  const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
-                                ],
+                                    const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+                                  ],
+                                ),
                               ),
                             ),
                           );

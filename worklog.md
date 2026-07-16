@@ -3241,3 +3241,365 @@ Stage Summary:
   * Student: Dashboard + Courses + Attendance + Results + Invoices
 - APK download: https://github.com/faisukhan01/esm/actions/runs/29499256263 → Artifacts → esm-app-release
 - Login credentials for testing: faisu577277@gmail.com / QaReLc_61y8 (super-admin), or any seeded institute-admin/branch-manager/teacher/student account.
+
+---
+Task ID: AUDIT-1 (WEB DETAIL VIEWS + API INVENTORY)
+Agent: Explore
+Task: Audit the eSM Next.js portal components and API handler to build a complete inventory of (1) every "detail view" / "management modal" that opens when a card is tapped in each portal, and (2) every API endpoint that takes an :id path param (or supports edit / block / delete / pay / detail-by-id). Output is used to plan the Flutter equivalents.
+
+Work Log:
+- Read /home/z/my-project/worklog.md last 100 lines for context (existing Flutter app already has Branch/Institute/Teacher/Student tab-list screens; this audit feeds the next phase: detail screens).
+- Read all 4 portal files: institute-admin-portal.tsx (2414 lines), branch-manager-portal.tsx (2699 lines), teacher-portal.tsx (1528 lines), student-portal.tsx (1202 lines).
+- Read /home/z/my-project/src/lib/server/handler.ts (2213 lines, 81 endpoints) — confirmed it is a single Next.js API dispatcher that converts an Express-style service into `if (method === '...' && path === '...')` blocks. Dynamic :id routes use pathSegments[1]/[2]/[3].
+- Grepped all function declarations in each portal to enumerate every modal / detail / view component. Cross-referenced each modal with the API calls it makes (api.* methods) and the underlying handler endpoints.
+- Did NOT modify any code. This is a read-only audit.
+
+=====================================================================
+INVENTORY 1 — WEB APP DETAIL VIEWS (per portal)
+=====================================================================
+
+----------------------------------------
+A. INSTITUTE ADMIN PORTAL (institute-admin-portal.tsx)
+----------------------------------------
+
+Top-level modules (activeModule values): institute-overview (dashboard), branches, institute-royalty, institute-teachers, institute-students, institute-reports, institute-fees, institute-academics, institute-complaints, institute-events, announcements.
+
+A1. BRANCH CARD → BranchManagementView (line 1370)
+   - Trigger: tap any BranchCard (line 1514) on the Branches page or dashboard. onSelectBranch sets selectedBranchId, which swaps the entire portal view to BranchManagementView.
+   - Data loaded: NONE directly — it composes <BranchManagerPortal activeModule={tab} user={modifiedUser} /> with a synthetic user object whose branchId/branchName are overridden to the selected branch. So all data fetching is delegated to the BM portal's existing per-module loaders (teachers/students/fees/attendances/etc.), scoped to that branch.
+   - Header: Back button, branch name, Active/Blocked badge, city, manager name. Action buttons: Edit, Block/Unblock, Delete.
+   - Sub-tabs (BRANCH_TABS, line 1363):
+     * 'teachers'      → TeachersView (BM portal) — see B1 below
+     * 'branch-students' → StudentsView (BM portal) — see B2 below
+     * 'class-courses' → ClassCoursesView (BM portal) — see B3 below
+     * 'fees'          → FeeManagement (BM portal) — see B4 below
+   - Actions on the branch itself:
+     * Edit button → opens EditBranchModal (A2)
+     * Block/Unblock → calls api.blockBranch(branch.id, !blocked, reason) → PATCH /api/branches/:id/block (cascades to teachers+students)
+     * Delete → opens a confirm dialog → api.deleteBranch(branch.id) → DELETE /api/branches/:id (cascade-deletes teachers, students, classes, courses, attendance, results, materials, diary, announcements, fees)
+
+A2. EditBranchModal (line 1599)
+   - Fields editable: Branch Name (DISABLED — read-only display), Manager Name, Manager Email, New Password (optional). Internally resolves the branch-manager user via api.platformUsers({branchId, role:'branch-manager'}) then api.editUser(managerId, {name,email,password}).
+   - API: GET /api/platform/users?branchId=&role=branch-manager → PATCH /api/platform/users/:id
+
+A3. BranchModal (line 1644) — ADD branch (not edit). Fields: name, city, managerName, managerEmail, managerPassword. Creates the branch + the branch-manager user + auto-creates Class 1–Class 12 for the new branch. API: POST /api/branches.
+
+A4. SetRoyaltyModal (line 660) — opened from InstituteRoyaltyView when "Set Royalty" or "Edit" is clicked on a branch row.
+   - Fields: method (per_student | fixed | percentage), amount (PKR), percentage (%). Conditional input based on method.
+   - API: POST /api/royalty/settings (upserts by branchId).
+
+A5. InstituteRoyaltyView (line 405) — page-level view (not a modal). Three sections:
+   * Royalty Settings table (per branch) — opens SetRoyaltyModal (A4) on Edit/Set
+   * Generate Royalty Invoices — month/year pickers + Generate button → POST /api/royalty/generate
+   * Royalty Collection Report table — each unpaid row has a "Mark Paid" button → PATCH /api/royalty/invoices/:id/pay
+
+A6. SetSalaryModal (line 903) — opened from InstituteTeachersView when "Set Salary" is clicked on a teacher row.
+   - Fields: monthly salary (PKR). API: POST /api/salaries (upserts by teacherId).
+
+A7. PaySalaryModal (line 957) — opened from InstituteTeachersView when "Pay" is clicked on a teacher row.
+   - Fields: month, year, amount, paymentMethod (Cash | Bank Transfer | Cheque | Online | Other), notes. API: POST /api/salaries/pay.
+
+A8. InstituteTeachersView (line 736) — page-level table of all teachers across the institute (from finance.teacherSalarySummary). Per-row actions: Set Salary (A6), Pay (A7). Export CSV button. Search filter.
+
+A9. InstituteStudentsView (line 1047) — page-level table of all students across the institute (from finance.studentFeeSummary). Read-only analytics (no per-student modal — student editing is delegated to branch managers via the BM portal, or to A1 → BM portal Students tab).
+
+A10. InstituteReportsView (line 1196) — page-level analytics (revenue/salary charts, branch performance table). No modals.
+
+A11. InstituteFeeManagement (line 1709) — institute-wide fee collection table per branch. Read-only (paid/pending/net per branch). No per-row modal.
+
+A12. InstituteAcademics (line 1840) — cross-branch attendance + results summary tables. Read-only.
+
+A13. InstituteComplaints (line 2012) — list of complaints across institute. Has an inline "respond" form per complaint (PATCH /api/complaints/:id/respond).
+
+A14. InstituteEvents (line 2166) — list + inline create-event form (POST /api/events).
+
+A15. AnnouncementsView (line 2311) — list + inline create-announcement form (POST /api/announcements).
+
+----------------------------------------
+B. BRANCH MANAGER PORTAL (branch-manager-portal.tsx)
+----------------------------------------
+
+Top-level modules (activeModule values): branch-overview (default), teachers, branch-students, class-courses, fees, report-cards, timetable, attendance, results, complaints, events, sms, announcements.
+
+B1. Teacher Card/Row → UserRowActions inline popover (line 351)
+   - The TeachersView (line 438) is a TABLE — each teacher row has 3 action icons:
+     * Eye (View Password) → calls api.getUserPassword(u.id) → GET /api/platform/users/:id/password — reveals the plaintext password inline as a small badge (NO modal).
+     * Edit (pencil) → opens EditUserModal (B1a)
+     * Lock/Unlock (Block/Unblock) → api.blockUser(u.id, !blocked, reason) → PATCH /api/platform/users/:id/block
+
+B1a. EditUserModal (line 395)
+   - Fields: Full name, Email (optional), New Password (optional). API: PATCH /api/platform/users/:id.
+
+B2. Student Card/Row → UserRowActions (line 351) — SAME inline popover as teachers (Eye/Edit/Block). EditUserModal is the same component used for both teacher & student. Table also shows class/section/rollNo/guardian.
+
+B3. Class Card → ClassCoursesView detail mode (line 526, when activeClassName is set)
+   - Grid of class cards (Class 1..Class 12) — tap one → setActiveClassName → renders an in-place detail view (not a modal) with:
+     * Header: back button, class name, #sections, #courses assigned
+     * "New Course" button → toggles an inline create-course form (POST /api/courses)
+     * "Assign Courses" button → toggles an inline checklist of all branch courses — toggle and Save → POST /api/classes/:id/courses (full replace)
+     * Assigned Courses card (badges)
+     * Sections card — each section tile shows student count. Add Section button → inline form (POST /api/classes/:id/sections). Delete-section trash icon (DELETE /api/classes/:id) — only allowed if section has no students and is not the only section.
+
+B4. Fee Management → FeeManagement container (line 974) with two tabs:
+   B4a. FeeStructureTab (line 1000) — per-class monthlyFee + admissionFee inputs. Save per row → POST /api/fee-structure (upserts by branchId+classId).
+   B4b. FeeInvoicesTab (line 1157) — invoices table. Each unpaid invoice row has a "Mark Paid" button → api.markInvoicePaid(inv.id, amount, 'Cash') → PATCH /api/fee-invoices/:id/pay. "Generate Invoices" button → POST /api/fee-invoices/generate. Filter chips (All / Unpaid / Paid).
+
+B5. ReportCardManager (line 2487) — student + term selectors. Generate button → api.generateReportCard(studentId, term) → GET /api/report-cards/generate/:studentId. Save button → POST /api/report-cards. Saved report cards list. Inline ReportCardDocument preview + ReportCardActions (download/print). No per-row modal — all inline.
+
+B6. TimetableManager (line 2202) — weekly grid (Mon–Sat × 8 periods). Tap any cell (empty or filled):
+   - Empty cell "+" → opens TimetableEntryModal (B6a) in "add" mode.
+   - Filled cell → opens TimetableEntryModal in "edit" mode.
+   - "×" button on a filled cell → DELETE /api/timetable/:id.
+
+B6a. TimetableEntryModal (line 2386)
+   - Fields: Subject (required), Teacher (Select), Start time, End time, Room. API: POST /api/timetable (upserts by branchId+classId+day+period).
+
+B7. BMAttendanceView (line 1359) — sessions table. Tap a row → expands inline (no modal) to show per-student records. Read-only at branch level (teachers create attendance).
+
+B8. BMResultsView (line 1521) — exam results table. Tap a row → expands inline to show per-student marks. Read-only at branch level.
+
+B9. BMComplaintsView (line 1677) — complaints table. Each open complaint has an inline "Respond" textarea + button → PATCH /api/complaints/:id/respond (marks status=Resolved).
+
+B10. BMEventsView (line 1838) — events list + inline create-event form (POST /api/events).
+
+B11. BMSmsView (line 2010) — SMS messages list + inline compose form (POST /api/sms/send). Recipient: class-scoped.
+
+B12. AnnouncementsView (line 863) — list + inline create-announcement form (POST /api/announcements, supports class-scoped targeting).
+
+B13. AddUserModal (add-user-modal.tsx, line 14) — shared modal opened by "Add Teacher" / "Add Student" buttons in TeachersView/StudentsView. Fields: name, rollNo, email, password, classId, section. For teachers: also multi-select courseIds (which creates teacher_class_courses rows). API: POST /api/platform/users (single endpoint handles both roles; if addCourseIds present, also PATCH /api/platform/users/:id with classId+addCourseIds).
+
+----------------------------------------
+C. TEACHER PORTAL (teacher-portal.tsx)
+----------------------------------------
+
+Top-level modules: teacher-overview, teacher-dashboard, mark-attendance, post-results, diary, timetable, my-students, sms, announcements.
+
+C1. Class Card → ClassDetail (line 133)
+   - Trigger: tap a class card on TeacherOverview or TeacherDashboard. openClass(cls, tab) sets selectedClass + selectedTab. ClassDetail replaces the portal content.
+   - Header: Back button, class name, section, #courses, #students. Course <select> dropdown to switch active course (used by Results & Materials tabs).
+   - Tabs (TABS, line 122):
+     * 'attendance'    → ClassAttendance (C1a)
+     * 'results'       → ClassResults (C1b)
+     * 'materials'     → ClassMaterials (C1c)
+     * 'announcements' → ClassAnnouncements (C1d)
+
+C1a. ClassAttendance (line 190)
+   - Per-student Present/Absent/Late buttons (defaults to Present). "Save Attendance" → api.markAttendance({classId, branchId, class, date, teacherId, records}) → POST /api/attendance.
+
+C1b. ClassResults (line 273)
+   - Form: Exam Name (required), Total Marks (default 100). Per-student marks input → auto-computed grade (A+/A/B/C/D/F). "Publish Results" → api.postResults({classId, courseId, branchId, exam, teacherId, totalMarks, date, records}) → POST /api/results.
+
+C1c. ClassMaterials (line 354)
+   - Lists materials via api.getCourseMaterials({classId, courseId}) → GET /api/course-materials?classId=&courseId=
+   - "Upload Material" → MaterialUploadForm (line 399): title, description, mode (file|link), linkUrl, file (PDF/DOCX/PPT/PNG/JPG, max 8MB, base64-encoded). Submit → POST /api/course-materials.
+   - Each material card has a Download button → api.downloadMaterialBlob(material.id) → GET /api/course-materials/:id/download (returns binary blob or {linkUrl}).
+
+C1d. ClassAnnouncements (line 547)
+   - Form: Title, Message. "Send to Class" → api.createAnnouncement({title, message, classId, targetScope:'class', targetRole:'student'}) → POST /api/announcements.
+   - Lists existing announcements filtered by classId (or global).
+
+C2. MarkAttendance (line 1016) — module-level page. Class picker → student list with Present/Absent/Late. Same POST /api/attendance.
+
+C3. PostResults (line 1120) — module-level page. Class + course pickers → exam form → student marks. Same POST /api/results.
+
+C4. DiaryView (line 1225) — homework/diary entries list + inline create form (POST /api/diary).
+
+C5. TeacherTimetable (line 1281) — read-only weekly grid for the teacher (GET /api/timetable?teacherId=).
+
+C6. MyStudents (line 1366) — read-only student roster.
+
+C7. MessageParents (line 1392) — SMS compose form (POST /api/sms/send).
+
+C8. TeacherAnnouncements (line 1449) — class-scoped announcements list + create form (POST /api/announcements).
+
+----------------------------------------
+D. STUDENT PORTAL (student-portal.tsx)
+----------------------------------------
+
+Top-level modules: student-overview, my-courses, my-attendance, my-results, my-report-card, my-timetable, my-diary, my-announcements, my-invoices.
+
+D1. Course Card → CourseDetail (line 331)
+   - Trigger: tap any course card on StudentOverview or MyCoursesPage. onOpenCourse(course, initialTab) sets selectedCourse. CourseDetail replaces the portal content.
+   - Header: Back button, course name, course code.
+   - Tabs (COURSE_TABS, line 296):
+     * 'materials'  → CourseMaterialsView (D1a)
+     * 'results'    → CourseResultsView (D1b)
+     * 'attendance' → CourseAttendanceView (D1c)
+
+D1a. CourseMaterialsView (line 375)
+   - Lists materials via api.getCourseMaterials({classId, courseId}) → GET /api/course-materials?classId=&courseId=
+   - Each material card has Download button → GET /api/course-materials/:id/download. Student cannot upload — only teachers.
+
+D1b. CourseResultsView (line 466)
+   - Lists this student's results filtered by courseId via api.getResults({studentId}) → GET /api/results?studentId=. Backend returns flattened entries with marks/totalMarks/grade/date/exam.
+
+D1c. CourseAttendanceView (line 506)
+   - Summary cards (Present/Absent/Late/Rate) + entries table via api.getAttendance({studentId}) → GET /api/attendance?studentId=. Backend returns aggregated totals + per-date entries.
+
+D2. MyCoursesPage (line 302) — grid of course cards that open CourseDetail (D1).
+
+D3. MyAttendance (line 548) — same data as D1c but cross-course.
+
+D4. MyResults (line 580) — same data as D1b but cross-course.
+
+D5. MyReportCard (line 1150) — auto-loads the latest saved report card via api.getReportCards({studentId}) → GET /api/report-cards?studentId=. If none, calls api.generateReportCard(studentId, 'Current Term') → GET /api/report-cards/generate/:studentId. Read-only view via ReportCardDocument.
+
+D6. MyTimetable (line 611) — read-only weekly grid (GET /api/timetable?classId=).
+
+D7. MyDiary (line 703) — read-only homework list (GET /api/diary?branchId=).
+
+D8. MyAnnouncements (line 726) — read-only announcement feed (GET /api/announcements).
+
+D9. MyInvoices (line 999) — invoices table. Each invoice row has a "Download Challan" button → api.getChallanData(inv.id) → GET /api/fee-invoices/:id/challan, then generates a PDF client-side. Read-only — student cannot pay; payment is recorded by the Branch Manager via B4b.
+
+=====================================================================
+INVENTORY 2 — API ENDPOINTS FOR DETAIL / EDIT OPERATIONS
+=====================================================================
+All endpoints below are defined in /home/z/my-project/src/lib/server/handler.ts.
+Path prefix: /api/ (omitted below for brevity). Path params in { braces }.
+"Scoped" column = who can call it (server-side role check).
+
+--- INSTITUTES (super-admin only) ---
+GET    institutes                                 -> list all institutes (super-admin)
+POST   institutes                                 -> create institute + admin user (super-admin)
+PATCH  institutes/{id}                            -> edit institute name/plan/status + admin name/email/password (super-admin)
+PATCH  institutes/{id}/block                      -> block/unblock institute (cascades to branches + users, kills sessions) — body: {blocked, reason} (super-admin)
+DELETE institutes/{id}                            -> hard-delete institute + all branches/users/classes/courses/attendance/results/materials/diary/announcements (super-admin)
+
+--- BRANCHES (institute-admin or super-admin) ---
+GET    branches                                   -> list branches scoped to caller (super-admin=all, institute-admin=own institute, branch-manager=own branch only)
+POST   branches                                   -> create branch + branch-manager user + auto-create Class 1–12 (institute-admin/super-admin)
+PATCH  branches/{id}/block                        -> block/unblock branch (cascades to teachers+students, kills sessions) — body: {blocked, reason} (institute-admin/super-admin)
+DELETE branches/{id}                              -> hard-delete branch + all teachers/students/classes/courses/attendance/results/materials/diary/announcements/fees (institute-admin/super-admin)
+
+--- PLATFORM USERS (teachers, students, branch-managers, institute-admins) ---
+GET    platform/users                             -> list users; filters: ?role=&branchId=&instituteId= (auto-scoped to caller's institute/branch)
+POST   platform/users                             -> create user (teacher or student). If addCourseIds present, also assigns courses to teacher. (branch-manager/institute-admin/super-admin)
+PATCH  platform/users/{id}                        -> edit user — body: {name, email, password, blocked, classId, addCourseIds}. Updates password resets mustChangePassword=1. (caller scoped to own institute/branch)
+PATCH  platform/users/{id}/block                  -> block/unblock user — body: {blocked, reason}. On block, kills their sessions. (caller scoped to own institute/branch)
+GET    platform/users/{id}/password               -> reveal plaintext password + mustChangePassword flag (caller scoped to own institute/branch) — used by "Eye" icon in BM Teachers/Students tables.
+
+--- CLASSES & COURSES ---
+GET    classes                                    -> list classes; ?branchId= (defaults to caller.branchId)
+GET    courses                                    -> list courses; ?branchId= OR ?classId= (returns courses assigned to a class)
+POST   courses                                    -> create course {name, code, branchId} (branch-manager/institute-admin)
+POST   class-courses                              -> add a single course to a class {classId, courseId} (legacy single-add) (branch-manager/institute-admin)
+POST   classes/{id}/courses                       -> REPLACE all courses assigned to a class — body: {courseIds: [...]} (branch-manager/institute-admin)
+POST   classes/{id}/sections                      -> create a new section under a class — body: {section?} (auto-picks next letter A,B,C… if omitted); inherits parent's courses (branch-manager/institute-admin)
+DELETE classes/{id}                               -> delete a single section (refuses if last section OR has students) (branch-manager/institute-admin)
+
+--- TEACHER / STUDENT SCOPED VIEWS ---
+GET    teacher/classes                            -> list classes + courses assigned to the calling teacher (joins teacher_class_courses)
+GET    student/courses                            -> list courses in the calling student's class
+GET    teacher/analytics                          -> teacher KPIs (assigned classes/courses/students, attendance rate, avg score, results posted)
+GET    student/analytics                          -> student KPIs (attendance rate, avg score, fee status, total courses)
+
+--- ANNOUNCEMENTS ---
+GET    announcements                              -> list (filtered by targetScope/targetRole/classId)
+POST   announcements                              -> create — body: {title, message, targetRole, targetScope, targetIds, classId}
+
+--- COURSE MATERIALS ---
+GET    course-materials                           -> list; ?classId=&courseId=&teacherId= (fileData stripped)
+POST   course-materials                           -> upload — body: {classId, courseId, title, description, fileType, fileName, fileData (base64), linkUrl} (teacher only)
+GET    course-materials/{id}/download             -> returns binary file (Content-Type + Content-Disposition) OR {linkUrl} if it's an external link
+
+--- FINANCE / ANALYTICS ---
+GET    platform/overview                          -> super-admin platform KPIs (institutes, branches, students, staff, revenue, active)
+GET    scoped/stats                               -> branch or institute counts (?branchId= or ?instituteId=)
+GET    institute/finance                          -> institute-admin finance bundle: kpi, monthlyRevenue, branchPerformance, teacherSalarySummary, studentFeeSummary, classDistribution, recentTransactions
+GET    branch/finance                             -> branch-manager finance bundle: kpi, monthlyRevenue, feeStatus, recentTransactions, salaryPayments
+GET    platform/finance                           -> super-admin finance bundle (cross-institute)
+
+--- SALARIES ---
+POST   salaries                                   -> set monthly salary for a teacher {teacherId, monthlySalary, effectiveFrom} (upsert) (institute-admin/branch-manager)
+POST   salaries/pay                               -> record a salary payout {teacherId, month, year, amount, paymentMethod, notes} → inserts salary_payments row with status=Paid (institute-admin/branch-manager)
+GET    salaries                                   -> list payout history; ?instituteId=&branchId=&teacherId=
+
+--- ATTENDANCE ---
+POST   attendance                                 -> mark attendance — body: {classId, date, records:[{studentId, status}]} (teacher only)
+GET    attendance                                 -> list; ?classId= OR ?studentId=. If studentId, returns aggregated {entries, total, present, absent, late}.
+
+--- RESULTS ---
+POST   results                                    -> post exam results — body: {exam, courseId, totalMarks, date, records:[{studentId, marks, grade}], classId} (teacher only)
+GET    results                                    -> list; ?courseId= OR ?studentId=. If studentId, returns flattened entries with marks/grade/exam/date.
+
+--- FEE STRUCTURE & INVOICES ---
+GET    fee-structure                              -> per-class fee structure; ?branchId=&classId=
+POST   fee-structure                              -> upsert class fee {classId, monthlyFee, admissionFee} (branch-manager/institute-admin)
+GET    fee-invoices                               -> student's own invoices (?studentId= defaults to caller.id)
+GET    fee-invoices/branch                        -> all invoices in caller's branch (branch-manager/institute-admin)
+POST   fee-invoices/generate                      -> generate monthly invoices for all students in branch {month, year} (branch-manager only)
+PATCH  fee-invoices/{id}/pay                      -> mark invoice paid — body: {paidAmount, paymentMethod} (branch-manager/institute-admin)
+GET    fee-invoices/{id}/challan                  -> returns challan data (challanNo, student, branch, institute, amount, status) for PDF generation
+
+--- DIARY ---
+GET    diary                                      -> list; ?teacherId=&branchId=&classId=&class=
+POST   diary                                      -> create homework/diary entry (teacher)
+
+--- SMS ---
+GET    sms                                        -> list; ?branchId=
+POST   sms/send                                   -> send SMS — body: {text, type, classId, ...} (branch-manager/teacher)
+
+--- COMPLAINTS ---
+GET    complaints                                 -> list; ?parentId=&instituteId=&branchId=
+POST   complaints                                 -> create — body: {parentId, studentId, subject, message} (parent/student only)
+PATCH  complaints/{id}/respond                    -> respond + mark Resolved — body: {response} (branch-manager/institute-admin)
+
+--- EVENTS ---
+GET    events                                     -> list; ?instituteId=&branchId=
+POST   events                                     -> create — body: {title, description, startDate, endDate, location, type, instituteId, branchId} (branch-manager/institute-admin/super-admin)
+
+--- LIBRARY (no per-id detail endpoint yet) ---
+GET    library/books                              -> list; ?branchId=
+POST   library/books                              -> create — body: {title, author, isbn, category, totalCopies, shelf} (branch-manager/institute-admin)
+
+--- TRANSPORT (no per-id detail endpoint yet) ---
+GET    transport/routes                           -> list; ?branchId=
+POST   transport/routes                           -> create — body: {routeName, driver, vehicleNo, fare, stops, capacity} (branch-manager/institute-admin)
+
+--- MANUAL REVENUE ---
+GET    revenue                                    -> list; ?sourceType=&sourceId=&instituteId=&month=&year=
+POST   revenue                                    -> upsert — body: {sourceType, sourceId, sourceName, amount, month, year, notes} (super-admin=institute only, institute-admin=branch only)
+DELETE revenue/{id}                               -> delete a revenue entry (super-admin/institute-admin, scoped)
+
+--- TIMETABLE ---
+GET    timetable                                  -> list; ?teacherId= OR ?classId= OR ?branchId= (defaults to caller.branchId)
+POST   timetable                                  -> upsert entry — body: {classId, className, section, day, period, startTime, endTime, subject, teacherId, teacherName, roomName} (upserts by branchId+classId+day+period) (branch-manager/institute-admin)
+DELETE timetable/{id}                             -> delete a single timetable entry (branch-manager/institute-admin)
+
+--- REPORT CARDS ---
+GET    report-cards                               -> list saved report cards; ?studentId=&branchId=
+POST   report-cards                               -> save a generated report card (persists to report_cards table) (branch-manager/institute-admin/teacher)
+GET    report-cards/generate/{studentId}          -> compute a fresh report card on-the-fly from results table; ?term=&examName= — returns {student, term, examName, subjects[], totalMarks, obtainedMarks, percentage, grade, remarks}
+
+--- ROYALTY (institute-admin only) ---
+GET    royalty/settings                           -> list royalty settings per branch; ?instituteId=
+POST   royalty/settings                           -> upsert royalty method for a branch — body: {branchId, method (per_student|fixed|percentage), amount, percentage, effectiveFrom}
+POST   royalty/generate                           -> generate royalty invoices for a month — body: {month, year} (calculates from settings + student count + branch revenue)
+GET    royalty/invoices                           -> list royalty invoices; ?instituteId=
+PATCH  royalty/invoices/{id}/pay                  -> mark royalty invoice as Paid (sets paidDate)
+
+--- AUTH / MISC ---
+POST   auth/login                                 -> email/rollNo + password → {token, user, mustChangePassword}
+POST   auth/logout                                -> invalidate session token
+POST   auth/change-password                       -> {currentPassword, newPassword}
+GET    health                                     -> unauthenticated health check {ok, service, users, db}
+GET    notifications                              -> top-bar dropdown feed (announcements + complaints merged, role-scoped)
+
+=====================================================================
+NEXT ACTIONS (for the Flutter build phase)
+=====================================================================
+1. The Flutter app currently has list-only screens for each portal. The next milestone is to add detail routes that mirror the web's tap-card → detail-view pattern:
+   - Institute: BranchDetailScreen (header + 4 tabs reusing BM widgets + Edit/Block/Delete actions); SetRoyaltyModal; SetSalaryModal; PaySalaryModal.
+   - Branch: EditUserModal (teachers + students); ClassDetailScreen (sections + assign courses); FeeInvoicesTab "Mark Paid"; TimetableEntryModal; ReportCardManager; Complaints respond form.
+   - Teacher: ClassDetailScreen with 4 tabs (Attendance mark, Results post, Materials upload+download, Announcements send).
+   - Student: CourseDetailScreen with 3 tabs (Materials download, Results view, Attendance view); Invoice "Download Challan" (PDF generation client-side).
+2. The API surface is fully ready — every action above already has a backend endpoint. No backend changes are needed.
+3. Priority order for Flutter: Student CourseDetail (simplest — read-only) → Teacher ClassDetail (write actions) → Branch Manager EditUserModal + ClassDetail + FeeInvoicesTab mark-paid → Institute BranchDetail + salary/royalty modals.
+4. Note: GetPassword endpoint (GET /api/platform/users/:id/password) returns plaintext — the Flutter app should use it for the "Eye" reveal action in BM Teachers/Students rows.
+5. Note: CourseMaterials download returns a binary blob (Content-Disposition: attachment) — Flutter needs to handle bytes and save to file, OR use the {linkUrl} shortcut for external-link materials.
+
+Stage Summary:
+- Audit complete. Two inventories produced above — (1) per-portal detail views/modals with their data sources and actions, (2) full API endpoint list with method, path, body, scope, and behavior.
+- No code was modified. This is a pure read-only audit.
+- The Flutter team can use these inventories as the spec for the next sprint: building detail screens that mirror the web app's management UX.
