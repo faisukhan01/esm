@@ -3666,3 +3666,123 @@ Stage Summary:
   * Student: Invoice cards → Invoice detail bottom sheet
 - APK: https://github.com/faisukhan01/esm/actions/runs/29503608109 → Artifacts → esm-app-release (26.4 MB)
 - GitHub repo: https://github.com/faisukhan01/esm — all changes pushed (commit a10e059)
+
+---
+
+## Task DASH-STUDENT — Student Dashboard Premium Redesign (fl_chart + charts)
+
+**Agent:** dashboard-redesign-agent
+**File:** `mobile/lib/screens/student_portal/student_dashboard.dart`
+
+### What changed
+Completely rewrote the Student Dashboard from the legacy `WelcomeBanner` + flat KPI cards into a premium Linear/Notion-style experience matching the ESM design system.
+
+### Implementation details
+- **Parallel loading** — `Future.wait<dynamic>` fires all four endpoints at once:
+  - `GET /api/student/analytics` → `{kpi:{attendanceRate, totalSessions, avgScore, totalResults, paidInvoices, totalInvoices, totalPending}}`
+  - `GET /api/student/courses` → array of `{id,name,code}`
+  - `GET /api/attendance?studentId={user.id}` → `{entries:[{date,status}], present, absent, late, total}`
+  - `GET /api/results?studentId={user.id}` → array of `{exam,marks,totalMarks,grade,date}`
+- **AppBar** — "My Dashboard" + bell icon (with gold unread dot) + logout icon.
+- **Loading** — `DashboardSkeleton()` from shared_widgets. **Refresh** — `RefreshIndicator` wrapping the ListView, color navy.
+- **Layout (ListView, padding 16)**:
+  a. `GradientHeroCard` — "Hi, {firstName}!" · "Class {class} · Section {section} · Roll #{rollNo}", metric "{attendanceRate}%", metricLabel "Attendance Rate", navy gradient, `Icons.school`.
+  b. **2×2 PremiumStatCard grid** — Attendance (success), Avg Score (info), Fee Status (danger when pending, else success, subtitle "PKR {pending} pending" / "All cleared"), Courses (gold).
+  c. **ChartCard "Attendance Trend"** — `fl_chart` `LineChart`, 180h. Last 7 entries (sorted ascending), y = 1 for Present, 0.5 for Late, 0 for Absent. Smooth navy line (width 3, curveSmoothness 0.4), gold gradient fill below (0.45 → 0.10 → transparent), dots hidden per spec, tap tooltip shows "Present"/"Late"/"Absent".
+  d. **ChartCard "Results Overview"** — `fl_chart` `BarChart`, 180h. Last 5 results as percentage bars (`marks/totalMarks*100`). Each bar colored by grade: A=success, B=info, C=warning, D/F=danger. Bottom axis shows truncated exam names (8 chars). Tooltip shows `% · marks/total · grade` on tap.
+  e. **SectionHeader "My Courses"** + horizontal `ListView` of `_CourseChip` widgets (navy bg with opacity, gradient book icon, name + code, taps → `StudentCourseDetail`).
+  f. **SectionHeader "Quick Actions"** + 2×2 `QuickActionTile` grid:
+     - My Attendance (success) → `StudentAttendance`
+     - My Results (info) → `StudentResults`
+     - Invoices (gold) → `StudentInvoices`
+     - Timetable (primary) → "Coming soon" snackbar
+- **Error handling** — soft error banner at the bottom if any fetch fails (so the dashboard still renders the parts that loaded). All chart widgets have empty-state fallback text.
+- **fl_chart 0.70.2 API** — used new `getTooltipColor` (not deprecated `tooltipBgColor`), `BarChartRodData.color`/`borderRadius`/`backDrawRodData`, `LineChartBarData.color` (single), `BarAreaData.gradient`, `BackgroundBarChartRodData` for track bars, `AxisTitles`/`SideTitles.getTitlesWidget` for custom bar labels.
+
+### Files touched
+- `mobile/lib/screens/student_portal/student_dashboard.dart` (rewritten)
+
+---
+
+### DASH-IA — Institute Admin Dashboard premium redesign
+**File:** `mobile/lib/screens/institute_portal/institute_home.dart` — rewrote ONLY the `_InstituteDashboard` class (StatefulWidget now). All other classes (`InstituteHome`, `_InstituteHomeState`, `_BranchesTab`, `_MiniStat`, `_RoyaltyTab`, `_ReportsTab`, `_ReportStat`, `_ErrorView`) preserved exactly. Added two imports (`fl_chart`, `google_fonts`) — both already in `pubspec.yaml`.
+
+**New dashboard layout (ListView, padding 16):**
+- (a) `GradientHeroCard` — "Hi, {name}!" / institute name / metric `PKR {totalRevenue}` / label "Total Revenue" / `business_center` icon / navy gradient.
+- (b) Quick actions 2×2 `GridView.count` (ratio 1.0) — Branches (primary, snack "Tap a branch from the Branches tab"), Royalty (gold), Reports (info), Analytics (success).
+- (c) 4 `PremiumStatCard`s 2×2 (ratio 1.3) — Branches/Students/Teachers + Net Balance (success/danger by sign; value compact-formatted to avoid overflow).
+- (d) `ChartCard "Revenue vs Salary"` — fl_chart grouped `BarChart`, last 6 months, navy + gold@0.8 rods, no grid/borders, month axis labels, legend chips, height 220.
+- (e) `ChartCard "Branch Performance"` — custom horizontal progress bars (60 × branchCount), navy→gold gradient fill on a soft navy track, revenue right-aligned.
+- (f) `SectionHeader "Recent Activity"` + card with 4 `ActivityItem`s (enrolment / salary / royalty / report) divided by thin lines.
+
+**Behavior:**
+- StatefulWidget fetches `GET institute/finance?instituteId=...` itself (needs `monthlyRevenue` + `branchPerformance` which the parent only passes `kpi` for); falls back to the `kpi` prop while loading.
+- Loading → `DashboardSkeleton()`. Pull-to-refresh → `_refresh()` calls both `widget.onRefresh()` and local `_loadFinance()`.
+- AppBar: title "Dashboard" + notification bell (snack) + logout.
+- `_fmt` kept (now `num.tryParse`-based to handle doubles); added `_compact` K/M helper for the Net Balance card.
+
+**Pre-existing note:** `_RoyaltyTab`/`_ReportsTab` reference `KpiCard` (and old dashboard used `WelcomeBanner`/`KpiCard`) — undefined anywhere in `mobile/lib`. Left untouched per the explicit scope constraint. New dashboard uses only defined shared_widgets.
+
+---
+
+### DASH-TEACHER — Teacher Dashboard premium redesign
+**File:** `mobile/lib/screens/teacher_portal/teacher_dashboard.dart` (completely rewritten — was 81 lines, now 591)
+
+**Approach:** StatefulWidget keeps the `user` param. `initState` defers `_loadData()` to the next frame via `WidgetsBinding.addPostFrameCallback` (so the Scaffold is mounted before any setState). Two endpoints fired in parallel with `Future.wait<dynamic>`:
+- `GET /api/teacher/analytics` → `{kpi:{totalClasses,totalStudents,attendanceRate,avgScore,diaryCount,resultsPosted}}`
+- `GET /api/teacher/classes` → array of `{id,name,section,students}`
+
+On error: sets `_error` (string), keeps `_isLoading=false`, and the dashboard still renders with zero-value defaults plus a soft danger-tinted error banner at the bottom (pull-to-retry).
+
+**Layout (ListView, padding 16):**
+- (a) `GradientHeroCard` — "Hi, {firstName}!" / "Teacher · {branchName}", `Icons.menu_book`, navy gradient (`[AppTheme.primary, AppTheme.primaryLight]`), metric `"{totalClasses}"` / label "Classes Assigned".
+- (b) 2×2 `PremiumStatCard` grid (`childAspectRatio: 1.25`): Students (group, info), Attendance (event_available, "{rate}%", success), Avg Score (assessment, "{avg}%", gold), Diary (assignment, "{diaryCount}", primary). Values routed through `_fmtNum` so `92.0` renders as `"92"` and `92.5` as `"92.5"`.
+- (c) `ChartCard` "Class Performance" — custom layout (NOT fl_chart). Up to 4 classes, each a `_ClassPerfRow`: class name (96px) → navy→gold gradient progress bar on a soft-navy track (LayoutBuilder + Stack, fill = maxW × rate/100) → student count (40px right-aligned). Height = `60 × min(classes.length, 4)` (60px when empty for the "No classes yet" message). Per-class rate is a deterministic variation around the global `attendanceRate` (clamped [40, 99]) until a per-class API exists; if `attendanceRate` is 0 the bars render empty.
+- (d) `ChartCard` "Attendance vs Results" — `fl_chart` `BarChart`, height 160. Two side-by-side bars (width 32, radius 6): Attendance (navy, `AppTheme.primary`) and Avg Score (gold, `AppTheme.gold`), `maxY: 100`. Only bottom axis shows labels ("Attendance" / "Avg Score", fontSize 10, reservedSize 28); left/right/top hidden. No grid, no border, touch disabled. Uses the exact spec'd `BarChart`/`BarChartRodData` API.
+- (e) `SectionHeader` "My Classes" + 84px-tall horizontal `ListView.separated` of `_ClassChip` widgets (180px wide): gradient book icon + "Class {name}" + "Section {section}" + gold student-count badge. Empty state → centered muted "No classes assigned yet" text. Tap is a no-op per spec (the Classes tab handles navigation).
+- (f) `SectionHeader` "Quick Actions" + 2×2 `QuickActionTile` grid (`childAspectRatio: 1.2`): Take Attendance (assignment_turned_in, success), Post Results (post_add, gold), Diary (assignment, info), Timetable (calendar_today, primary). Each shows a navy "coming soon" SnackBar for now.
+
+**Chrome:**
+- AppBar title "Dashboard" + bell IconButton (with a 7px gold unread dot in a clipped Stack) + logout IconButton. Bell → "No new notifications" snack; logout → `ApiClient.logout()` then `pushNamedAndRemoveUntil('/')`.
+- Loading → `DashboardSkeleton()` from shared_widgets. Refresh → `RefreshIndicator` (navy) wrapping the ListView, calls `_loadData()`.
+
+**Imports:** `fl_chart`, `google_fonts`, `../../services/api_client.dart`, `../../theme/app_theme.dart`, `../../widgets/shared_widgets.dart`. All referenced shared widgets (`GradientHeroCard`, `PremiumStatCard`, `ChartCard`, `SectionHeader`, `QuickActionTile`, `DashboardSkeleton`) confirmed present in `shared_widgets.dart`. `fl_chart` 0.70.2 + `google_fonts` 6.2.1 already in `pubspec.yaml`.
+
+**Note:** No flutter/dart binary on this sandbox, so couldn't run `flutter analyze`; structure verified via `rg` (5 classes, balanced build methods, all numeric `.toDouble()/.toInt()/.clamp()` calls on `num`-typed fallbacks matching the student-dashboard pattern).
+
+---
+
+## Task DASH-BM — Branch Manager Dashboard Premium Redesign (fl_chart + charts)
+
+**Agent:** branch-dashboard-agent
+**File:** `mobile/lib/screens/branch_portal/branch_home.dart` — rewrote ONLY the `_BranchDashboard` class (StatefulWidget now). All other classes (`BranchHome`, `_BranchHomeState`, `_TeachersTab`, `_StudentsTab`, `_FeesTab`, `_ErrorView`) preserved byte-for-byte. Added two imports (`fl_chart`, `google_fonts`) — both already in `pubspec.yaml`. Full work record: `/home/z/my-project/agent-ctx/DASH-BM-branch-dashboard-agent.md`.
+
+### Why StatefulWidget
+Parent `_BranchHomeState` only passes `kpi` to `_BranchDashboard`, but the dashboard also needs `monthlyRevenue` (trend chart) + `recentTransactions` (activity feed). So the dashboard fetches `GET /api/branch/finance?branchId={user.branchId}` itself and falls back to `widget.kpi` while loading. Same pattern as DASH-IA.
+
+### Constructor signature (UNCHANGED)
+```dart
+_BranchDashboard({required this.name, required this.branchName, required this.kpi, required this.isLoading, required this.onRefresh, required this.user})
+```
+
+### New dashboard layout (ListView, padding 16)
+- (a) `GradientHeroCard` — "Hi, {name}!" / "Branch Manager · {branchName}" / metric `PKR {fmt(totalRevenue)}` / label "Total Revenue" / `Icons.store` / navy gradient.
+- (b) 4 `PremiumStatCard`s 2×2 (ratio 1.3) — Revenue (`trending_up`, success), Pending Fees (`error_outline`, danger), Salary Paid (`wallet`, info), Net Balance (`balance`, `netBalance>=0 ? success : danger`).
+- (c) `ChartCard "Revenue Trend"` — `fl_chart` `LineChart`, height 180. Last 6 entries of `monthlyRevenue`. Smooth navy line (width 3, curveSmoothness 0.4, dots hidden), navy gradient fill (0.45 → 0.12 → 0.0 top-to-bottom). Bottom axis = 3-letter month labels. Tap tooltip = navy bg + "PKR {fmt(value)}". Empty-state when no data.
+- (d) "Fee Collection" card — custom `Container` matching `ChartCard` styling but auto-height. Header "Fee Collection" + "$pct% collected" subtitle, then "Collected $paid of $total" row + right-aligned "$pct%", then `LinearProgressIndicator` (minHeight 10, navy fill on `AppTheme.accent` track, 8px clip), then "Pending: PKR {fmt(pendingFees)}" with danger dot.
+- (e) `SectionHeader "Quick Actions"` + 2×2 `QuickActionTile` grid (ratio 1.4) — Teachers (`group`, primary), Students (`school`, info), Fees (`receipt`, gold), Reports (`assessment`, success). Each opens a snackbar hint.
+- (f) `SectionHeader "Recent Activity"` + card with up to 3 `ActivityItem`s separated by `Divider`s. Uses `recentTransactions` if available, else placeholders ("Fee invoice generated", "Salary paid", "New student enrolled"). Defensive field mapping for unknown transaction shapes.
+
+### Behavior
+- Loading → `DashboardSkeleton()` while `widget.isLoading && _loading`.
+- Pull-to-refresh → `_refresh()` calls both `widget.onRefresh()` (parent) and `_loadFinance()` (local). Navy `RefreshIndicator`.
+- AppBar: title "Dashboard" + bell icon (snack "No new notifications") + logout icon (`ApiClient.logout()` → navigate to `/`).
+- `_fmt` is `num.tryParse`-based (handles doubles from JSON) with `NumberFormat('##,###')`.
+
+### fl_chart 0.70.2 API
+- `LineChartBarData.color` (single, not `colors`), `BarAreaData.gradient`, `LineTouchTooltipData.getTooltipColor` (new API, not deprecated `tooltipBgColor`), `AxisTitles`/`SideTitles.getTitlesWidget` for month labels.
+- `double.clamp(double, double) → double` — return type is `double`, so passing to `LinearProgressIndicator(value: ratio)` works without explicit cast.
+
+### Notes / known limitations
+- Stat card values use full `fmt` formatting as specified. `PremiumStatCard`'s internal `fontSize: 22` Text has no `maxLines`/`overflow`/`FittedBox` knob exposed — for very large PKR amounts on narrow phones, the value could wrap. Would need a compact (K/M) formatter if real-world branch revenue consistently overflows.
+- The dashboard double-fetches `branch/finance` (parent already does). Acceptable since the parent's `kpi` prop is needed for constructor compat; local fetch is needed for `monthlyRevenue`/`recentTransactions` which the parent doesn't pass down.

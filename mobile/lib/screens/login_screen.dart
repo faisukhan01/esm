@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import 'dashboard_screen.dart';
@@ -21,10 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   final List<_RoleOption> _roles = [
-    _RoleOption(id: 'institute-admin', label: 'Institute', icon: Icons.business),
-    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.group),
-    _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book),
-    _RoleOption(id: 'student', label: 'Student', icon: Icons.person),
+    _RoleOption(id: 'institute-admin', label: 'Institute', icon: Icons.business, color: AppTheme.primary),
+    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.group, AppTheme.info),
+    _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book, color: AppTheme.success),
+    _RoleOption(id: 'student', label: 'Student', icon: Icons.person, color: AppTheme.gold),
   ];
 
   bool get _needsName => _selectedRole == 'teacher' || _selectedRole == 'student';
@@ -36,11 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Show the server settings dialog automatically if no base URL is set.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (ApiClient.baseUrl.isEmpty) {
-        _showServerDialog(firstRun: true);
-      }
+      if (ApiClient.baseUrl.isEmpty) _showServerDialog(firstRun: true);
     });
   }
 
@@ -63,12 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await ApiClient.setBaseUrl(result.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Server set to ${result.trim()}'),
-            backgroundColor: AppTheme.success,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
+          SnackBar(content: Text('Server: ${result.trim()}'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
         );
       }
     }
@@ -91,21 +82,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = result['user'] as Map<String, dynamic>;
       await ApiClient.saveToken(token);
       await ApiClient.saveUser(user);
-
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => DashboardScreen(user: user)),
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => DashboardScreen(user: user),
+            transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+            transitionDuration: const Duration(milliseconds: 400),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppTheme.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
         );
       }
     } finally {
@@ -116,8 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Sign In'),
+        backgroundColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.dns_outlined, size: 20),
@@ -128,93 +119,80 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
-              // Logo
+              const SizedBox(height: 8),
+              // Logo + brand
               Container(
-                width: 64, height: 64,
+                width: 72, height: 72,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: AppTheme.navyGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AppTheme.shadow,
                 ),
-                child: const Icon(Icons.school, color: Colors.white, size: 32),
+                child: const Icon(Icons.school, color: Colors.white, size: 36),
               ),
               const SizedBox(height: 20),
-              const Text('Welcome to ESM', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-              const SizedBox(height: 4),
-              const Text('Electronic School Management', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              Text('Welcome back', style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.5)),
+              const SizedBox(height: 6),
+              Text('Sign in to your ESM account to continue', style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary)),
               const SizedBox(height: 28),
 
-              // Server status indicator
+              // Server status
               if (ApiClient.baseUrl.isNotEmpty) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.success.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.successLight,
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppTheme.success.withOpacity(0.2)),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.cloud_done_outlined, size: 14, color: AppTheme.success),
                       const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          ApiClient.baseUrl,
-                          style: TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+                      Expanded(child: Text(ApiClient.baseUrl, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
 
               // Role selector
-              const Text('Select your role', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+              Text('Select your role', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary, letterSpacing: 0.5)),
               const SizedBox(height: 12),
-              // First row: 3 roles
               Row(
-                children: _roles.take(3).map((r) => Expanded(
+                children: _roles.take(2).map((r) => Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: r != _roles[2] ? 8 : 0),
-                    child: _RoleCard(
-                      role: r,
-                      isSelected: _selectedRole == r.id,
-                      onTap: () => setState(() {
-                        _selectedRole = r.id;
-                        _emailController.clear();
-                        _passwordController.clear();
-                        _nameController.clear();
-                      }),
-                    ),
+                    padding: EdgeInsets.only(right: r != _roles[1] ? 8 : 0),
+                    child: _RoleCard(role: r, isSelected: _selectedRole == r.id, onTap: () => setState(() {
+                      _selectedRole = r.id;
+                      _emailController.clear(); _passwordController.clear(); _nameController.clear();
+                    })),
                   ),
                 )).toList(),
               ),
               const SizedBox(height: 8),
-              // Second row: 1 role full width
-              _RoleCard(
-                role: _roles[3],
-                isSelected: _selectedRole == _roles[3].id,
-                isFullWidth: true,
-                onTap: () => setState(() {
-                  _selectedRole = _roles[3].id;
-                  _emailController.clear();
-                  _passwordController.clear();
-                  _nameController.clear();
-                }),
+              Row(
+                children: _roles.skip(2).map((r) => Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: r != _roles[3] ? 8 : 0),
+                    child: _RoleCard(role: r, isSelected: _selectedRole == r.id, onTap: () => setState(() {
+                      _selectedRole = r.id;
+                      _emailController.clear(); _passwordController.clear(); _nameController.clear();
+                    })),
+                  ),
+                )).toList(),
               ),
               const SizedBox(height: 24),
 
-              // Name field (teacher/student only)
+              // Name field
               if (_needsName) ...[
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(hintText: 'Full Name', prefixIcon: Icon(Icons.person_outline, size: 20)),
+                  decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person_outline, size: 20)),
                   textCapitalization: TextCapitalization.words,
                 ),
                 const SizedBox(height: 12),
@@ -224,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  hintText: _selectedRole == 'teacher' ? 'Teacher ID' : _selectedRole == 'student' ? 'Roll Number' : 'Email',
+                  labelText: _selectedRole == 'teacher' ? 'Teacher ID' : _selectedRole == 'student' ? 'Roll Number' : 'Email',
                   prefixIcon: const Icon(Icons.alternate_email, size: 20),
                 ),
                 keyboardType: _selectedRole == 'teacher' || _selectedRole == 'student' ? TextInputType.text : TextInputType.emailAddress,
@@ -236,7 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 decoration: InputDecoration(
-                  hintText: 'Password',
+                  labelText: 'Password',
                   prefixIcon: const Icon(Icons.lock_outline, size: 20),
                   suffixIcon: IconButton(
                     icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppTheme.textMuted),
@@ -246,19 +224,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _obscurePassword,
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // Login button
               SizedBox(
-                height: 52,
+                height: 54,
                 child: ElevatedButton(
                   onPressed: _canSubmit && !_isLoading ? _login : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
                   child: _isLoading
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text(_selectedRole == null ? 'Select a role to continue' : 'Sign in as ${_roles.firstWhere((r) => r.id == _selectedRole).label}'),
+                      : Text(_selectedRole == null ? 'Select a role to continue' : 'Sign in as ${_roles.firstWhere((r) => r.id == _selectedRole).label}',
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Trust badges
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.shield_outlined, size: 14, color: AppTheme.textMuted),
+                  const SizedBox(width: 4),
+                  Text('Bank-grade encryption', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
+                  const SizedBox(width: 12),
+                  Icon(Icons.verified_outlined, size: 14, color: AppTheme.textMuted),
+                  const SizedBox(width: 4),
+                  Text('ISO 27001', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
+                ],
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -267,7 +266,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Modal dialog for configuring the backend server URL.
+// =============================== SERVER DIALOG ===============================
+
 class _ServerSettingsDialog extends StatefulWidget {
   final TextEditingController controller;
   final bool isFirstRun;
@@ -294,15 +294,10 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
       final ok = result['ok'] == true;
       setState(() {
         _testOk = ok;
-        _testResult = ok
-            ? 'Connected! Service: ${result['service'] ?? 'esm'}'
-            : 'Server responded but health check failed';
+        _testResult = ok ? 'Connected! Service: ${result['service'] ?? 'esm'}' : 'Health check failed';
       });
     } catch (e) {
-      setState(() {
-        _testOk = false;
-        _testResult = e.toString();
-      });
+      setState(() { _testOk = false; _testResult = e.toString(); });
     } finally {
       if (mounted) setState(() => _testing = false);
     }
@@ -311,6 +306,7 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Icon(widget.isFirstRun ? Icons.wifi : Icons.dns, color: AppTheme.primary, size: 22),
@@ -323,19 +319,13 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            widget.isFirstRun
-                ? 'Enter the ESM server URL to connect. This is the web address where your ESM backend is hosted.'
-                : 'Change the server the app connects to.',
-            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            widget.isFirstRun ? 'Enter the ESM server URL to connect.' : 'Change the server URL.',
+            style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: widget.controller,
-            decoration: InputDecoration(
-              hintText: 'https://your-app.vercel.app',
-              prefixIcon: const Icon(Icons.link, size: 20),
-              labelText: 'Server URL',
-            ),
+            decoration: const InputDecoration(hintText: 'https://your-app.vercel.app', prefixIcon: Icon(Icons.link, size: 20), labelText: 'Server URL'),
             keyboardType: TextInputType.url,
             autocorrect: false,
             onChanged: (_) => setState(() => _testResult = null),
@@ -346,14 +336,14 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.2)),
               ),
               child: Row(
                 children: [
                   Icon(_testOk ? Icons.check_circle : Icons.error_outline, size: 16, color: _testOk ? AppTheme.success : AppTheme.danger),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(_testResult!, style: TextStyle(fontSize: 12, color: _testOk ? AppTheme.success : AppTheme.danger))),
+                  Expanded(child: Text(_testResult!, style: GoogleFonts.inter(fontSize: 12, color: _testOk ? AppTheme.success : AppTheme.danger))),
                 ],
               ),
             ),
@@ -363,17 +353,14 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: _testing ? null : _testConnection,
-              icon: _testing
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.wifi_find, size: 16),
+              icon: _testing ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.wifi_find, size: 16),
               label: Text(_testing ? 'Testing…' : 'Test connection'),
             ),
           ),
         ],
       ),
       actions: [
-        if (!widget.isFirstRun)
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        if (!widget.isFirstRun) TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: () {
             final url = widget.controller.text.trim();
@@ -386,20 +373,21 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
   }
 }
 
+// =============================== ROLE CARD ===============================
+
 class _RoleOption {
   final String id;
   final String label;
   final IconData icon;
-  _RoleOption({required this.id, required this.label, required this.icon});
+  final Color color;
+  _RoleOption({required this.id, required this.label, required this.icon, required this.color});
 }
 
 class _RoleCard extends StatelessWidget {
   final _RoleOption role;
   final bool isSelected;
-  final bool isFullWidth;
   final VoidCallback onTap;
-
-  const _RoleCard({required this.role, required this.isSelected, required this.onTap, this.isFullWidth = false});
+  const _RoleCard({required this.role, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -407,32 +395,22 @@ class _RoleCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(vertical: isFullWidth ? 12 : 10, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primary : const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border),
-          boxShadow: isSelected ? [BoxShadow(color: AppTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : null,
+          gradient: isSelected ? LinearGradient(colors: [role.color, role.color.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
+          color: isSelected ? null : AppTheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isSelected ? role.color : AppTheme.border, width: isSelected ? 1.5 : 1),
+          boxShadow: isSelected ? [BoxShadow(color: role.color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : AppTheme.shadowSm,
         ),
-        child: isFullWidth
-            ? Row(mainAxisAlignment: MainAxisAlignment.center, children: _buildContent())
-            : Column(children: _buildContent()),
+        child: Column(
+          children: [
+            Icon(role.icon, size: 24, color: isSelected ? Colors.white : role.color),
+            const SizedBox(height: 6),
+            Text(role.label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : AppTheme.textSecondary)),
+          ],
+        ),
       ),
     );
-  }
-
-  List<Widget> _buildContent() {
-    return [
-      Icon(role.icon, size: 20, color: isSelected ? Colors.white : AppTheme.textSecondary),
-      SizedBox(width: isFullWidth ? 8 : 0, height: isFullWidth ? 0 : 6),
-      Text(
-        role.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: isSelected ? Colors.white : AppTheme.textSecondary,
-        ),
-      ),
-    ];
   }
 }

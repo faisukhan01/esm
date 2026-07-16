@@ -1,9 +1,13 @@
-import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'institute_branch_detail.dart';
+import '../notifications_screen.dart';
+import '../settings_screen.dart';
 
 class InstituteHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -66,7 +70,7 @@ class _InstituteHomeState extends State<InstituteHome> {
 
 // =============================== DASHBOARD ===============================
 
-class _InstituteDashboard extends StatelessWidget {
+class _InstituteDashboard extends StatefulWidget {
   final String name;
   final String instituteName;
   final Map<String, dynamic> kpi;
@@ -75,46 +79,461 @@ class _InstituteDashboard extends StatelessWidget {
   final VoidCallback onRefresh;
   final Map<String, dynamic> user;
 
-  const _InstituteDashboard({required this.name, required this.instituteName, required this.kpi, required this.branches, required this.isLoading, required this.onRefresh, required this.user});
+  const _InstituteDashboard({
+    required this.name,
+    required this.instituteName,
+    required this.kpi,
+    required this.branches,
+    required this.isLoading,
+    required this.onRefresh,
+    required this.user,
+  });
+
+  @override
+  State<_InstituteDashboard> createState() => _InstituteDashboardState();
+}
+
+class _InstituteDashboardState extends State<_InstituteDashboard> {
+  Map<String, dynamic>? _finance;
+  bool _firstLoad = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFinance();
+  }
+
+  Future<void> _loadFinance() async {
+    try {
+      final finance = await ApiClient.getObject(
+        'institute/finance',
+        query: {'instituteId': widget.user['instituteId']},
+      );
+      if (mounted) setState(() { _finance = finance; _firstLoad = false; });
+    } catch (_) {
+      if (mounted) setState(() => _firstLoad = false);
+    }
+  }
+
+  Future<void> _refresh() async {
+    widget.onRefresh();
+    await _loadFinance();
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.primary,
+      ),
+    );
+  }
+
+  Map<String, dynamic> get _kpi => _finance?['kpi'] ?? widget.kpi;
+  List<dynamic> get _monthlyRevenue => (_finance?['monthlyRevenue'] as List<dynamic>?) ?? const [];
+  List<dynamic> get _branchPerformance => (_finance?['branchPerformance'] as List<dynamic>?) ?? const [];
+
+  String _fmt(dynamic n) {
+    final v = num.tryParse('${n ?? 0}') ?? 0;
+    return NumberFormat('##,###').format(v);
+  }
+
+  String _compact(dynamic n) {
+    final v = num.tryParse('${n ?? 0}') ?? 0;
+    final sign = v < 0 ? '-' : '';
+    final a = v.abs();
+    if (a >= 1000000) return '$sign${(a / 1000000).toStringAsFixed(1)}M';
+    if (a >= 1000) return '$sign${(a / 1000).toStringAsFixed(0)}K';
+    return '$sign${a.toInt()}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final showSkeleton = widget.isLoading || _firstLoad;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.logout, size: 20), onPressed: () async {
-            await ApiClient.logout();
-            if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
-          }),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(user: widget.user))),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(user: widget.user))),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 20),
+            onPressed: () async {
+              await ApiClient.logout();
+              if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+            },
+          ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+      body: showSkeleton
+          ? const DashboardSkeleton()
           : RefreshIndicator(
-              onRefresh: () async { onRefresh(); },
+              onRefresh: _refresh,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  WelcomeBanner(name: name, subtitle: 'Institute Admin · $instituteName'),
+                  _heroCard(),
                   const SizedBox(height: 16),
-                  GridView.count(
-                    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.4,
-                    children: [
-                      KpiCard(icon: Icons.account_tree, label: 'Branches', value: '${kpi['branches'] ?? branches.length}'),
-                      KpiCard(icon: Icons.school, label: 'Students', value: '${kpi['students'] ?? 0}'),
-                      KpiCard(icon: Icons.group, label: 'Teachers', value: '${kpi['teachers'] ?? 0}'),
-                      KpiCard(icon: Icons.payments, label: 'Revenue', value: 'PKR ${_formatNum(kpi['totalRevenue'])}'),
-                    ],
-                  ),
+                  _quickActions(),
+                  const SizedBox(height: 16),
+                  _statCards(),
+                  const SizedBox(height: 16),
+                  _revenueChart(),
+                  const SizedBox(height: 16),
+                  _branchPerformanceChart(),
+                  const SizedBox(height: 16),
+                  _recentActivity(),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
     );
   }
 
-  String _formatNum(dynamic n) => NumberFormat('##,###').format(int.tryParse('${n ?? 0}') ?? 0);
+  // --- (a) Hero banner ---
+  Widget _heroCard() {
+    return GradientHeroCard(
+      title: 'Hi, ${widget.name}!',
+      subtitle: widget.instituteName,
+      metric: 'PKR ${_fmt(_kpi['totalRevenue'])}',
+      metricLabel: 'Total Revenue',
+      icon: Icons.business_center,
+      gradientColors: const [AppTheme.primary, AppTheme.primaryLight],
+    );
+  }
+
+  // --- (b) Quick actions ---
+  Widget _quickActions() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.0,
+      children: [
+        QuickActionTile(
+          icon: Icons.account_tree,
+          label: 'Branches',
+          color: AppTheme.primary,
+          onTap: () => _snack('Tap a branch from the Branches tab'),
+        ),
+        QuickActionTile(
+          icon: Icons.payments,
+          label: 'Royalty',
+          color: AppTheme.gold,
+          onTap: () => _snack('Open the Royalty tab below'),
+        ),
+        QuickActionTile(
+          icon: Icons.trending_up,
+          label: 'Reports',
+          color: AppTheme.info,
+          onTap: () => _snack('Open the Reports tab below'),
+        ),
+        QuickActionTile(
+          icon: Icons.analytics,
+          label: 'Analytics',
+          color: AppTheme.success,
+          onTap: () => _snack('Analytics dashboard coming soon'),
+        ),
+      ],
+    );
+  }
+
+  // --- (c) Premium stat cards ---
+  Widget _statCards() {
+    final netBalance = num.tryParse('${_kpi['netBalance'] ?? 0}') ?? 0;
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.3,
+      children: [
+        PremiumStatCard(
+          icon: Icons.account_tree,
+          label: 'Branches',
+          value: '${_kpi['branches'] ?? 0}',
+          color: AppTheme.primary,
+        ),
+        PremiumStatCard(
+          icon: Icons.school,
+          label: 'Students',
+          value: '${_kpi['students'] ?? 0}',
+          color: AppTheme.info,
+        ),
+        PremiumStatCard(
+          icon: Icons.group,
+          label: 'Teachers',
+          value: '${_kpi['teachers'] ?? 0}',
+          color: AppTheme.success,
+        ),
+        PremiumStatCard(
+          icon: Icons.account_balance_wallet,
+          label: 'Net Balance',
+          value: 'PKR ${_compact(netBalance)}',
+          color: netBalance >= 0 ? AppTheme.success : AppTheme.danger,
+        ),
+      ],
+    );
+  }
+
+  // --- (d) Revenue vs Salary grouped bar chart ---
+  Widget _revenueChart() {
+    final raw = _monthlyRevenue;
+    final data = raw.length > 6 ? raw.sublist(raw.length - 6) : raw;
+    double maxVal = 0;
+    for (final e in data) {
+      final m = e as Map<String, dynamic>;
+      final r = num.tryParse('${m['revenue'] ?? 0}') ?? 0;
+      final s = num.tryParse('${m['salary'] ?? 0}') ?? 0;
+      if (r > maxVal) maxVal = r.toDouble();
+      if (s > maxVal) maxVal = s.toDouble();
+    }
+
+    return ChartCard(
+      title: 'Revenue vs Salary',
+      subtitle: 'Last 6 months',
+      height: 220,
+      headerActions: [
+        _legend(AppTheme.primary, 'Revenue'),
+        const SizedBox(width: 10),
+        _legend(AppTheme.gold.withOpacity(0.8), 'Salary'),
+      ],
+      chart: data.isEmpty
+          ? const Center(
+              child: Text('No revenue data', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            )
+          : BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxVal > 0 ? maxVal * 1.2 : 10,
+                barGroups: data.asMap().entries.map((entry) {
+                  final m = entry.value as Map<String, dynamic>;
+                  final rev = (num.tryParse('${m['revenue'] ?? 0}') ?? 0).toDouble();
+                  final sal = (num.tryParse('${m['salary'] ?? 0}') ?? 0).toDouble();
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: rev,
+                        color: AppTheme.primary,
+                        width: 10,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                      BarChartRodData(
+                        toY: sal,
+                        color: AppTheme.gold.withOpacity(0.8),
+                        width: 10,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      getTitlesWidget: (val, _) {
+                        final i = val.toInt();
+                        if (i < 0 || i >= data.length) return const SizedBox();
+                        final month = (data[i] as Map<String, dynamic>)['month'] ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '$month',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: const FlBorderData(show: false),
+                barTouchData: const BarTouchData(enabled: false),
+              ),
+            ),
+    );
+  }
+
+  Widget _legend(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  // --- (e) Branch performance horizontal bars ---
+  Widget _branchPerformanceChart() {
+    final perf = _branchPerformance;
+    double maxRev = 0;
+    for (final b in perf) {
+      final r = num.tryParse('${(b as Map<String, dynamic>)['revenue'] ?? 0}') ?? 0;
+      if (r > maxRev) maxRev = r.toDouble();
+    }
+    final height = perf.isEmpty ? 80.0 : 60.0 * perf.length;
+
+    return ChartCard(
+      title: 'Branch Performance',
+      subtitle: 'Revenue by branch',
+      height: height,
+      chart: perf.isEmpty
+          ? const Center(
+              child: Text('No branch data', style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: perf.map((b) {
+                final bm = b as Map<String, dynamic>;
+                final name = bm['name'] ?? 'Branch';
+                final rev = (num.tryParse('${bm['revenue'] ?? 0}') ?? 0).toDouble();
+                final ratio = maxRev > 0 ? (rev / maxRev).clamp(0.0, 1.0) : 0.0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'PKR ${_fmt(rev)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          height: 12,
+                          color: AppTheme.primary.withOpacity(0.08),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: ratio,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [AppTheme.primary, AppTheme.gold],
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+    );
+  }
+
+  // --- (f) Recent activity ---
+  Widget _recentActivity() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Recent Activity', icon: Icons.history_rounded),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: AppTheme.shadowSm,
+          ),
+          child: Column(
+            children: [
+              ActivityItem(
+                icon: Icons.person_add_rounded,
+                color: AppTheme.info,
+                title: 'New student enrolled',
+                subtitle: 'Ayan Khan joined Class 5-A',
+                time: '2h ago',
+              ),
+              const Divider(height: 1, color: AppTheme.border),
+              ActivityItem(
+                icon: Icons.payments_rounded,
+                color: AppTheme.success,
+                title: 'Salary paid to Umar Sheikh',
+                subtitle: 'PKR 45,000 processed',
+                time: '5h ago',
+              ),
+              const Divider(height: 1, color: AppTheme.border),
+              ActivityItem(
+                icon: Icons.receipt_long_rounded,
+                color: AppTheme.gold,
+                title: 'Royalty invoice generated',
+                subtitle: 'Gulberg Branch · PKR 12,000',
+                time: '1d ago',
+              ),
+              const Divider(height: 1, color: AppTheme.border),
+              ActivityItem(
+                icon: Icons.trending_up_rounded,
+                color: AppTheme.primary,
+                title: 'Branch report updated',
+                subtitle: 'Monthly report for Johar Town',
+                time: '2d ago',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // =============================== BRANCHES TAB ===============================

@@ -1,9 +1,13 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'branch_user_detail.dart';
+import '../notifications_screen.dart';
+import '../settings_screen.dart';
 
 class BranchHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -64,7 +68,7 @@ class _BranchHomeState extends State<BranchHome> {
 
 // =============================== DASHBOARD ===============================
 
-class _BranchDashboard extends StatelessWidget {
+class _BranchDashboard extends StatefulWidget {
   final String name;
   final String branchName;
   final Map<String, dynamic> kpi;
@@ -72,46 +76,547 @@ class _BranchDashboard extends StatelessWidget {
   final VoidCallback onRefresh;
   final Map<String, dynamic> user;
 
-  const _BranchDashboard({required this.name, required this.branchName, required this.kpi, required this.isLoading, required this.onRefresh, required this.user});
+  const _BranchDashboard({
+    required this.name,
+    required this.branchName,
+    required this.kpi,
+    required this.isLoading,
+    required this.onRefresh,
+    required this.user,
+  });
+
+  @override
+  State<_BranchDashboard> createState() => _BranchDashboardState();
+}
+
+class _BranchDashboardState extends State<_BranchDashboard> {
+  // Parent passes only `kpi`; this dashboard also needs `monthlyRevenue` +
+  // `recentTransactions`, so it fetches the same endpoint itself and falls
+  // back to the parent-provided `kpi` while loading.
+  Map<String, dynamic>? _finance;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFinance();
+  }
+
+  Future<void> _loadFinance() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      final res = await ApiClient.getObject(
+        'branch/finance',
+        query: {'branchId': widget.user['branchId']},
+      );
+      if (mounted) setState(() { _finance = res; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _refresh() async {
+    widget.onRefresh();
+    await _loadFinance();
+  }
+
+  String _fmt(dynamic n) {
+    final v = num.tryParse('${n ?? 0}') ?? 0;
+    return NumberFormat('##,###').format(v.toInt());
+  }
+
+  Map<String, dynamic> get _kpi =>
+      (_finance?['kpi'] ?? widget.kpi ?? const {}) as Map<String, dynamic>;
+
+  /// Last 6 entries of `monthlyRevenue` (newest last for the chart's X axis).
+  List<Map<String, dynamic>> get _monthly {
+    final raw = _finance?['monthlyRevenue'];
+    if (raw is! List) return const [];
+    final list = raw.cast<Map<String, dynamic>>();
+    if (list.length > 6) return list.sublist(list.length - 6);
+    return list;
+  }
+
+  /// First 3 recent transactions (or empty so we fall back to placeholders).
+  List<Map<String, dynamic>> get _recent {
+    final raw = _finance?['recentTransactions'];
+    if (raw is! List || raw.isEmpty) return const [];
+    return raw.take(3).cast<Map<String, dynamic>>().toList();
+  }
+
+  List<double> get _revenueSeries => _monthly
+      .map((e) => (num.tryParse('${e['revenue'] ?? 0}') ?? 0).toDouble())
+      .toList();
 
   @override
   Widget build(BuildContext context) {
+    final showSkeleton = widget.isLoading && _loading;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [
-          IconButton(icon: const Icon(Icons.logout, size: 20), onPressed: () async {
-            await ApiClient.logout();
-            if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
-          }),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(user: widget.user))),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsScreen(user: widget.user))),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 20),
+            onPressed: () async {
+              await ApiClient.logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+              }
+            },
+          ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+      body: showSkeleton
+          ? const DashboardSkeleton()
           : RefreshIndicator(
-              onRefresh: () async { onRefresh(); },
+              color: AppTheme.primary,
+              onRefresh: _refresh,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  WelcomeBanner(name: name, subtitle: 'Branch Manager · $branchName'),
+                  _hero(),
                   const SizedBox(height: 16),
-                  GridView.count(
-                    shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.4,
-                    children: [
-                      KpiCard(icon: Icons.attach_money, label: 'Revenue', value: 'PKR ${_formatNum(kpi['totalRevenue'])}'),
-                      KpiCard(icon: Icons.error_outline, label: 'Pending', value: 'PKR ${_formatNum(kpi['pendingFees'])}', iconColor: AppTheme.danger),
-                      KpiCard(icon: Icons.wallet, label: 'Salary Paid', value: 'PKR ${_formatNum(kpi['totalSalaryPaid'])}'),
-                      KpiCard(icon: Icons.balance, label: 'Net Balance', value: 'PKR ${_formatNum(kpi['netBalance'])}'),
-                    ],
-                  ),
+                  _statGrid(),
+                  const SizedBox(height: 16),
+                  _revenueTrend(),
+                  const SizedBox(height: 16),
+                  _feeCollection(),
+                  const SizedBox(height: 20),
+                  const SectionHeader(title: 'Quick Actions'),
+                  const SizedBox(height: 10),
+                  _quickActions(),
+                  const SizedBox(height: 20),
+                  const SectionHeader(title: 'Recent Activity'),
+                  const SizedBox(height: 8),
+                  _recentActivity(),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
     );
   }
 
-  String _formatNum(dynamic n) => NumberFormat('##,###').format(int.tryParse('${n ?? 0}') ?? 0);
+  // ---- (a) Hero ---------------------------------------------------------
+  Widget _hero() {
+    return GradientHeroCard(
+      title: 'Hi, ${widget.name}!',
+      subtitle: 'Branch Manager · ${widget.branchName}',
+      icon: Icons.store,
+      gradientColors: const [AppTheme.primary, AppTheme.primaryLight],
+      metric: 'PKR ${_fmt(_kpi['totalRevenue'])}',
+      metricLabel: 'Total Revenue',
+    );
+  }
+
+  // ---- (b) 2x2 stat grid ------------------------------------------------
+  Widget _statGrid() {
+    final netBalance = num.tryParse('${_kpi['netBalance'] ?? 0}') ?? 0;
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.3,
+      children: [
+        PremiumStatCard(
+          icon: Icons.trending_up,
+          label: 'Revenue',
+          value: 'PKR ${_fmt(_kpi['totalRevenue'])}',
+          color: AppTheme.success,
+        ),
+        PremiumStatCard(
+          icon: Icons.error_outline,
+          label: 'Pending Fees',
+          value: 'PKR ${_fmt(_kpi['pendingFees'])}',
+          color: AppTheme.danger,
+        ),
+        PremiumStatCard(
+          icon: Icons.wallet,
+          label: 'Salary Paid',
+          value: 'PKR ${_fmt(_kpi['totalSalaryPaid'])}',
+          color: AppTheme.info,
+        ),
+        PremiumStatCard(
+          icon: Icons.balance,
+          label: 'Net Balance',
+          value: 'PKR ${_fmt(_kpi['netBalance'])}',
+          color: netBalance >= 0 ? AppTheme.success : AppTheme.danger,
+        ),
+      ],
+    );
+  }
+
+  // ---- (c) Revenue Trend line chart -------------------------------------
+  Widget _revenueTrend() {
+    final series = _revenueSeries;
+    final months = _monthly
+        .map((e) => (e['month'] ?? '').toString().trim())
+        .map((m) => m.isEmpty ? m : m.substring(0, m.length >= 3 ? 3 : m.length))
+        .toList();
+    return ChartCard(
+      title: 'Revenue Trend',
+      subtitle: months.isEmpty ? 'No data yet' : 'Last ${months.length} months',
+      height: 180,
+      chart: series.isEmpty
+          ? Center(
+              child: Text(
+                'No revenue data yet',
+                style: GoogleFonts.inter(
+                    fontSize: 12, color: AppTheme.textMuted),
+              ),
+            )
+          : LineChart(
+              LineChartData(
+                minY: 0,
+                gridData: const FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 28,
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx < 0 || idx >= months.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            months[idx],
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: const FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: List.generate(
+                        series.length, (i) => FlSpot(i.toDouble(), series[i])),
+                    isCurved: true,
+                    curveSmoothness: 0.4,
+                    color: AppTheme.primary,
+                    barWidth: 3,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primary.withOpacity(0.45),
+                          AppTheme.primary.withOpacity(0.12),
+                          AppTheme.primary.withOpacity(0.0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => AppTheme.primary,
+                    getTooltipItems: (spots) => spots
+                        .map((s) => LineTooltipItem(
+                              'PKR ${_fmt(series[s.spotIndex])}',
+                              GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  // ---- (d) Fee Collection card (auto-height custom layout) -------------
+  Widget _feeCollection() {
+    final paid = num.tryParse('${_kpi['paidInvoices'] ?? 0}') ?? 0;
+    final total = num.tryParse('${_kpi['totalInvoices'] ?? 0}') ?? 0;
+    final ratio = total > 0 ? (paid / total).clamp(0.0, 1.0) : 0.0;
+    final pct = (ratio * 100).round();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: AppTheme.shadowSm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fee Collection',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$pct% collected',
+                      style: GoogleFonts.inter(
+                          fontSize: 11, color: AppTheme.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Collected $paid of $total',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              Text(
+                '$pct%',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 10,
+              backgroundColor: AppTheme.accent,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: AppTheme.danger,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Pending: PKR ${_fmt(_kpi['pendingFees'])}',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.danger,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- (e) Quick Actions 2x2 grid ---------------------------------------
+  Widget _quickActions() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.4,
+      children: [
+        QuickActionTile(
+          icon: Icons.group,
+          label: 'Teachers',
+          color: AppTheme.primary,
+          onTap: () => _toast('Open the Teachers tab to manage staff'),
+        ),
+        QuickActionTile(
+          icon: Icons.school,
+          label: 'Students',
+          color: AppTheme.info,
+          onTap: () => _toast('Open the Students tab to manage enrolment'),
+        ),
+        QuickActionTile(
+          icon: Icons.receipt,
+          label: 'Fees',
+          color: AppTheme.gold,
+          onTap: () => _toast('Open the Fees tab to manage invoices'),
+        ),
+        QuickActionTile(
+          icon: Icons.assessment,
+          label: 'Reports',
+          color: AppTheme.success,
+          onTap: () => _toast('Reports coming soon'),
+        ),
+      ],
+    );
+  }
+
+  // ---- (f) Recent Activity card ----------------------------------------
+  Widget _recentActivity() {
+    final items = _recent;
+    final List<Widget> tiles = items.isEmpty
+        ? [
+            ActivityItem(
+              icon: Icons.receipt_long,
+              color: AppTheme.gold,
+              title: 'Fee invoice generated',
+              subtitle: 'Awaiting student payment',
+              time: 'Today',
+            ),
+            ActivityItem(
+              icon: Icons.wallet,
+              color: AppTheme.info,
+              title: 'Salary paid',
+              subtitle: 'Monthly payroll disbursed',
+              time: 'Yesterday',
+            ),
+            ActivityItem(
+              icon: Icons.person_add,
+              color: AppTheme.success,
+              title: 'New student enrolled',
+              subtitle: 'Admission confirmed',
+              time: '2d ago',
+            ),
+          ]
+        : items.map((t) {
+            final def = _mapActivity(t);
+            return ActivityItem(
+              icon: def.icon,
+              color: def.color,
+              title: def.title,
+              subtitle: def.subtitle,
+              time: def.time,
+            );
+          }).toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: AppTheme.shadowSm,
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < tiles.length; i++) ...[
+            tiles[i],
+            if (i < tiles.length - 1)
+              const Divider(height: 1, thickness: 1),
+          ],
+        ],
+      ),
+    );
+  }
+
+  _ActivityDef _mapActivity(Map<String, dynamic> t) {
+    final rawType = (t['type'] ?? t['category'] ?? '').toString().toLowerCase();
+    final title = (t['title'] ??
+            t['description'] ??
+            t['narration'] ??
+            t['label'] ??
+            'Transaction')
+        .toString();
+    final amount = num.tryParse('${t['amount'] ?? t['value'] ?? 0}');
+    final subtitle = (amount != null && amount != 0)
+        ? 'PKR ${_fmt(amount)}'
+        : (t['type'] ?? t['category'] ?? t['note'] ?? '—').toString();
+    final time =
+        (t['date'] ?? t['time'] ?? t['createdAt'] ?? t['timestamp'] ?? '')
+            .toString();
+    IconData icon = Icons.trending_up;
+    Color color = AppTheme.primary;
+    if (rawType.contains('fee') || rawType.contains('invoice')) {
+      icon = Icons.receipt_long;
+      color = AppTheme.gold;
+    } else if (rawType.contains('salary') || rawType.contains('payroll')) {
+      icon = Icons.wallet;
+      color = AppTheme.info;
+    } else if (rawType.contains('admission') || rawType.contains('enroll')) {
+      icon = Icons.person_add;
+      color = AppTheme.success;
+    } else if (rawType.contains('expense') || rawType.contains('payment')) {
+      icon = Icons.payments;
+      color = AppTheme.danger;
+    }
+    return _ActivityDef(
+      icon: icon,
+      color: color,
+      title: title,
+      subtitle: subtitle,
+      time: time.isEmpty ? null : time,
+    );
+  }
+
+  void _toast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+}
+
+/// Lightweight record used to map a raw transaction map to ActivityItem props.
+class _ActivityDef {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final String? time;
+
+  const _ActivityDef({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    this.time,
+  });
 }
 
 // =============================== TEACHERS TAB ===============================
