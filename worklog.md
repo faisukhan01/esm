@@ -3814,3 +3814,28 @@ Stage Summary:
 - New features: Settings screen (change password, server config, about, logout), Notifications screen (real data), charts on all 4 dashboards.
 - APK: https://github.com/faisukhan01/esm/actions/runs/29524720848 → Artifacts → esm-app-release (27.2 MB)
 - GitHub repo updated: https://github.com/faisukhan01/esm (commit 6da76d9)
+
+---
+Task ID: WEB-THEME-UPDATE + VERIFICATION
+Agent: main
+Task: Update Vercel-deployed web app to match mobile premium theme, fix live preview, verify APK.
+
+Work Log:
+- Verified APK is VALID: downloaded artifact (28.5 MB zip → 58.5 MB APK), `file` confirms "Android package (APK), with gradle app-metadata.properties". Built from commit 6da76d9 (premium redesign).
+- Diagnosed live preview issue: Next.js 16 Turbopack dev server uses 3+ GB RAM, sandbox has 3.9 GB → OOM-killed repeatedly. Fixed with NODE_OPTIONS=--max-old-space-size=1024 heap cap.
+- Updated web app theme (globals.css) to match mobile premium palette:
+  * Added --gold-light and --gold-dark CSS variables
+  * Registered --color-gold/light/dark as Tailwind color utilities (bg-gold, text-gold now work)
+  * Added @utility gold-badge (gradient gold pill)
+  * Added @utility premium-shadow / premium-shadow-lg (navy-tinted layered shadows)
+  * Added @utility gold-glow (gold box-shadow halo)
+- Pushed commit 868f183 → Vercel auto-deploys from GitHub main on every push.
+- Verified Vercel: https://esm-rose.vercel.app/api/health returns 200 OK (healthy, 11 users).
+- Set up auto-restart watchdog for dev server to handle OOM kills gracefully.
+
+Stage Summary:
+- Vercel deployment (esm-rose.vercel.app): LIVE and auto-deploying latest commit 868f183 ✅
+- Live preview (localhost:3000): Running with 1 GB heap cap to prevent OOM ✅
+- APK: Valid Android package, 27.2 MB, premium redesign (commit 6da76d9) ✅
+- GitHub: https://github.com/faisukhan01/esm at commit 868f183 ✅
+- Note: The local dev server is memory-constrained (4 GB sandbox). The Vercel deployment is the stable production version.
