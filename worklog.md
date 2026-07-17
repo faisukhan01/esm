@@ -4023,3 +4023,25 @@ Stage Summary:
 - Login: clean, professional, no AI decorations
 - Performance: 30s GET cache = instant tab switches
 - Add Branch: Institute Admin can now add branches from mobile
+
+---
+Task ID: SPEED-FIX-SWR + ADD-STUDENT-TEACHER
+Agent: main
+Task: Fix the speed problem properly (stale-while-revalidate + preload), add Add Student/Teacher to Branch Manager.
+
+Work Log:
+- Implemented stale-while-revalidate in ApiClient: cached data returns INSTANTLY (even if stale), background refresh happens silently. No more loading spinners on tab switches.
+- Cache TTL increased to 60s.
+- Login screen now PRELOADS all dashboard data in parallel during login transition. By the time user lands on dashboard, cache is populated → zero loading time.
+- Preload is role-specific: institute-admin gets finance+branches, branch-manager gets finance+users, teacher gets analytics+classes, student gets analytics+courses+attendance+results.
+- Added Add Teacher button (person_add icon) to Branch Manager Teachers tab AppBar → dialog with name, rollNo, password → POST /api/platform/users.
+- Added Add Student button to Students tab → dialog with name, rollNo, password, class, section → POST /api/platform/users.
+- Both dialogs auto-refresh the list on success + show success toast.
+- Commit 5c5c055 by Faisal Arslan Khan — shows on GitHub contribution graph.
+
+Stage Summary:
+- SPEED: dramatically improved. First login still takes network time, but after that, tab switches and screen navigation are instant (cached). Background refresh keeps data fresh silently.
+- FEATURES: Branch Manager can now add teachers and students from mobile.
+- APK: https://github.com/faisukhan01/esm/actions/runs/29565262823 (27.3 MB)
+- Vercel: healthy, auto-deployed
+- GitHub: commit 5c5c055 by Faisal Arslan Khan ✅
