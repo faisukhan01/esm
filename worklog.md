@@ -4069,3 +4069,26 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/actions/runs/29570663640 (27.4 MB)
 - Vercel: healthy, auto-deployed
 - GitHub: commit d6ecebf by Faisal Arslan Khan ✅
+
+---
+Task ID: BRAND-FONTS + DELETE-ANNOUNCEMENTS + ATTENDANCE-DEDUP + LOGIN-SPEED
+Agent: main
+Task: Fix ESM login fonts, add delete announcements (web+mobile), fix attendance duplicates, fix login→dashboard speed.
+
+Work Log:
+- Redesigned ESM login text: Anton font (bold condensed geometric sans-serif, 80px) for 'ESM', Playfair Display (elegant serif, italic) for subtitle, Inter light for tagline. Matches the brand image exactly.
+- Fixed login→dashboard speed: Institute Admin + Branch Manager dashboards now check cache in initState. If cached data exists (from preload or persistent cache), dashboard renders instantly — no loading spinner. Background refresh happens silently.
+- Added DELETE /api/announcements/:id endpoint: only sender or super-admin can delete (403 otherwise).
+- Web: added deleteAnnouncement() to api.ts with cache invalidation. Added Trash2 delete button to each announcement card (only visible to sender/super-admin).
+- Mobile: added delete button (red trash icon) to each announcement card with confirmation dialog. Only visible to sender/super-admin.
+- Fixed attendance duplicate bug: POST /api/attendance now checks if a record already exists for the same classId + date + branchId. If so, it UPDATES the existing record instead of creating a new one. This fixes the bug where marking attendance twice in a day showed duplicate entries in student portal.
+- Commit ac71637 by Faisal Arslan Khan — shows on GitHub graph.
+
+Stage Summary:
+- LOGIN: ESM now uses Anton font matching the brand image
+- SPEED: dashboards render instantly from cache (no spinner if data exists)
+- ANNOUNCEMENTS: delete feature works on both web and mobile
+- ATTENDANCE: no more duplicates when marking twice in a day
+- APK: https://github.com/faisukhan01/esm/actions/runs/29575414656 (27.4 MB)
+- Vercel: healthy, auto-deployed
+- GitHub: commit ac71637 by Faisal Arslan Khan ✅
