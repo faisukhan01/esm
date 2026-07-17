@@ -142,28 +142,39 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 20),
 
-              // ESM large text — no logo, no banner
+              // ESM large text — bold condensed sans-serif, like the brand image
               Center(
                 child: Column(
                   children: [
                     Text(
                       'ESM',
-                      style: GoogleFonts.inter(
-                        fontSize: 56,
-                        fontWeight: FontWeight.w900,
+                      style: GoogleFonts.anton(
+                        fontSize: 80,
+                        fontWeight: FontWeight.w400,
                         color: AppTheme.primary,
-                        letterSpacing: -1.5,
+                        letterSpacing: 2,
                         height: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       'Electronic School Management',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.primary,
                         letterSpacing: 0.3,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'FOR SCHOOLS, COLLEGES & ACADEMIES',
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w300,
+                        color: AppTheme.textMuted,
+                        letterSpacing: 2.5,
                       ),
                     ),
                   ],

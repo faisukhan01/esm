@@ -257,7 +257,8 @@ export const api = {
   getStudentCourses: () => cachedGet<any[]>('student/courses'),
   // announcements
   getAnnouncements: () => cachedGet<any[]>('announcements'),
-  createAnnouncement: (body: any) => request<any>('announcements', { method: 'POST', body: JSON.stringify(body) }),
+  createAnnouncement: async (body: any) => { const r = await request<any>('announcements', { method: 'POST', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  deleteAnnouncement: async (id: string) => { const r = await request<any>(`announcements/${id}`, { method: 'DELETE' }); invalidateCache(); return r; },
   // course materials
   getCourseMaterials: (params?: { classId?: string; courseId?: string; teacherId?: string }) => {
     const q = new URLSearchParams();

@@ -92,15 +92,18 @@ class _BranchDashboard extends StatefulWidget {
 }
 
 class _BranchDashboardState extends State<_BranchDashboard> {
-  // Parent passes only `kpi`; this dashboard also needs `monthlyRevenue` +
-  // `recentTransactions`, so it fetches the same endpoint itself and falls
-  // back to the parent-provided `kpi` while loading.
   Map<String, dynamic>? _finance;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    // Check cache first — instant render if we have data
+    final cached = ApiClient.getCached('branch/finance', {'branchId': widget.user['branchId']});
+    if (cached != null) {
+      _finance = cached is Map<String, dynamic> ? cached : {};
+      _loading = false;
+    }
     _loadFinance();
   }
 

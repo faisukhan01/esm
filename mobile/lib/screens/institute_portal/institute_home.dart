@@ -104,6 +104,12 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
   @override
   void initState() {
     super.initState();
+    // Check cache first — if we have cached data, show it instantly (no spinner)
+    final cached = ApiClient.getCached('institute/finance', {'instituteId': widget.user['instituteId']});
+    if (cached != null) {
+      _finance = cached is Map<String, dynamic> ? cached : {};
+      _firstLoad = false;
+    }
     _loadFinance();
   }
 

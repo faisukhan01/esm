@@ -2343,6 +2343,14 @@ function AnnouncementsView({ user }: { user: any }) {
     finally { setSending(false); }
   };
 
+  const del = async (id: string) => {
+    try {
+      await api.deleteAnnouncement(id);
+      toast({ title: 'Announcement deleted' });
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -2401,7 +2409,14 @@ function AnnouncementsView({ user }: { user: any }) {
             <Card key={a.id} className="p-4">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /><div className="font-medium text-sm">{a.title}</div></div>
-                <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+                  {(a.senderId === user.id || user.role === 'super-admin') && (
+                    <button onClick={() => del(a.id)} title="Delete" className="h-7 w-7 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="text-sm text-muted-foreground ml-6">{a.message}</p>
               <div className="text-[11px] text-muted-foreground mt-2 ml-6">To: {a.targetScope === 'all' ? `All ${a.targetRole || 'users'}` : `Specific ${a.targetRole || 'users'}`}</div>

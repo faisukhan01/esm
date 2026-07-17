@@ -865,6 +865,21 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       return NextResponse.json({ id, success: true }, { status: 201 });
     }
 
+    // Delete an announcement — only the sender or super-admin can delete
+    if (method === 'DELETE' && pathSegments[0] === 'announcements' && pathSegments.length === 2) {
+      const user = await requireAuth(req);
+      const id = pathSegments[1];
+      const r = await db.execute({ sql: 'SELECT * FROM announcements WHERE id = ?', args: [id] });
+      if (r.rows.length === 0) return NextResponse.json({ error: 'Announcement not found' }, { status: 404 });
+      const ann = r.rows[0] as any;
+      // Only the sender or super-admin can delete
+      if (ann.senderId !== user.id && user.role !== 'super-admin') {
+        return NextResponse.json({ error: 'Not authorized to delete this announcement' }, { status: 403 });
+      }
+      await db.execute({ sql: 'DELETE FROM announcements WHERE id = ?', args: [id] });
+      return NextResponse.json({ success: true });
+    }
+
     // ===================== COURSE MATERIALS =====================
     if (method === 'GET' && path === 'course-materials') {
       const user = await requireAuth(req);
@@ -1446,6 +1461,24 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       requireRole(user, 'teacher');
       const { classId, date, records } = body || {};
       if (!date || !records || !Array.isArray(records)) return NextResponse.json({ error: 'date and records array are required' }, { status: 400 });
+
+      // Check if attendance already exists for this class + date — if so, UPDATE instead of INSERT
+      // This prevents duplicate attendance records when a teacher marks attendance twice in a day
+      const existing = await db.execute({
+        sql: 'SELECT id FROM attendance WHERE classId = ? AND date = ? AND branchId = ?',
+        args: [classId || null, date, user.branchId],
+      });
+
+      if (existing.rows.length > 0) {
+        // Update existing record
+        const existingId = (existing.rows[0] as any).id;
+        await db.execute({
+          sql: 'UPDATE attendance SET records = ?, teacherId = ? WHERE id = ?',
+          args: [JSON.stringify(records), user.id, existingId],
+        });
+        return NextResponse.json({ id: existingId, success: true, updated: true });
+      }
+
       const id = nextId('ATT');
       await db.execute({
         sql: 'INSERT INTO attendance (id, branchId, classId, date, teacherId, records) VALUES (?, ?, ?, ?, ?, ?)',

@@ -58,6 +58,49 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     }
   }
 
+  Future<void> _deleteAnnouncement(String id, bool isFromMe) async {
+    if (!isFromMe && widget.user['role'] != 'super-admin') {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You can only delete your own announcements'), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+        );
+      }
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Announcement?'),
+        content: const Text('This announcement will be permanently removed. This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ApiClient.delete('announcements/$id');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Announcement deleted'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+        );
+      }
+      _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
   String _fmtDate(dynamic d) {
     if (d == null) return '';
     try {
@@ -171,6 +214,20 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                                       ),
                                       child: Text(_targetLabel(targetRole), style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: _targetColor(targetRole))),
                                     ),
+                                    if (isFromMe || widget.user['role'] == 'super-admin') ...[
+                                      const SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: () => _deleteAnnouncement(a['id']?.toString() ?? '', isFromMe),
+                                        child: Container(
+                                          width: 28, height: 28,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.danger.withOpacity(0.08),
+                                            borderRadius: BorderRadius.circular(7),
+                                          ),
+                                          child: const Icon(Icons.delete_outline, size: 15, color: AppTheme.danger),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                                 if (a['message']?.toString().isNotEmpty == true) ...[
