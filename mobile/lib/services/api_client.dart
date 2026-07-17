@@ -66,6 +66,20 @@ class ApiClient {
     return headers;
   }
 
+  // === In-memory cache for GET requests (30s TTL) ===
+  // Solves the "every action is slow" problem — dashboards that fetch the same
+  // data on every tab switch now get instant results from cache.
+  static final Map<String, _CacheEntry> _cache = {};
+  static const Duration _cacheTtl = Duration(seconds: 30);
+
+  static String _cacheKey(String path, [Map<String, dynamic>? query]) {
+    final q = query?.entries.map((e) => '${e.key}=${e.value}').join('&') ?? '';
+    return '$path?$q';
+  }
+
+  /// Clears the entire cache. Call after any POST/PATCH/DELETE to force fresh data on next GET.
+  static void invalidateCache() => _cache.clear();
+
   /// Throws a clear, user-readable error if the base URL has not been set.
   static void _ensureBaseUrl() {
     if (_baseUrl.isEmpty) {
@@ -89,10 +103,23 @@ class ApiClient {
     return url;
   }
 
-  static Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
+  static Future<dynamic> get(String path, {Map<String, dynamic>? query, bool useCache = true}) async {
+    // Check cache first — instant response for repeated GETs (dashboards, tab switches)
+    if (useCache) {
+      final key = _cacheKey(path, query);
+      final entry = _cache[key];
+      if (entry != null && DateTime.now().difference(entry.time) < _cacheTtl) {
+        return entry.data;
+      }
+    }
     try {
       final response = await http.get(Uri.parse(_buildUrl(path, query)), headers: _headers);
-      return _handleResponse(response);
+      final data = _handleResponse(response);
+      // Cache successful GET responses
+      if (useCache) {
+        _cache[_cacheKey(path, query)] = _CacheEntry(data, DateTime.now());
+      }
+      return data;
     } catch (e) {
       throw _handleError(e);
     }
@@ -105,7 +132,9 @@ class ApiClient {
         headers: _headers,
         body: body != null ? jsonEncode(body) : null,
       );
-      return _handleResponse(response);
+      final data = _handleResponse(response);
+      invalidateCache(); // POST changes data — clear cache so next GET is fresh
+      return data;
     } catch (e) {
       throw _handleError(e);
     }
@@ -118,7 +147,9 @@ class ApiClient {
         headers: _headers,
         body: body != null ? jsonEncode(body) : null,
       );
-      return _handleResponse(response);
+      final data = _handleResponse(response);
+      invalidateCache(); // PATCH changes data — clear cache
+      return data;
     } catch (e) {
       throw _handleError(e);
     }
@@ -127,7 +158,9 @@ class ApiClient {
   static Future<dynamic> delete(String path) async {
     try {
       final response = await http.delete(Uri.parse(_buildUrl(path)), headers: _headers);
-      return _handleResponse(response);
+      final data = _handleResponse(response);
+      invalidateCache(); // DELETE changes data — clear cache
+      return data;
     } catch (e) {
       throw _handleError(e);
     }
@@ -188,4 +221,10 @@ class ApiException implements Exception {
   ApiException(this.message);
   @override
   String toString() => message;
+}
+
+class _CacheEntry {
+  final dynamic data;
+  final DateTime time;
+  _CacheEntry(this.data, this.time);
 }

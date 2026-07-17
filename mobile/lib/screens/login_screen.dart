@@ -20,10 +20,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   final List<_RoleOption> _roles = [
-    _RoleOption(id: 'institute-admin', label: 'Institute', icon: Icons.business, color: AppTheme.primary),
-    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.group, color: AppTheme.info),
-    _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book, color: AppTheme.success),
-    _RoleOption(id: 'student', label: 'Student', icon: Icons.person, color: AppTheme.gold),
+    _RoleOption(id: 'institute-admin', label: 'Institute', icon: Icons.business_outlined),
+    _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.store_outlined),
+    _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book_outlined),
+    _RoleOption(id: 'student', label: 'Student', icon: Icons.person_outline),
   ];
 
   bool get _needsName => _selectedRole == 'teacher' || _selectedRole == 'student';
@@ -85,11 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => DashboardScreen(user: user),
-            transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
-            transitionDuration: const Duration(milliseconds: 400),
-          ),
+          MaterialPageRoute(builder: (_) => DashboardScreen(user: user)),
         );
       }
     } catch (e) {
@@ -109,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.dns_outlined, size: 20),
@@ -119,76 +116,69 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 8),
-              // Logo + brand
+              const SizedBox(height: 16),
+
+              // Logo — simple, solid, no gradient
               Container(
-                width: 72, height: 72,
+                width: 56, height: 56,
                 decoration: BoxDecoration(
-                  gradient: AppTheme.navyGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: AppTheme.shadow,
+                  color: AppTheme.primary,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.school, color: Colors.white, size: 36),
+                child: const Icon(Icons.school, color: Colors.white, size: 28),
               ),
-              const SizedBox(height: 20),
-              Text('Welcome back', style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.5)),
+              const SizedBox(height: 24),
+
+              // Headline — clean, direct
+              Text('Sign in', style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.3)),
               const SizedBox(height: 6),
-              Text('Sign in to your ESM account to continue', style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary)),
+              Text('Enter your credentials to access your portal.', style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary)),
               const SizedBox(height: 28),
 
-              // Server status
+              // Server status — minimal
               if (ApiClient.baseUrl.isNotEmpty) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.successLight,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.success.withOpacity(0.2)),
+                    color: AppTheme.success.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.cloud_done_outlined, size: 14, color: AppTheme.success),
                       const SizedBox(width: 6),
-                      Expanded(child: Text(ApiClient.baseUrl, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(ApiClient.baseUrl, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
               ],
 
-              // Role selector
-              Text('Select your role', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary, letterSpacing: 0.5)),
-              const SizedBox(height: 12),
+              // Role selector — simple row of 4, clean
+              Text('I am a', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+              const SizedBox(height: 10),
               Row(
-                children: _roles.take(2).map((r) => Expanded(
+                children: _roles.map((r) => Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: r != _roles[1] ? 8 : 0),
-                    child: _RoleCard(role: r, isSelected: _selectedRole == r.id, onTap: () => setState(() {
-                      _selectedRole = r.id;
-                      _emailController.clear(); _passwordController.clear(); _nameController.clear();
-                    })),
+                    padding: EdgeInsets.only(right: r != _roles[3] ? 6 : 0),
+                    child: _RoleChip(
+                      role: r,
+                      isSelected: _selectedRole == r.id,
+                      onTap: () => setState(() {
+                        _selectedRole = r.id;
+                        _emailController.clear(); _passwordController.clear(); _nameController.clear();
+                      }),
+                    ),
                   ),
                 )).toList(),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: _roles.skip(2).map((r) => Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: r != _roles[3] ? 8 : 0),
-                    child: _RoleCard(role: r, isSelected: _selectedRole == r.id, onTap: () => setState(() {
-                      _selectedRole = r.id;
-                      _emailController.clear(); _passwordController.clear(); _nameController.clear();
-                    })),
-                  ),
-                )).toList(),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Name field
+              // Name field (teacher/student only)
               if (_needsName) ...[
                 TextField(
                   controller: _nameController,
@@ -224,42 +214,78 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _obscurePassword,
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
-              // Login button
+              // Login button — solid, no gradient
               SizedBox(
-                height: 54,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: _canSubmit && !_isLoading ? _login : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text(_selectedRole == null ? 'Select a role to continue' : 'Sign in as ${_roles.firstWhere((r) => r.id == _selectedRole).label}',
-                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700)),
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          _selectedRole == null ? 'Select a role' : 'Sign in',
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Trust badges
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.shield_outlined, size: 14, color: AppTheme.textMuted),
-                  const SizedBox(width: 4),
-                  Text('Bank-grade encryption', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                  const SizedBox(width: 12),
-                  Icon(Icons.verified_outlined, size: 14, color: AppTheme.textMuted),
-                  const SizedBox(width: 4),
-                  Text('ISO 27001', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted)),
-                ],
-              ),
               const SizedBox(height: 24),
+
+              // Footer — subtle
+              Center(
+                child: Text(
+                  'ESM · Electronic School Management',
+                  style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
+                ),
+              ),
+              const SizedBox(height: 20),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================== ROLE CHIP ===============================
+
+class _RoleOption {
+  final String id;
+  final String label;
+  final IconData icon;
+  _RoleOption({required this.id, required this.label, required this.icon});
+}
+
+class _RoleChip extends StatelessWidget {
+  final _RoleOption role;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _RoleChip({required this.role, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary : AppTheme.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border, width: 1),
+        ),
+        child: Column(
+          children: [
+            Icon(role.icon, size: 18, color: isSelected ? Colors.white : AppTheme.textSecondary),
+            const SizedBox(height: 4),
+            Text(role.label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppTheme.textSecondary)),
+          ],
         ),
       ),
     );
@@ -290,14 +316,14 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
       var cleaned = url;
       if (cleaned.endsWith('/')) cleaned = cleaned.substring(0, cleaned.length - 1);
       await ApiClient.setBaseUrl(cleaned);
-      final result = await ApiClient.getObject('health');
+      final result = await ApiClient.getObject('health', );
       final ok = result['ok'] == true;
       setState(() {
         _testOk = ok;
-        _testResult = ok ? 'Connected! Service: ${result['service'] ?? 'esm'}' : 'Health check failed';
+        _testResult = ok ? 'Connected successfully' : 'Health check failed';
       });
     } catch (e) {
-      setState(() { _testOk = false; _testResult = e.toString(); });
+      setState(() { _testOk = false; _testResult = 'Connection failed'; });
     } finally {
       if (mounted) setState(() => _testing = false);
     }
@@ -306,14 +332,8 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Row(
-        children: [
-          Icon(widget.isFirstRun ? Icons.wifi : Icons.dns, color: AppTheme.primary, size: 22),
-          const SizedBox(width: 8),
-          Text(widget.isFirstRun ? 'Set Server Address' : 'Server Settings'),
-        ],
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(widget.isFirstRun ? 'Set Server Address' : 'Server Settings', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,9 +355,8 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.2)),
+                color: (_testOk ? AppTheme.success : AppTheme.danger).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
@@ -369,48 +388,6 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
           child: const Text('Save'),
         ),
       ],
-    );
-  }
-}
-
-// =============================== ROLE CARD ===============================
-
-class _RoleOption {
-  final String id;
-  final String label;
-  final IconData icon;
-  final Color color;
-  _RoleOption({required this.id, required this.label, required this.icon, required this.color});
-}
-
-class _RoleCard extends StatelessWidget {
-  final _RoleOption role;
-  final bool isSelected;
-  final VoidCallback onTap;
-  const _RoleCard({required this.role, required this.isSelected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          gradient: isSelected ? LinearGradient(colors: [role.color, role.color.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
-          color: isSelected ? null : AppTheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? role.color : AppTheme.border, width: isSelected ? 1.5 : 1),
-          boxShadow: isSelected ? [BoxShadow(color: role.color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))] : AppTheme.shadowSm,
-        ),
-        child: Column(
-          children: [
-            Icon(role.icon, size: 24, color: isSelected ? Colors.white : role.color),
-            const SizedBox(height: 6),
-            Text(role.label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : AppTheme.textSecondary)),
-          ],
-        ),
-      ),
     );
   }
 }

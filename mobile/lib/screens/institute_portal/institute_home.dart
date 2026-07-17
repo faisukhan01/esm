@@ -562,6 +562,33 @@ class _BranchesTab extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Branches'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add, size: 22),
+            tooltip: 'Add Branch',
+            onPressed: () async {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (ctx) => _AddBranchDialog(instituteId: user['instituteId']),
+              );
+              if (result != null) {
+                try {
+                  await ApiClient.post('branches', body: result);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Branch added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                  onRefresh();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                }
+              }
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: onRefresh),
         ],
       ),
@@ -979,6 +1006,86 @@ class _ErrorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// =============================== ADD BRANCH DIALOG ===============================
+
+class _AddBranchDialog extends StatefulWidget {
+  final String? instituteId;
+  const _AddBranchDialog({required this.instituteId});
+
+  @override
+  State<_AddBranchDialog> createState() => _AddBranchDialogState();
+}
+
+class _AddBranchDialogState extends State<_AddBranchDialog> {
+  final _nameCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController();
+  final _managerCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose(); _cityCtrl.dispose(); _managerCtrl.dispose();
+    _emailCtrl.dispose(); _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSubmit = _nameCtrl.text.trim().isNotEmpty &&
+        _managerCtrl.text.trim().isNotEmpty &&
+        _passwordCtrl.text.isNotEmpty;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(Icons.add_business, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          const Text('Add Branch'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Branch Name *', prefixIcon: Icon(Icons.store, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _cityCtrl, decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city, size: 18))),
+            const SizedBox(height: 8),
+            TextField(controller: _managerCtrl, decoration: const InputDecoration(labelText: 'Manager Name *', prefixIcon: Icon(Icons.person, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Manager Email', prefixIcon: Icon(Icons.email, size: 18)), keyboardType: TextInputType.emailAddress),
+            const SizedBox(height: 8),
+            TextField(controller: _passwordCtrl, decoration: const InputDecoration(labelText: 'Password *', prefixIcon: Icon(Icons.lock, size: 18)), obscureText: true, onChanged: (_) => setState(() {})),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _isSaving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: _isSaving || !canSubmit
+              ? null
+              : () {
+                  setState(() => _isSaving = true);
+                  Navigator.pop(context, {
+                    'name': _nameCtrl.text.trim(),
+                    'city': _cityCtrl.text.trim(),
+                    'manager': _managerCtrl.text.trim(),
+                    'managerEmail': _emailCtrl.text.trim(),
+                    'managerPassword': _passwordCtrl.text,
+                    'instituteId': widget.instituteId,
+                  });
+                },
+          child: _isSaving
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Add Branch'),
+        ),
+      ],
     );
   }
 }

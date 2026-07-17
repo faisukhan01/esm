@@ -39,18 +39,18 @@ class AppTheme {
   // Legacy aliases (keep for backwards compat with existing screens)
   static const Color primaryDarkLegacy = primaryDark;
 
-  // === Shadows (layered for depth) ===
+  // === Shadows (subtle, professional — not flashy) ===
   static List<BoxShadow> get shadowSm => [
-    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 1)),
+    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 1)),
   ];
   static List<BoxShadow> get shadow => [
-    BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 4)),
+    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
   ];
   static List<BoxShadow> get shadowLg => [
-    BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 24, offset: const Offset(0, 8)),
+    BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, 4)),
   ];
   static List<BoxShadow> get shadowGold => [
-    BoxShadow(color: gold.withOpacity(0.25), blurRadius: 16, offset: const Offset(0, 6)),
+    BoxShadow(color: gold.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2)),
   ];
 
   // === Gradients ===
