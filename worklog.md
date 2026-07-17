@@ -4092,3 +4092,24 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/actions/runs/29575414656 (27.4 MB)
 - Vercel: healthy, auto-deployed
 - GitHub: commit ac71637 by Faisal Arslan Khan ✅
+
+---
+Task ID: REMOVE-FAKE-DATA + BETTER-EMPTY-STATES
+Agent: main
+Task: Remove ALL fake/dummy data from the system, fix empty states with proper CTAs.
+
+Work Log:
+- Institute Admin dashboard: replaced fake "Recent Activity" items (New student enrolled, Salary paid, Royalty invoice generated, Branch report updated) with REAL transactions from /api/institute/finance recentTransactions. Section completely hidden when no transactions exist.
+- Branch Manager dashboard: same — replaced fake placeholder activity items with real transactions only. Section header + content hidden when empty.
+- Calendar screen: removed all placeholder/sample events. Now shows real events from API only. Empty state when no events.
+- Institute Admin Branches tab: empty state now shows "Add Branch" button (opens Add Branch dialog directly) instead of "Refresh".
+- Institute Admin Royalty tab: empty state now explains how to generate royalty invoices (add branch first, configure royalty from branch detail screen) instead of just "Refresh".
+- Extracted _addBranch() method in _BranchesTab so both AppBar button and empty state CTA can call it.
+- Verified no fake data exists anywhere in web or mobile portals.
+
+Stage Summary:
+- NO FAKE DATA anywhere in the system — all dashboards show real data or nothing
+- Empty states are helpful: "Add Branch" CTA, explanation text for royalty
+- APK: https://github.com/faisukhan01/esm/actions/runs/29578660114 (27.4 MB)
+- Vercel: healthy (14 users)
+- GitHub: commit f5b6982 by Faisal Arslan Khan ✅
