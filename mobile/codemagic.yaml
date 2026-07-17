@@ -1,0 +1,79 @@
+# Codemagic CI/CD configuration for ESM iOS builds
+# 
+# HOW TO USE (FREE):
+# 1. Go to https://codemagic.io and sign up with GitHub (free)
+# 2. Click "Add application" → select GitHub → select faisukhan01/esm
+# 3. Select "Flutter App" as the project type
+# 4. In build settings, set:
+#    - Working directory: mobile
+#    - iOS bundle ID: com.esm.esmApp
+# 5. For code signing, select "Automatic code signing" and enter:
+#    - Your Apple ID email
+#    - Your Apple ID app-specific password (generate at appleid.apple.com)
+#    - (No $99 developer program needed for personal testing)
+# 6. Click "Start new build"
+# 7. Download the .ipa when the build finishes
+#
+# FREE TIER: 500 build minutes/month (one iOS build takes ~10-15 minutes)
+# FREE APPLE ID LIMITATIONS:
+#   - App works for 7 days, then rebuild to refresh
+#   - Max 3 apps installed at once
+#   - Install only on devices added to your Apple ID
+#   - No push notifications
+#
+# For permanent distribution ($99/year Apple Developer Program):
+#   - App never expires
+#   - Distribute via TestFlight (up to 10,000 testers)
+#   - Push notifications work
+#   - Submit to App Store
+
+workflows:
+  ios-workflow:
+    name: ESM iOS Build
+    instance_type: mac_mini_m1
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      vars:
+        BUNDLE_ID: com.esm.esmApp
+    cache:
+      cache_paths:
+        - $FLUTTER_ROOT/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    scripts:
+      - name: Generate iOS platform files
+        working_directory: mobile
+        script: |
+          # Generate iOS platform if it doesn't exist
+          if [ ! -d "ios" ]; then
+            flutter create --platforms=ios --org com.esm --project-name esm_app .
+          fi
+      - name: Get Flutter packages
+        working_directory: mobile
+        script: flutter pub get
+      - name: Install CocoaPods
+        working_directory: mobile/ios
+        script: |
+          pod repo update
+          pod install
+      - name: Build iOS (unsigned IPA for testing)
+        working_directory: mobile
+        script: |
+          # Build without code signing first (for unsigned .app)
+          flutter build ios --release --no-codesign
+          
+          # If automatic signing is configured, rebuild with signing
+          if [ -n "$CM_APPLE_ID" ]; then
+            flutter build ipa --release
+          fi
+    artifacts:
+      - mobile/build/ios/ipa/*.ipa
+      - mobile/build/ios/iphoneos/Runner.app
+      - mobile/build/ios/archives/*.xcarchive
+    publishing:
+      email:
+        recipients:
+          - faisu577277@gmail.com
+        notify:
+          success: true
+          failure: true

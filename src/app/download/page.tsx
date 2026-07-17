@@ -138,6 +138,34 @@ export default function DownloadPage() {
         </div>
       </section>
 
+      {/* iOS section */}
+      <section className="max-w-4xl mx-auto px-6 py-8">
+        <div className="p-8 bg-white rounded-3xl border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <svg className="w-8 h-8 text-[#0B1F3A]" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+            <h2 className="text-xl font-bold text-[#0B1F3A]">iPhone / iPad</h2>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            iOS builds require a Mac and an Apple account. You can build the iOS app for free using Codemagic's cloud Mac runners (500 free minutes/month).
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <h3 className="font-semibold text-sm text-[#0B1F3A] mb-1">Free (Personal Testing)</h3>
+              <p className="text-xs text-gray-500">Use a free Apple ID. App works for 7 days, then rebuild. Max 3 apps. No push notifications.</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-xl">
+              <h3 className="font-semibold text-sm text-[#0B1F3A] mb-1">$99/year (App Store)</h3>
+              <p className="text-xs text-gray-500">Apple Developer Program. App never expires. Distribute via TestFlight + App Store.</p>
+            </div>
+          </div>
+          <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+            <p className="text-xs text-blue-700">
+              <strong>Build instructions:</strong> The codemagic.yaml file is already in the repo. Sign up at codemagic.io → connect your GitHub repo → start a build. The .ipa will be emailed to you.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white mt-8">
         <div className="max-w-4xl mx-auto px-6 py-8 text-center">
