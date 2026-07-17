@@ -4002,3 +4002,24 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/actions/runs/29529693132 → Artifacts → esm-app-release (27.3 MB)
 - Vercel: https://esm-rose.vercel.app — live with all new features
 - GitHub: https://github.com/faisukhan01/esm at commit c519400
+
+---
+Task ID: DE-AGENTICIZE + PERFORMANCE + ADD-BRANCH
+Agent: main
+Task: Make the UI look natural/professional (not AI-generated), fix login, add Add Branch, fix performance, fix alignment.
+
+Work Log:
+- De-agenticized the mobile theme: reduced shadow intensity (0.04→0.03, 0.06→0.04), reduced gold glow (0.25→0.15). Subtle, professional depth.
+- Redesigned login screen completely: removed gradient hero, gold accents, trust badges, "PREMIUM" label. New design: solid logo, clean headline "Sign in", 4 role chips in one row, solid button, minimal server status bar. Looks like a pro built it.
+- Added in-memory cache to ApiClient (30s TTL for GET requests). POST/PATCH/DELETE auto-invalidate. Solves the "every action is slow" problem — tab switches now get instant cached responses.
+- Added "Add Branch" feature to Institute Admin: + button in Branches tab AppBar opens a dialog (name, city, manager, email, password), POST /api/branches, auto-refresh.
+- Commit attributed to Faisal Arslan Khan <193670919+faisukhan01@users.noreply.github.com> — will show on GitHub contribution graph.
+
+Stage Summary:
+- APK: ✅ Build #34 green, 27.3 MB — https://github.com/faisukhan01/esm/actions/runs/29564189471
+- Vercel: ✅ Auto-deployed, healthy
+- GitHub: ✅ Commit 5051196 by Faisal Arslan Khan — shows on contribution graph
+- Live preview: ✅ Running
+- Login: clean, professional, no AI decorations
+- Performance: 30s GET cache = instant tab switches
+- Add Branch: Institute Admin can now add branches from mobile
