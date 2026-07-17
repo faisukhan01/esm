@@ -4045,3 +4045,27 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/actions/runs/29565262823 (27.3 MB)
 - Vercel: healthy, auto-deployed
 - GitHub: commit 5c5c055 by Faisal Arslan Khan ✅
+
+---
+Task ID: SPEED-FIX-PERSISTENT + LOGIN-REDESIGN + ANNOUNCEMENTS
+Agent: main
+Task: Fix the real speed issue (persistent cache), redesign login, fix dashboard cards, add announcements.
+
+Work Log:
+- Diagnosed real speed issue: Vercel serverless = 0.68-1.39s per API call. Sequential dashboard calls = 3+ seconds.
+- Mobile: added PERSISTENT cache (SharedPreferences) — survives app restarts. On cold start, cache loads from disk → instant render. Stale-while-revalidate refreshes silently.
+- Web: added in-memory + sessionStorage cache to api.ts. All GET methods use cachedGet(). All mutations auto-invalidate. Cache restored from sessionStorage on page load → instant navigation.
+- Redesigned mobile login: removed logo + banner + URL display. 'ESM' in 56px Inter w900 navy text. Clean, premium, aesthetic.
+- Fixed Institute Admin dashboard cards: Branches→tab 1, Royalty→tab 2, Reports→tab 3, Analytics→tab 0. Added onNavigate callback.
+- Added AnnouncementsScreen: real /api/announcements data, sender+target role badges, color-coded, create dialog with role-aware target selector. Campaign icon in Institute + Branch AppBars.
+- Fixed 3 compile errors: MapEntry.value.data, duplicate IconButton from sed.
+- Commit d6ecebf by Faisal Arslan Khan — shows on GitHub graph.
+
+Stage Summary:
+- SPEED: dramatically improved on both web and mobile. Persistent cache means instant cold starts. Stale-while-revalidate means no loading spinners if any data exists.
+- LOGIN: clean ESM text, no clutter
+- DASHBOARD CARDS: navigate to actual tabs now
+- ANNOUNCEMENTS: full feature on mobile (receive + send)
+- APK: https://github.com/faisukhan01/esm/actions/runs/29570663640 (27.4 MB)
+- Vercel: healthy, auto-deployed
+- GitHub: commit d6ecebf by Faisal Arslan Khan ✅
