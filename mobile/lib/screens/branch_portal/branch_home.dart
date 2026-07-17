@@ -8,6 +8,7 @@ import '../../widgets/shared_widgets.dart';
 import 'branch_user_detail.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
+import '../announcements_screen.dart';
 import '../calendar_screen.dart';
 
 class BranchHome extends StatefulWidget {
@@ -158,6 +159,11 @@ class _BranchDashboardState extends State<_BranchDashboard> {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
+          IconButton(
+            icon: const Icon(Icons.campaign_outlined, size: 22),
+            tooltip: "Announcements",
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementsScreen(user: widget.user))),
+          ),
             icon: const Icon(Icons.notifications_none_rounded, size: 22),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(user: widget.user))),
           ),

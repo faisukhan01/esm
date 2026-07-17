@@ -10,6 +10,7 @@ import '../../widgets/shared_widgets.dart';
 import 'student_attendance.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
+import '../announcements_screen.dart';
 import '../calendar_screen.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';

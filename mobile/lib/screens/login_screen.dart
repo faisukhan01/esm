@@ -57,11 +57,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (result != null && result.trim().isNotEmpty) {
       await ApiClient.setBaseUrl(result.trim());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Server: ${result.trim()}'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
-        );
-      }
     }
   }
 
@@ -83,8 +78,6 @@ class _LoginScreenState extends State<LoginScreen> {
       await ApiClient.saveToken(token);
       await ApiClient.saveUser(user);
       if (mounted) {
-        // Preload dashboard data in the background so the dashboard renders instantly.
-        // These fire-and-forget calls populate the cache; the dashboard reads from it.
         _preloadDashboardData(user);
         Navigator.pushReplacement(
           context,
@@ -102,15 +95,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Preloads dashboard data in the background so the user's portal renders
-  /// instantly. Fire-and-forget — errors are silently ignored.
   void _preloadDashboardData(Map<String, dynamic> user) {
     final role = user['role'] as String?;
     final branchId = user['branchId']?.toString();
     final instituteId = user['instituteId']?.toString();
     final userId = user['id']?.toString();
 
-    // Fire all requests in parallel — they populate the cache
     if (role == 'institute-admin' && instituteId != null) {
       ApiClient.getObject('institute/finance', query: {'instituteId': instituteId});
       ApiClient.getList('branches', query: {'instituteId': instituteId});
@@ -146,49 +136,42 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Logo — simple, solid, no gradient
-              Container(
-                width: 56, height: 56,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: BorderRadius.circular(14),
+              // ESM large text — no logo, no banner
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'ESM',
+                      style: GoogleFonts.inter(
+                        fontSize: 56,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primary,
+                        letterSpacing: -1.5,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Electronic School Management',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.school, color: Colors.white, size: 28),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 36),
 
-              // Headline — clean, direct
-              Text('Sign in', style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.3)),
-              const SizedBox(height: 6),
-              Text('Enter your credentials to access your portal.', style: GoogleFonts.inter(fontSize: 14, color: AppTheme.textSecondary)),
-              const SizedBox(height: 28),
-
-              // Server status — minimal
-              if (ApiClient.baseUrl.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.success.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.cloud_done_outlined, size: 14, color: AppTheme.success),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text(ApiClient.baseUrl, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              // Role selector — simple row of 4, clean
+              // Role selector — single row of 4
               Text('I am a', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
               const SizedBox(height: 10),
               Row(
@@ -206,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 )).toList(),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
 
               // Name field (teacher/student only)
               if (_needsName) ...[
@@ -244,9 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: _obscurePassword,
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-              // Login button — solid, no gradient
+              // Login button
               SizedBox(
                 height: 50,
                 child: ElevatedButton(
@@ -265,9 +248,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-              // Footer — subtle
+              // Footer
               Center(
                 child: Text(
                   'ESM · Electronic School Management',
@@ -346,7 +329,7 @@ class _ServerSettingsDialogState extends State<_ServerSettingsDialog> {
       var cleaned = url;
       if (cleaned.endsWith('/')) cleaned = cleaned.substring(0, cleaned.length - 1);
       await ApiClient.setBaseUrl(cleaned);
-      final result = await ApiClient.getObject('health', );
+      final result = await ApiClient.getObject('health');
       final ok = result['ok'] == true;
       setState(() {
         _testOk = ok;

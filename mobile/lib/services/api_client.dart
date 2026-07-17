@@ -19,11 +19,48 @@ class ApiClient {
   // Users can still override via the Server Settings dialog on the login screen.
   static const String _defaultBaseUrl = 'https://esm-rose.vercel.app';
 
-  /// Called once at startup (in main.dart). Loads the saved base URL + token.
+  /// Called once at startup (in main.dart). Loads the saved base URL + token
+  /// AND restores the persistent cache from disk so the app is instant on launch.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _baseUrl = prefs.getString(_baseUrlKey) ?? _defaultBaseUrl;
     _token = prefs.getString('esm_token');
+    // Restore persistent cache from disk → memory
+    await _loadPersistentCache();
+  }
+
+  // === Persistent cache (survives app restarts) ===
+  // Stores cached GET responses as JSON in SharedPreferences so the app
+  // is instant even on cold start. The stale-while-revalidate pattern then
+  // refreshes data in the background.
+  static const String _persistKey = 'esm_api_cache';
+  static bool _persistDirty = false;
+
+  static Future<void> _loadPersistentCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString(_persistKey);
+      if (json != null) {
+        final map = jsonDecode(json) as Map<String, dynamic>;
+        _cache.clear();
+        for (final entry in map.entries) {
+          _cache[entry.key] = _CacheEntry(entry.value, DateTime.now().subtract(const Duration(minutes: 5)));
+        }
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _persistCache() async {
+    if (!_persistDirty) return;
+    _persistDirty = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final map = <String, dynamic>{};
+      for (final entry in _cache.entries) {
+        map[entry.key] = entry.data;
+      }
+      await prefs.setString(_persistKey, jsonEncode(map));
+    } catch (_) {}
   }
 
   /// Persist a new base URL. Called from the Server Settings dialog.
@@ -140,6 +177,8 @@ class ApiClient {
       final data = _handleResponse(response);
       if (useCache) {
         _cache[key] = _CacheEntry(data, DateTime.now());
+        _persistDirty = true;
+        _persistCache(); // fire-and-forget persist to disk
       }
       return data;
     } catch (e) {
@@ -153,6 +192,8 @@ class ApiClient {
       final response = await http.get(Uri.parse(_buildUrl(path, query)), headers: _headers);
       final data = _handleResponse(response);
       _cache[key] = _CacheEntry(data, DateTime.now());
+      _persistDirty = true;
+      _persistCache(); // persist fresh data to disk
       // Notify all registered screens
       for (final cb in (_refreshCallbacks[key] ?? []).toList()) {
         try { cb(data); } catch (_) {}

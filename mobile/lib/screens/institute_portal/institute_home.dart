@@ -8,6 +8,7 @@ import '../../widgets/shared_widgets.dart';
 import 'institute_branch_detail.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
+import '../announcements_screen.dart';
 import '../calendar_screen.dart';
 
 class InstituteHome extends StatefulWidget {
@@ -47,7 +48,7 @@ class _InstituteHomeState extends State<InstituteHome> {
     final instituteName = widget.user['instituteName'] ?? '';
 
     final screens = [
-      _InstituteDashboard(name: name, instituteName: instituteName, kpi: kpi, branches: _branches, isLoading: _isLoading, onRefresh: _loadData, user: widget.user),
+      _InstituteDashboard(name: name, instituteName: instituteName, kpi: kpi, branches: _branches, isLoading: _isLoading, onRefresh: _loadData, user: widget.user, onNavigate: (i) => setState(() => _currentIndex = i)),
       _BranchesTab(user: widget.user, branches: _branches, isLoading: _isLoading, onRefresh: _loadData),
       _RoyaltyTab(user: widget.user),
       _ReportsTab(user: widget.user, finance: _finance, isLoading: _isLoading, onRefresh: _loadData),
@@ -79,6 +80,7 @@ class _InstituteDashboard extends StatefulWidget {
   final bool isLoading;
   final VoidCallback onRefresh;
   final Map<String, dynamic> user;
+  final void Function(int tabIndex)? onNavigate;
 
   const _InstituteDashboard({
     required this.name,
@@ -88,6 +90,7 @@ class _InstituteDashboard extends StatefulWidget {
     required this.isLoading,
     required this.onRefresh,
     required this.user,
+    this.onNavigate,
   });
 
   @override
@@ -157,6 +160,11 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
+          IconButton(
+            icon: const Icon(Icons.campaign_outlined, size: 22),
+            tooltip: "Announcements",
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementsScreen(user: widget.user))),
+          ),
             icon: const Icon(Icons.notifications_none_rounded, size: 22),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(user: widget.user))),
           ),
@@ -224,25 +232,25 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
           icon: Icons.account_tree,
           label: 'Branches',
           color: AppTheme.primary,
-          onTap: () => _snack('Tap a branch from the Branches tab'),
+          onTap: () => widget.onNavigate?.call(1),
         ),
         QuickActionTile(
           icon: Icons.payments,
           label: 'Royalty',
           color: AppTheme.gold,
-          onTap: () => _snack('Open the Royalty tab below'),
+          onTap: () => widget.onNavigate?.call(2),
         ),
         QuickActionTile(
           icon: Icons.trending_up,
           label: 'Reports',
           color: AppTheme.info,
-          onTap: () => _snack('Open the Reports tab below'),
+          onTap: () => widget.onNavigate?.call(3),
         ),
         QuickActionTile(
           icon: Icons.analytics,
           label: 'Analytics',
           color: AppTheme.success,
-          onTap: () => _snack('Analytics dashboard coming soon'),
+          onTap: () => widget.onNavigate?.call(0),
         ),
       ],
     );

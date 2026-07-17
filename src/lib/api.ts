@@ -3,6 +3,64 @@ function apiUrl(path: string) {
   return '/api/' + path.replace(/^\//, '');
 }
 
+// === In-memory + sessionStorage cache with stale-while-revalidate ===
+// Solves the "every page is slow" problem — GET requests return cached data
+// instantly and refresh silently in the background.
+const _cache = new Map<string, { data: any; time: number }>();
+const CACHE_TTL = 60_000; // 60 seconds
+const SESSION_KEY = 'esm-api-cache';
+
+// Restore cache from sessionStorage on module load
+try {
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    for (const [k, v] of Object.entries(parsed)) {
+      _cache.set(k, v as any);
+    }
+  }
+} catch {}
+
+function persistCache() {
+  try {
+    const obj: Record<string, any> = {};
+    for (const [k, v] of _cache.entries()) obj[k] = v;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(obj));
+  } catch {}
+}
+
+function invalidateCache() {
+  _cache.clear();
+  try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+async function cachedGet<T>(path: string): Promise<T> {
+  const entry = _cache.get(path);
+  const now = Date.now();
+  if (entry) {
+    // Fresh cache — return instantly
+    if (now - entry.time < CACHE_TTL) {
+      return entry.data as T;
+    }
+    // Stale — return stale instantly, refresh in background
+    backgroundRefresh<T>(path);
+    return entry.data as T;
+  }
+  // No cache — fetch from network
+  const data = await request<T>(path);
+  _cache.set(path, { data, time: now });
+  persistCache();
+  return data;
+}
+
+async function backgroundRefresh<T>(path: string) {
+  try {
+    const data = await request<T>(path, { method: 'GET' }, true);
+    _cache.set(path, { data, time: Date.now() });
+    persistCache();
+  } catch {}
+}
+
 // Get the stored auth token (from zustand persist — uses sessionStorage for per-tab sessions)
 function getToken(): string | null {
   try {
@@ -19,7 +77,7 @@ function getToken(): string | null {
 let onBlockedCallback: ((msg: string) => void) | null = null;
 export function setOnBlocked(cb: (msg: string) => void) { onBlockedCallback = cb; }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit, _skipCache = false): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -69,39 +127,39 @@ export const api = {
   changePassword: (currentPassword: string, newPassword: string) =>
     request<any>('auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
   // platform
-  platformOverview: () => request<any>('platform/overview'),
-  institutes: () => request<any[]>('institutes'),
-  institute: (id: string) => request<any>(`institutes/${id}`),
-  createInstitute: (body: any) => request<any>('institutes', { method: 'POST', body: JSON.stringify(body) }),
-  updateInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  editInstitute: (id: string, body: any) => request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  deleteInstitute: (id: string) => request<any>(`institutes/${id}`, { method: 'DELETE' }),
-  blockInstitute: (id: string, blocked: boolean, reason?: string) =>
-    request<any>(`institutes/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
-  branches: (instituteId?: string) => request<any[]>(instituteId ? `branches?instituteId=${instituteId}` : 'branches'),
-  createBranch: (body: any) => request<any>('branches', { method: 'POST', body: JSON.stringify(body) }),
-  blockBranch: (id: string, blocked: boolean, reason?: string) =>
-    request<any>(`branches/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
-  deleteBranch: (id: string) => request<any>(`branches/${id}`, { method: 'DELETE' }),
+  platformOverview: () => cachedGet<any>('platform/overview'),
+  institutes: () => cachedGet<any[]>('institutes'),
+  institute: (id: string) => cachedGet<any>(`institutes/${id}`),
+  createInstitute: async (body: any) => { const r = await request<any>('institutes', { method: 'POST', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  updateInstitute: async (id: string, body: any) => { const r = await request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  editInstitute: async (id: string, body: any) => { const r = await request<any>(`institutes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  deleteInstitute: async (id: string) => { const r = await request<any>(`institutes/${id}`, { method: 'DELETE' }); invalidateCache(); return r; },
+  blockInstitute: async (id: string, blocked: boolean, reason?: string) =>
+    { const r = await request<any>(`institutes/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }); invalidateCache(); return r; },
+  branches: (instituteId?: string) => cachedGet<any[]>(instituteId ? `branches?instituteId=${instituteId}` : 'branches'),
+  createBranch: async (body: any) => { const r = await request<any>('branches', { method: 'POST', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  blockBranch: async (id: string, blocked: boolean, reason?: string) =>
+    { const r = await request<any>(`branches/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }); invalidateCache(); return r; },
+  deleteBranch: async (id: string) => { const r = await request<any>(`branches/${id}`, { method: 'DELETE' }); invalidateCache(); return r; },
   platformUsers: (params?: { role?: string; branchId?: string; instituteId?: string }) => {
     const q = new URLSearchParams();
     if (params?.role) q.set('role', params.role);
     if (params?.branchId) q.set('branchId', params.branchId);
     if (params?.instituteId) q.set('instituteId', params.instituteId);
     const qs = q.toString();
-    return request<any[]>(qs ? `platform/users?${qs}` : 'platform/users');
+    return cachedGet<any[]>(qs ? `platform/users?${qs}` : 'platform/users');
   },
-  createPlatformUser: (body: any) => request<any>('platform/users', { method: 'POST', body: JSON.stringify(body) }),
-  editUser: (id: string, body: any) => request<any>(`platform/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  blockUser: (id: string, blocked: boolean, reason?: string) =>
-    request<any>(`platform/users/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }),
+  createPlatformUser: async (body: any) => { const r = await request<any>('platform/users', { method: 'POST', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  editUser: async (id: string, body: any) => { const r = await request<any>(`platform/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); invalidateCache(); return r; },
+  blockUser: async (id: string, blocked: boolean, reason?: string) =>
+    { const r = await request<any>(`platform/users/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked, reason }) }); invalidateCache(); return r; },
   getUserPassword: (id: string) => request<any>(`platform/users/${id}/password`),
   scopedStats: (instituteId?: string, branchId?: string) => {
     const q = new URLSearchParams();
     if (instituteId) q.set('instituteId', instituteId);
     if (branchId) q.set('branchId', branchId);
     const qs = q.toString();
-    return request<any>(qs ? `scoped/stats?${qs}` : 'scoped/stats');
+    return cachedGet<any>(qs ? `scoped/stats?${qs}` : 'scoped/stats');
   },
   // attendance
   getAttendance: (params?: { studentId?: string; branchId?: string; teacherId?: string }) => {
@@ -174,7 +232,7 @@ export const api = {
   getRoutes: (branchId?: string) => request<any[]>(branchId ? `transport/routes?branchId=${branchId}` : 'transport/routes'),
   addRoute: (body: any) => request<any>('transport/routes', { method: 'POST', body: JSON.stringify(body) }),
   // reference
-  reference: () => request<{ classes: string[]; sections: string[]; subjects: string[] }>('reference'),
+  reference: () => cachedGet<{ classes: string[]; sections: string[]; subjects: string[] }>('reference'),
   // classes & courses
   getClasses: (branchId?: string) => request<any[]>(branchId ? `classes?branchId=${branchId}` : 'classes'),
   getCourses: (params?: { branchId?: string; classId?: string }) => {
@@ -195,10 +253,10 @@ export const api = {
   deleteClassSection: (classId: string) =>
     request<any>(`classes/${classId}`, { method: 'DELETE' }),
   // teacher & student scoped
-  getTeacherClasses: () => request<any[]>('teacher/classes'),
-  getStudentCourses: () => request<any[]>('student/courses'),
+  getTeacherClasses: () => cachedGet<any[]>('teacher/classes'),
+  getStudentCourses: () => cachedGet<any[]>('student/courses'),
   // announcements
-  getAnnouncements: () => request<any[]>('announcements'),
+  getAnnouncements: () => cachedGet<any[]>('announcements'),
   createAnnouncement: (body: any) => request<any>('announcements', { method: 'POST', body: JSON.stringify(body) }),
   // course materials
   getCourseMaterials: (params?: { classId?: string; courseId?: string; teacherId?: string }) => {
@@ -234,24 +292,24 @@ export const api = {
   setFeeStructure: (classId: string, monthlyFee: number, admissionFee?: number) =>
     request<any>('fee-structure', { method: 'POST', body: JSON.stringify({ classId, monthlyFee, admissionFee }) }),
   getFeeInvoices: (studentId?: string) => request<any[]>(studentId ? `fee-invoices?studentId=${studentId}` : 'fee-invoices'),
-  getBranchInvoices: () => request<any[]>('fee-invoices/branch'),
+  getBranchInvoices: () => cachedGet<any[]>('fee-invoices/branch'),
   generateInvoices: (month: string, year: number) =>
     request<any>('fee-invoices/generate', { method: 'POST', body: JSON.stringify({ month, year }) }),
   markInvoicePaid: (id: string, paidAmount?: number, paymentMethod?: string) =>
     request<any>(`fee-invoices/${id}/pay`, { method: 'PATCH', body: JSON.stringify({ paidAmount, paymentMethod }) }),
   getChallanData: (id: string) => request<any>(`fee-invoices/${id}/challan`),
   // Institute-level finance & analytics (Institute Admin)
-  getInstituteFinance: (instituteId: string) => request<any>(`institute/finance?instituteId=${instituteId}`),
+  getInstituteFinance: (instituteId: string) => cachedGet<any>(`institute/finance?instituteId=${instituteId}`),
   // Branch-level finance & analytics (Branch Manager)
-  getBranchFinance: (branchId: string) => request<any>(`branch/finance?branchId=${branchId}`),
+  getBranchFinance: (branchId: string) => cachedGet<any>(`branch/finance?branchId=${branchId}`),
   // Platform-wide finance & analytics (Super Admin)
-  getPlatformFinance: () => request<any>('platform/finance'),
+  getPlatformFinance: () => cachedGet<any>('platform/finance'),
   // Teacher academic analytics
-  getTeacherAnalytics: () => request<any>('teacher/analytics'),
+  getTeacherAnalytics: () => cachedGet<any>('teacher/analytics'),
   // Student academic + fee analytics
-  getStudentAnalytics: () => request<any>('student/analytics'),
+  getStudentAnalytics: () => cachedGet<any>('student/analytics'),
   // Notifications (top bar dropdown)
-  getNotifications: () => request<{ items: any[]; unread: number }>('notifications'),
+  getNotifications: () => cachedGet<{ items: any[]; unread: number }>('notifications'),
   // Manual revenue management (Super Admin enters per institute, Institute Admin enters per branch)
   addRevenue: (body: { sourceType: string; sourceId: string; sourceName: string; amount: number; month: string; year: number; notes?: string }) =>
     request<any>('revenue', { method: 'POST', body: JSON.stringify(body) }),

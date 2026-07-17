@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
+import '../announcements_screen.dart';
 import '../calendar_screen.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
