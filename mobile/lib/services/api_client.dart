@@ -66,19 +66,36 @@ class ApiClient {
     return headers;
   }
 
-  // === In-memory cache for GET requests (30s TTL) ===
-  // Solves the "every action is slow" problem — dashboards that fetch the same
-  // data on every tab switch now get instant results from cache.
+  // === In-memory cache with stale-while-revalidate ===
+  // Returns cached data INSTANTLY (even if stale), then refreshes in background.
+  // This eliminates the "loading spinner on every screen" problem.
   static final Map<String, _CacheEntry> _cache = {};
-  static const Duration _cacheTtl = Duration(seconds: 30);
+  static const Duration _cacheTtl = Duration(seconds: 60);
+  // Callbacks that screens register to get notified when background refresh completes
+  static final Map<String, List<void Function(dynamic)>> _refreshCallbacks = {};
 
   static String _cacheKey(String path, [Map<String, dynamic>? query]) {
     final q = query?.entries.map((e) => '${e.key}=${e.value}').join('&') ?? '';
     return '$path?$q';
   }
 
-  /// Clears the entire cache. Call after any POST/PATCH/DELETE to force fresh data on next GET.
+  /// Returns cached data if available (even if stale). Returns null if no cache.
+  static dynamic getCached(String path, [Map<String, dynamic>? query]) {
+    final entry = _cache[_cacheKey(path, query)];
+    return entry?.data;
+  }
+
+  /// Clears the entire cache. Call after any POST/PATCH/DELETE.
   static void invalidateCache() => _cache.clear();
+
+  /// Register a callback to be called when a background refresh completes.
+  /// Returns a remove function. Screens use this to update UI silently.
+  static VoidCallback onRefresh(String path, void Function(dynamic) callback) {
+    final key = _cacheKey(path);
+    _refreshCallbacks.putIfAbsent(key, () => []);
+    _refreshCallbacks[key]!.add(callback);
+    return () => _refreshCallbacks[key]?.remove(callback);
+  }
 
   /// Throws a clear, user-readable error if the base URL has not been set.
   static void _ensureBaseUrl() {
@@ -104,24 +121,44 @@ class ApiClient {
   }
 
   static Future<dynamic> get(String path, {Map<String, dynamic>? query, bool useCache = true}) async {
-    // Check cache first — instant response for repeated GETs (dashboards, tab switches)
+    final key = _cacheKey(path, query);
     if (useCache) {
-      final key = _cacheKey(path, query);
       final entry = _cache[key];
-      if (entry != null && DateTime.now().difference(entry.time) < _cacheTtl) {
+      if (entry != null) {
+        // Stale-while-revalidate: if cache is fresh (< 60s), return instantly.
+        if (DateTime.now().difference(entry.time) < _cacheTtl) {
+          return entry.data;
+        }
+        // Cache is stale — return stale data instantly, refresh in background.
+        _backgroundRefresh(path, query, key);
         return entry.data;
       }
     }
+    // No cache — must fetch from network
     try {
       final response = await http.get(Uri.parse(_buildUrl(path, query)), headers: _headers);
       final data = _handleResponse(response);
-      // Cache successful GET responses
       if (useCache) {
-        _cache[_cacheKey(path, query)] = _CacheEntry(data, DateTime.now());
+        _cache[key] = _CacheEntry(data, DateTime.now());
       }
       return data;
     } catch (e) {
       throw _handleError(e);
+    }
+  }
+
+  /// Fetches fresh data in the background and notifies registered screens.
+  static Future<void> _backgroundRefresh(String path, Map<String, dynamic>? query, String key) async {
+    try {
+      final response = await http.get(Uri.parse(_buildUrl(path, query)), headers: _headers);
+      final data = _handleResponse(response);
+      _cache[key] = _CacheEntry(data, DateTime.now());
+      // Notify all registered screens
+      for (final cb in (_refreshCallbacks[key] ?? []).toList()) {
+        try { cb(data); } catch (_) {}
+      }
+    } catch (_) {
+      // Silent failure — keep showing stale data
     }
   }
 

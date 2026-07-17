@@ -676,6 +676,33 @@ class _TeachersTabState extends State<_TeachersTab> with AutomaticKeepAliveClien
       appBar: AppBar(
         title: const Text('Teachers'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add, size: 22),
+            tooltip: 'Add Teacher',
+            onPressed: () async {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (ctx) => _AddUserDialog(role: 'teacher', branchId: widget.user['branchId'], instituteId: widget.user['instituteId']),
+              );
+              if (result != null) {
+                try {
+                  await ApiClient.post('platform/users', body: result);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Teacher added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                  _load();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                }
+              }
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: _load),
         ],
       ),
@@ -800,6 +827,33 @@ class _StudentsTabState extends State<_StudentsTab> with AutomaticKeepAliveClien
       appBar: AppBar(
         title: const Text('Students'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add, size: 22),
+            tooltip: 'Add Student',
+            onPressed: () async {
+              final result = await showDialog<Map<String, dynamic>>(
+                context: context,
+                builder: (ctx) => _AddUserDialog(role: 'student', branchId: widget.user['branchId'], instituteId: widget.user['instituteId']),
+              );
+              if (result != null) {
+                try {
+                  await ApiClient.post('platform/users', body: result);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Student added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                  _load();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+                    );
+                  }
+                }
+              }
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: _load),
         ],
       ),
@@ -1034,6 +1088,96 @@ class _ErrorView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// =============================== ADD USER DIALOG ===============================
+
+class _AddUserDialog extends StatefulWidget {
+  final String role;
+  final String? branchId;
+  final String? instituteId;
+  const _AddUserDialog({required this.role, required this.branchId, required this.instituteId});
+
+  @override
+  State<_AddUserDialog> createState() => _AddUserDialogState();
+}
+
+class _AddUserDialogState extends State<_AddUserDialog> {
+  final _nameCtrl = TextEditingController();
+  final _rollNoCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _classCtrl = TextEditingController();
+  final _sectionCtrl = TextEditingController(text: 'A');
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose(); _rollNoCtrl.dispose(); _passwordCtrl.dispose();
+    _classCtrl.dispose(); _sectionCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeacher = widget.role == 'teacher';
+    final canSubmit = _nameCtrl.text.trim().isNotEmpty &&
+        _rollNoCtrl.text.trim().isNotEmpty &&
+        _passwordCtrl.text.isNotEmpty;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(isTeacher ? Icons.person_add : Icons.person_add_alt_1, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Text('Add ${isTeacher ? 'Teacher' : 'Student'}'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: _nameCtrl, decoration: InputDecoration(labelText: 'Full Name *', prefixIcon: const Icon(Icons.person, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _rollNoCtrl, decoration: InputDecoration(labelText: isTeacher ? 'Teacher ID *' : 'Roll Number *', prefixIcon: const Icon(Icons.badge, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _passwordCtrl, decoration: const InputDecoration(labelText: 'Password *', prefixIcon: Icon(Icons.lock, size: 18)), obscureText: true, onChanged: (_) => setState(() {})),
+            if (!isTeacher) ...[
+              const SizedBox(height: 8),
+              TextField(controller: _classCtrl, decoration: const InputDecoration(labelText: 'Class', prefixIcon: Icon(Icons.school, size: 18))),
+              const SizedBox(height: 8),
+              TextField(controller: _sectionCtrl, decoration: const InputDecoration(labelText: 'Section', prefixIcon: Icon(Icons.bookmark, size: 18))),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _isSaving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: _isSaving || !canSubmit
+              ? null
+              : () {
+                  final body = <String, dynamic>{
+                    'name': _nameCtrl.text.trim(),
+                    'rollNo': _rollNoCtrl.text.trim(),
+                    'password': _passwordCtrl.text,
+                    'role': widget.role,
+                    'branchId': widget.branchId,
+                    'instituteId': widget.instituteId,
+                  };
+                  if (!isTeacher && _classCtrl.text.trim().isNotEmpty) {
+                    body['class'] = _classCtrl.text.trim();
+                    body['section'] = _sectionCtrl.text.trim();
+                  }
+                  setState(() => _isSaving = true);
+                  Navigator.pop(context, body);
+                },
+          child: _isSaving
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text('Add ${isTeacher ? 'Teacher' : 'Student'}'),
+        ),
+      ],
     );
   }
 }

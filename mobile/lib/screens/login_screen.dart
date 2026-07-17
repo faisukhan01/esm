@@ -83,6 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await ApiClient.saveToken(token);
       await ApiClient.saveUser(user);
       if (mounted) {
+        // Preload dashboard data in the background so the dashboard renders instantly.
+        // These fire-and-forget calls populate the cache; the dashboard reads from it.
+        _preloadDashboardData(user);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => DashboardScreen(user: user)),
@@ -96,6 +99,33 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Preloads dashboard data in the background so the user's portal renders
+  /// instantly. Fire-and-forget — errors are silently ignored.
+  void _preloadDashboardData(Map<String, dynamic> user) {
+    final role = user['role'] as String?;
+    final branchId = user['branchId']?.toString();
+    final instituteId = user['instituteId']?.toString();
+    final userId = user['id']?.toString();
+
+    // Fire all requests in parallel — they populate the cache
+    if (role == 'institute-admin' && instituteId != null) {
+      ApiClient.getObject('institute/finance', query: {'instituteId': instituteId});
+      ApiClient.getList('branches', query: {'instituteId': instituteId});
+    } else if (role == 'branch-manager' && branchId != null) {
+      ApiClient.getObject('branch/finance', query: {'branchId': branchId});
+      ApiClient.getList('platform/users', query: {'role': 'teacher', 'branchId': branchId});
+      ApiClient.getList('platform/users', query: {'role': 'student', 'branchId': branchId});
+    } else if (role == 'teacher' && userId != null) {
+      ApiClient.getObject('teacher/analytics');
+      ApiClient.getList('teacher/classes');
+    } else if (role == 'student' && userId != null) {
+      ApiClient.getObject('student/analytics');
+      ApiClient.getList('student/courses');
+      ApiClient.getObject('attendance', query: {'studentId': userId});
+      ApiClient.get('results', query: {'studentId': userId});
     }
   }
 
