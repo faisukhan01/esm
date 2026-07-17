@@ -57,7 +57,7 @@ class ApiClient {
       final prefs = await SharedPreferences.getInstance();
       final map = <String, dynamic>{};
       for (final entry in _cache.entries) {
-        map[entry.key] = entry.data;
+        map[entry.key] = entry.value.data;
       }
       await prefs.setString(_persistKey, jsonEncode(map));
     } catch (_) {}

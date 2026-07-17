@@ -159,11 +159,11 @@ class _BranchDashboardState extends State<_BranchDashboard> {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-          IconButton(
             icon: const Icon(Icons.campaign_outlined, size: 22),
-            tooltip: "Announcements",
+            tooltip: 'Announcements',
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnnouncementsScreen(user: widget.user))),
           ),
+          IconButton(
             icon: const Icon(Icons.notifications_none_rounded, size: 22),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(user: widget.user))),
           ),
