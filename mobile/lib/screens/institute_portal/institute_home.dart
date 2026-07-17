@@ -495,8 +495,15 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
     );
   }
 
-  // --- (f) Recent activity ---
+  // --- (f) Recent activity (real data from finance API) ---
   Widget _recentActivity() {
+    final transactions = (_finance?['recentTransactions'] as List<dynamic>?) ?? [];
+
+    // If no real transactions, don't show the section at all
+    if (transactions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -512,42 +519,36 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
           ),
           child: Column(
             children: [
-              ActivityItem(
-                icon: Icons.person_add_rounded,
-                color: AppTheme.info,
-                title: 'New student enrolled',
-                subtitle: 'Ayan Khan joined Class 5-A',
-                time: '2h ago',
-              ),
-              const Divider(height: 1, color: AppTheme.border),
-              ActivityItem(
-                icon: Icons.payments_rounded,
-                color: AppTheme.success,
-                title: 'Salary paid to Umar Sheikh',
-                subtitle: 'PKR 45,000 processed',
-                time: '5h ago',
-              ),
-              const Divider(height: 1, color: AppTheme.border),
-              ActivityItem(
-                icon: Icons.receipt_long_rounded,
-                color: AppTheme.gold,
-                title: 'Royalty invoice generated',
-                subtitle: 'Gulberg Branch · PKR 12,000',
-                time: '1d ago',
-              ),
-              const Divider(height: 1, color: AppTheme.border),
-              ActivityItem(
-                icon: Icons.trending_up_rounded,
-                color: AppTheme.primary,
-                title: 'Branch report updated',
-                subtitle: 'Monthly report for Johar Town',
-                time: '2d ago',
-              ),
+              for (var i = 0; i < transactions.length && i < 6; i++) ...[
+                if (i > 0) const Divider(height: 1, color: AppTheme.border),
+                ActivityItem(
+                  icon: Icons.trending_up_rounded,
+                  color: AppTheme.success,
+                  title: transactions[i]['type'] ?? 'Transaction',
+                  subtitle: 'PKR ${_compact(transactions[i]['amount'])}',
+                  time: _fmtDate(transactions[i]['date']),
+                ),
+              ],
             ],
           ),
         ),
       ],
     );
+  }
+
+  String _fmtDate(dynamic d) {
+    if (d == null) return '';
+    try {
+      final dt = DateTime.parse(d.toString());
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
   }
 }
 
@@ -560,6 +561,30 @@ class _BranchesTab extends StatelessWidget {
   final VoidCallback onRefresh;
 
   const _BranchesTab({required this.user, required this.branches, required this.isLoading, required this.onRefresh});
+
+  Future<void> _addBranch(BuildContext context) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => _AddBranchDialog(instituteId: user['instituteId']),
+    );
+    if (result != null) {
+      try {
+        await ApiClient.post('branches', body: result);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Branch added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+          );
+        }
+        onRefresh();
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+          );
+        }
+      }
+    }
+  }
 
   void _openDetail(BuildContext context, Map<String, dynamic> branch) {
     Navigator.push(
@@ -579,29 +604,7 @@ class _BranchesTab extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.add, size: 22),
             tooltip: 'Add Branch',
-            onPressed: () async {
-              final result = await showDialog<Map<String, dynamic>>(
-                context: context,
-                builder: (ctx) => _AddBranchDialog(instituteId: user['instituteId']),
-              );
-              if (result != null) {
-                try {
-                  await ApiClient.post('branches', body: result);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Branch added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
-                    );
-                  }
-                  onRefresh();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
-                    );
-                  }
-                }
-              }
-            },
+            onPressed: () => _addBranch(context),
           ),
           IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: onRefresh),
         ],
@@ -612,9 +615,9 @@ class _BranchesTab extends StatelessWidget {
               ? EmptyState(
                   icon: Icons.account_tree_outlined,
                   title: 'No branches yet',
-                  description: 'Add branches from the web dashboard to manage them here.',
-                  actionText: 'Refresh',
-                  onAction: onRefresh,
+                  description: 'Add your first branch to start managing teachers, students, and fees.',
+                  actionText: 'Add Branch',
+                  onAction: () => _addBranch(context),
                 )
               : RefreshIndicator(
                   onRefresh: () async { onRefresh(); },
@@ -817,9 +820,7 @@ class _RoyaltyTabState extends State<_RoyaltyTab> with AutomaticKeepAliveClientM
                   ? EmptyState(
                       icon: Icons.payments_outlined,
                       title: 'No royalty invoices',
-                      description: 'Generate royalty invoices from the web dashboard to track branch payments here.',
-                      actionText: 'Refresh',
-                      onAction: _load,
+                      description: 'Royalty invoices are generated when you set royalty settings for your branches. Add a branch first, then configure royalty from the branch detail screen.',
                     )
                   : RefreshIndicator(
                       onRefresh: _load,

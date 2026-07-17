@@ -204,10 +204,12 @@ class _BranchDashboardState extends State<_BranchDashboard> {
                   const SectionHeader(title: 'Quick Actions'),
                   const SizedBox(height: 10),
                   _quickActions(),
-                  const SizedBox(height: 20),
-                  const SectionHeader(title: 'Recent Activity'),
-                  const SizedBox(height: 8),
-                  _recentActivity(),
+                  if (_recent.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const SectionHeader(title: 'Recent Activity'),
+                    const SizedBox(height: 8),
+                    _recentActivity(),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -504,43 +506,23 @@ class _BranchDashboardState extends State<_BranchDashboard> {
     );
   }
 
-  // ---- (f) Recent Activity card ----------------------------------------
+  // ---- (f) Recent Activity card (real data only — no fake placeholders) ----
   Widget _recentActivity() {
     final items = _recent;
-    final List<Widget> tiles = items.isEmpty
-        ? [
-            ActivityItem(
-              icon: Icons.receipt_long,
-              color: AppTheme.gold,
-              title: 'Fee invoice generated',
-              subtitle: 'Awaiting student payment',
-              time: 'Today',
-            ),
-            ActivityItem(
-              icon: Icons.wallet,
-              color: AppTheme.info,
-              title: 'Salary paid',
-              subtitle: 'Monthly payroll disbursed',
-              time: 'Yesterday',
-            ),
-            ActivityItem(
-              icon: Icons.person_add,
-              color: AppTheme.success,
-              title: 'New student enrolled',
-              subtitle: 'Admission confirmed',
-              time: '2d ago',
-            ),
-          ]
-        : items.map((t) {
-            final def = _mapActivity(t);
-            return ActivityItem(
-              icon: def.icon,
-              color: def.color,
-              title: def.title,
-              subtitle: def.subtitle,
-              time: def.time,
-            );
-          }).toList();
+
+    // If no real transactions, don't show the section at all
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final List<Widget> tiles = items.map((t) {
+      final def = _mapActivity(t);
+      return ActivityItem(
+        icon: def.icon,
+        color: def.color,
+        title: def.title,
+        subtitle: def.subtitle,
+        time: def.time,
+      );
+    }).toList();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

@@ -118,20 +118,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final events = raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
       if (!mounted) return;
       setState(() {
-        if (events.isEmpty) {
-          _events = _placeholderEvents();
-          _usingFallback = true;
-        } else {
-          _events = events;
-          _usingFallback = false;
-        }
+        _events = events;
+        _usingFallback = false;
         _isLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _events = _placeholderEvents();
-        _usingFallback = true;
+        _events = [];
+        _usingFallback = false;
         _isLoading = false;
       });
     }
