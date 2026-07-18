@@ -4135,3 +4135,27 @@ Stage Summary:
 - GitHub Release: v1.0.0 with APK, permanent download link
 - Vercel: healthy (17 users), /download page deployed
 - GitHub: commit eaabad9 by Faisal Arslan Khan ✅
+
+---
+Task ID: AESTHETIC-REDESIGN + ADD-USERS + PDF-INVOICE + ALIGNMENT
+Agent: main
+Task: Fix greeting banner aesthetics, card alignment, branch detail header, add teacher/student from institute admin, PDF invoice download.
+
+Work Log:
+- Redesigned GradientHeroCard: removed decorative circles, gradients, excessive shadows. Now clean solid navy with icon+title+subtitle+metric. Professional, not agentic.
+- Fixed PremiumStatCard alignment: added FittedBox so values never overflow, removed boxShadow, added maxLines+overflow. Smaller icon (32px) and value (18px).
+- Fixed DetailScaffold: replaced SliverAppBar gradient header (blue text on blue = invisible) with clean white AppBar.
+- Added FloatingActionButton on Institute Admin branch detail Teachers + Students tabs to add users.
+- Empty states now say "The branch manager will add teachers, or you can add them yourself" + Add button.
+- Added _AddUserDialog with name, rollNo, password, class, section fields.
+- Added PDF invoice download for students: pdf + path_provider + share_plus packages. Clean A4 invoice with ESM header, student details, invoice summary, amount. Uses Share API.
+- Created GitHub Release v1.1.0 with new APK.
+
+Stage Summary:
+- Greeting banner: clean, professional, no agentic look
+- Cards: properly aligned, no text overflow
+- Branch detail: white AppBar (text visible), add teacher/student buttons
+- PDF invoice: students can download/share PDF
+- APK: https://github.com/faisukhan01/esm/releases/download/v1.1.0/app-release.apk
+- Download page: https://esm-rose.vercel.app/download (QR code auto-points to latest)
+- GitHub: commit edf6bc3 by Faisal Arslan Khan ✅
