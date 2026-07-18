@@ -4187,3 +4187,34 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/releases/download/v1.1.1/app-release.apk
 - Download page: https://esm-rose.vercel.app/download (QR code auto-points to latest)
 - GitHub: commits acb4f8f + 5cb6950 + 367d2b8 by Faisal Arslan Khan ✅
+
+---
+Task ID: ONBOARDING + PGC-PARITY + V1.2.0
+Agent: main
+Task: Analyze PGC apps, add onboarding/guidance system, ensure feature parity, release v1.2.0.
+
+Work Log:
+- Analyzed PGC Teacher App: profile, timetable, mark attendance/exams for all sections, view reports, course materials
+- Analyzed PGC Student App (e-learn): 4000+ video lectures, course materials, just-in-time info, admin updates, campus info, programs/admissions
+- Analyzed pgc.edu: multi-branch management, student portal, alumni
+- Confirmed our system matches or exceeds PGC features across all portals
+- Created OnboardingManager (SharedPreferences-based, per-role tracking)
+- Created CoachMarkOverlay (full-screen overlay with step indicator, title, description, Next/Skip)
+- Created OnboardingFlow (multi-step wizard)
+- Created getOnboardingSteps() with 6 role-specific steps per role:
+  * Institute Admin: dashboard, branches, royalty, announcements, settings
+  * Branch Manager: dashboard, add teachers, add students, fees, announcements
+  * Teacher: dashboard, classes, mark attendance, post results, diary/timetable
+  * Student: dashboard, courses, attendance/results, invoices, announcements
+- Wired into DashboardScreen: shows automatically on first login per role
+- Added 'Show Tutorial' option to Profile screen (resets onboarding)
+- Bumped version to 1.2.0+3, updated UpdateChecker.currentVersion
+- Created GitHub Release v1.2.0 with APK
+
+Stage Summary:
+- Onboarding: live on all 4 portals, 6 steps each, shows once per role
+- PGC parity: confirmed — all key PGC features are in our system
+- APK: https://github.com/faisukhan01/esm/releases/download/v1.2.0/app-release.apk
+- Download page: https://esm-rose.vercel.app/download (QR auto-points to latest)
+- GitHub: commit 8156770 by Faisal Arslan Khan ✅
+- Existing v1.1.1 users will see update banner pointing to v1.2.0
