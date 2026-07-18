@@ -6,18 +6,16 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
 /// Checks GitHub Releases API for the latest version and shows an update banner
-/// if a newer version is available. When tapped, opens the browser to the
-/// download page so the user can get the new APK.
+/// if a newer version is available.
 class UpdateChecker {
   static const String _repo = 'faisukhan01/esm';
   static const String _downloadPage = 'https://esm-rose.vercel.app/download';
+  static const String _directApkUrl = 'https://github.com/faisukhan01/esm/releases/latest/download/app-release.apk';
 
   /// The current app version (must match pubspec.yaml).
-  /// Bump this when you release a new version.
-  static const String currentVersion = '1.2.0';
+  static const String currentVersion = '1.3.0';
 
   /// Checks if a newer version is available on GitHub Releases.
-  /// Returns the latest version tag (e.g. "v1.2.0") if newer, or null if up-to-date.
   static Future<String?> checkForUpdate() async {
     try {
       final response = await http.get(
@@ -31,7 +29,6 @@ class UpdateChecker {
       final tagName = (data['tag_name'] as String?)?.replaceAll('v', '');
       if (tagName == null) return null;
 
-      // Compare versions
       if (_isNewer(tagName, currentVersion)) {
         return tagName;
       }
@@ -41,7 +38,6 @@ class UpdateChecker {
     }
   }
 
-  /// Returns true if [remote] is a newer version than [current].
   static bool _isNewer(String remote, String current) {
     final r = remote.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final c = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
@@ -54,17 +50,49 @@ class UpdateChecker {
     return false;
   }
 
-  /// Opens the download page in the browser.
-  static Future<void> openDownloadPage() async {
+  /// Opens the download page — tries multiple methods for reliability.
+  static Future<bool> openDownloadPage() async {
     final uri = Uri.parse(_downloadPage);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+
+    // Method 1: Try external application
+    try {
+      if (await canLaunchUrl(uri)) {
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (launched) return true;
+      }
+    } catch (_) {}
+
+    // Method 2: Try in-app browser
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      if (launched) return true;
+    } catch (_) {}
+
+    // Method 3: Try platform default
+    try {
+      final launched = await launchUrl(uri);
+      if (launched) return true;
+    } catch (_) {}
+
+    return false;
+  }
+
+  /// Opens the direct APK download URL.
+  static Future<bool> openDirectDownload() async {
+    final uri = Uri.parse(_directApkUrl);
+    try {
+      if (await canLaunchUrl(uri)) {
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+    try {
+      return await launchUrl(uri);
+    } catch (_) {}
+    return false;
   }
 }
 
 /// A banner widget that shows "Update available" when a newer version exists.
-/// Place this at the top of any screen (e.g. dashboards).
 class UpdateBanner extends StatefulWidget {
   const UpdateBanner({super.key});
 
@@ -90,6 +118,61 @@ class _UpdateBannerState extends State<UpdateBanner> {
         _newVersion = v;
         _checked = true;
       });
+    }
+  }
+
+  void _onUpdateTap() async {
+    // Try to open the download page
+    final opened = await UpdateChecker.openDownloadPage();
+
+    // If the browser didn't open, show a dialog with the link + direct APK download
+    if (!opened && mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.system_update, color: AppTheme.primary, size: 22),
+              const SizedBox(width: 8),
+              const Text('Update Available'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('A new version (v$_newVersion) is available.', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              Text('Tap "Open Download Page" to update:', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  UpdateChecker._downloadPage,
+                  style: GoogleFonts.inter(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Later')),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                // Try direct APK download as fallback
+                UpdateChecker.openDirectDownload();
+              },
+              icon: const Icon(Icons.download, size: 16),
+              label: const Text('Download APK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -120,7 +203,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
             ),
           ),
           GestureDetector(
-            onTap: () => UpdateChecker.openDownloadPage(),
+            onTap: _onUpdateTap,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
