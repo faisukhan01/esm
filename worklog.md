@@ -4159,3 +4159,31 @@ Stage Summary:
 - APK: https://github.com/faisukhan01/esm/releases/download/v1.1.0/app-release.apk
 - Download page: https://esm-rose.vercel.app/download (QR code auto-points to latest)
 - GitHub: commit edf6bc3 by Faisal Arslan Khan ✅
+
+---
+Task ID: IN-APP-UPDATE-NOTIFICATION
+Agent: main
+Task: Add in-app update notification banner that shows when a newer version is available on GitHub Releases.
+
+Work Log:
+- Created UpdateChecker: checks GitHub Releases API (api.github.com/repos/faisukhan01/esm/releases/latest) for latest version tag. Compares semantic versions (1.1.1 vs 1.2.0). 5s timeout, silent failure.
+- Created UpdateBanner widget: navy banner at top of dashboard showing 'Update available — v1.2.0' + 'Tap to download the latest version' + 'Update' button (opens https://esm-rose.vercel.app/download in browser via url_launcher) + 'X' dismiss button.
+- Added UpdateBanner to ALL 4 portal dashboards: Institute Admin, Branch Manager, Teacher, Student.
+- Bumped app version to 1.1.1+2 in pubspec.yaml.
+- Added url_launcher ^6.3.1 package.
+- Fixed build: url_launcher + share_plus pulled in androidx deps requiring AGP 8.9.1 → upgraded AGP 8.7.0→8.9.1 → required Gradle 8.11.1 → upgraded Gradle 8.10.2→8.11.1.
+- Created GitHub Release v1.1.1 with new APK.
+
+HOW IT WORKS:
+1. User opens app (any version)
+2. App checks GitHub Releases API in background
+3. If latest release > current version → shows update banner
+4. User taps 'Update' → browser opens download page
+5. User downloads new APK → installs over old one
+6. Next launch: banner gone (version matches latest release)
+
+Stage Summary:
+- Update notification: live on all 4 dashboards
+- APK: https://github.com/faisukhan01/esm/releases/download/v1.1.1/app-release.apk
+- Download page: https://esm-rose.vercel.app/download (QR code auto-points to latest)
+- GitHub: commits acb4f8f + 5cb6950 + 367d2b8 by Faisal Arslan Khan ✅
