@@ -9,6 +9,7 @@ import 'branch_user_detail.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
+import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 
 class BranchHome extends StatefulWidget {
@@ -193,6 +194,7 @@ class _BranchDashboardState extends State<_BranchDashboard> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const UpdateBanner(),
                   _hero(),
                   const SizedBox(height: 16),
                   _statGrid(),

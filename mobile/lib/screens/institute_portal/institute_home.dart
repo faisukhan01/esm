@@ -9,6 +9,7 @@ import 'institute_branch_detail.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
+import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 
 class InstituteHome extends StatefulWidget {
@@ -194,6 +195,7 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const UpdateBanner(),
                   _heroCard(),
                   const SizedBox(height: 16),
                   _quickActions(),

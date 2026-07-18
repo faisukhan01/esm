@@ -11,6 +11,7 @@ import 'student_attendance.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
+import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';
@@ -163,6 +164,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const UpdateBanner(),
                   // ── a. Hero banner ───────────────────────────────────────────
                   GradientHeroCard(
                     title: 'Hi, $firstName!',

@@ -8,6 +8,7 @@ import '../../widgets/shared_widgets.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
+import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
@@ -150,6 +151,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  const UpdateBanner(),
                   // (a) Gradient hero — navy, with the classes-assigned metric.
                   GradientHeroCard(
                     title: 'Hi, $firstName!',
