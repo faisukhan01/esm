@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import '../widgets/onboarding.dart';
 import 'login_screen.dart';
 
 /// A premium Profile / Account screen for ESM.
@@ -477,6 +478,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppTheme.textMuted,
                   ),
             onTap: _isChangingPassword ? null : _changePassword,
+          ),
+          const _RowDivider(),
+          _ActionTile(
+            icon: Icons.school_outlined,
+            color: AppTheme.info,
+            title: 'Show Tutorial',
+            subtitle: 'Replay the onboarding guide',
+            onTap: () async {
+              await OnboardingManager.reset();
+              if (mounted) {
+                _snack('Tutorial will show on next login', bg: AppTheme.info);
+              }
+            },
           ),
           const _RowDivider(),
           _ActionTile(

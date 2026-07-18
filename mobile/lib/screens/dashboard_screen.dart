@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import '../widgets/onboarding.dart';
 import 'student_portal/student_home.dart';
 import 'teacher_portal/teacher_home.dart';
 import 'branch_portal/branch_home.dart';
@@ -15,6 +16,22 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool _showOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  void _checkOnboarding() async {
+    final role = widget.user['role'] as String;
+    final done = await OnboardingManager.isCompleted(role);
+    if (mounted && !done) {
+      setState(() => _showOnboarding = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final role = widget.user['role'] as String;
@@ -35,6 +52,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         break;
       default:
         portal = _UnknownRole(user: widget.user);
+    }
+
+    // Show onboarding overlay on first launch
+    if (_showOnboarding) {
+      return Stack(
+        children: [
+          portal,
+          OnboardingFlow(
+            role: role,
+            steps: getOnboardingSteps(role),
+            onComplete: () => setState(() => _showOnboarding = false),
+          ),
+        ],
+      );
     }
 
     return portal;

@@ -14,7 +14,7 @@ class UpdateChecker {
 
   /// The current app version (must match pubspec.yaml).
   /// Bump this when you release a new version.
-  static const String currentVersion = '1.1.1';
+  static const String currentVersion = '1.2.0';
 
   /// Checks if a newer version is available on GitHub Releases.
   /// Returns the latest version tag (e.g. "v1.2.0") if newer, or null if up-to-date.
