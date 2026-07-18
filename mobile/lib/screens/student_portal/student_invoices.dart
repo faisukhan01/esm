@@ -1,5 +1,10 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:io';
 import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
@@ -39,6 +44,135 @@ class _StudentInvoicesState extends State<StudentInvoices> with AutomaticKeepAli
   String _fmtMoney(dynamic n) {
     final v = double.tryParse('$n') ?? 0;
     return NumberFormat('##,###').format(v.toInt());
+  }
+
+  Future<void> _downloadPdf(Map<String, dynamic> inv) async {
+    try {
+      final pdf = pw.Document();
+      final amount = double.tryParse('${inv['amount'] ?? 0}') ?? 0;
+      final status = (inv['status'] ?? 'Unpaid').toString();
+      final type = inv['type'] ?? 'Tuition';
+      final month = inv['month'] ?? '—';
+      final year = inv['year'] ?? '';
+      final studentName = widget.user['name'] ?? 'Student';
+      final className = widget.user['class'] ?? '—';
+      final rollNo = widget.user['rollNo'] ?? '—';
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (pw.Context context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Header
+                pw.Container(
+                  padding: const pw.EdgeInsets.only(bottom: 16),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blue900, width: 2)),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('ESM', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                          pw.Text('Electronic School Management', style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text('FEE INVOICE', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                          pw.Text('#${inv['id'] ?? '—'}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 30),
+                // Student info
+                pw.Text('Student Details', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                pw.SizedBox(height: 8),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      _pdfRow('Name', studentName),
+                      _pdfRow('Class', '$className'),
+                      _pdfRow('Roll No', '$rollNo'),
+                      _pdfRow('Month', '$month $year'),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 24),
+                // Invoice details
+                pw.Text('Invoice Summary', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800)),
+                pw.SizedBox(height: 8),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: pw.BorderRadius.circular(8),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      _pdfRow('Type', type),
+                      _pdfRow('Status', status),
+                      pw.Divider(),
+                      _pdfRow('Amount', 'PKR ${_fmtMoney(amount)}'),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 40),
+                // Footer
+                pw.Center(
+                  child: pw.Text(
+                    'This is a system-generated invoice from ESM.',
+                    style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey500),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      // Save and share
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/ESM_Invoice_${inv['id'] ?? 'invoice'}.pdf');
+      await file.writeAsBytes(await pdf.save());
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'ESM Fee Invoice - $studentName',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e'), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
+  pw.Widget _pdfRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 3),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(label, style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+          pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+        ],
+      ),
+    );
   }
 
   void _showInvoiceDetail(BuildContext context, Map<String, dynamic> inv) {
@@ -110,20 +244,34 @@ class _StudentInvoicesState extends State<StudentInvoices> with AutomaticKeepAli
             ],
             _DetailRow(label: 'Status', value: status),
             const SizedBox(height: 24),
-            if (!isPaid)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please contact your branch to pay this invoice.'), behavior: SnackBarBehavior.floating),
-                    );
-                  },
-                  icon: const Icon(Icons.payment, size: 18),
-                  label: const Text('Pay Invoice'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _downloadPdf(inv);
+                    },
+                    icon: const Icon(Icons.download, size: 18),
+                    label: const Text('PDF'),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                if (!isPaid)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please contact your branch to pay this invoice.'), behavior: SnackBarBehavior.floating),
+                        );
+                      },
+                      icon: const Icon(Icons.payment, size: 18),
+                      label: const Text('Pay'),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

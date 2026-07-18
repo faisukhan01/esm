@@ -140,32 +140,36 @@ class PremiumStatCard extends StatelessWidget {
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.border),
-          boxShadow: AppTheme.shadowSm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
                 Container(
-                  width: 36, height: 36,
+                  width: 32, height: 32,
                   decoration: BoxDecoration(
-                    gradient: gradient ?? LinearGradient(colors: [cardColor, cardColor.withOpacity(0.7)]),
-                    borderRadius: BorderRadius.circular(10),
+                    color: cardColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, size: 18, color: Colors.white),
+                  child: Icon(icon, size: 16, color: cardColor),
                 ),
                 const Spacer(),
                 if (trend != null) _TrendBadge(trend: trend!),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(value, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.5)),
+            const SizedBox(height: 10),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.3), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
             const SizedBox(height: 2),
-            Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
-              Text(subtitle!, style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textMuted)),
+              Text(subtitle!, style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textMuted), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ],
         ),
@@ -228,62 +232,39 @@ class GradientHeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: AppTheme.shadow,
+        color: AppTheme.primary,
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Decorative circle
-          Positioned(
-            right: -20, top: -20,
-            child: Container(
-              width: 100, height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 20, bottom: -30,
-            child: Container(
-              width: 60, height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
               Container(
-                width: 44, height: 44,
+                width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: Colors.white, size: 22),
+                child: Icon(icon, color: Colors.white, size: 20),
               ),
-              const SizedBox(height: 14),
-              Text(title, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: GoogleFonts.inter(fontSize: 13, color: Colors.white.withOpacity(0.8))),
-              if (metric != null) ...[
-                const SizedBox(height: 16),
-                Text(metric!, style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
-                if (metricLabel != null)
-                  Text(metricLabel!, style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w500)),
-              ],
-              if (actions != null && actions!.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Wrap(spacing: 8, runSpacing: 8, children: actions!),
-              ],
+              const Spacer(),
+              if (metric != null)
+                Text(metric!, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.3)),
             ],
           ),
+          const SizedBox(height: 12),
+          Text(title, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+          const SizedBox(height: 2),
+          Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: Colors.white.withOpacity(0.7))),
+          if (metricLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(metricLabel!, style: GoogleFonts.inter(fontSize: 10, color: Colors.white.withOpacity(0.5))),
+          ],
+          if (actions != null && actions!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: actions!),
+          ],
         ],
       ),
     );

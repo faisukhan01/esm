@@ -142,8 +142,8 @@ class _InstituteBranchDetailState extends State<InstituteBranchDetail> with Sing
             child: TabBarView(
               controller: _tabCtrl,
               children: [
-                _BranchUsersTab(branchId: b['id'], role: 'teacher'),
-                _BranchUsersTab(branchId: b['id'], role: 'student'),
+                _BranchUsersTab(branchId: b['id'], role: 'teacher', instituteId: widget.user['instituteId']),
+                _BranchUsersTab(branchId: b['id'], role: 'student', instituteId: widget.user['instituteId']),
                 _BranchClassesTab(branchId: b['id']),
                 _BranchFinanceTab(branchId: b['id']),
               ],
@@ -160,7 +160,8 @@ class _InstituteBranchDetailState extends State<InstituteBranchDetail> with Sing
 class _BranchUsersTab extends StatefulWidget {
   final String branchId;
   final String role;
-  const _BranchUsersTab({required this.branchId, required this.role});
+  final String? instituteId;
+  const _BranchUsersTab({required this.branchId, required this.role, this.instituteId});
 
   @override
   State<_BranchUsersTab> createState() => _BranchUsersTabState();
@@ -187,41 +188,80 @@ class _BranchUsersTabState extends State<_BranchUsersTab> with AutomaticKeepAliv
     }
   }
 
+  Future<void> _addUser() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => _AddUserDialog(role: widget.role, branchId: widget.branchId, instituteId: widget.instituteId),
+    );
+    if (result != null) {
+      try {
+        await ApiClient.post('platform/users', body: result);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${widget.role == 'teacher' ? 'Teacher' : 'Student'} added successfully'), backgroundColor: AppTheme.success, behavior: SnackBarBehavior.floating),
+          );
+        }
+        _load();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger, behavior: SnackBarBehavior.floating),
+          );
+        }
+      }
+    }
+  }
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_isLoading) return const DetailLoading();
-    if (_error != null) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.cloud_off, size: 40, color: AppTheme.danger),
-        const SizedBox(height: 8),
-        Text(_error!, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-        const SizedBox(height: 8),
-        ElevatedButton(onPressed: _load, child: const Text('Retry')),
-      ]));
-    }
-    if (_users.isEmpty) {
-      return EmptyState(icon: widget.role == 'teacher' ? Icons.group_off : Icons.school_outlined, title: 'No ${widget.role}s', description: 'This branch has no ${widget.role}s yet.');
-    }
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _users.length,
-        itemBuilder: (context, i) {
-          final u = _users[i] as Map<String, dynamic>;
-          return ListRowCard(
-            title: u['name'] ?? 'User',
-            subtitle: widget.role == 'teacher' ? 'ID: ${u['rollNo'] ?? '—'}' : 'Roll: ${u['rollNo'] ?? '—'} · Class ${u['class'] ?? '—'}',
-            icon: widget.role == 'teacher' ? Icons.menu_book : Icons.person,
-            badgeText: u['blocked'] == true ? 'Blocked' : 'Active',
-            badgeStatus: u['blocked'] == true ? 'blocked' : 'active',
-          );
-        },
+    final isTeacher = widget.role == 'teacher';
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addUser,
+        backgroundColor: AppTheme.primary,
+        child: const Icon(Icons.person_add, color: Colors.white),
       ),
+      body: _isLoading
+          ? const DetailLoading()
+          : _error != null
+              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.cloud_off, size: 40, color: AppTheme.danger),
+                  const SizedBox(height: 8),
+                  Text(_error!, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+                  const SizedBox(height: 8),
+                  ElevatedButton(onPressed: _load, child: const Text('Retry')),
+                ]))
+              : _users.isEmpty
+                  ? EmptyState(
+                      icon: isTeacher ? Icons.group_outlined : Icons.school_outlined,
+                      title: 'No ${isTeacher ? 'teachers' : 'students'} yet',
+                      description: isTeacher
+                          ? 'The branch manager will add teachers, or you can add them yourself.'
+                          : 'The branch manager will add students, or you can add them yourself.',
+                      actionText: 'Add ${isTeacher ? 'Teacher' : 'Student'}',
+                      onAction: _addUser,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _users.length,
+                        itemBuilder: (context, i) {
+                          final u = _users[i] as Map<String, dynamic>;
+                          return ListRowCard(
+                            title: u['name'] ?? 'User',
+                            subtitle: isTeacher ? 'ID: ${u['rollNo'] ?? '—'}' : 'Roll: ${u['rollNo'] ?? '—'} · Class ${u['class'] ?? '—'}',
+                            icon: isTeacher ? Icons.menu_book : Icons.person,
+                            badgeText: u['blocked'] == true ? 'Blocked' : 'Active',
+                            badgeStatus: u['blocked'] == true ? 'blocked' : 'active',
+                          );
+                        },
+                      ),
+                    ),
     );
   }
 }
@@ -423,6 +463,92 @@ class _EditBranchDialogState extends State<_EditBranchDialog> {
             Navigator.pop(context, body);
           },
           child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================== ADD USER DIALOG ===============================
+
+class _AddUserDialog extends StatefulWidget {
+  final String role;
+  final String? branchId;
+  final String? instituteId;
+  const _AddUserDialog({required this.role, required this.branchId, required this.instituteId});
+
+  @override
+  State<_AddUserDialog> createState() => _AddUserDialogState();
+}
+
+class _AddUserDialogState extends State<_AddUserDialog> {
+  final _nameCtrl = TextEditingController();
+  final _rollNoCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _classCtrl = TextEditingController();
+  final _sectionCtrl = TextEditingController(text: 'A');
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose(); _rollNoCtrl.dispose(); _passwordCtrl.dispose();
+    _classCtrl.dispose(); _sectionCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isTeacher = widget.role == 'teacher';
+    final canSubmit = _nameCtrl.text.trim().isNotEmpty &&
+        _rollNoCtrl.text.trim().isNotEmpty &&
+        _passwordCtrl.text.isNotEmpty;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(Icons.person_add, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Text('Add ${isTeacher ? 'Teacher' : 'Student'}'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Full Name *', prefixIcon: Icon(Icons.person, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _rollNoCtrl, decoration: InputDecoration(labelText: isTeacher ? 'Teacher ID *' : 'Roll Number *', prefixIcon: const Icon(Icons.badge, size: 18)), onChanged: (_) => setState(() {})),
+            const SizedBox(height: 8),
+            TextField(controller: _passwordCtrl, decoration: const InputDecoration(labelText: 'Password *', prefixIcon: Icon(Icons.lock, size: 18)), obscureText: true, onChanged: (_) => setState(() {})),
+            if (!isTeacher) ...[
+              const SizedBox(height: 8),
+              TextField(controller: _classCtrl, decoration: const InputDecoration(labelText: 'Class', prefixIcon: Icon(Icons.school, size: 18))),
+              const SizedBox(height: 8),
+              TextField(controller: _sectionCtrl, decoration: const InputDecoration(labelText: 'Section', prefixIcon: Icon(Icons.bookmark, size: 18))),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: !canSubmit
+              ? null
+              : () {
+                  final body = <String, dynamic>{
+                    'name': _nameCtrl.text.trim(),
+                    'rollNo': _rollNoCtrl.text.trim(),
+                    'password': _passwordCtrl.text,
+                    'role': widget.role,
+                    'branchId': widget.branchId,
+                    'instituteId': widget.instituteId,
+                  };
+                  if (!isTeacher && _classCtrl.text.trim().isNotEmpty) {
+                    body['class'] = _classCtrl.text.trim();
+                    body['section'] = _sectionCtrl.text.trim();
+                  }
+                  Navigator.pop(context, body);
+                },
+          child: Text('Add ${isTeacher ? 'Teacher' : 'Student'}'),
         ),
       ],
     );

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 
-/// A reusable detail screen scaffold with a navy gradient header.
-/// Used by all "tap a card to open" detail views across the app.
+/// A reusable detail screen with a clean navy AppBar + body.
+/// Used by all "tap a card to open" detail views.
 class DetailScaffold extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -24,81 +25,16 @@ class DetailScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 140,
-            pinned: true,
-            backgroundColor: headerColor ?? AppTheme.primary,
-            foregroundColor: Colors.white,
-            title: Text(title),
-            actions: headerActions,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [headerColor ?? AppTheme.primary, AppTheme.primaryLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          width: 40, height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(headerIcon, color: Colors.white, size: 22),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(subtitle!, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.85)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(child: body),
-        ],
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: Text(title, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
+        actions: headerActions,
+        backgroundColor: AppTheme.surface,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
       ),
-    );
-  }
-}
-
-/// A reusable tab bar for detail screens that use tabs.
-class DetailTabBar extends StatelessWidget {
-  final TabController controller;
-  final List<String> tabs;
-  const DetailTabBar({super.key, required this.controller, required this.tabs});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppTheme.background,
-      child: TabBar(
-        controller: controller,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
-        labelColor: AppTheme.primary,
-        unselectedLabelColor: AppTheme.textSecondary,
-        indicatorColor: AppTheme.primary,
-        indicatorSize: TabBarIndicatorSize.label,
-        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-        tabs: tabs.map((t) => Tab(text: t)).toList(),
-      ),
+      body: body,
     );
   }
 }
@@ -120,9 +56,11 @@ class InfoRow extends StatelessWidget {
             Icon(icon, size: 16, color: AppTheme.textMuted),
             const SizedBox(width: 8),
           ],
-          Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+          Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
           const Spacer(),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+          Flexible(
+            child: Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
     );
@@ -137,6 +75,32 @@ class DetailLoading extends StatelessWidget {
     return const SizedBox(
       height: 200,
       child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+/// A tab bar for detail screens.
+class DetailTabBar extends StatelessWidget {
+  final TabController controller;
+  final List<String> tabs;
+  const DetailTabBar({super.key, required this.controller, required this.tabs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.surface,
+      child: TabBar(
+        controller: controller,
+        isScrollable: true,
+        tabAlignment: TabAlignment.start,
+        labelColor: AppTheme.primary,
+        unselectedLabelColor: AppTheme.textSecondary,
+        indicatorColor: AppTheme.primary,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+        tabs: tabs.map((t) => Tab(text: t)).toList(),
+      ),
     );
   }
 }
