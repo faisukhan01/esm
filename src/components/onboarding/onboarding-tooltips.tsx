@@ -4,8 +4,7 @@ import { useSyncExternalStore, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Info, Lightbulb, X, ChevronRight, Target, BookOpen, Languages } from 'lucide-react';
-import { useT } from '@/lib/i18n';
+import { Info, Lightbulb, X, ChevronRight, Target, BookOpen } from 'lucide-react';
 
 // Onboarding tips banner — shown at the top of the dashboard area for first-time users.
 // Dismissed state is persisted to localStorage so the banner never re-appears.
@@ -20,32 +19,23 @@ import { useT } from '@/lib/i18n';
 const STORAGE_KEY = 'esm_onboarding_dismissed_v1';
 const STORAGE_EVENT = 'esm:onboarding-change';
 
-type TipDef = { id: string; icon: typeof Info; textEn: string; textUr: string };
+type TipDef = { id: string; icon: typeof Info; text: string };
 
 const TIPS: TipDef[] = [
   {
     id: 'sidebar',
     icon: Lightbulb,
-    textEn: 'Click any module in the sidebar to jump straight to that feature.',
-    textUr: 'کسی بھی فیچر پر جانے کے لیے سائیڈبار میں موجود ماڈیول پر کلک کریں۔',
+    text: 'Click any module in the sidebar to jump straight to that feature.',
   },
   {
     id: 'cmdk',
     icon: Target,
-    textEn: 'Use Cmd+K (or Ctrl+K) to open the command palette and search anything.',
-    textUr: 'کمانڈ پیلیٹ کھولنے اور کچھ بھی تلاش کرنے کے لیے Cmd+K (یا Ctrl+K) استعمال کریں۔',
+    text: 'Use Cmd+K (or Ctrl+K) to open the command palette and search anything.',
   },
   {
     id: 'help',
     icon: BookOpen,
-    textEn: 'Hover over any field label to see help text.',
-    textUr: 'ہیلپ ٹیکسٹ دیکھنے کے لیے کسی بھی فیلڈ لیبل پر ماؤس لے جائیں۔',
-  },
-  {
-    id: 'language',
-    icon: Languages,
-    textEn: 'Tap the EN/UR button in the header to switch between English and Urdu.',
-    textUr: 'انگریزی اور اردو کے درمیان تبدیل کرنے کے لیے ہیڈر میں EN/UR بٹن دبائیں۔',
+    text: 'Hover over any field label to see help text.',
   },
 ];
 
@@ -75,7 +65,6 @@ function getServerSnapshot(): boolean {
 export function OnboardingTips() {
   const dismissed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [index, setIndex] = useState(0);
-  const tr = useT();
 
   const dismiss = () => {
     try {
@@ -92,7 +81,7 @@ export function OnboardingTips() {
 
   const tip = TIPS[index];
   const TipIcon = tip.icon;
-  const tipText = tr.isUrdu ? tip.textUr : tip.textEn;
+  const tipText = tip.text;
 
   return (
     <AnimatePresence>
@@ -112,13 +101,13 @@ export function OnboardingTips() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                  {tr.isUrdu ? 'فوری مشورہ' : 'Quick Tip'}
+                  Quick Tip
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   {index + 1} of {TIPS.length}
                 </span>
               </div>
-              <p className="text-sm text-foreground mt-0.5 leading-snug" dir={tr.isUrdu ? 'rtl' : 'ltr'}>
+              <p className="text-sm text-foreground mt-0.5 leading-snug">
                 {tipText}
               </p>
             </div>
@@ -130,7 +119,7 @@ export function OnboardingTips() {
                 className="h-8 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
                 onClick={nextTip}
               >
-                {tr.isUrdu ? 'اگلا مشورہ' : 'Next tip'}
+                Next tip
                 <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
               </Button>
               <Button
@@ -138,11 +127,11 @@ export function OnboardingTips() {
                 className="h-8 bg-amber-500 hover:bg-amber-600 text-white"
                 onClick={dismiss}
               >
-                {tr.isUrdu ? 'سمجھ گیا' : 'Got it'}
+                Got it
               </Button>
               <button
                 onClick={dismiss}
-                aria-label={tr.isUrdu ? 'مشورہ مسترد کریں' : 'Dismiss tip'}
+                aria-label="Dismiss tip"
                 className="h-8 w-8 grid place-items-center rounded-md text-muted-foreground hover:bg-amber-500/10 hover:text-foreground transition"
               >
                 <X className="h-4 w-4" />

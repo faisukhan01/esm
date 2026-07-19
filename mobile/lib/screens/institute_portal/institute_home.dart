@@ -11,6 +11,7 @@ import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
+import 'institute_online_admissions.dart';
 
 // =============================== PREMIUM LIST CARD (file-scoped) ===============================
 
@@ -379,6 +380,12 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
           label: 'Analytics',
           color: AppTheme.success,
           onTap: () => widget.onNavigate?.call(0),
+        ),
+        QuickActionTile(
+          icon: Icons.how_to_reg_rounded,
+          label: 'Online Admissions',
+          color: AppTheme.danger,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstituteOnlineAdmissions(user: widget.user))),
         ),
       ],
     );

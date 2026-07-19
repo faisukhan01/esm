@@ -10,6 +10,7 @@ import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
+import '../shared/complaint_portal.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
 ///
@@ -284,6 +285,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         label: 'Timetable',
                         color: AppTheme.primary,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.feedback_rounded,
+                        label: 'Complaint Portal',
+                        color: AppTheme.danger,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintPortal(user: widget.user))),
                       ),
                     ],
                   ),

@@ -22,12 +22,12 @@ import {
 import { ReportCardDocument, ReportCardActions, type ReportCardData } from './report-card-view';
 
 // Lazy-loaded v1.5.0 unique modules (code-split per route)
-const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
+// Lazy-loaded modules — named-export modules use .then() to satisfy React.lazy's default-export requirement
 const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
 const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
-const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
   return (
@@ -115,7 +115,6 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
   if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
   if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
-  if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
   if (activeModule === 'digital-id') return <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
   if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
   if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
@@ -867,7 +866,7 @@ function buildChallanHTML(challan: any, instituteName?: string): string {
         ${challan.paymentMethod ? `<span style="font-size:12px;color:#374151;">via ${escape(challan.paymentMethod)}</span>` : ''}
       </div>
       <div class="signatures">
-        <div class="sig"><div class="sig-line"></div><div class="sig-label">Student / Parent Signature</div></div>
+        <div class="sig"><div class="sig-line"></div><div class="sig-label">Student Signature</div></div>
         <div class="sig"><div class="sig-line"></div><div class="sig-label">Authorized Signature</div></div>
       </div>
     </div>

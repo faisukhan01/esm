@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
   ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award, Crown,
-  Sparkles, Navigation, IdCard, Wallet, Video, HeartPulse, FileCheck, AlertTriangle, UserPlus,
+  Navigation, IdCard, Wallet, Video, HeartPulse, FileCheck, AlertTriangle, UserPlus,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -91,7 +91,6 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Teaching', items: [
       { id: 'teacher-dashboard', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'teacher-overview', name: 'My Classes', icon: BookOpen, color: 'from-primary to-primary/80' },
-      { id: 'ai-tutor', name: 'AI Tutor', icon: Sparkles, color: 'from-violet-500 to-fuchsia-600' },
       { id: 'e-learning', name: 'E-Learning Hub', icon: Video, color: 'from-violet-500 to-fuchsia-600' },
       { id: 'exam-portal', name: 'Exam Portal', icon: FileCheck, color: 'from-indigo-500 to-blue-600' },
       { id: 'diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-primary/80 to-primary' },
@@ -99,9 +98,8 @@ export const ROLE_MODULES: RoleModules = {
     ]},
     { group: 'Communication', items: [
       { id: 'announcements', name: 'Announcements', icon: Bell, color: 'from-primary/80 to-primary' },
-      { id: 'ptm-scheduling', name: 'PTM Scheduling', icon: Video, color: 'from-cyan-500 to-teal-600' },
       { id: 'complaint-portal', name: 'Complaint Portal', icon: AlertTriangle, color: 'from-rose-500 to-orange-600' },
-      { id: 'sms', name: 'Message Parents', icon: MessageSquare, color: 'from-primary/80 to-primary' },
+      { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Account', items: [
       { id: 'settings', name: 'Settings', icon: Settings, color: 'from-primary/80 to-primary' },
@@ -111,7 +109,6 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'My Portal', items: [
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'my-courses', name: 'My Courses', icon: BookOpen, color: 'from-primary to-primary/80' },
-      { id: 'ai-tutor', name: 'AI Tutor', icon: Sparkles, color: 'from-violet-500 to-fuchsia-600' },
       { id: 'e-learning', name: 'E-Learning Hub', icon: Video, color: 'from-violet-500 to-fuchsia-600' },
       { id: 'exam-portal', name: 'Exam Portal', icon: FileCheck, color: 'from-indigo-500 to-blue-600' },
       { id: 'digital-id', name: 'Digital ID', icon: IdCard, color: 'from-rose-500 to-pink-600' },
@@ -129,20 +126,6 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'settings', name: 'Settings', icon: Settings, color: 'from-primary/80 to-primary' },
     ]},
   ],
-  'parent': [
-    { group: 'My Ward', items: [
-      { id: 'parent-overview', name: 'Ward Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
-      { id: 'ward-attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
-      { id: 'ward-results', name: 'Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
-      { id: 'ward-fees', name: 'Pay Fees', icon: CreditCard, color: 'from-primary/80 to-primary' },
-      { id: 'campus-wallet', name: 'Campus Wallet', icon: Wallet, color: 'from-amber-500 to-yellow-600' },
-      { id: 'ward-diary', name: 'Diary', icon: ClipboardList, color: 'from-primary/80 to-primary' },
-      { id: 'live-transport', name: 'Live Bus Tracking', icon: Navigation, color: 'from-emerald-500 to-teal-600' },
-      { id: 'ptm-scheduling', name: 'Book PTM', icon: Video, color: 'from-cyan-500 to-teal-600' },
-      { id: 'health-records', name: 'Health Records', icon: HeartPulse, color: 'from-red-500 to-rose-600' },
-      { id: 'complaint-portal', name: 'Complaint Portal', icon: AlertTriangle, color: 'from-rose-500 to-orange-600' },
-    ]},
-  ],
 };
 
 export const roleAccent: Record<string, { from: string; to: string; text: string; bg: string }> = {
@@ -151,5 +134,4 @@ export const roleAccent: Record<string, { from: string; to: string; text: string
   'branch-manager': { from: 'from-primary', to: 'to-primary/80', text: 'text-primary', bg: 'bg-primary/10' },
   'teacher': { from: 'from-primary', to: 'to-primary/80', text: 'text-primary', bg: 'bg-primary/10' },
   'student': { from: 'from-primary', to: 'to-primary/80', text: 'text-primary', bg: 'bg-primary/10' },
-  'parent': { from: 'from-primary', to: 'to-primary/80', text: 'text-primary', bg: 'bg-primary/10' },
 };

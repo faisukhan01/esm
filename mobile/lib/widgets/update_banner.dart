@@ -13,7 +13,7 @@ class UpdateChecker {
   static const String _directApkUrl = 'https://github.com/faisukhan01/esm/releases/latest/download/app-release.apk';
 
   /// The current app version (must match pubspec.yaml).
-  static const String currentVersion = '1.5.0';
+  static const String currentVersion = '1.6.1';
 
   /// Checks if a newer version is available on GitHub Releases.
   static Future<String?> checkForUpdate() async {

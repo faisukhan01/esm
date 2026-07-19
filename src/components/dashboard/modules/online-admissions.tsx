@@ -11,12 +11,11 @@ import {
 } from '@/components/ui/table';
 import {
   UserPlus, FileText, Calendar, CheckCircle2, XCircle, Clock, Upload,
-  Share2, Settings, ChevronRight, Filter, Download, Eye,
+  Share2, Settings, ChevronRight, Filter, Download, Eye, Inbox,
 } from 'lucide-react';
 import { ModuleHeader } from './students';
 
-// ── Mock data ──────────────────────────────────────────────────────────
-
+// ── Types ──────────────────────────────────────────────────────────────
 type PipelineStage = 'New' | 'Under Review' | 'Test Scheduled' | 'Interview' | 'Accepted' | 'Rejected';
 
 type Applicant = {
@@ -30,34 +29,6 @@ type Applicant = {
   email: string;
 };
 
-const STAGES: { key: PipelineStage; label: string; color: string; gradient: string }[] = [
-  { key: 'New', label: 'New', color: 'text-blue-600 bg-blue-500/10 border-blue-500/20', gradient: 'from-blue-500 to-blue-600' },
-  { key: 'Under Review', label: 'Under Review', color: 'text-amber-600 bg-amber-500/10 border-amber-500/20', gradient: 'from-amber-500 to-amber-600' },
-  { key: 'Test Scheduled', label: 'Test Scheduled', color: 'text-violet-600 bg-violet-500/10 border-violet-500/20', gradient: 'from-violet-500 to-violet-600' },
-  { key: 'Interview', label: 'Interview', color: 'text-teal-600 bg-teal-500/10 border-teal-500/20', gradient: 'from-teal-500 to-teal-600' },
-  { key: 'Accepted', label: 'Accepted', color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20', gradient: 'from-emerald-500 to-emerald-600' },
-  { key: 'Rejected', label: 'Rejected', color: 'text-rose-600 bg-rose-500/10 border-rose-500/20', gradient: 'from-rose-500 to-rose-600' },
-];
-
-const APPLICANTS: Applicant[] = [
-  { id: 'APP-2025-001', name: 'Ahmed Raza', fatherName: 'Muhammad Raza', program: 'Science', className: '9th Grade', stage: 'New', date: '2025-03-01', email: 'ahmed@example.com' },
-  { id: 'APP-2025-002', name: 'Fatima Noor', fatherName: 'Imran Noor', program: 'Arts', className: '11th Grade', stage: 'Under Review', date: '2025-02-28', email: 'fatima@example.com' },
-  { id: 'APP-2025-003', name: 'Zainab Ali', fatherName: 'Tariq Ali', program: 'Science', className: '10th Grade', stage: 'Test Scheduled', date: '2025-02-27', email: 'zainab@example.com' },
-  { id: 'APP-2025-004', name: 'Hamza Sheikh', fatherName: 'Naveed Sheikh', program: 'Commerce', className: '11th Grade', stage: 'Interview', date: '2025-02-26', email: 'hamza@example.com' },
-  { id: 'APP-2025-005', name: 'Ayesha Khan', fatherName: 'Sajid Khan', program: 'Science', className: '9th Grade', stage: 'Accepted', date: '2025-02-25', email: 'ayesha@example.com' },
-  { id: 'APP-2025-006', name: 'Bilal Tariq', fatherName: 'Rashid Tariq', program: 'Arts', className: '10th Grade', stage: 'Rejected', date: '2025-02-24', email: 'bilal@example.com' },
-  { id: 'APP-2025-007', name: 'Sara Imran', fatherName: 'Faisal Imran', program: 'Science', className: '12th Grade', stage: 'New', date: '2025-03-02', email: 'sara@example.com' },
-  { id: 'APP-2025-008', name: 'Usman Ahmed', fatherName: 'Khalid Ahmed', program: 'Commerce', className: '11th Grade', stage: 'Under Review', date: '2025-03-01', email: 'usman@example.com' },
-  { id: 'APP-2025-009', name: 'Hina Yousaf', fatherName: 'Bashir Yousaf', program: 'Science', className: '9th Grade', stage: 'Accepted', date: '2025-02-23', email: 'hina@example.com' },
-  { id: 'APP-2025-010', name: 'Kamran Shah', fatherName: 'Waqar Shah', program: 'Arts', className: '10th Grade', stage: 'Test Scheduled', date: '2025-02-22', email: 'kamran@example.com' },
-  { id: 'APP-2025-011', name: 'Nida Akram', fatherName: 'Pervez Akram', program: 'Commerce', className: '12th Grade', stage: 'New', date: '2025-03-03', email: 'nida@example.com' },
-  { id: 'APP-2025-012', name: 'Rizwan Malik', fatherName: 'Aslam Malik', program: 'Science', className: '11th Grade', stage: 'Interview', date: '2025-02-21', email: 'rizwan@example.com' },
-  { id: 'APP-2025-013', name: 'Maha Saeed', fatherName: 'Javed Saeed', program: 'Arts', className: '9th Grade', stage: 'Accepted', date: '2025-02-20', email: 'maha@example.com' },
-  { id: 'APP-2025-014', name: 'Omer Farooq', fatherName: 'Amjad Farooq', program: 'Science', className: '10th Grade', stage: 'Rejected', date: '2025-02-19', email: 'omer@example.com' },
-  { id: 'APP-2025-015', name: 'Iqra Naz', fatherName: 'Shabbir Naz', program: 'Commerce', className: '11th Grade', stage: 'New', date: '2025-03-04', email: 'iqra@example.com' },
-  { id: 'APP-2025-016', name: 'Haris Qureshi', fatherName: 'Tahir Qureshi', program: 'Science', className: '9th Grade', stage: 'Under Review', date: '2025-02-18', email: 'haris@example.com' },
-];
-
 type CalendarEvent = {
   id: string;
   title: string;
@@ -66,18 +37,15 @@ type CalendarEvent = {
   description: string;
 };
 
-const CALENDAR_EVENTS: CalendarEvent[] = [
-  { id: 'ce1', title: 'Application Deadline', date: '2025-03-15', type: 'deadline', description: 'Last date to submit online applications for Session 2025-26' },
-  { id: 'ce2', title: 'Entry Test — Science', date: '2025-03-22', type: 'test', description: 'Entrance test for Science program applicants (9th & 11th grade)' },
-  { id: 'ce3', title: 'Entry Test — Arts/Commerce', date: '2025-03-23', type: 'test', description: 'Entrance test for Arts & Commerce program applicants' },
-  { id: 'ce4', title: 'Interviews Begin', date: '2025-04-01', type: 'interview', description: 'Parent-student interviews for shortlisted candidates' },
-  { id: 'ce5', title: 'Interviews End', date: '2025-04-05', type: 'interview', description: 'Final day of admission interviews' },
-  { id: 'ce6', title: 'Merit List Published', date: '2025-04-10', type: 'merit', description: 'First merit list will be displayed on notice board & portal' },
-  { id: 'ce7', title: 'Fee Submission Deadline', date: '2025-04-18', type: 'deadline', description: 'Last date for selected candidates to deposit fees' },
-  { id: 'ce8', title: 'Second Merit List', date: '2025-04-22', type: 'merit', description: 'Second merit list for remaining seats' },
+// ── UI scaffolding (no fake data — only static stage/event metadata) ───
+const STAGES: { key: PipelineStage; label: string; color: string; gradient: string }[] = [
+  { key: 'New', label: 'New', color: 'text-blue-600 bg-blue-500/10 border-blue-500/20', gradient: 'from-blue-500 to-blue-600' },
+  { key: 'Under Review', label: 'Under Review', color: 'text-amber-600 bg-amber-500/10 border-amber-500/20', gradient: 'from-amber-500 to-amber-600' },
+  { key: 'Test Scheduled', label: 'Test Scheduled', color: 'text-violet-600 bg-violet-500/10 border-violet-500/20', gradient: 'from-violet-500 to-violet-600' },
+  { key: 'Interview', label: 'Interview', color: 'text-teal-600 bg-teal-500/10 border-teal-500/20', gradient: 'from-teal-500 to-teal-600' },
+  { key: 'Accepted', label: 'Accepted', color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20', gradient: 'from-emerald-500 to-emerald-600' },
+  { key: 'Rejected', label: 'Rejected', color: 'text-rose-600 bg-rose-500/10 border-rose-500/20', gradient: 'from-rose-500 to-rose-600' },
 ];
-
-// ── Helpers ────────────────────────────────────────────────────────────
 
 const stageColor: Record<string, string> = {
   'New': 'text-blue-600 bg-blue-500/10 border-blue-500/20',
@@ -118,16 +86,40 @@ const eventTypeBadge: Record<string, string> = {
   merit: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
 };
 
+// ── Empty-state component ──────────────────────────────────────────────
+function EmptyState({
+  icon: Icon, title, description, action,
+}: { icon: any; title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12 px-6">
+      <div className="h-16 w-16 rounded-2xl bg-muted grid place-items-center mb-4">
+        <Icon className="h-8 w-8 text-muted-foreground/60" />
+      </div>
+      <div className="font-semibold text-sm">{title}</div>
+      <div className="text-xs text-muted-foreground mt-1.5 max-w-md">{description}</div>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
 // ── Component ──────────────────────────────────────────────────────────
 
 export function OnlineAdmissions({ user }: { user: any }) {
   const [pipelineFilter, setPipelineFilter] = useState<PipelineStage | 'all'>('all');
 
-  // Stats
-  const totalApplications = APPLICANTS.length;
-  const pendingReview = APPLICANTS.filter(a => a.stage === 'New' || a.stage === 'Under Review').length;
-  const accepted = APPLICANTS.filter(a => a.stage === 'Accepted').length;
-  const rejected = APPLICANTS.filter(a => a.stage === 'Rejected').length;
+  // NOTE: A dedicated `/api/admissions` endpoint does not exist yet.
+  // Until it ships, the portal renders honest empty states across every section.
+  // When the endpoint is added, swap `applicants` and `calendarEvents` for the
+  // real API response and the stats / pipeline / table / calendar below will
+  // populate automatically — no UI changes required.
+  const applicants: Applicant[] = [];
+  const calendarEvents: CalendarEvent[] = [];
+
+  // ── Stats (all 0 with empty data) ──
+  const totalApplications = applicants.length;
+  const pendingReview = applicants.filter(a => a.stage === 'New' || a.stage === 'Under Review').length;
+  const accepted = applicants.filter(a => a.stage === 'Accepted').length;
+  const rejected = applicants.filter(a => a.stage === 'Rejected').length;
   const conversionRate = totalApplications > 0 ? ((accepted / totalApplications) * 100).toFixed(1) : '0.0';
 
   const statsCards = [
@@ -138,19 +130,18 @@ export function OnlineAdmissions({ user }: { user: any }) {
     { label: 'Conversion Rate', value: `${conversionRate}%`, icon: UserPlus, color: 'from-violet-500 to-purple-600' },
   ];
 
-  // Pipeline data
+  // ── Pipeline data (counts will be 0 per stage) ──
   const pipelineData = STAGES.map(stage => ({
     ...stage,
-    count: APPLICANTS.filter(a => a.stage === stage.key).length,
-    applicants: APPLICANTS.filter(a => a.stage === stage.key),
+    count: applicants.filter(a => a.stage === stage.key).length,
+    applicants: applicants.filter(a => a.stage === stage.key),
   }));
 
   const filteredPipeline = pipelineFilter === 'all'
     ? pipelineData
     : pipelineData.filter(s => s.key === pipelineFilter);
 
-  // Recent applications (sorted by date desc)
-  const recentApplications = [...APPLICANTS].sort(
+  const recentApplications = [...applicants].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
@@ -261,37 +252,42 @@ export function OnlineAdmissions({ user }: { user: any }) {
               ))}
             </div>
 
-            {/* Pipeline cards grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-96 overflow-y-auto custom-scrollbar">
-              {filteredPipeline.map(stage => (
-                stage.applicants.map((applicant, idx) => (
-                  <motion.div
-                    key={applicant.id}
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.03 }}
-                    className="rounded-xl border border-border/60 p-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="font-medium text-sm leading-tight">{applicant.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{applicant.id}</div>
+            {/* Pipeline cards grid (empty) */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 min-h-[200px]">
+              {filteredPipeline.some(s => s.applicants.length > 0) ? (
+                filteredPipeline.map(stage =>
+                  stage.applicants.map((applicant, idx) => (
+                    <motion.div
+                      key={applicant.id}
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="rounded-xl border border-border/60 p-3 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="font-medium text-sm leading-tight">{applicant.name}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{applicant.id}</div>
+                        </div>
+                        <Badge variant="outline" className={`text-[10px] ${stageColor[applicant.stage]}`}>
+                          {stageIcon[applicant.stage]}
+                          <span className="ml-1">{applicant.stage}</span>
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className={`text-[10px] ${stageColor[applicant.stage]}`}>
-                        {stageIcon[applicant.stage]}
-                        <span className="ml-1">{applicant.stage}</span>
-                      </Badge>
-                    </div>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5"><FileText className="h-3 w-3" /> {applicant.program} · {applicant.className}</div>
-                      <div className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {applicant.date}</div>
-                    </div>
-                  </motion.div>
-                ))
-              ))}
-              {filteredPipeline.every(s => s.applicants.length === 0) && (
-                <div className="col-span-full text-center py-8 text-sm text-muted-foreground">
-                  No applications in this stage.
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5"><FileText className="h-3 w-3" /> {applicant.program} · {applicant.className}</div>
+                        <div className="flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {applicant.date}</div>
+                      </div>
+                    </motion.div>
+                  ))
+                )
+              ) : (
+                <div className="col-span-full">
+                  <EmptyState
+                    icon={Inbox}
+                    title="No applications in this stage"
+                    description="Applications submitted via your online admission form will appear here as they move through the pipeline."
+                  />
                 </div>
               )}
             </div>
@@ -327,44 +323,56 @@ export function OnlineAdmissions({ user }: { user: any }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentApplications.map((app, i) => (
-                    <TableRow key={app.id} className="hover:bg-muted/30">
-                      <TableCell>
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 grid place-items-center text-white text-[10px] font-bold shrink-0">
-                            {app.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  {recentApplications.length > 0 ? (
+                    recentApplications.map((app) => (
+                      <TableRow key={app.id} className="hover:bg-muted/30">
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 grid place-items-center text-white text-[10px] font-bold shrink-0">
+                              {app.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{app.name}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono">{app.id}</div>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium truncate">{app.name}</div>
-                            <div className="text-[10px] text-muted-foreground font-mono">{app.id}</div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{app.fatherName}</TableCell>
+                        <TableCell className="text-sm">{app.program}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{app.className}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] ${stageColor[app.stage]}`}>
+                            {stageIcon[app.stage]}
+                            <span className="ml-1">{app.stage}</span>
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{app.date}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" title="Review">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700" title="Approve">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700" title="Reject">
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{app.fatherName}</TableCell>
-                      <TableCell className="text-sm">{app.program}</TableCell>
-                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{app.className}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={`text-[10px] ${stageColor[app.stage]}`}>
-                          {stageIcon[app.stage]}
-                          <span className="ml-1">{app.stage}</span>
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">{app.date}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" title="Review">
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700" title="Approve">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-rose-600 hover:text-rose-700" title="Reject">
-                            <XCircle className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={7} className="p-0">
+                        <EmptyState
+                          icon={Inbox}
+                          title="No applications yet"
+                          description="Applications submitted via your online admission form will appear here."
+                        />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -503,61 +511,63 @@ export function OnlineAdmissions({ user }: { user: any }) {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Calendar className="h-4 w-4 text-emerald-500" />
-              Admission Calendar — Session 2025-26
+              Admission Calendar
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {/* Visual timeline */}
-            <div className="relative pl-6 space-y-0">
-              {/* Vertical line */}
-              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-emerald-500 via-teal-500 to-violet-500 rounded-full" />
-
-              {CALENDAR_EVENTS.map((evt, i) => (
-                <motion.div
-                  key={evt.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  className="relative pb-6 last:pb-0"
-                >
-                  {/* Timeline dot */}
-                  <div className={`absolute -left-6 top-1.5 h-5 w-5 rounded-full border-2 ${
-                    evt.type === 'deadline' ? 'border-rose-500 bg-rose-500/20' :
-                    evt.type === 'test' ? 'border-violet-500 bg-violet-500/20' :
-                    evt.type === 'interview' ? 'border-teal-500 bg-teal-500/20' :
-                    'border-emerald-500 bg-emerald-500/20'
-                  } grid place-items-center`}>
-                    <div className={`h-2 w-2 rounded-full ${
-                      evt.type === 'deadline' ? 'bg-rose-500' :
-                      evt.type === 'test' ? 'bg-violet-500' :
-                      evt.type === 'interview' ? 'bg-teal-500' :
-                      'bg-emerald-500'
-                    }`} />
-                  </div>
-
-                  {/* Event card */}
-                  <div className={`rounded-xl border-l-4 p-4 ${eventTypeColor[evt.type]}`}>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 shrink-0">{eventTypeIcon[evt.type]}</div>
-                        <div>
-                          <div className="font-semibold text-sm">{evt.title}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{evt.description}</div>
+            {calendarEvents.length > 0 ? (
+              <div className="relative pl-6 space-y-0">
+                <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-emerald-500 via-teal-500 to-violet-500 rounded-full" />
+                {calendarEvents.map((evt, i) => (
+                  <motion.div
+                    key={evt.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.05 * i }}
+                    className="relative pb-6 last:pb-0"
+                  >
+                    <div className={`absolute -left-6 top-1.5 h-5 w-5 rounded-full border-2 ${
+                      evt.type === 'deadline' ? 'border-rose-500 bg-rose-500/20' :
+                      evt.type === 'test' ? 'border-violet-500 bg-violet-500/20' :
+                      evt.type === 'interview' ? 'border-teal-500 bg-teal-500/20' :
+                      'border-emerald-500 bg-emerald-500/20'
+                    } grid place-items-center`}>
+                      <div className={`h-2 w-2 rounded-full ${
+                        evt.type === 'deadline' ? 'bg-rose-500' :
+                        evt.type === 'test' ? 'bg-violet-500' :
+                        evt.type === 'interview' ? 'bg-teal-500' :
+                        'bg-emerald-500'
+                      }`} />
+                    </div>
+                    <div className={`rounded-xl border-l-4 p-4 ${eventTypeColor[evt.type]}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 shrink-0">{eventTypeIcon[evt.type]}</div>
+                          <div>
+                            <div className="font-semibold text-sm">{evt.title}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{evt.description}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className={`text-[10px] ${eventTypeBadge[evt.type]}`}>
+                            {evt.type === 'deadline' ? 'Deadline' :
+                             evt.type === 'test' ? 'Test' :
+                             evt.type === 'interview' ? 'Interview' : 'Merit List'}
+                          </Badge>
+                          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{evt.date}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className={`text-[10px] ${eventTypeBadge[evt.type]}`}>
-                          {evt.type === 'deadline' ? 'Deadline' :
-                           evt.type === 'test' ? 'Test' :
-                           evt.type === 'interview' ? 'Interview' : 'Merit List'}
-                        </Badge>
-                        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{evt.date}</span>
-                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={Calendar}
+                title="No admission events scheduled"
+                description="Important dates — application deadlines, entry tests, interviews and merit lists — will be listed here once they are added for the upcoming session."
+              />
+            )}
           </CardContent>
         </Card>
       </motion.div>

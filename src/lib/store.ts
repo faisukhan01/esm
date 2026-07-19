@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type View = 'landing' | 'login' | 'portal';
 
-export type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student' | 'parent';
+export type Role = 'super-admin' | 'institute-admin' | 'branch-manager' | 'teacher' | 'student';
 
 export type AuthUser = {
   id: string;
@@ -27,9 +27,6 @@ export type AuthUser = {
   class?: string;
   section?: string;
   rollNo?: string;
-  guardian?: string;
-  ward?: string;
-  wardId?: string;
 } | null;
 
 type AppState = {
@@ -37,13 +34,10 @@ type AppState = {
   user: AuthUser;
   token: string | null;
   activeModule: string;
-  language: 'en' | 'ur';
   setView: (v: View) => void;
   setUser: (u: AuthUser) => void;
   setToken: (t: string | null) => void;
   setActiveModule: (m: string) => void;
-  setLanguage: (l: 'en' | 'ur') => void;
-  toggleLanguage: () => void;
   logout: () => void;
 };
 
@@ -77,13 +71,10 @@ export const useApp = create<AppState>()(
       user: null,
       token: null,
       activeModule: 'dashboard',
-      language: 'en',
       setView: (v) => set({ view: v }),
       setUser: (u) => set({ user: u, activeModule: 'dashboard' }),
       setToken: (t) => set({ token: t }),
       setActiveModule: (m) => set({ activeModule: m }),
-      setLanguage: (l) => set({ language: l }),
-      toggleLanguage: () => set((s) => ({ language: s.language === 'en' ? 'ur' : 'en' })),
       logout: () => set({ view: 'landing', user: null, token: null, activeModule: 'dashboard' }),
     }),
     {

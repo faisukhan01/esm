@@ -19,12 +19,10 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
 
-// Lazy-loaded v1.5.0 unique modules
-const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
-const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
-const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
+// Lazy-loaded modules — use .then() to map named exports to default (React.lazy requirement)
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
   return (
@@ -108,10 +106,8 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'diary') return <DiaryView user={user} diary={diary} onSaved={refresh} />;
   if (activeModule === 'timetable') return <TeacherTimetable user={user} />;
   if (activeModule === 'my-students') return <MyStudents students={students} />;
-  if (activeModule === 'sms') return <MessageParents user={user} students={students} />;
+  if (activeModule === 'sms') return <MessageStudents user={user} students={students} />;
   if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
-  if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
-  if (activeModule === 'ptm-scheduling') return <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
   if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
   if (activeModule === 'exam-portal') return <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
   if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
@@ -707,7 +703,7 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
     { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results' },
     { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary' },
     { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable' },
-    { label: 'Message Parents', desc: 'Send SMS to parents', icon: MessageSquare, module: 'sms' },
+    { label: 'SMS Portal', desc: 'Send SMS to students', icon: MessageSquare, module: 'sms' },
   ];
 
   const scoreTone = (score: number) => {
@@ -1191,7 +1187,7 @@ function PostResults({ user, classes, students, onSaved }: any) {
 
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Post Results" subtitle="Enter test scores — parents get notified automatically"
+      <ModuleHeader title="Post Results" subtitle="Enter test scores — students get notified automatically"
         actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving || classStudents.length === 0 || !exam.trim()} onClick={save}>{saving ? 'Posting…' : 'Publish Results'}</Button>} />
       {classes.length === 0 ? (
         <EmptyState icon={Users} title="No classes assigned" desc="You haven't been assigned to any classes yet." />
@@ -1252,7 +1248,7 @@ function DiaryView({ user, diary, onSaved }: any) {
     setSaving(true);
     try {
       await api.postDiary({ teacherId: user.id, branchId: user.branchId, ...form });
-      toast({ title: 'Diary entry posted!', description: 'Synced to student & parent apps' });
+      toast({ title: 'Diary entry posted!', description: 'Synced to student apps' });
       setForm({ subject: user?.subjects?.[0] || 'Mathematics', title: '', desc: '', due: '', class: user?.classes?.[0] || '' });
       setShowForm(false);
       onSaved();
@@ -1262,7 +1258,7 @@ function DiaryView({ user, diary, onSaved }: any) {
 
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Diary & Homework" subtitle="Post homework — synced to student & parent apps"
+      <ModuleHeader title="Diary & Homework" subtitle="Post homework — synced to student apps"
         actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(v => !v)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
       {showForm && (
         <Card className="p-5">
@@ -1279,7 +1275,7 @@ function DiaryView({ user, diary, onSaved }: any) {
         </Card>
       )}
       {diary.length === 0 ? (
-        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Post homework and assignments. They'll appear in student and parent portals instantly."
+        <EmptyState icon={ClipboardList} title="No diary entries yet" desc="Post homework and assignments. They'll appear in the student portal instantly."
           action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Entry</Button>} />
       ) : (
         <div className="space-y-3">
@@ -1409,7 +1405,7 @@ function MyStudents({ students }: any) {
   );
 }
 
-function MessageParents({ user, students }: any) {
+function MessageStudents({ user, students }: any) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<any[]>([]);
@@ -1421,7 +1417,7 @@ function MessageParents({ user, students }: any) {
     setSending(true);
     try {
       await api.sendSms({ text, recipients: students.length, type: 'Teacher Notice', senderId: user.id, instituteId: user.instituteId, branchId: user.branchId });
-      toast({ title: 'SMS sent!', description: `Delivered to ${students.length} parents` });
+      toast({ title: 'SMS sent!', description: `Delivered to ${students.length} students` });
       setText('');
       api.getSms({ senderId: user.id }).then(setSent).catch(() => {});
     } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
@@ -1430,16 +1426,16 @@ function MessageParents({ user, students }: any) {
 
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Message Parents" subtitle={`Send SMS to parents of your ${students.length} students`} />
+      <ModuleHeader title="SMS Portal" subtitle={`Send SMS to your ${students.length} students`} />
       {students.length === 0 ? (
-        <EmptyState icon={Users} title="No students yet" desc="Your Branch Manager needs to add students before you can message parents." />
+        <EmptyState icon={Users} title="No students yet" desc="Your Branch Manager needs to add students before you can send SMS." />
       ) : (
         <>
           <Card className="p-5">
-            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Type a message to parents…" rows={4} className="w-full rounded-md border border-border bg-card p-3 text-sm resize-none" />
+            <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Type a message to students…" rows={4} className="w-full rounded-md border border-border bg-card p-3 text-sm resize-none" />
             <div className="flex items-center justify-between mt-3">
               <span className="text-xs text-muted-foreground">{text.length} chars · {Math.ceil(text.length / 160)} SMS</span>
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><MessageSquare className="h-4 w-4 mr-1.5" /> Send to {students.length} parents</>}</Button>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={sending} onClick={send}>{sending ? 'Sending…' : <><MessageSquare className="h-4 w-4 mr-1.5" /> Send to {students.length} students</>}</Button>
             </div>
           </Card>
           {sent.length > 0 && (

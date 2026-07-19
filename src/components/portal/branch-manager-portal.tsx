@@ -16,7 +16,7 @@ import {
   Network, Inbox, Eye, Edit, Lock, Unlock, Megaphone, Send, BookCopy,
   FileText, Wallet, Loader2, Banknote, AlertCircle, Scale, Calendar, X,
   CalendarPlus, MessageSquare, Smartphone, ChevronDown, ChevronRight, MapPin, MailCheck,
-  Award, Save,
+  Award, Save, Search, Hash, ChevronUp, BookCheck, RefreshCw, AlertTriangle, Sparkles,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
@@ -28,10 +28,10 @@ const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/li
 const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
 const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
 const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
-const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions'));
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
-const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
+const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions').then(m => ({ default: m.OnlineAdmissions })));
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
   return (
@@ -49,16 +49,31 @@ const EMERALD = '#059669';
 export function BranchManagerPortal({ activeModule, user }: { activeModule: string; user: any }) {
   const [stats, setStats] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+  const [teachersError, setTeachersError] = useState<string | null>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [finance, setFinance] = useState<any>(null);
   const [financeLoading, setFinanceLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addRole, setAddRole] = useState<'teacher' | 'student'>('teacher');
+  // New clean UX modals (teacher-focused):
+  const [showAddTeacher, setShowAddTeacher] = useState(false);
+  const [assignCoursesFor, setAssignCoursesFor] = useState<any | null>(null);
+
+  // Fetch teachers from the API. No synchronous setState — only setState inside
+  // promise callbacks. This makes it safe to call from useEffect.
+  const fetchTeachers = () => {
+    if (!user?.branchId) return;
+    api.platformUsers({ branchId: user.branchId, role: 'teacher' })
+      .then(r => { setTeachers(Array.isArray(r) ? r : []); setTeachersError(null); })
+      .catch(e => { setTeachersError(e.message || 'Failed to load teachers'); })
+      .finally(() => setTeachersLoading(false));
+  };
 
   const refresh = () => {
     if (user?.branchId) {
       api.scopedStats(user.instituteId, user.branchId).then(setStats).catch(() => {});
-      api.platformUsers({ branchId: user.branchId, role: 'teacher' }).then(setTeachers).catch(() => {});
+      fetchTeachers();
       api.platformUsers({ branchId: user.branchId, role: 'student' }).then(setStudents).catch(() => {});
       api.getBranchFinance(user.branchId)
         .then((d) => setFinance(d))
@@ -69,9 +84,18 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   useEffect(() => { refresh(); }, [user?.branchId]);
 
   const openAdd = (role: 'teacher' | 'student') => { setAddRole(role); setShowAdd(true); };
+  const openAddTeacher = () => setShowAddTeacher(true);
+  const openAssignCourses = (teacher: any) => setAssignCoursesFor(teacher);
+
+  // Click handler for the "Refresh" button on the teachers list. Sync setState
+  // is fine here because this runs in a click handler, not an effect.
+  const handleRefreshTeachersClick = () => {
+    setTeachersLoading(true);
+    fetchTeachers();
+  };
 
   let content: React.ReactNode;
-  if (activeModule === 'teachers') content = <TeachersView teachers={teachers} onRefresh={refresh} onAdd={() => openAdd('teacher')} />;
+  if (activeModule === 'teachers') content = <TeachersView teachers={teachers} loading={teachersLoading} error={teachersError} onRefresh={handleRefreshTeachersClick} onAdd={openAddTeacher} onAssignCourses={openAssignCourses} />;
   else if (activeModule === 'branch-students') content = <StudentsView students={students} onRefresh={refresh} onAdd={() => openAdd('student')} />;
   else if (activeModule === 'announcements') content = <AnnouncementsView user={user} />;
   else if (activeModule === 'class-courses') content = <ClassCoursesView user={user} />;
@@ -91,12 +115,23 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'e-learning') content = <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
   else if (activeModule === 'exam-portal') content = <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
   else if (activeModule === 'complaint-portal') content = <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
-  else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
+  else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={openAddTeacher} onAddStudent={() => openAdd('student')} />;
 
   return (
     <>
       {content}
+      {/* Student flow still uses the shared AddUserModal (out of scope for this redesign). */}
       <AddUserModal open={showAdd} onClose={() => setShowAdd(false)} role={addRole} instituteId={user?.instituteId} branchId={user?.branchId} onCreated={refresh} />
+      {/* New clean Add Teacher flow — focused, sectioned, with inline validation.
+          Conditionally rendered so useState initial values apply on each open. */}
+      {showAddTeacher && (
+        <AddTeacherModal onClose={() => setShowAddTeacher(false)} instituteId={user?.instituteId} branchId={user?.branchId} onCreated={refresh} />
+      )}
+      {/* New clean Assign Courses flow — toggle courses per class for an existing teacher.
+          Conditionally rendered so useState initial values apply on each open. */}
+      {assignCoursesFor && (
+        <AssignCoursesModal teacher={assignCoursesFor} onClose={() => setAssignCoursesFor(null)} branchId={user?.branchId} onSaved={refresh} />
+      )}
     </>
   );
 }
@@ -461,36 +496,833 @@ function EditUserModal({ u, onClose, onSaved }: { u: any; onClose: () => void; o
   );
 }
 
-function TeachersView({ teachers, onAdd, onRefresh }: any) {
+// ============================================================
+// New clean Add Teacher flow — focused, sectioned, with inline validation.
+// Replaces the legacy AddUserModal for the teacher case.
+// Conditionally rendered by the parent so useState initial values apply on each open.
+// ============================================================
+function AddTeacherModal({ onClose, instituteId, branchId, onCreated }: {
+  onClose: () => void; instituteId?: string; branchId?: string; onCreated: () => void;
+}) {
+  // Required fields
+  const [name, setName] = useState('');
+  const [rollNo, setRollNo] = useState('');
+  const [password, setPassword] = useState('');
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [subjectInput, setSubjectInput] = useState('');
+  // Optional (collapsible)
+  const [email, setEmail] = useState('');
+  const [classId, setClassId] = useState('');
+  const [section, setSection] = useState('');
+  const [showMore, setShowMore] = useState(false);
+  const [showClassCourses, setShowClassCourses] = useState(false);
+  // Loaded data
+  const [classes, setClasses] = useState<any[]>([]);
+  const [classCourses, setClassCourses] = useState<any[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  // Submission state
+  const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [created, setCreated] = useState<any>(null);
+
+  // Load classes for the optional class picker (runs once on mount).
+  // No sync setState in the effect body — loadingClasses starts as `true`,
+  // and is set to `false` in the .finally() callback.
+  useEffect(() => {
+    if (!branchId) { setLoadingClasses(false); return; }
+    let cancelled = false;
+    api.getClasses(branchId)
+      .then(r => { if (!cancelled) setClasses(Array.isArray(r) ? r : []); })
+      .catch(() => { if (!cancelled) setClasses([]); })
+      .finally(() => { if (!cancelled) setLoadingClasses(false); });
+    return () => { cancelled = true; };
+  }, [branchId]);
+
+  // Load courses for the selected class (only when class is picked inside the optional section)
+  useEffect(() => {
+    if (!classId) { setClassCourses([]); setSelectedCourseIds([]); return; }
+    let cancelled = false;
+    setLoadingCourses(true);
+    setSelectedCourseIds([]);
+    api.getCourses({ classId })
+      .then(r => { if (!cancelled) setClassCourses(Array.isArray(r) ? r : []); })
+      .catch(() => { if (!cancelled) setClassCourses([]); })
+      .finally(() => { if (!cancelled) setLoadingCourses(false); });
+    return () => { cancelled = true; };
+  }, [classId]);
+
+  const addSubject = () => {
+    const v = subjectInput.trim();
+    if (!v) return;
+    if (subjects.some(s => s.toLowerCase() === v.toLowerCase())) { setSubjectInput(''); return; }
+    setSubjects([...subjects, v]);
+    setSubjectInput('');
+    setErrors(e => ({ ...e, subjects: '' }));
+  };
+  const removeSubject = (s: string) => setSubjects(subjects.filter(x => x !== s));
+
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'Full name is required';
+    if (!rollNo.trim()) e.rollNo = 'Teacher ID is required';
+    if (!password) e.password = 'Password is required';
+    else if (password.length < 4) e.password = 'Password must be at least 4 characters';
+    if (subjects.length === 0) e.subjects = 'Add at least one subject (e.g. Mathematics)';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const submit = async () => {
+    if (!validate()) return;
+    setCreating(true);
+    try {
+      const selectedClass = classes.find((c: any) => c.id === classId);
+      const body: any = {
+        name: name.trim(),
+        rollNo: rollNo.trim(),
+        password,
+        role: 'teacher',
+        instituteId,
+        branchId,
+        subjects,
+      };
+      if (email.trim()) body.email = email.trim();
+      if (classId) {
+        body.classId = classId;
+        if (selectedClass?.name) body.class = selectedClass.name;
+        body.section = (section || '').trim() || selectedClass?.section || 'A';
+      }
+      if (classId && selectedCourseIds.length > 0) body.courseIds = selectedCourseIds;
+
+      const res = await api.createPlatformUser(body);
+      setCreated(res);
+      onCreated();
+      toast({ title: 'Teacher added!', description: `${res.user.name} can now sign in to the Teacher portal.` });
+    } catch (err: any) {
+      const msg = err.message || 'Something went wrong';
+      if (msg.includes('Email already in use')) {
+        setErrors(e => ({ ...e, email: 'This email is already in use' }));
+        toast({ title: 'Email already registered', description: 'Use a different email or leave it blank — email is optional.', variant: 'destructive' });
+      } else if (msg.includes('Roll Number already exists')) {
+        setErrors(e => ({ ...e, rollNo: 'A teacher with this ID already exists in your branch' }));
+        toast({ title: 'Teacher ID already exists', description: 'Please use a different Teacher ID.', variant: 'destructive' });
+      } else if (msg.includes('Authentication required') || msg.includes('session')) {
+        toast({ title: 'Session expired', description: 'Please sign out and sign in again, then retry.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Failed to add teacher', description: msg, variant: 'destructive' });
+      }
+    } finally { setCreating(false); }
+  };
+
+  const close = () => { onClose(); };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto"
+      onClick={close}>
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        onClick={e => e.stopPropagation()}
+        className="w-full max-w-lg my-4">
+        <Card className="max-h-[92vh] overflow-y-auto scroll-fancy rounded-2xl">
+          {/* Header */}
+          <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 grid place-items-center">
+                <UserPlus className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg leading-tight">Add Teacher</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">A login will be created. They must change their password on first sign-in.</p>
+              </div>
+            </div>
+            <button onClick={close} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {created ? (
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-12 w-12 rounded-full bg-emerald-500/15 grid place-items-center">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-base">Teacher added!</h4>
+                  <p className="text-sm text-muted-foreground">{created.user.name}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4 space-y-2 text-sm">
+                <div className="font-semibold text-emerald-700 dark:text-emerald-300">Login credentials</div>
+                {created.user.email && (
+                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Email</span><span className="font-mono text-xs">{created.user.email}</span></div>
+                )}
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Teacher ID</span><span className="font-mono text-xs">{created.user.rollNo || '—'}</span></div>
+                <div className="flex items-center justify-between"><span className="text-muted-foreground">Password</span><span className="font-mono">{created.defaultPassword}</span></div>
+                <p className="text-[11px] text-muted-foreground pt-1 border-t border-emerald-500/10 mt-2">
+                  The teacher will be asked to set a new password on first sign-in. You can assign courses to them now from the teacher list.
+                </p>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" onClick={close}>Done</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 space-y-5">
+              {/* Section 1: Personal Info */}
+              <section>
+                <SectionLabel icon={Users} label="Personal info" />
+                <div className="space-y-3 mt-2">
+                  <div>
+                    <Label className="text-xs font-medium">Full name <span className="text-rose-500">*</span></Label>
+                    <Input value={name} onChange={e => { setName(e.target.value); setErrors(er => ({ ...er, name: '' })); }}
+                      placeholder="e.g. Ms. Olivia Davis" className="mt-1" autoFocus />
+                    {errors.name && <FieldError msg={errors.name} />}
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Teacher ID <span className="text-rose-500">*</span></Label>
+                    <div className="relative mt-1">
+                      <Hash className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                      <Input value={rollNo} onChange={e => { setRollNo(e.target.value); setErrors(er => ({ ...er, rollNo: '' })); }}
+                        placeholder="e.g. TCH-001" className="pl-9" />
+                    </div>
+                    {errors.rollNo ? <FieldError msg={errors.rollNo} /> : (
+                      <p className="text-[11px] text-muted-foreground mt-1">Used by the teacher to sign in. Must be unique in your branch.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 2: Account */}
+              <section>
+                <SectionLabel icon={Lock} label="Account" />
+                <div className="mt-2">
+                  <Label className="text-xs font-medium">Temporary password <span className="text-rose-500">*</span></Label>
+                  <Input type="text" value={password} onChange={e => { setPassword(e.target.value); setErrors(er => ({ ...er, password: '' })); }}
+                    placeholder="At least 4 characters" className="mt-1" />
+                  {errors.password ? <FieldError msg={errors.password} /> : (
+                    <p className="text-[11px] text-muted-foreground mt-1">The teacher must change this on first sign-in.</p>
+                  )}
+                </div>
+              </section>
+
+              {/* Section 3: Subjects */}
+              <section>
+                <SectionLabel icon={BookOpen} label="Subjects taught" />
+                <div className="mt-2">
+                  <Label className="text-xs font-medium">Add subjects <span className="text-rose-500">*</span></Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      value={subjectInput}
+                      onChange={e => setSubjectInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSubject(); } }}
+                      placeholder="Type a subject and press Enter (e.g. Mathematics)"
+                    />
+                    <Button type="button" size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={addSubject} disabled={!subjectInput.trim()}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {subjects.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                      {subjects.map(s => (
+                        <Badge key={s} variant="secondary" className="font-normal text-xs bg-primary/5 text-primary border border-primary/15 pl-2.5 pr-1 py-1 flex items-center gap-1.5">
+                          {s}
+                          <button onClick={() => removeSubject(s)} className="h-4 w-4 grid place-items-center rounded hover:bg-primary/15">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {errors.subjects && <FieldError msg={errors.subjects} />}
+                </div>
+              </section>
+
+              {/* Collapsible: More details */}
+              <section>
+                <button type="button" onClick={() => setShowMore(v => !v)}
+                  className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 transition">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Plus className="h-4 w-4 text-primary" /> More details (optional)
+                  </span>
+                  {showMore ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                {showMore && (
+                  <div className="mt-3 space-y-3 pl-1">
+                    <div>
+                      <Label className="text-xs font-medium">Email (optional)</Label>
+                      <Input type="email" value={email} onChange={e => { setEmail(e.target.value); setErrors(er => ({ ...er, email: '' })); }}
+                        placeholder="teacher.davis@school.edu" className="mt-1" />
+                      {errors.email ? <FieldError msg={errors.email} /> : (
+                        <p className="text-[11px] text-muted-foreground mt-1">If provided, the teacher can also sign in with this email.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* Collapsible: Assign to a class & courses (optional at creation) */}
+              <section>
+                <button type="button" onClick={() => setShowClassCourses(v => !v)}
+                  className="w-full flex items-center justify-between text-left px-3 py-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 transition">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <BookCheck className="h-4 w-4 text-primary" /> Assign to a class & courses (optional)
+                  </span>
+                  {showClassCourses ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+                {showClassCourses && (
+                  <div className="mt-3 space-y-3 pl-1">
+                    <p className="text-[11px] text-muted-foreground -mt-1">
+                      You can assign courses now or skip and do it later from the teacher list. Either way, the teacher can sign in immediately.
+                    </p>
+                    <div>
+                      <Label className="text-xs font-medium">Class</Label>
+                      <Select value={classId} onValueChange={v => setClassId(v)}>
+                        <SelectTrigger className="mt-1"><SelectValue placeholder={loadingClasses ? 'Loading classes…' : 'Select a class (optional)'} /></SelectTrigger>
+                        <SelectContent>
+                          {classes.length === 0 && !loadingClasses && (
+                            <div className="px-3 py-2 text-xs text-muted-foreground">No classes found in this branch.</div>
+                          )}
+                          {classes.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}{c.section ? ` — ${c.section}` : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {classId && loadingCourses && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading courses…
+                      </div>
+                    )}
+                    {classId && !loadingCourses && classCourses.length === 0 && (
+                      <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-200">
+                        <strong>No courses assigned to this class yet.</strong> You can assign courses to the class first in <em>Classes &amp; Courses</em>, or skip this step.
+                      </div>
+                    )}
+                    {classId && !loadingCourses && classCourses.length > 0 && (
+                      <div>
+                        <Label className="text-xs font-medium">Courses to assign</Label>
+                        <div className="mt-1 rounded-xl border border-border max-h-44 overflow-y-auto scroll-fancy p-2 space-y-1">
+                          {classCourses.map((c: any) => {
+                            const checked = selectedCourseIds.includes(c.id);
+                            return (
+                              <button key={c.id} type="button" onClick={() => toggleCourseHelper(selectedCourseIds, setSelectedCourseIds, c.id)}
+                                className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition ${checked ? 'bg-primary/10 text-primary' : 'hover:bg-accent text-foreground'}`}>
+                                <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}>
+                                  {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                </span>
+                                <span className="font-medium">{c.name}</span>
+                                {c.code && <span className="text-[10px] text-muted-foreground uppercase ml-auto">{c.code}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">{selectedCourseIds.length} of {classCourses.length} course{classCourses.length === 1 ? '' : 's'} selected.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-card border-t border-border flex gap-2">
+                <Button size="sm" variant="outline" onClick={close} disabled={creating} className="flex-1">Cancel</Button>
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={creating} onClick={submit}>
+                  {creating ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Creating…</> : <><UserPlus className="h-4 w-4 mr-1.5" /> Create Teacher</>}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function toggleCourseHelper(current: string[], setter: (v: string[]) => void, id: string) {
+  setter(current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
+}
+
+function SectionLabel({ icon: Icon, label }: { icon: any; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function FieldError({ msg }: { msg: string }) {
+  return (
+    <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
+      <AlertCircle className="h-3 w-3 shrink-0" /> {msg}
+    </p>
+  );
+}
+
+// ============================================================
+// New clean Assign Courses flow — toggle courses per class for an existing teacher.
+// Calls api.editUser(id, { classId, addCourseIds }) which is the existing API
+// for attaching courses to a teacher. (The backend doesn't yet expose removal
+// or a per-teacher listing endpoint, so this modal is honest about being
+// an "assign additional" experience.)
+// Conditionally rendered by the parent so useState initial values apply on each open.
+// ============================================================
+function AssignCoursesModal({ teacher, onClose, branchId, onSaved }: {
+  teacher: any; onClose: () => void; branchId?: string; onSaved: () => void;
+}) {
+  const [classes, setClasses] = useState<any[]>([]);
+  const [coursesByClass, setCoursesByClass] = useState<Record<string, any[]>>({});
+  // loading starts true (the modal opens in a loading state); set to false in .finally()
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  // selectedByClass: { [classId]: courseId[] }
+  const [selectedByClass, setSelectedByClass] = useState<Record<string, string[]>>({});
+  const [saving, setSaving] = useState(false);
+  const [expandedClassIds, setExpandedClassIds] = useState<Set<string>>(new Set());
+
+  // Load all classes + their courses on mount. No sync setState in the effect body —
+  // loading starts as `true` from useState, error is only set in .catch().
+  // (If branchId is missing, the server falls back to the user's own branch — see
+  // GET /api/classes handler — so we just call api.getClasses(branchId) unconditionally.)
+  useEffect(() => {
+    let cancelled = false;
+    api.getClasses(branchId)
+      .then(async (rows) => {
+        if (cancelled) return;
+        const classRows = Array.isArray(rows) ? rows : [];
+        // Group classes by name (the API returns one row per section). For course assignment,
+        // all sections of the same class share the same course list, so dedupe by name and
+        // use the first section's id.
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const c of classRows) {
+          if (c.name && !seen.has(c.name)) { seen.add(c.name); deduped.push(c); }
+        }
+        // Fetch courses for each class in parallel
+        const entries: Record<string, any[]> = {};
+        await Promise.all(deduped.map(c =>
+          api.getCourses({ classId: c.id })
+            .then(r => { entries[c.id] = Array.isArray(r) ? r : []; })
+            .catch(() => { entries[c.id] = []; })
+        ));
+        if (cancelled) return;
+        setClasses(deduped);
+        setCoursesByClass(entries);
+        // Auto-expand classes that have courses
+        setExpandedClassIds(new Set(deduped.filter(c => (entries[c.id] || []).length > 0).map(c => c.id)));
+      })
+      .catch(e => { if (!cancelled) setError(e.message || 'Failed to load classes'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [branchId]);
+
+  const initials = (teacher.name || '?').split(' ').map((s: string) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  const toggleCourse = (classId: string, courseId: string) => {
+    setSelectedByClass(prev => {
+      const cur = prev[classId] || [];
+      return { ...prev, [classId]: cur.includes(courseId) ? cur.filter(x => x !== courseId) : [...cur, courseId] };
+    });
+  };
+  const toggleClassExpanded = (classId: string) => {
+    setExpandedClassIds(prev => {
+      const next = new Set(prev);
+      if (next.has(classId)) next.delete(classId); else next.add(classId);
+      return next;
+    });
+  };
+  const selectAllInClass = (classId: string) => {
+    const courses = coursesByClass[classId] || [];
+    setSelectedByClass(prev => ({ ...prev, [classId]: courses.map((c: any) => c.id) }));
+  };
+  const clearAllInClass = (classId: string) => {
+    setSelectedByClass(prev => ({ ...prev, [classId]: [] }));
+  };
+
+  const totalSelected = Object.values(selectedByClass).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+  const filteredClasses = classes.map(c => {
+    const courses = (coursesByClass[c.id] || []).filter(course => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (course.name || '').toLowerCase().includes(q) || (course.code || '').toLowerCase().includes(q);
+    });
+    return { ...c, _filteredCourses: courses };
+  }).filter(c => (c._filteredCourses.length > 0) || !search.trim());
+
+  const save = async () => {
+    const classesWithSelections = Object.entries(selectedByClass).filter(([, ids]) => ids && ids.length > 0);
+    if (classesWithSelections.length === 0) {
+      toast({ title: 'No courses selected', description: 'Toggle on at least one course to assign.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    let successCount = 0;
+    let failedCount = 0;
+    let lastError = '';
+    // The existing PATCH endpoint accepts one (classId, addCourseIds) pair per call, so iterate.
+    for (const [classId, courseIds] of classesWithSelections) {
+      try {
+        await api.editUser(teacher.id, { classId, addCourseIds: courseIds });
+        successCount += courseIds.length;
+      } catch (e: any) {
+        failedCount += courseIds.length;
+        lastError = e.message || 'Unknown error';
+      }
+    }
+    setSaving(false);
+    if (successCount > 0 && failedCount === 0) {
+      toast({ title: 'Courses assigned', description: `${successCount} course${successCount === 1 ? '' : 's'} assigned to ${teacher.name}.` });
+      onSaved();
+      onClose();
+    } else if (successCount > 0 && failedCount > 0) {
+      toast({ title: 'Partially saved', description: `${successCount} assigned, ${failedCount} failed. Last error: ${lastError}`, variant: 'destructive' });
+      onSaved();
+      onClose();
+    } else {
+      toast({ title: 'Failed to assign courses', description: lastError || 'Please try again.', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[60] grid place-items-center p-4 bg-black/50 overflow-y-auto"
+      onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        onClick={e => e.stopPropagation()}
+        className="w-full max-w-2xl my-4">
+        <Card className="max-h-[92vh] overflow-y-auto scroll-fancy rounded-2xl">
+          {/* Header */}
+          <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-10 w-10 rounded-full bg-primary grid place-items-center text-white font-bold text-sm shrink-0">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg leading-tight truncate">Assign Courses</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  Select courses to assign to <span className="font-semibold text-foreground">{teacher.name}</span>
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="h-8 w-8 grid place-items-center rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground shrink-0">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading classes and courses…</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <div className="inline-flex h-14 w-14 rounded-2xl bg-rose-500/10 items-center justify-center mb-4">
+                <AlertCircle className="h-7 w-7 text-rose-600" />
+              </div>
+              <h4 className="font-bold text-base">Couldn't load courses</h4>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{error}</p>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white mt-4" onClick={onClose}>Close</Button>
+            </div>
+          ) : classes.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="inline-flex h-14 w-14 rounded-2xl bg-amber-500/10 items-center justify-center mb-4">
+                <BookOpen className="h-7 w-7 text-amber-600" />
+              </div>
+              <h4 className="font-bold text-base">No classes in your branch yet</h4>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                Classes are auto-created when your branch is provisioned. If you don't see them, ask your Institute Admin.
+              </p>
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white mt-4" onClick={onClose}>Close</Button>
+            </div>
+          ) : (
+            <div className="p-6 space-y-4">
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder="Search courses by name or code…" className="pl-9" />
+              </div>
+
+              {/* Info banner */}
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs text-primary flex items-start gap-2">
+                <BookCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <strong>How this works:</strong> Toggle on courses to assign them to {teacher.name}. Already-assigned courses will not be duplicated. Each class shows its own course list — a teacher can be assigned to courses across multiple classes.
+                </div>
+              </div>
+
+              {/* Classes with courses */}
+              <div className="space-y-2">
+                {filteredClasses.length === 0 && (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    No courses match &ldquo;{search}&rdquo;. Try a different search term.
+                  </div>
+                )}
+                {filteredClasses.map(c => {
+                  const courses = c._filteredCourses;
+                  const selected = selectedByClass[c.id] || [];
+                  const isExpanded = expandedClassIds.has(c.id);
+                  const allSelected = courses.length > 0 && selected.length === courses.length;
+                  return (
+                    <div key={c.id} className="rounded-xl border border-border overflow-hidden">
+                      {/* Class header row */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40">
+                        <button type="button" onClick={() => toggleClassExpanded(c.id)} className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          <div className="h-7 w-7 rounded-md bg-primary/10 grid place-items-center text-primary font-bold text-xs shrink-0">
+                            {(c.name || '').replace(/[^0-9]/g, '').slice(-2) || '—'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm truncate">{c.name}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {courses.length} course{courses.length === 1 ? '' : 's'} available
+                              {selected.length > 0 && <span className="text-primary"> · {selected.length} selected</span>}
+                            </div>
+                          </div>
+                        </button>
+                        {courses.length > 0 && (
+                          <button type="button" onClick={() => allSelected ? clearAllInClass(c.id) : selectAllInClass(c.id)}
+                            className="text-[11px] font-medium text-primary hover:underline shrink-0">
+                            {allSelected ? 'Clear' : 'Select all'}
+                          </button>
+                        )}
+                      </div>
+                      {/* Courses list */}
+                      {isExpanded && (
+                        <div className="p-2 space-y-1 bg-card">
+                          {courses.length === 0 ? (
+                            <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+                              No courses assigned to this class. Visit <em>Classes &amp; Courses</em> to add some.
+                            </div>
+                          ) : courses.map((course: any) => {
+                            const checked = selected.includes(course.id);
+                            return (
+                              <button key={course.id} type="button" onClick={() => toggleCourse(c.id, course.id)}
+                                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition text-left ${checked ? 'bg-primary/10 text-primary' : 'hover:bg-accent text-foreground'}`}>
+                                <span className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition ${checked ? 'bg-primary border-primary' : 'border-input bg-background'}`}>
+                                  {checked && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                </span>
+                                <span className="font-medium flex-1 truncate">{course.name}</span>
+                                {course.code && <span className="text-[10px] text-muted-foreground uppercase shrink-0">{course.code}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-card border-t border-border flex items-center gap-3">
+                <div className="text-xs text-muted-foreground">
+                  {totalSelected > 0 ? (
+                    <span className="text-primary font-semibold">{totalSelected} course{totalSelected === 1 ? '' : 's'} selected</span>
+                  ) : 'Toggle on courses to assign'}
+                </div>
+                <div className="flex gap-2 ml-auto">
+                  <Button size="sm" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" disabled={saving || totalSelected === 0} onClick={save}>
+                    {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : <><Save className="h-4 w-4 mr-1.5" /> Save Assignment</>}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </Card>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function TeachersView({ teachers, loading, error, onAdd, onRefresh, onAssignCourses }: any) {
   return (
     <div className="space-y-6">
-      <ModuleHeader title="Teachers" subtitle={`${teachers.length} teachers in your branch`}
-        actions={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
-      {teachers.length === 0 ? (
-        <EmptyState icon={Users} title="No teachers yet" desc="Add your first teacher. A login will be auto-created so they can sign in to their Teacher portal."
-          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher</Button>} />
-      ) : (
-        <Card className="p-4">
-          <Table>
-            <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead>Teacher</TableHead><TableHead className="hidden md:table-cell">Roll No</TableHead><TableHead className="hidden md:table-cell">Subjects</TableHead><TableHead className="hidden sm:table-cell">Classes</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {teachers.map((t:any) => (
-                <TableRow key={t.id} className="hover:bg-muted/30">
-                  <TableCell><div className="font-medium text-sm">{t.name}</div><div className="text-[11px] text-muted-foreground">{t.email || '—'}</div></TableCell>
-                  <TableCell className="hidden md:table-cell font-mono text-xs">{t.rollNo || '—'}</TableCell>
-                  <TableCell className="hidden md:table-cell">{t.subjects?.length ? t.subjects.map((s:string) => <Badge key={s} variant="secondary" className="mr-1 font-normal text-[10px]">{s}</Badge>) : '—'}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm">{t.classes?.length ? t.classes.join(', ') : '—'}</TableCell>
-                  <TableCell><Badge variant="outline" className={t.blocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-primary bg-accent0/10 border-[oklch(0.5_0.04_260)_/_0.2]'}>{t.blocked ? 'Blocked' : (t.status || 'Active')}</Badge></TableCell>
-                  <TableCell className="text-right"><UserRowActions u={t} onRefresh={onRefresh} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <ModuleHeader title="Teachers" subtitle={`${teachers.length} teacher${teachers.length === 1 ? '' : 's'} in your branch`}
+        actions={
+          <>
+            <Button size="sm" variant="outline" onClick={onRefresh} disabled={loading} title="Refresh">
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}>
+              <UserPlus className="h-4 w-4 mr-1.5" /> Add Teacher
+            </Button>
+          </>
+        } />
+
+      {loading ? (
+        <TeachersSkeleton />
+      ) : error ? (
+        <Card className="p-8 text-center">
+          <div className="inline-flex h-14 w-14 rounded-2xl bg-rose-500/10 items-center justify-center mb-4">
+            <AlertCircle className="h-7 w-7 text-rose-600" />
+          </div>
+          <h3 className="font-bold text-lg">Couldn't load teachers</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">{error}</p>
+          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white mt-4" onClick={onRefresh}>
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Try again
+          </Button>
         </Card>
+      ) : teachers.length === 0 ? (
+        <EmptyState
+          icon={Sparkles}
+          title="No teachers yet"
+          desc="Add your first teacher to get started. A login will be auto-created so they can sign in to their Teacher portal — then you can assign courses to them."
+          action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAdd}><UserPlus className="h-4 w-4 mr-1.5" /> Add your first teacher</Button>}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+          {teachers.map((t: any) => (
+            <TeacherCard key={t.id} teacher={t} onRefresh={onRefresh} onAssignCourses={() => onAssignCourses(t)} />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+function TeachersSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="p-5 border border-border rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-full bg-muted animate-pulse" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+              <div className="h-3 w-20 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-1.5">
+            <div className="h-6 w-20 bg-muted animate-pulse rounded-full" />
+            <div className="h-6 w-16 bg-muted animate-pulse rounded-full" />
+          </div>
+          <div className="mt-4 flex gap-1.5">
+            <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
+            <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
+            <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
+            <div className="h-8 w-8 bg-muted animate-pulse rounded-lg" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function TeacherCard({ teacher: t, onRefresh, onAssignCourses }: { teacher: any; onRefresh: () => void; onAssignCourses: () => void }) {
+  const initials = (t.name || '?').split(' ').map((s: string) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  const subjects: string[] = Array.isArray(t.subjects) ? t.subjects : [];
+  const isBlocked = !!t.blocked;
+  const [showPass, setShowPass] = useState(false);
+  const [pass, setPass] = useState('');
+  const [mustChange, setMustChange] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+
+  const viewPassword = async () => {
+    if (showPass) { setShowPass(false); return; }
+    setBusy(true);
+    try {
+      const r = await api.getUserPassword(t.id);
+      setPass(r.password || '—');
+      setMustChange(r.mustChangePassword === true);
+      setShowPass(true);
+    } catch (e: any) { toast({ title: 'Could not fetch password', description: e.message, variant: 'destructive' }); }
+    finally { setBusy(false); }
+  };
+
+  const toggleBlock = async () => {
+    setBusy(true);
+    try {
+      await api.blockUser(t.id, !isBlocked, !isBlocked ? 'Blocked by Branch Manager' : '');
+      toast({ title: isBlocked ? 'Teacher unblocked' : 'Teacher blocked', description: isBlocked ? 'Access restored' : 'Their session was invalidated' });
+      onRefresh();
+    } catch (e: any) { toast({ title: 'Failed', description: e.message, variant: 'destructive' }); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card className="p-5 border border-border rounded-xl shadow-sm hover:shadow-md transition flex flex-col">
+      {/* Header: avatar + name + status */}
+      <div className="flex items-start gap-3">
+        <div className={`h-11 w-11 rounded-full grid place-items-center text-white font-bold text-sm shrink-0 ${isBlocked ? 'bg-rose-500' : 'bg-primary'}`}>
+          {initials}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm truncate" title={t.name}>{t.name}</div>
+          <div className="text-[11px] text-muted-foreground font-mono truncate flex items-center gap-1">
+            <Hash className="h-3 w-3" />{t.rollNo || '—'}
+          </div>
+        </div>
+        <Badge variant="outline" className={isBlocked ? 'text-rose-600 bg-rose-500/10 border-rose-500/20 shrink-0' : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20 shrink-0'}>
+          {isBlocked ? 'Blocked' : (t.status || 'Active')}
+        </Badge>
+      </div>
+
+      {/* Subjects */}
+      <div className="mt-4">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">Subjects</div>
+        {subjects.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {subjects.slice(0, 4).map((s: string) => (
+              <Badge key={s} variant="secondary" className="font-normal text-[11px] bg-primary/5 text-primary border border-primary/15">
+                {s}
+              </Badge>
+            ))}
+            {subjects.length > 4 && (
+              <Badge variant="secondary" className="font-normal text-[11px] bg-muted text-muted-foreground">+{subjects.length - 4}</Badge>
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground italic">No subjects assigned</div>
+        )}
+      </div>
+
+      {/* Email + classes */}
+      {(t.email || (Array.isArray(t.classes) && t.classes.length > 0)) && (
+        <div className="mt-3 text-[11px] text-muted-foreground space-y-0.5">
+          {t.email && <div className="truncate" title={t.email}>✉ {t.email}</div>}
+          {Array.isArray(t.classes) && t.classes.length > 0 && (
+            <div className="truncate">🏫 {t.classes.join(', ')}</div>
+          )}
+        </div>
+      )}
+
+      {/* Password reveal */}
+      {showPass && (
+        <div className="mt-3 px-2.5 py-1.5 rounded-md bg-accent border border-border text-xs flex items-center gap-2">
+          <span className="text-muted-foreground">Password:</span>
+          <span className="font-mono font-semibold text-primary">{pass}</span>
+          {mustChange && <span className="text-amber-600">· must change</span>}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="mt-auto pt-4 flex items-center gap-1.5 flex-wrap">
+        <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" onClick={viewPassword} disabled={busy} title="View password">
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+          <span className="ml-1 hidden sm:inline">View</span>
+        </Button>
+        <Button size="sm" className="h-8 px-2.5 text-xs bg-primary hover:bg-primary/90 text-white" onClick={onAssignCourses} title="Assign courses">
+          <BookCheck className="h-3.5 w-3.5" />
+          <span className="ml-1 hidden sm:inline">Courses</span>
+        </Button>
+        <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs" onClick={() => setShowEdit(true)} title="Edit">
+          <Edit className="h-3.5 w-3.5" />
+          <span className="ml-1 hidden sm:inline">Edit</span>
+        </Button>
+        <Button size="sm" variant="outline" className={`h-8 px-2.5 text-xs ${isBlocked ? 'text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700' : 'text-rose-600 hover:bg-rose-500/10 hover:text-rose-600'}`} onClick={toggleBlock} disabled={busy} title={isBlocked ? 'Unblock' : 'Block'}>
+          {isBlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+          <span className="ml-1 hidden sm:inline">{isBlocked ? 'Unblock' : 'Block'}</span>
+        </Button>
+      </div>
+
+      {showEdit && <EditUserModal u={t} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); onRefresh(); }} />}
+    </Card>
   );
 }
 

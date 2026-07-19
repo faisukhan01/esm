@@ -2,26 +2,35 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MODULES, MODULE_GROUPS } from '@/lib/modules';
+import { MODULES } from '@/lib/modules';
 import { useApp } from '@/lib/store';
 import {
   GraduationCap, ArrowRight, ShieldCheck, Users, Building2,
   Menu, X, Zap,
   Smartphone, Mail,
-  Layers, Globe, Rocket, Crown, BookOpen, DollarSign,
+  Layers, Globe, Rocket, BookOpen, DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 // Real features the platform actually offers — no fake stats
 const PLATFORM_FEATURES = [
-  { icon: Layers, title: `${MODULES.length} Integrated Modules`, desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
-  { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers & Students.' },
+  { icon: Layers, title: `${MODULES.length}+ Integrated Modules`, desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
+  { icon: Users, title: '4 Role-Based Portals', desc: 'Scoped dashboards for Institute Admins, Branch Managers, Teachers & Students — each sees exactly what they need.' },
   { icon: Building2, title: 'Multi-Tenant SaaS', desc: 'Provision unlimited institutions. Each gets its own admin, branches, and isolated data.' },
   { icon: ShieldCheck, title: 'Role-Based Access', desc: 'Granular permissions — every user sees exactly what they need, nothing more.' },
   { icon: Smartphone, title: 'Mobile-Ready', desc: 'Responsive portals for teachers, students and admins — works beautifully on any device.' },
   { icon: Zap, title: 'Real-Time Data', desc: 'Live dashboards. No imports, no delays. Teachers mark attendance → admins see it instantly.' },
 ];
+
+// Curated subset of representative modules for the showcase grid.
+// Mix of core modules + newer PGC-parity modules — pulled from src/lib/modules.ts.
+const HIGHLIGHT_MODULE_IDS = [
+  'online-admissions', 'attendance', 'e-learning', 'exam-portal',
+  'fee', 'campus-wallet', 'hr', 'library',
+  'live-transport', 'digital-id', 'ptm-scheduling', 'complaint-portal',
+];
+const HIGHLIGHTED_MODULES = MODULES.filter(m => HIGHLIGHT_MODULE_IDS.includes(m.id));
 
 const TECH_STACK = [
   { label: 'Next.js 16', desc: 'Modern React framework' },
@@ -35,7 +44,6 @@ const TECH_STACK = [
 export function LandingPage() {
   const setView = useApp(s => s.setView);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeGroup, setActiveGroup] = useState<string>(MODULE_GROUPS[0] || 'Overview');
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -44,9 +52,7 @@ export function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const filteredModules = MODULES.filter(m => m.group === activeGroup);
-
-  return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} activeGroup={activeGroup} setActiveGroup={setActiveGroup} scrolled={scrolled} filteredModules={filteredModules} />;
+  return <LandingPageInner setView={setView} menuOpen={menuOpen} setMenuOpen={setMenuOpen} scrolled={scrolled} />;
 }
 
 function HeroSlider({ setView }: { setView: (v: any) => void }) {
@@ -73,7 +79,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
             </h1>
 
             <p className="mt-5 text-base sm:text-lg text-gray-500 leading-relaxed max-w-md">
-              Admissions, attendance, fees, academics, and parent communication — all in one place. Built for multi-campus institutions.
+              Admissions, attendance, fees, academics, and staff &amp; student communication — all in one place. Built for multi-campus institutions.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
@@ -198,8 +204,8 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
                     <div className="text-[10px] font-semibold text-gray-600 mb-2">Institute Performance</div>
                     <div className="space-y-1.5">
                       {[
-                        { name: 'Alhamd Institute', rev: 'PKR 450K', pct: '75%' },
-                        { name: 'Liberty School', rev: 'PKR 280K', pct: '48%' },
+                        { name: 'North Campus', rev: 'PKR 450K', pct: '75%' },
+                        { name: 'South Campus', rev: 'PKR 280K', pct: '48%' },
                       ].map(row => (
                         <div key={row.name} className="flex items-center justify-between text-[10px]">
                           <span className="text-gray-700 font-medium">{row.name}</span>
@@ -227,7 +233,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
   );
 }
 
-function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActiveGroup, scrolled, filteredModules }: any) {
+function LandingPageInner({ setView, menuOpen, setMenuOpen, scrolled }: any) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -329,88 +335,71 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
       <section id="modules" className="py-20 sm:py-28 relative bg-gradient-to-b from-accent to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">{MODULES.length} Integrated Modules</Badge>
+            <Badge variant="outline" className="mb-3 border-primary/40 text-primary">{MODULES.length}+ Integrated Modules</Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               Every module your institution needs,{' '}
               <span className="emerald-text">in one place</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Filter by category to explore what ESM can do.
+              A curated look at what powers modern campuses — explore the full catalog inside the platform.
             </p>
           </div>
 
-          {/* group filter */}
-          <div className="flex flex-wrap justify-center gap-2 mb-10">
-            {MODULE_GROUPS.map(g => (
-              <button
-                key={g}
-                onClick={() => setActiveGroup(g)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition ${
-                  activeGroup === g
-                    ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                    : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
-                }`}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {HIGHLIGHTED_MODULES.map((m, i) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (i % 3) * 0.08 }}
+                className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden hover:shadow-xl transition-shadow gradient-border-hover"
               >
-                {g}
-              </button>
+                <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-25 blur-2xl transition`} />
+                <div className="relative inline-flex h-11 w-11 rounded-xl items-center justify-center mb-4 glass-icon">
+                  <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${m.color} opacity-15`} />
+                  <m.icon className="relative h-5 w-5 text-primary" aria-hidden />
+                </div>
+                <h3 className="font-bold text-base mb-1">{m.name}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{m.tagline}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {m.features.slice(0, 3).map(f => (
+                    <span key={f} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{f}</span>
+                  ))}
+                </div>
+              </motion.div>
             ))}
           </div>
 
-          <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <AnimatePresence mode="popLayout">
-              {filteredModules.map(m => (
-                <motion.div
-                  key={m.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  whileHover={{ y: -6 }}
-                  className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden hover:shadow-xl transition-shadow gradient-border-hover"
-                >
-                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-25 blur-2xl transition`} />
-                  <div className={`relative inline-flex h-11 w-11 rounded-xl items-center justify-center mb-4 glass-icon`}>
-                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${m.color} opacity-15`} />
-                    <m.icon className="relative h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="font-bold text-base mb-1">
-                    {m.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3">{m.tagline}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {m.features.slice(0, 3).map(f => (
-                      <span key={f} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{f}</span>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="mt-10 text-center">
+            <Button variant="outline" size="lg" className="border-primary/30 text-primary hover:bg-primary/5" onClick={() => setView('login')}>
+              Explore all {MODULES.length} modules <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works — four role-based portals */}
       <section id="tech" className="py-20 sm:py-28 bg-gradient-to-b from-background to-accent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="outline" className="mb-3 border-primary/40 text-primary">How It Works</Badge>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              From signup to{' '}
-              <span className="emerald-text">first day</span>{' '}
-              in minutes
+              Four role-based portals,{' '}
+              <span className="emerald-text">working as one</span>
             </h2>
             <p className="mt-4 text-muted-foreground">
-              A simple, top-down provisioning chain. Each role auto-creates the next.
+              Each portal is purpose-built for its role — scoped, secure, and connected in real time.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 relative">
             {/* Connector line */}
-            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" />
+            <div className="hidden lg:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20" aria-hidden />
             {[
-              { step: '01', icon: Crown, title: 'Super Admin', desc: 'You provision an institute. An Institute Admin login is auto-created.', color: 'from-primary to-primary/80' },
-              { step: '02', icon: Building2, title: 'Institute Admin', desc: 'Adds branches. Each gets a Branch Manager login automatically.', color: 'from-primary to-primary/80' },
-              { step: '03', icon: Users, title: 'Branch Manager', desc: 'Adds teachers & students. Each gets their own portal login.', color: 'from-primary/80 to-primary' },
-              { step: '04', icon: BookOpen, title: 'Teachers & Students', desc: 'Take attendance, post results, track progress — all in real time.', color: 'from-primary/70 to-primary' },
+              { step: '01', icon: Building2, title: 'Institute Admin', desc: 'Provisions branches, configures the academic structure, and oversees the whole institute from one dashboard.', color: 'from-primary to-primary/80' },
+              { step: '02', icon: Users, title: 'Branch Manager', desc: 'Runs daily operations — teachers, students, attendance, fees, transport, and events.', color: 'from-primary to-primary/80' },
+              { step: '03', icon: BookOpen, title: 'Teacher', desc: 'Marks attendance, posts results, assigns homework, and runs the classroom digitally.', color: 'from-primary/80 to-primary' },
+              { step: '04', icon: GraduationCap, title: 'Student', desc: 'Tracks attendance, results, timetable, wallet, digital ID, and e-learning — all in one portal.', color: 'from-primary/70 to-primary' },
             ].map((s, i) => (
               <motion.div
                 key={s.step}
@@ -421,9 +410,9 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 className="relative rounded-2xl border border-border/60 bg-card p-6 text-center hover:shadow-xl hover:-translate-y-1 transition-all z-10"
               >
                 <div className={`inline-flex h-12 w-12 rounded-xl bg-gradient-to-br ${s.color} items-center justify-center shadow-md mb-4`}>
-                  <s.icon className="h-6 w-6 text-white" />
+                  <s.icon className="h-6 w-6 text-white" aria-hidden />
                 </div>
-                <div className="text-xs font-bold text-amber-500 mb-1">STEP {s.step}</div>
+                <div className="text-xs font-bold text-primary/70 mb-1">STEP {s.step}</div>
                 <h3 className="font-bold text-base mb-2">{s.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
               </motion.div>
@@ -524,7 +513,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
           </div>
         </div>
         <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} ESM — Electronic School Management. Built for educational purposes.
+          © {new Date().getFullYear()} ESM — Electronic School Management. Built for modern educational institutions.
         </div>
       </footer>
     </div>

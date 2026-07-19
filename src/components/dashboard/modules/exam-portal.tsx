@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -19,14 +19,16 @@ import { Separator } from '@/components/ui/separator';
 import {
   FileCheck, Clock, Brain, TrendingUp, BarChart3, Calendar, Timer,
   ChevronRight, CheckCircle2, XCircle, AlertCircle, Loader2, Zap,
-  ArrowUpRight, ArrowDownRight, Eye, RotateCcw, Sparkles, Target,
+  Eye, RotateCcw, Sparkles, Target,
   BookOpen, Calculator, Atom, FlaskConical, Languages, Code2,
+  Inbox, RefreshCw,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Area, AreaChart, Legend,
+  Area, AreaChart, Legend,
 } from 'recharts';
 import { ModuleHeader } from './students';
+import { api } from '@/lib/api';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -48,111 +50,13 @@ interface PastResult {
   score: number;
   totalMarks: number;
   percentage: number;
-  timeTaken: number;     // minutes
   date: string;
-  trend: 'up' | 'down' | 'stable';
-  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Mixed';
-}
-
-interface ReviewQuestion {
-  id: number;
-  question: string;
-  options: string[];
-  correct: number;
-  selected: number | null;
-  isCorrect: boolean;
-  explanation: string;
+  grade?: string;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Mock Data                                                          */
+/*  Static UI metadata (subjects list for the test builder — NOT data) */
 /* ------------------------------------------------------------------ */
-
-const NOW = new Date();
-
-const UPCOMING_EXAMS: UpcomingExam[] = [
-  {
-    id: 'e1', subject: 'Mathematics', date: new Date(NOW.getTime() + 12 * 3600000).toISOString(),
-    totalMarks: 100, duration: 120, chapters: ['Algebra', 'Trigonometry', 'Calculus'], type: 'Mid-Term',
-  },
-  {
-    id: 'e2', subject: 'Physics', date: new Date(NOW.getTime() + 2 * 86400000).toISOString(),
-    totalMarks: 80, duration: 90, chapters: ['Mechanics', 'Thermodynamics'], type: 'Unit Test',
-  },
-  {
-    id: 'e3', subject: 'Chemistry', date: new Date(NOW.getTime() + 5 * 86400000).toISOString(),
-    totalMarks: 75, duration: 60, chapters: ['Organic Chemistry'], type: 'Quiz',
-  },
-  {
-    id: 'e4', subject: 'English', date: new Date(NOW.getTime() + 10 * 86400000).toISOString(),
-    totalMarks: 50, duration: 45, chapters: ['Grammar', 'Comprehension', 'Essay Writing'], type: 'Quiz',
-  },
-  {
-    id: 'e5', subject: 'Computer Science', date: new Date(NOW.getTime() + 20 * 86400000).toISOString(),
-    totalMarks: 100, duration: 120, chapters: ['Data Structures', 'Algorithms', 'OOP'], type: 'Final',
-  },
-];
-
-const PAST_RESULTS: PastResult[] = [
-  { id: 'r1', subject: 'Mathematics', score: 87, totalMarks: 100, percentage: 87, timeTaken: 95, date: '2025-02-20', trend: 'up', difficulty: 'Hard' },
-  { id: 'r2', subject: 'Physics', score: 72, totalMarks: 80, percentage: 90, timeTaken: 78, date: '2025-02-18', trend: 'up', difficulty: 'Medium' },
-  { id: 'r3', subject: 'Chemistry', score: 55, totalMarks: 75, percentage: 73.3, timeTaken: 58, date: '2025-02-15', trend: 'down', difficulty: 'Hard' },
-  { id: 'r4', subject: 'English', score: 42, totalMarks: 50, percentage: 84, timeTaken: 38, date: '2025-02-12', trend: 'stable', difficulty: 'Easy' },
-  { id: 'r5', subject: 'Computer Science', score: 91, totalMarks: 100, percentage: 91, timeTaken: 102, date: '2025-02-10', trend: 'up', difficulty: 'Mixed' },
-  { id: 'r6', subject: 'Mathematics', score: 78, totalMarks: 100, percentage: 78, timeTaken: 100, date: '2025-01-28', trend: 'up', difficulty: 'Medium' },
-  { id: 'r7', subject: 'Physics', score: 60, totalMarks: 80, percentage: 75, timeTaken: 82, date: '2025-01-20', trend: 'stable', difficulty: 'Medium' },
-  { id: 'r8', subject: 'Chemistry', score: 62, totalMarks: 75, percentage: 82.7, timeTaken: 55, date: '2025-01-15', trend: 'up', difficulty: 'Easy' },
-];
-
-const SUBJECT_PERFORMANCE = [
-  { subject: 'Math', score: 87, previous: 78, color: '#6366f1' },
-  { subject: 'Physics', score: 90, previous: 75, color: '#10b981' },
-  { subject: 'Chemistry', score: 73, previous: 83, color: '#f43f5e' },
-  { subject: 'English', score: 84, previous: 80, color: '#f59e0b' },
-  { subject: 'CS', score: 91, previous: 85, color: '#8b5cf6' },
-];
-
-const IMPROVEMENT_TREND = [
-  { month: 'Sep', average: 72 },
-  { month: 'Oct', average: 75 },
-  { month: 'Nov', average: 71 },
-  { month: 'Dec', average: 78 },
-  { month: 'Jan', average: 82 },
-  { month: 'Feb', average: 85 },
-];
-
-const MOCK_REVIEW_QUESTIONS: ReviewQuestion[] = [
-  {
-    id: 1, question: 'What is the derivative of f(x) = 3x\u00B2 + 2x - 5?',
-    options: ['6x + 2', '3x + 2', '6x - 5', '6x\u00B2 + 2'],
-    correct: 0, selected: 0, isCorrect: true,
-    explanation: 'Using the power rule: d/dx(3x\u00B2) = 6x, d/dx(2x) = 2, d/dx(-5) = 0. So f\'(x) = 6x + 2.',
-  },
-  {
-    id: 2, question: 'Which law states F = ma?',
-    options: ["Newton's First Law", "Newton's Second Law", "Newton's Third Law", 'Law of Gravitation'],
-    correct: 1, selected: 1, isCorrect: true,
-    explanation: "Newton's Second Law of Motion states that the force acting on an object equals mass times acceleration.",
-  },
-  {
-    id: 3, question: 'What is the chemical formula for sulphuric acid?',
-    options: ['HCl', 'H\u2082SO\u2084', 'HNO\u2083', 'H\u2083PO\u2084'],
-    correct: 1, selected: 2, isCorrect: false,
-    explanation: 'Sulphuric acid has the formula H\u2082SO\u2084. HNO\u2083 is nitric acid.',
-  },
-  {
-    id: 4, question: 'In OOP, what is encapsulation?',
-    options: ['Inheritance of properties', 'Bundling data and methods', 'Method overloading', 'Polymorphism'],
-    correct: 1, selected: 1, isCorrect: true,
-    explanation: 'Encapsulation is the bundling of data and the methods that act on that data such that access to that data is restricted from outside the bundle.',
-  },
-  {
-    id: 5, question: 'What is the past tense of "run"?',
-    options: ['Runned', 'Ran', 'Running', 'Runed'],
-    correct: 1, selected: 0, isCorrect: false,
-    explanation: '"Run" is an irregular verb. Its past tense is "ran", not "runned".',
-  },
-];
 
 const SUBJECTS_LIST = [
   { id: 'math', name: 'Mathematics', icon: Calculator, chapters: ['Algebra', 'Trigonometry', 'Calculus', 'Statistics', 'Geometry'] },
@@ -197,13 +101,17 @@ const subjectBadge: Record<string, string> = {
   'Computer Science': 'bg-purple-500/15 text-purple-700 border-purple-500/30',
 };
 
-const trendIcon = {
-  up: <ArrowUpRight className="size-4 text-emerald-500" />,
-  down: <ArrowDownRight className="size-4 text-red-500" />,
-  stable: <TrendingUp className="size-4 text-amber-500" />,
+const gradeColor: Record<string, string> = {
+  'A+': 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+  'A': 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+  'B': 'text-teal-600 bg-teal-500/10 border-teal-500/20',
+  'C': 'text-amber-600 bg-amber-500/10 border-amber-500/20',
+  'D': 'text-orange-600 bg-orange-500/10 border-orange-500/20',
+  'F': 'text-rose-600 bg-rose-500/10 border-rose-500/20',
 };
 
 function formatDuration(mins: number): string {
+  if (!mins) return '—';
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h > 0 ? `${h}h ${m > 0 ? m + 'm' : ''}` : `${m}m`;
@@ -224,6 +132,49 @@ const stagger = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Shared state components                                            */
+/* ------------------------------------------------------------------ */
+
+function LoadingState({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/60 mb-3" />
+      <div className="text-sm text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12">
+      <div className="h-14 w-14 rounded-2xl bg-rose-500/10 grid place-items-center mb-3">
+        <AlertCircle className="h-7 w-7 text-rose-500" />
+      </div>
+      <div className="font-semibold text-sm">{message}</div>
+      {onRetry && (
+        <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={onRetry}>
+          <RefreshCw className="h-3.5 w-3.5" /> Try Again
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon, title, description,
+}: { icon: any; title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-12 px-6">
+      <div className="h-16 w-16 rounded-2xl bg-muted grid place-items-center mb-4">
+        <Icon className="h-8 w-8 text-muted-foreground/60" />
+      </div>
+      <div className="font-semibold text-sm">{title}</div>
+      <div className="text-xs text-muted-foreground mt-1.5 max-w-md">{description}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Sub-Components                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -239,54 +190,63 @@ function CountdownTimer({ isoDate }: { isoDate: string }) {
 }
 
 /* ---- Upcoming Exams ---- */
-function UpcomingExams() {
+function UpcomingExams({ exams }: { exams: UpcomingExam[] }) {
+  if (exams.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Calendar}
+          title="No upcoming exams scheduled"
+          description="When your teachers schedule tests, mid-terms or finals, they will appear here with countdowns and details."
+        />
+      </Card>
+    );
+  }
+
+  const next = exams[0];
+  const cd = getCountdown(next.date);
+
   return (
     <div className="space-y-6">
       {/* Next exam hero card */}
-      {(() => {
-        const next = UPCOMING_EXAMS[0];
-        const cd = getCountdown(next.date);
-        return (
-          <motion.div initial="hidden" animate="show" variants={fadeUp} custom={0}>
-            <Card className="overflow-hidden border-0 shadow-lg">
-              <div className="bg-gradient-to-r from-indigo-500 to-blue-600 p-6 text-white">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertCircle className="size-4" />
-                  <span className="text-sm font-medium opacity-90">Next Exam</span>
-                </div>
-                <h3 className="text-2xl font-bold">{next.subject}</h3>
-                <p className="text-sm opacity-80 mt-1">{next.type} &middot; {next.chapters.join(', ')}</p>
-                <div className="flex flex-wrap gap-3 mt-4">
-                  <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
-                    <Calendar className="size-3.5" />
-                    {new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
-                    <Timer className="size-3.5" />
-                    {formatDuration(next.duration)}
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
-                    <FileCheck className="size-3.5" />
-                    {next.totalMarks} marks
-                  </div>
-                </div>
+      <motion.div initial="hidden" animate="show" variants={fadeUp} custom={0}>
+        <Card className="overflow-hidden border-0 shadow-lg">
+          <div className="bg-gradient-to-r from-primary to-primary/70 p-6 text-white">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="size-4" />
+              <span className="text-sm font-medium opacity-90">Next Exam</span>
+            </div>
+            <h3 className="text-2xl font-bold">{next.subject}</h3>
+            <p className="text-sm opacity-80 mt-1">{next.type} &middot; {next.chapters.join(', ')}</p>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
+                <Calendar className="size-3.5" />
+                {new Date(next.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Starts in</span>
-                  <span className={`font-mono text-lg font-bold ${cd.urgent === 'red' ? 'text-red-500' : cd.urgent === 'amber' ? 'text-amber-500' : 'text-emerald-500'}`}>
-                    {cd.label}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        );
-      })()}
+              <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
+                <Timer className="size-3.5" />
+                {formatDuration(next.duration)}
+              </div>
+              <div className="flex items-center gap-1.5 bg-white/15 rounded-md px-3 py-1.5 text-sm">
+                <FileCheck className="size-3.5" />
+                {next.totalMarks} marks
+              </div>
+            </div>
+          </div>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Starts in</span>
+              <span className={`font-mono text-lg font-bold ${cd.urgent === 'red' ? 'text-red-500' : cd.urgent === 'amber' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                {cd.label}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Remaining exams grid */}
       <motion.div className="grid grid-cols-1 sm:grid-cols-2 gap-4" variants={stagger} initial="hidden" animate="show">
-        {UPCOMING_EXAMS.slice(1).map((exam, i) => {
+        {exams.slice(1).map((exam, i) => {
           const cd = getCountdown(exam.date);
           return (
             <motion.div key={exam.id} variants={fadeUp} custom={i + 1}>
@@ -335,6 +295,7 @@ function CreatePracticeTest() {
 
   const handleGenerate = () => {
     setGenerating(true);
+    // Neutral confirmation — no fake question content is fabricated.
     setTimeout(() => { setGenerating(false); setGenerated(true); }, 2500);
   };
 
@@ -351,14 +312,15 @@ function CreatePracticeTest() {
             <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center">
               <CheckCircle2 className="size-8 text-emerald-500" />
             </div>
-            <h3 className="text-lg font-semibold">Practice Test Generated!</h3>
+            <h3 className="text-lg font-semibold">Practice Test Configured</h3>
             <p className="text-sm text-muted-foreground">
-              {questionCount[0]} questions on {currentSubject?.name} &middot; {difficulty} difficulty
-              {timeLimit ? ` \u00B7 ${Math.round(questionCount[0] * 1.2)} min` : ''}
+              Your {questionCount[0]}-question {currentSubject?.name ?? 'subject'} test ({difficulty} difficulty
+              {timeLimit ? `, ~${Math.round(questionCount[0] * 1.2)} min` : ''}) is ready.
+              Question content will load when the test engine is enabled.
             </p>
             <div className="flex gap-3 justify-center pt-2">
               <Button onClick={handleReset} variant="outline"><RotateCcw className="size-4 mr-1" />Create Another</Button>
-              <Button className="bg-gradient-to-r from-indigo-500 to-blue-600 text-white border-0"><FileCheck className="size-4 mr-1" />Start Test</Button>
+              <Button className="bg-primary text-white hover:bg-primary/90"><FileCheck className="size-4 mr-1" />Start Test</Button>
             </div>
           </CardContent>
         </Card>
@@ -370,7 +332,7 @@ function CreatePracticeTest() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Brain className="size-5 text-indigo-500" />Test Configuration</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Brain className="size-5 text-primary" />Test Configuration</CardTitle>
           <CardDescription>Customize your practice test parameters</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -417,7 +379,7 @@ function CreatePracticeTest() {
                   variant={difficulty === d ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setDifficulty(d)}
-                  className={difficulty === d ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white border-0' : ''}
+                  className={difficulty === d ? 'bg-primary text-white border-0 hover:bg-primary/90' : ''}
                 >
                   {d === 'Easy' && <Zap className="size-3.5 mr-1" />}
                   {d === 'Medium' && <Target className="size-3.5 mr-1" />}
@@ -433,7 +395,7 @@ function CreatePracticeTest() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Number of Questions</label>
-              <span className="text-sm font-mono font-bold text-indigo-600">{questionCount[0]}</span>
+              <span className="text-sm font-mono font-bold text-primary">{questionCount[0]}</span>
             </div>
             <Slider value={questionCount} onValueChange={setQuestionCount} min={10} max={100} step={5} />
             <div className="flex justify-between text-xs text-muted-foreground">
@@ -458,7 +420,7 @@ function CreatePracticeTest() {
           <Button
             onClick={handleGenerate}
             disabled={!subject || selectedChapters.length === 0 || generating}
-            className="w-full h-11 text-base bg-gradient-to-r from-indigo-500 to-blue-600 text-white border-0 hover:opacity-90 transition-opacity"
+            className="w-full h-11 text-base bg-primary text-white border-0 hover:bg-primary/90 transition-opacity"
           >
             {generating ? (
               <>
@@ -479,12 +441,32 @@ function CreatePracticeTest() {
 }
 
 /* ---- Past Results ---- */
-function PastResults() {
+function PastResults({
+  results, loading, error, onRetry,
+}: { results: PastResult[]; loading: boolean; error: string | null; onRetry: () => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (loading) {
+    return <LoadingState label="Loading your past results…" />;
+  }
+  if (error) {
+    return <ErrorState message={error} onRetry={onRetry} />;
+  }
+  if (results.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={FileCheck}
+          title="No past results yet"
+          description="Once you take a test or exam, your results will be listed here with full breakdowns."
+        />
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      {PAST_RESULTS.map((r, i) => (
+      {results.map((r, i) => (
         <motion.div key={r.id} initial="hidden" animate="show" variants={fadeUp} custom={i}>
           <Card className="transition-shadow hover:shadow-md overflow-hidden">
             <CardContent className="pt-0">
@@ -502,15 +484,15 @@ function PastResults() {
                       <span className="ml-2 text-muted-foreground font-normal">({r.percentage.toFixed(1)}%)</span>
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Clock className="size-3" />{formatDuration(r.timeTaken)}
-                      <span className="opacity-40">|</span>
+                      <Clock className="size-3" />
                       {new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {trendIcon[r.trend]}
-                  <Badge variant="outline" className="text-xs">{r.difficulty}</Badge>
+                  {r.grade && (
+                    <Badge variant="outline" className={`text-xs ${gradeColor[r.grade] ?? ''}`}>Grade {r.grade}</Badge>
+                  )}
                   <ChevronRight className={`size-4 text-muted-foreground transition-transform ${expanded === r.id ? 'rotate-90' : ''}`} />
                 </div>
               </button>
@@ -525,7 +507,7 @@ function PastResults() {
                     className="overflow-hidden"
                   >
                     <Separator className="my-3" />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                       <div>
                         <p className="text-muted-foreground text-xs">Score</p>
                         <p className="font-semibold">{r.score}/{r.totalMarks}</p>
@@ -534,23 +516,15 @@ function PastResults() {
                         <p className="text-muted-foreground text-xs">Percentage</p>
                         <p className="font-semibold">{r.percentage.toFixed(1)}%</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Time Taken</p>
-                        <p className="font-semibold">{formatDuration(r.timeTaken)}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground text-xs">Trend</p>
-                        <p className="font-semibold capitalize flex items-center gap-1">
-                          {trendIcon[r.trend]} {r.trend}
-                        </p>
-                      </div>
+                      {r.grade && (
+                        <div>
+                          <p className="text-muted-foreground text-xs">Grade</p>
+                          <p className="font-semibold">{r.grade}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-3">
                       <Progress value={r.percentage} className="h-2" />
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <Button size="sm" variant="outline"><Eye className="size-3.5 mr-1" />View Details</Button>
-                      <Button size="sm" variant="outline"><RotateCcw className="size-3.5 mr-1" />Retake</Button>
                     </div>
                   </motion.div>
                 )}
@@ -564,9 +538,42 @@ function PastResults() {
 }
 
 /* ---- Performance Analytics ---- */
-function PerformanceAnalytics() {
-  const strengths = SUBJECT_PERFORMANCE.filter(s => s.score >= 85).map(s => s.subject);
-  const weaknesses = SUBJECT_PERFORMANCE.filter(s => s.score < 80).map(s => s.subject);
+function PerformanceAnalytics({ results }: { results: PastResult[] }) {
+  if (results.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={BarChart3}
+          title="No data yet — take a test to see your analytics"
+          description="Subject-wise performance, improvement trends, strengths and weaknesses will be visualised here once you have at least one graded result."
+        />
+      </Card>
+    );
+  }
+
+  // Derive subject-wise averages from real results
+  const subjects = Array.from(new Set(results.map(r => r.subject)));
+  const subjectPerformance = subjects.map(sub => {
+    const subjectResults = results.filter(r => r.subject === sub);
+    const avg = subjectResults.reduce((a, r) => a + r.percentage, 0) / subjectResults.length;
+    return { subject: sub.length > 10 ? sub.slice(0, 8) : sub, score: Math.round(avg) };
+  });
+
+  // Sort results by date for trend
+  const sortedByDate = [...results].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const improvementTrend = sortedByDate.map((r, i) => ({
+    month: new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    average: Math.round(r.percentage),
+    idx: i,
+  }));
+
+  const avgScore = results.reduce((a, r) => a + r.percentage, 0) / results.length;
+  const bestResult = results.reduce((best, r) => r.percentage > best.percentage ? r : best, results[0]);
+  const strengths = subjectPerformance.filter(s => s.score >= 80).map(s => s.subject);
+  const weaknesses = subjectPerformance.filter(s => s.score < 60).map(s => s.subject);
+
+  const NAVY = '#1a365d';
+  const NAVY_LIGHT = '#3b5b8c';
 
   return (
     <div className="space-y-6">
@@ -574,27 +581,21 @@ function PerformanceAnalytics() {
       <motion.div initial="hidden" animate="show" variants={fadeUp} custom={0}>
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BarChart3 className="size-5 text-indigo-500" />Subject-wise Performance</CardTitle>
-            <CardDescription>Current vs Previous scores</CardDescription>
+            <CardTitle className="flex items-center gap-2"><BarChart3 className="size-5 text-primary" />Subject-wise Performance</CardTitle>
+            <CardDescription>Your average score per subject</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={SUBJECT_PERFORMANCE} barGap={4} barCategoryGap="20%">
+                <BarChart data={subjectPerformance} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="subject" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                    formatter={(value: number) => [`${value}%`, 'Average']}
                   />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="score" name="Current" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="previous" name="Previous" fill="#c7d2fe" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="score" name="Average" fill={NAVY} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -607,37 +608,26 @@ function PerformanceAnalytics() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><TrendingUp className="size-5 text-emerald-500" />Improvement Trend</CardTitle>
-            <CardDescription>Average score over recent months</CardDescription>
+            <CardDescription>Score across recent attempts</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={IMPROVEMENT_TREND}>
+                <AreaChart data={improvementTrend}>
                   <defs>
                     <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="5%" stopColor={NAVY} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={NAVY} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis domain={[60, 100]} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
+                    formatter={(value: number) => [`${value}%`, 'Score']}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="average"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    fill="url(#trendGradient)"
-                    name="Avg Score"
-                  />
+                  <Area type="monotone" dataKey="average" stroke={NAVY} strokeWidth={2} fill="url(#trendGradient)" name="Score" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -656,7 +646,7 @@ function PerformanceAnalytics() {
               <div className="flex flex-wrap gap-2">
                 {strengths.length > 0 ? strengths.map(s => (
                   <Badge key={s} className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">{s}</Badge>
-                )) : <p className="text-sm text-muted-foreground">Keep practicing!</p>}
+                )) : <p className="text-sm text-muted-foreground">Keep practicing — your strongest subjects will appear here.</p>}
               </div>
             </CardContent>
           </Card>
@@ -668,7 +658,7 @@ function PerformanceAnalytics() {
               <div className="flex flex-wrap gap-2">
                 {weaknesses.length > 0 ? weaknesses.map(s => (
                   <Badge key={s} className="bg-amber-500/15 text-amber-700 border-amber-500/30">{s}</Badge>
-                )) : <p className="text-sm text-muted-foreground">Great job!</p>}
+                )) : <p className="text-sm text-muted-foreground">No weak areas detected — great job!</p>}
               </div>
             </CardContent>
           </Card>
@@ -679,10 +669,10 @@ function PerformanceAnalytics() {
       <motion.div initial="hidden" animate="show" variants={fadeUp} custom={3}>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Avg Score', value: '85%', icon: BarChart3, color: 'from-indigo-500 to-blue-600' },
-            { label: 'Best Subject', value: 'CS', icon: CheckCircle2, color: 'from-emerald-500 to-teal-600' },
-            { label: 'Tests Taken', value: '24', icon: FileCheck, color: 'from-violet-500 to-purple-600' },
-            { label: 'Improvement', value: '+13%', icon: TrendingUp, color: 'from-amber-500 to-orange-600' },
+            { label: 'Avg Score', value: `${avgScore.toFixed(0)}%`, icon: BarChart3, color: 'from-primary to-primary/70' },
+            { label: 'Best Subject', value: bestResult.subject.length > 10 ? bestResult.subject.slice(0, 8) : bestResult.subject, icon: CheckCircle2, color: 'from-emerald-500 to-teal-600' },
+            { label: 'Tests Taken', value: results.length, icon: FileCheck, color: 'from-violet-500 to-purple-600' },
+            { label: 'Highest Score', value: `${Math.round(bestResult.percentage)}%`, icon: TrendingUp, color: 'from-amber-500 to-orange-600' },
           ].map(stat => (
             <Card key={stat.label} className="overflow-hidden">
               <div className={`bg-gradient-to-br ${stat.color} p-3 flex items-center justify-center`}>
@@ -702,111 +692,15 @@ function PerformanceAnalytics() {
 
 /* ---- Answer Key & Review ---- */
 function AnswerKeyReview() {
-  const [showExplanation, setShowExplanation] = useState<Record<number, boolean>>({});
-  const correct = MOCK_REVIEW_QUESTIONS.filter(q => q.isCorrect).length;
-  const total = MOCK_REVIEW_QUESTIONS.length;
-  const pct = Math.round((correct / total) * 100);
-
-  const toggleExplanation = (id: number) => {
-    setShowExplanation(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
+  // No test is selected by the user yet — show an honest placeholder.
   return (
-    <div className="space-y-6">
-      {/* Summary */}
-      <motion.div initial="hidden" animate="show" variants={fadeUp} custom={0}>
-        <Card className="overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500 to-blue-600 p-6 text-white">
-            <h3 className="text-lg font-semibold">Practice Test Review</h3>
-            <p className="text-sm opacity-80">Mathematics &middot; Mixed Difficulty &middot; 30 Questions</p>
-          </div>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-emerald-500">{correct}</p>
-                <p className="text-xs text-muted-foreground">Correct</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-500">{total - correct}</p>
-                <p className="text-xs text-muted-foreground">Incorrect</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-indigo-600">{pct}%</p>
-                <p className="text-xs text-muted-foreground">Score</p>
-              </div>
-            </div>
-            <Progress value={pct} className="h-2.5 mt-4" />
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Questions */}
-      <div className="space-y-3">
-        {MOCK_REVIEW_QUESTIONS.map((q, i) => (
-          <motion.div key={q.id} initial="hidden" animate="show" variants={fadeUp} custom={i + 1}>
-            <Card className={`border-l-4 ${q.isCorrect ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
-              <CardContent className="pt-0">
-                <div className="flex items-start gap-3">
-                  <div className={`mt-0.5 shrink-0 ${q.isCorrect ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {q.isCorrect ? <CheckCircle2 className="size-5" /> : <XCircle className="size-5" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">
-                      <span className="text-muted-foreground mr-1">Q{q.id}.</span>
-                      {q.question}
-                    </p>
-
-                    <div className="mt-2 space-y-1.5">
-                      {q.options.map((opt, oi) => {
-                        const isCorrect = oi === q.correct;
-                        const isSelected = oi === q.selected;
-                        let cls = 'border bg-background';
-                        if (isCorrect) cls = 'border-emerald-500/40 bg-emerald-500/10';
-                        else if (isSelected && !q.isCorrect) cls = 'border-red-500/40 bg-red-500/10';
-
-                        return (
-                          <div key={oi} className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${cls}`}>
-                            <span className="font-mono text-xs text-muted-foreground mr-1">{String.fromCharCode(65 + oi)}</span>
-                            {opt}
-                            {isCorrect && <CheckCircle2 className="size-3.5 text-emerald-500 ml-auto shrink-0" />}
-                            {isSelected && !q.isCorrect && <XCircle className="size-3.5 text-red-500 ml-auto shrink-0" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <AnimatePresence>
-                      {showExplanation[q.id] && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-2 rounded-md bg-indigo-500/5 border border-indigo-500/20 p-3 text-sm text-muted-foreground">
-                            <p className="font-medium text-indigo-600 text-xs mb-1">Explanation</p>
-                            {q.explanation}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <button
-                      className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1"
-                      onClick={() => toggleExplanation(q.id)}
-                    >
-                      {showExplanation[q.id] ? 'Hide' : 'Show'} Explanation
-                      <ChevronRight className={`size-3 transition-transform ${showExplanation[q.id] ? 'rotate-90' : ''}`} />
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <EmptyState
+        icon={Eye}
+        title="No test selected"
+        description="Take a practice test or click 'Review' on a past result to see the answer key with detailed explanations for each question."
+      />
+    </Card>
   );
 }
 
@@ -817,10 +711,78 @@ function AnswerKeyReview() {
 export function ExamPortal({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('upcoming');
 
+  // ── Real results from GET /api/results?studentId=<user.id> ──
+  const [results, setResults] = useState<PastResult[]>([]);
+  const [resultsLoading, setResultsLoading] = useState(true);
+  const [resultsError, setResultsError] = useState<string | null>(null);
+
+  const fetchResults = () =>
+    api.getResults({ studentId: user?.id })
+      .then(raw => {
+        const list = Array.isArray(raw) ? raw : [];
+        const mapped: PastResult[] = list.map((r: any) => {
+          const marks = Number(r.marks ?? r.score ?? 0);
+          const total = Number(r.totalMarks ?? 100);
+          return {
+            id: String(r.id ?? Math.random()),
+            subject: r.exam || r.subject || 'Exam',
+            score: marks,
+            totalMarks: total,
+            percentage: total ? (marks / total) * 100 : 0,
+            date: r.date || new Date().toISOString(),
+            grade: r.grade,
+          };
+        });
+        setResults(mapped);
+        setResultsError(null);
+      })
+      .catch(e => { setResultsError(e.message || 'Failed to load results.'); })
+      .finally(() => setResultsLoading(false));
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getResults({ studentId: user?.id })
+      .then(raw => {
+        if (cancelled) return;
+        const list = Array.isArray(raw) ? raw : [];
+        const mapped: PastResult[] = list.map((r: any) => {
+          const marks = Number(r.marks ?? r.score ?? 0);
+          const total = Number(r.totalMarks ?? 100);
+          return {
+            id: String(r.id ?? Math.random()),
+            subject: r.exam || r.subject || 'Exam',
+            score: marks,
+            totalMarks: total,
+            percentage: total ? (marks / total) * 100 : 0,
+            date: r.date || new Date().toISOString(),
+            grade: r.grade,
+          };
+        });
+        setResults(mapped);
+        setResultsError(null);
+      })
+      .catch(e => { if (!cancelled) setResultsError(e.message || 'Failed to load results.'); })
+      .finally(() => { if (!cancelled) setResultsLoading(false); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  // ── Upcoming exams — no endpoint exists; honest empty state ──
+  const upcomingExams: UpcomingExam[] = [];
+
   return (
     <div className="space-y-6">
-      {/* Module Header with gradient */}
-      <div className="rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 p-6 text-white">
+      {/* Module Header — navy gradient (NOT indigo/blue) */}
+      <ModuleHeader
+        title="Exam Portal"
+        subtitle="Practice tests, results & performance analytics"
+        actions={
+          <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/15">
+            <BookOpen className="size-3 mr-1" />{SUBJECTS_LIST.length} Subjects
+          </Badge>
+        }
+      />
+
+      <div className="rounded-xl bg-gradient-to-r from-primary to-primary/70 p-6 text-white">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 bg-white/15 rounded-lg">
             <FileCheck className="size-6" />
@@ -832,13 +794,13 @@ export function ExamPortal({ user }: { user: any }) {
         </div>
         <div className="flex flex-wrap gap-2 mt-4">
           <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
-            <BookOpen className="size-3 mr-1" />5 Subjects
+            <BookOpen className="size-3 mr-1" />{SUBJECTS_LIST.length} Subjects
           </Badge>
           <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
-            <Calendar className="size-3 mr-1" />{UPCOMING_EXAMS.length} Upcoming
+            <Calendar className="size-3 mr-1" />{upcomingExams.length} Upcoming
           </Badge>
           <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
-            <TrendingUp className="size-3 mr-1" />+13% This Month
+            <FileCheck className="size-3 mr-1" />{results.length} Past Results
           </Badge>
         </div>
       </div>
@@ -864,7 +826,7 @@ export function ExamPortal({ user }: { user: any }) {
         </TabsList>
 
         <TabsContent value="upcoming" className="mt-4">
-          <UpcomingExams />
+          <UpcomingExams exams={upcomingExams} />
         </TabsContent>
 
         <TabsContent value="create" className="mt-4">
@@ -872,11 +834,11 @@ export function ExamPortal({ user }: { user: any }) {
         </TabsContent>
 
         <TabsContent value="results" className="mt-4">
-          <PastResults />
+          <PastResults results={results} loading={resultsLoading} error={resultsError} onRetry={fetchResults} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4">
-          <PerformanceAnalytics />
+          <PerformanceAnalytics results={results} />
         </TabsContent>
 
         <TabsContent value="review" className="mt-4">

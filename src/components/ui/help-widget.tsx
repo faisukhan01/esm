@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LifeBuoy, X, Search, BookOpen, Video, MessageSquare, Flag, Keyboard, ExternalLink, Phone, Mail } from 'lucide-react';
-import { useT } from '@/lib/i18n';
 
 // Floating Help & Support widget — appears as a small FAB in the bottom-right corner.
 // PGC competitor has no in-app help — this is a key user-friendliness differentiator.
@@ -13,33 +12,33 @@ import { useT } from '@/lib/i18n';
 
 type HelpArticle = {
   id: string;
-  title: { en: string; ur: string };
+  title: string;
   category: 'getting-started' | 'academics' | 'fees' | 'mobile';
 };
 
 const ARTICLES: HelpArticle[] = [
-  { id: 'h1', title: { en: 'How to add a new student', ur: 'نیا طالب علم کیسے شامل کریں' }, category: 'getting-started' },
-  { id: 'h2', title: { en: 'Setting up class timetable', ur: 'کلاس ٹائم ٹیبل کیسے بنائیں' }, category: 'academics' },
-  { id: 'h3', title: { en: 'Generating fee invoices', ur: 'فیس انوائس بنانا' }, category: 'fees' },
-  { id: 'h4', title: { en: 'Marking attendance as teacher', ur: 'بطور استاد حاضری لگانا' }, category: 'academics' },
-  { id: 'h5', title: { en: 'Updating the mobile app', ur: 'موبائل ایپ اپڈیٹ کرنا' }, category: 'mobile' },
-  { id: 'h6', title: { en: 'Downloading the APK', ur: 'اے پی کے ڈاؤن لوڈ کرنا' }, category: 'mobile' },
-  { id: 'h7', title: { en: 'Creating institute announcements', ur: 'ادارہ اعلانات بنانا' }, category: 'getting-started' },
-  { id: 'h8', title: { en: 'Viewing student results', ur: 'طلبہ نتائج دیکھنا' }, category: 'academics' },
+  { id: 'h1', title: 'How to add a new student', category: 'getting-started' },
+  { id: 'h2', title: 'Setting up class timetable', category: 'academics' },
+  { id: 'h3', title: 'Generating fee invoices', category: 'fees' },
+  { id: 'h4', title: 'Marking attendance as teacher', category: 'academics' },
+  { id: 'h5', title: 'Updating the mobile app', category: 'mobile' },
+  { id: 'h6', title: 'Downloading the APK', category: 'mobile' },
+  { id: 'h7', title: 'Creating institute announcements', category: 'getting-started' },
+  { id: 'h8', title: 'Viewing student results', category: 'academics' },
 ];
 
 const QUICK_LINKS = [
-  { icon: BookOpen, labelKey: 'helpDocumentation' as const, href: 'https://esm-rose.vercel.app/#modules', color: 'text-emerald-600 bg-emerald-500/10' },
-  { icon: Video, labelKey: 'helpVideoTutorials' as const, href: 'https://esm-rose.vercel.app/download', color: 'text-rose-600 bg-rose-500/10' },
-  { icon: MessageSquare, labelKey: 'helpContactSupport' as const, href: 'mailto:support@esm-rose.vercel.app', color: 'text-amber-600 bg-amber-500/10' },
-  { icon: Flag, labelKey: 'helpReportIssue' as const, href: 'https://github.com/faisukhan01/esm/issues', color: 'text-violet-600 bg-violet-500/10' },
+  { icon: BookOpen, label: 'Documentation', href: 'https://esm-rose.vercel.app/#modules', color: 'text-emerald-600 bg-emerald-500/10' },
+  { icon: Video, label: 'Video Tutorials', href: 'https://esm-rose.vercel.app/download', color: 'text-rose-600 bg-rose-500/10' },
+  { icon: MessageSquare, label: 'Contact Support', href: 'mailto:support@esm-rose.vercel.app', color: 'text-amber-600 bg-amber-500/10' },
+  { icon: Flag, label: 'Report an Issue', href: 'https://github.com/faisukhan01/esm/issues', color: 'text-violet-600 bg-violet-500/10' },
 ];
 
 const SHORTCUTS = [
-  { keys: ['⌘', 'K'], label: { en: 'Command palette', ur: 'کمانڈ پیلیٹ' } },
-  { keys: ['⌘', '/'], label: { en: 'Search help', ur: 'مدد تلاش کریں' } },
-  { keys: ['Esc'], label: { en: 'Close dialogs', ur: 'ڈائیلاگ بند کریں' } },
-  { keys: ['?'], label: { en: 'Show shortcuts', ur: 'شارٹ کٹس دکھائیں' } },
+  { keys: ['⌘', 'K'], label: 'Command palette' },
+  { keys: ['⌘', '/'], label: 'Search help' },
+  { keys: ['Esc'], label: 'Close dialogs' },
+  { keys: ['?'], label: 'Show shortcuts' },
 ];
 
 export function HelpWidget() {
@@ -47,7 +46,6 @@ export function HelpWidget() {
   const [query, setQuery] = useState('');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const fabRef = useRef<HTMLButtonElement>(null);
-  const tr = useT();
 
   // Keyboard shortcut: ? opens help, Escape closes
   useEffect(() => {
@@ -69,8 +67,7 @@ export function HelpWidget() {
 
   const filteredArticles = query.trim()
     ? ARTICLES.filter(a =>
-        a.title.en.toLowerCase().includes(query.toLowerCase()) ||
-        a.title.ur.includes(query)
+        a.title.toLowerCase().includes(query.toLowerCase())
       )
     : ARTICLES;
 
@@ -80,7 +77,7 @@ export function HelpWidget() {
       <motion.button
         ref={fabRef}
         onClick={() => setOpen(true)}
-        aria-label={tr.s('helpSupport')}
+        aria-label="Help & Support"
         className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg hover:shadow-xl grid place-items-center text-white transition-shadow"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -121,8 +118,8 @@ export function HelpWidget() {
                     <LifeBuoy className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="text-white font-bold text-sm">{tr.s('helpSupport')}</div>
-                    <div className="text-white/70 text-[11px]">ESM v1.5.0 · {tr.isUrdu ? 'اردو' : 'English'}</div>
+                    <div className="text-white font-bold text-sm">Help & Support</div>
+                    <div className="text-white/70 text-[11px]">ESM v1.6.1</div>
                   </div>
                 </div>
                 <button
@@ -141,7 +138,7 @@ export function HelpWidget() {
                   <Input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder={tr.s('helpSearch')}
+                    placeholder="Search help articles…"
                     className="pl-9 h-9 text-sm"
                   />
                 </div>
@@ -152,14 +149,14 @@ export function HelpWidget() {
                 {/* Quick Links */}
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-                    {tr.s('helpQuickLinks')}
+                    Quick Links
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {QUICK_LINKS.map((link) => {
                       const Icon = link.icon;
                       return (
                         <a
-                          key={link.labelKey}
+                          key={link.label}
                           href={link.href}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -169,7 +166,7 @@ export function HelpWidget() {
                             <Icon className="h-4 w-4" />
                           </span>
                           <span className="text-xs font-medium text-foreground flex-1 leading-tight">
-                            {tr.s(link.labelKey)}
+                            {link.label}
                           </span>
                           <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition" />
                         </a>
@@ -181,11 +178,11 @@ export function HelpWidget() {
                 {/* Help Articles */}
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-                    {tr.isUrdu ? 'مدد مضامین' : 'Help Articles'} ({filteredArticles.length})
+                    Help Articles ({filteredArticles.length})
                   </div>
                   {filteredArticles.length === 0 ? (
                     <div className="text-center py-6 text-xs text-muted-foreground">
-                      {tr.isUrdu ? 'کوئی مضمون نہیں ملا' : 'No articles found'}
+                      No articles found
                     </div>
                   ) : (
                     <ul className="space-y-1">
@@ -193,7 +190,7 @@ export function HelpWidget() {
                         <li key={article.id}>
                           <button className="w-full text-left px-2.5 py-2 rounded-md hover:bg-accent text-sm text-foreground transition flex items-center gap-2">
                             <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="flex-1 truncate">{tr.isUrdu ? article.title.ur : article.title.en}</span>
+                            <span className="flex-1 truncate">{article.title}</span>
                           </button>
                         </li>
                       ))}
@@ -209,7 +206,7 @@ export function HelpWidget() {
                   >
                     <span className="flex items-center gap-1.5">
                       <Keyboard className="h-3.5 w-3.5" />
-                      {tr.s('helpKeyboardShortcuts')}
+                      Keyboard Shortcuts
                     </span>
                     <span className="text-[10px]">{showShortcuts ? '▲' : '▼'}</span>
                   </button>
@@ -224,7 +221,7 @@ export function HelpWidget() {
                         <ul className="pt-1 space-y-1">
                           {SHORTCUTS.map((sc, i) => (
                             <li key={i} className="flex items-center justify-between px-2 py-1.5 text-xs">
-                              <span className="text-muted-foreground">{tr.isUrdu ? sc.label.ur : sc.label.en}</span>
+                              <span className="text-muted-foreground">{sc.label}</span>
                               <span className="flex items-center gap-1">
                                 {sc.keys.map((k, j) => (
                                   <kbd key={j} className="h-5 min-w-[20px] px-1 grid place-items-center rounded border border-border bg-muted text-[10px] font-medium">
@@ -268,7 +265,7 @@ export function HelpWidget() {
               {/* Footer */}
               <div className="p-2.5 border-t border-border bg-muted/30 text-center">
                 <span className="text-[10px] text-muted-foreground">
-                  {tr.isUrdu ? '؟ دبائیں مدد کے لیے' : 'Press ? anytime for help'} · {tr.isUrdu ? 'بنیاد' : 'Built with'} ❤️ {tr.isUrdu ? 'سائبر ایڈوانس کے لیے' : 'by Cyber Advance'}
+                  Press ? anytime for help · Built with ❤️ for modern education
                 </span>
               </div>
             </motion.div>

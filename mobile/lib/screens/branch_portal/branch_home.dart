@@ -11,6 +11,8 @@ import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
+import '../shared/complaint_portal.dart';
+import '../shared/live_transport.dart';
 
 // =============================== PREMIUM LIST CARD (file-scoped) ===============================
 
@@ -630,6 +632,18 @@ class _BranchDashboardState extends State<_BranchDashboard> {
           label: 'Reports',
           color: AppTheme.success,
           onTap: () => _toast('Reports coming soon'),
+        ),
+        QuickActionTile(
+          icon: Icons.directions_bus_rounded,
+          label: 'Live Transport',
+          color: AppTheme.info,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LiveTransport(user: widget.user))),
+        ),
+        QuickActionTile(
+          icon: Icons.feedback_rounded,
+          label: 'Complaint Portal',
+          color: AppTheme.danger,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintPortal(user: widget.user))),
         ),
       ],
     );

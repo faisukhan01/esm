@@ -18,6 +18,11 @@ import 'student_id_card.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';
 import 'student_results.dart';
+import 'student_e_learning.dart';
+import 'student_exam_portal.dart';
+import 'student_wallet.dart';
+import '../shared/complaint_portal.dart';
+import '../shared/live_transport.dart';
 
 class StudentDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -347,6 +352,36 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         label: 'Notices',
                         color: AppTheme.warning,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnnouncements(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.video_library_rounded,
+                        label: 'E-Learning',
+                        color: const Color(0xFF7C3AED),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentELearning(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.fact_check_rounded,
+                        label: 'Exam Portal',
+                        color: AppTheme.warning,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentExamPortal(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.account_balance_wallet_rounded,
+                        label: 'Campus Wallet',
+                        color: AppTheme.gold,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentWallet(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.directions_bus_rounded,
+                        label: 'Live Transport',
+                        color: AppTheme.info,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LiveTransport(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.feedback_rounded,
+                        label: 'Complaint Portal',
+                        color: AppTheme.danger,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintPortal(user: widget.user))),
                       ),
                     ],
                   ),

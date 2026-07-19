@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap, Search, Bell, Menu, LogOut,
-  PanelLeftClose, PanelLeft, Crown, Building2, Users, BookOpen, User, Heart, Shield,
+  PanelLeftClose, PanelLeft, Crown, Building2, Users, BookOpen, User, Shield,
   CheckCircle2, AlertCircle, Receipt, Award, CalendarCheck, X, Moon, Sun,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -20,18 +20,15 @@ import { InstituteAdminPortal } from './institute-admin-portal';
 import { BranchManagerPortal } from './branch-manager-portal';
 import { TeacherPortal } from './teacher-portal';
 import { StudentPortal } from './student-portal';
-import { ParentPortal } from './parent-portal';
 import { SettingsPage } from './settings-page';
 import { CommandPalette } from './command-palette';
 import { OnboardingTips } from '@/components/onboarding/onboarding-tooltips';
-import { LanguageToggle, LanguageDirectionSync } from '@/components/ui/language-toggle';
 import { HelpWidget } from '@/components/ui/help-widget';
-import { useT } from '@/lib/i18n';
 import { api, setOnBlocked } from '@/lib/api';
 
 const roleIcon: Record<string, any> = {
   'super-admin': Crown, 'institute-admin': Building2, 'branch-manager': Users,
-  'teacher': BookOpen, 'student': User, 'parent': Heart,
+  'teacher': BookOpen, 'student': User,
 };
 
 // Notification icon + color mapping per type.
@@ -73,7 +70,6 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
   const groups = ROLE_MODULES[role] || [];
   const accent = roleAccent[role];
   const RoleIcon = roleIcon[role] || GraduationCap;
-  const tr = useT();
   return (
     <div className="flex flex-col h-full text-sidebar-foreground">
       <div className={cn('flex items-center gap-2.5 px-4 h-14 border-b border-sidebar-border shrink-0', collapsed && 'justify-center px-2')}>
@@ -95,7 +91,7 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
             <div key={group.group} className="mb-2">
               {!collapsed && (
                 <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-                  {tr.isUrdu ? tr.group(group.group) : group.group}
+                  {group.group}
                 </div>
               )}
               <div className={cn(!isOpen && !collapsed && 'hidden')}>
@@ -105,7 +101,7 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
                     <button
                       key={m.id}
                       onClick={() => { setActiveModule(m.id); setMobileOpen(false); }}
-                      title={collapsed ? (tr.isUrdu ? tr.mod(m.id) : m.name) : undefined}
+                      title={collapsed ? m.name : undefined}
                       className={cn(
                         'group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition',
                         collapsed && 'justify-center',
@@ -115,7 +111,7 @@ function SidebarContent({ role, collapsed, groupOpen, setGroupOpen, activeModule
                       )}
                     >
                       <m.icon className="h-[18px] w-[18px] shrink-0" />
-                      {!collapsed && <span className="truncate">{tr.isUrdu ? tr.mod(m.id) : m.name}</span>}
+                      {!collapsed && <span className="truncate">{m.name}</span>}
                     </button>
                   );
                 })}
@@ -158,7 +154,6 @@ export function RolePortal() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [blockedMsg, setBlockedMsg] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
-  const tr = useT();
   const [mounted, setMounted] = useState(false);
 
   // --- Notifications dropdown state ---
@@ -268,7 +263,6 @@ export function RolePortal() {
       case 'branch-manager': return <BranchManagerPortal activeModule={activeModule} user={user} />;
       case 'teacher': return <TeacherPortal activeModule={activeModule} user={user} />;
       case 'student': return <StudentPortal activeModule={activeModule} user={user} />;
-      case 'parent': return <ParentPortal activeModule={activeModule} user={user} />;
       default: return <StudentPortal activeModule={activeModule} user={user} />;
     }
   };
@@ -308,7 +302,6 @@ export function RolePortal() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <LanguageDirectionSync />
       <aside className={cn('hidden lg:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 fixed inset-y-0 left-0 z-30', collapsed ? 'w-[68px]' : 'w-64')}>
         <SidebarContent {...sidebarProps} />
       </aside>
@@ -335,7 +328,7 @@ export function RolePortal() {
 
           <div className="flex items-center gap-2 min-w-0">
             <div className="min-w-0">
-              <div className="font-semibold text-sm sm:text-base truncate">{tr.isUrdu ? tr.mod(active?.id || '') || active?.name : active?.name}</div>
+              <div className="font-semibold text-sm sm:text-base truncate">{active?.name}</div>
             </div>
           </div>
 
@@ -343,16 +336,15 @@ export function RolePortal() {
             <button
               type="button"
               onClick={() => setCmdOpen(true)}
-              aria-label={tr.s('openCommandPalette')}
+              aria-label="Open command palette"
               className="group hidden md:flex items-center gap-2 h-9 w-48 lg:w-64 px-3 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground text-sm transition border border-transparent hover:border-border"
             >
               <Search className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left truncate">{tr.s('search')}</span>
+              <span className="flex-1 text-left truncate">Search…</span>
               <kbd className="hidden lg:inline-flex items-center gap-0.5 h-5 px-1.5 rounded border border-border bg-background/80 text-[10px] font-medium text-muted-foreground/80">
                 <span className="text-[11px] leading-none">⌘</span>K
               </kbd>
             </button>
-            <LanguageToggle />
             {mounted && (
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

@@ -29,8 +29,8 @@ import { useApp } from '@/lib/store';
 import { BranchManagerPortal } from './branch-manager-portal';
 
 // Lazy-loaded v1.6.0 modules
-const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions'));
-const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
+const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions').then(m => ({ default: m.OnlineAdmissions })));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
   return (

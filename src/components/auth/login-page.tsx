@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
 import {
   User, Lock, Mail, Eye, EyeOff, Loader2, ArrowRight, Shield,
-  Building2, Users, BookOpen, GraduationCap, ArrowLeft, Heart, Sparkles, Copy, Check,
+  Building2, Users, BookOpen, GraduationCap, ArrowLeft,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -141,25 +141,14 @@ function CoverPanel() {
 }
 
 // ==================== Role Definitions ====================
-type Role = 'institute-admin' | 'branch-manager' | 'teacher' | 'student' | 'parent';
+type Role = 'institute-admin' | 'branch-manager' | 'teacher' | 'student';
 
 const ROLES: { id: Role; label: string; icon: any; note: string }[] = [
   { id: 'institute-admin', label: 'Institute', icon: Building2, note: 'Login created by Super Admin. Sign in with your email and password.' },
   { id: 'branch-manager', label: 'Branch', icon: Users, note: 'Login created by Institute Admin. Sign in with your email and password.' },
   { id: 'teacher', label: 'Teacher', icon: BookOpen, note: 'Sign in with your Name, Teacher ID, and Password.' },
   { id: 'student', label: 'Student', icon: User, note: 'Sign in with your Name, Roll Number, and Password.' },
-  { id: 'parent', label: 'Parent', icon: Heart, note: 'Login created by Branch Admin. Sign in with your email and password.' },
 ];
-
-// Demo credentials for each role — shown in a collapsible helper on the login page
-// so the founder + customers can instantly try any portal.
-const DEMO_CREDS: Record<Role, { id: string; password: string; name?: string; label: string }> = {
-  'institute-admin': { id: 'admin@alnoor.edu', password: 'demo123', label: 'Imran Siddiqui · Institute Admin' },
-  'branch-manager': { id: 'branch@alnoor.edu', password: 'demo123', label: 'Saima Bukhari · Branch Manager' },
-  'teacher': { id: 'T001', password: 'demo123', name: 'Ayesha Khan', label: 'Ayesha Khan · Teacher' },
-  'student': { id: 'S001', password: 'demo123', name: 'Ali Ahmed', label: 'Ali Ahmed · Student' },
-  'parent': { id: 'parent@alnoor.edu', password: 'demo123', label: 'Ahmed Raza · Parent' },
-};
 
 // ==================== Change Password Modal (first-time login) ====================
 function ChangePasswordModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
@@ -310,31 +299,6 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
     setName('');
   };
 
-  // Auto-fill demo credentials for the selected role so the founder can
-  // instantly try any portal with one click.
-  const [showDemoCreds, setShowDemoCreds] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  const fillDemoCreds = () => {
-    if (!role) {
-      toast({ title: 'Select a role first', description: 'Pick a role above to load demo credentials.', variant: 'default' });
-      return;
-    }
-    const demo = DEMO_CREDS[role];
-    if (demo.name) setName(demo.name);
-    setEmail(demo.id);
-    setPassword(demo.password);
-    toast({ title: 'Demo credentials filled', description: demo.label, variant: 'default' });
-  };
-  const copyToClipboard = (text: string, field: string) => {
-    try {
-      navigator.clipboard.writeText(text);
-      setCopiedField(field);
-      setTimeout(() => setCopiedField(null), 1500);
-    } catch {
-      toast({ title: 'Copy failed', variant: 'destructive' });
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (needsName && !name) { toast({ title: 'Name is required', variant: 'destructive' }); return; }
@@ -389,30 +353,10 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
         <p className="text-gray-400 text-xs sm:text-sm mb-4">Select your role and enter credentials</p>
       </div>
 
-      {/* Role selector — 3 in first row, 2 in second row */}
+      {/* Role selector — 2x2 grid for 4 roles */}
       <div className="mb-5 slide-up slide-up-delay-1">
-        {/* First row: 3 roles */}
-        <div className="grid grid-cols-3 gap-2 mb-2">
-          {ROLES.slice(0, 3).map(r => {
-            const isActive = role === r.id;
-            return (
-              <button
-                key={r.id} type="button" onClick={() => pickRole(r.id)}
-                className={`role-pill flex flex-col items-center gap-1.5 py-2 px-2 rounded-xl border transition-all ${
-                  isActive
-                    ? 'bg-gradient-to-br from-primary to-primary/80 border-transparent shadow-md text-white'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600'
-                }`}
-              >
-                <r.icon className="h-4 w-4" />
-                <span className="text-[10px] font-semibold">{r.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        {/* Second row: 2 roles, equal width */}
         <div className="grid grid-cols-2 gap-2">
-          {ROLES.slice(3).map(r => {
+          {ROLES.map(r => {
             const isActive = role === r.id;
             return (
               <button
@@ -424,7 +368,7 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
                 }`}
               >
                 <r.icon className="h-4 w-4" />
-                <span className="text-[10px] font-semibold">{r.label}</span>
+                <span className="text-[11px] font-semibold">{r.label}</span>
               </button>
             );
           })}
@@ -479,76 +423,10 @@ function LoginForm({ setView }: { setView: (v: any) => void }) {
         </div>
       </form>
 
-      {/* Role-specific info + Try Demo button */}
+      {/* Role-specific info */}
       <div className="slide-up slide-up-delay-5 mt-4 space-y-3">
         <div className="rounded-xl bg-accent border border-accent p-3 text-center">
           <p className="text-primary text-[11px]">{noRoleSelected ? 'Please select your role above to sign in.' : activeRole?.note}</p>
-        </div>
-
-        {/* Try Demo — auto-fills demo creds for the selected role */}
-        {!noRoleSelected && (
-          <button
-            type="button"
-            onClick={fillDemoCreds}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-amber-700 text-xs font-semibold transition-all shadow-sm hover:shadow-md"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Try Demo Account
-            <span className="text-amber-600/70 font-normal">·</span>
-            <span className="text-amber-600/80 font-medium">{DEMO_CREDS[role!].label}</span>
-          </button>
-        )}
-
-        {/* Collapsible demo credentials helper */}
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setShowDemoCreds(s => !s)}
-            className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition text-left"
-          >
-            <span className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              Demo Credentials (all portals)
-            </span>
-            <span className="text-gray-400 text-xs">{showDemoCreds ? '▲' : '▼'}</span>
-          </button>
-          {showDemoCreds && (
-            <div className="p-3 space-y-2 bg-white">
-              {ROLES.map(r => {
-                const demo = DEMO_CREDS[r.id];
-                return (
-                  <div key={r.id} className="flex items-center gap-2 text-[11px]">
-                    <span className="w-16 shrink-0 font-semibold text-gray-600">{r.label}:</span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(demo.id, `${r.id}-id`)}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-gray-50 hover:bg-gray-100 font-mono text-gray-700 transition"
-                      title="Click to copy"
-                    >
-                      {copiedField === `${r.id}-id` ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-400" />}
-                      {demo.id}
-                    </button>
-                    {demo.name && (
-                      <span className="text-gray-500 text-[10px] hidden sm:inline">({demo.name})</span>
-                    )}
-                    <span className="text-gray-400">/</span>
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(demo.password, `${r.id}-pw`)}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-gray-50 hover:bg-gray-100 font-mono text-gray-700 transition"
-                      title="Click to copy"
-                    >
-                      {copiedField === `${r.id}-pw` ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-gray-400" />}
-                      {demo.password}
-                    </button>
-                  </div>
-                );
-              })}
-              <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100">
-                Click any credential to copy · All passwords are <span className="font-mono">demo123</span>
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>
