@@ -156,7 +156,7 @@ class _UpcomingExamsTabState extends State<_UpcomingExamsTab> {
           children: const [
             SizedBox(height: 80),
             EmptyState(
-              icon: Icons.event_upcoming,
+              icon: Icons.event,
               title: 'No upcoming exams',
               description: 'Scheduled exams will appear here with a countdown '
                   'and exam-day details. Pull down to refresh.',
