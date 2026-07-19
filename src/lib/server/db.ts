@@ -10,11 +10,13 @@ export const db = createClient({
 });
 
 // Initialize schema on first call
-let initialized = false;
+let schemaInitialized = false;
 
 export async function initDB() {
-  if (initialized) return;
-  initialized = true;
+  // Schema creation is cached after the first call (CREATE TABLE IF NOT EXISTS is
+  // idempotent but we skip the round-trips for perf on warm lambdas).
+  if (!schemaInitialized) {
+    schemaInitialized = true;
 
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT, rollNo TEXT, password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'student', status TEXT NOT NULL DEFAULT 'Active', title TEXT DEFAULT '', mustChangePassword INTEGER NOT NULL DEFAULT 0, blocked INTEGER NOT NULL DEFAULT 0, blockedReason TEXT, instituteId TEXT, branchId TEXT, class TEXT, section TEXT DEFAULT 'A', guardian TEXT, ward TEXT, wardId TEXT, subjects TEXT, classes TEXT, createdById TEXT, createdAt TEXT DEFAULT (datetime('now')))`,
@@ -50,6 +52,11 @@ export async function initDB() {
   for (const sql of statements) {
     try { await db.execute(sql); } catch {}
   }
+  } // end schema init block
+
+  // === Data seeding — runs on EVERY call (idempotent, cheap SELECT-then-INSERT) ===
+  // This must NOT be cached because warm Vercel lambdas may have been initialized
+  // before a new seed was added in a deployment — the seed would never run.
 
   // Seed super admin if not exists
   const existing = await db.execute({ sql: 'SELECT id FROM users WHERE role = ?', args: ['super-admin'] });
