@@ -162,10 +162,10 @@ class _StudentAnnouncementsState extends State<StudentAnnouncements> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      Share.share(ShareParams(
-                        text: '$title\n\n$body\n\n— $postedBy · $dateStr',
+                      Share.share(
+                        '$title\n\n$body\n\n— $postedBy · $dateStr',
                         subject: title,
-                      ));
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primary,
