@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 
 // Real features the platform actually offers — no fake stats
 const PLATFORM_FEATURES = [
-  { icon: Layers, title: '22 Integrated Modules', desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
+  { icon: Layers, title: `${MODULES.length} Integrated Modules`, desc: 'Admissions, attendance, fees, academics, HR, finance, library, transport & more — all in one place.' },
   { icon: Users, title: 'Multi-Role Portals', desc: 'Separate, scoped dashboards for Super Admins, Institute Admins, Branch Managers, Teachers & Students.' },
   { icon: Building2, title: 'Multi-Tenant SaaS', desc: 'Provision unlimited institutions. Each gets its own admin, branches, and isolated data.' },
   { icon: ShieldCheck, title: 'Role-Based Access', desc: 'Granular permissions — every user sees exactly what they need, nothing more.' },
@@ -90,7 +90,7 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
             <div className="mt-10 flex items-center gap-6 text-xs text-gray-400">
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                22 integrated modules
+                {MODULES.length} integrated modules
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
