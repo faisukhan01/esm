@@ -11,12 +11,12 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "ESM — Electronic School Management System",
-  description: "Electronic School Management — a modern, multi-tenant school management platform with 22 integrated modules: admissions, attendance, fees, academics, HR, library, transport, finance & more.",
+  description: "Electronic School Management — a modern, multi-tenant school management platform with 27+ integrated modules: admissions, attendance, fees, academics, HR, library, transport, finance, AI tutor, live transport, digital ID, campus wallet, PTM scheduling, health records & more.",
   keywords: ["school management system", "ESM", "education software", "student information system", "school ERP", "admissions", "attendance", "fee management"],
   authors: [{ name: "Cyber Advance Solutions" }],
   openGraph: {
     title: "ESM — Electronic School Management System",
-    description: "The complete school management platform with 22 integrated modules.",
+    description: "The complete school management platform with 27+ integrated modules.",
     type: "website",
   },
 };
