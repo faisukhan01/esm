@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, lazy, Suspense, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -27,6 +27,18 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { useApp } from '@/lib/store';
 import { BranchManagerPortal } from './branch-manager-portal';
+
+// Lazy-loaded v1.6.0 modules
+const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions'));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
+
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 // ============== Shared helpers ==============
 const formatPKR = (n: any) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
@@ -110,6 +122,8 @@ export function InstituteAdminPortal({ activeModule, user }: { activeModule: str
   if (activeModule === 'institute-academics') return <InstituteAcademics user={user} branches={branches} />;
   if (activeModule === 'institute-complaints') return <InstituteComplaints user={user} />;
   if (activeModule === 'institute-events') return <InstituteEvents user={user} />;
+  if (activeModule === 'online-admissions') return <Suspense fallback={<ModuleFallback />}><OnlineAdmissionsModule user={user} /></Suspense>;
+  if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
 
   if (selectedBranch) {
     return (

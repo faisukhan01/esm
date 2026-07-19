@@ -51,7 +51,9 @@ export function LandingPage() {
 
 function HeroSlider({ setView }: { setView: (v: any) => void }) {
   return (
-    <section id="top" className="relative w-full overflow-hidden bg-white">
+    <section id="top" className="relative w-full overflow-hidden hero-gradient-bg">
+      {/* Dot grid overlay */}
+      <div className="absolute inset-0 hero-dot-grid opacity-40 pointer-events-none" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16 lg:pt-32 lg:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
@@ -75,12 +77,12 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Button size="lg" className="bg-[#1a365d] text-white hover:bg-[#0f1e3a] font-semibold rounded-lg shadow-sm" onClick={() => setView('login')}>
+              <Button size="lg" className="bg-[#1a365d] text-white hover:bg-[#0f1e3a] font-semibold rounded-lg shadow-sm cta-glow" onClick={() => setView('login')}>
                 Launch Portal <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
               <button
                 onClick={() => document.getElementById('modules')?.scrollIntoView({ behavior: 'smooth' })}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium h-11 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-lg transition-all"
               >
                 Explore Modules
               </button>
@@ -99,6 +101,18 @@ function HeroSlider({ setView }: { setView: (v: any) => void }) {
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Role-based access
+              </div>
+            </div>
+
+            {/* Social proof bar */}
+            <div className="mt-8 pt-6 border-t border-gray-200/60">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1a365d]/15 to-[#1a365d]/5 border-2 border-white ring-1 ring-gray-100" />
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Trusted by growing institutions</p>
               </div>
             </div>
           </motion.div>
@@ -218,7 +232,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Navbar */}
-      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white border-b border-gray-100 shadow-sm' : 'bg-white/80 backdrop-blur-sm'}`}>
+      <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'navbar-scrolled border-b border-gray-100/60' : 'bg-white/80 backdrop-blur-sm'}`}>
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <a href="#top" className="flex items-center gap-2.5 group">
             <div className="relative h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center shadow-lg">
@@ -275,7 +289,7 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
 
 
       {/* Platform features (replaces fake stats) */}
-      <section id="features" className="py-20 sm:py-28 relative">
+      <section id="features" className="py-20 sm:py-28 relative diagonal-pattern">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <Badge variant="outline" className="mb-3 border-primary/40 text-primary">Platform Capabilities</Badge>
@@ -296,10 +310,11 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08 }}
-                className="group relative rounded-2xl border border-border/60 bg-card p-6 hover:shadow-xl hover:-translate-y-1 transition-all"
+                className="group relative rounded-2xl border border-border/60 bg-card p-6 hover:shadow-xl hover:-translate-y-1 transition-all gradient-border-hover"
               >
                 <div className="absolute -top-px left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition" />
-                <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 items-center justify-center mb-4 group-hover:scale-110 transition">
+                <span className="text-[11px] font-bold text-primary/25 mb-2 block">0{i + 1}</span>
+                <div className="inline-flex h-12 w-12 rounded-xl glass-icon items-center justify-center mb-4 group-hover:scale-110 transition">
                   <f.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-bold text-lg mb-2">{f.title}</h3>
@@ -350,12 +365,13 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  whileHover={{ y: -4 }}
-                  className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden"
+                  whileHover={{ y: -6 }}
+                  className="group relative rounded-2xl border border-border/60 bg-card p-5 overflow-hidden hover:shadow-xl transition-shadow gradient-border-hover"
                 >
-                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-20 blur-2xl transition`} />
-                  <div className={`inline-flex h-11 w-11 rounded-xl bg-gradient-to-br ${m.color} items-center justify-center shadow-md mb-4`}>
-                    <m.icon className="h-5 w-5 text-white" />
+                  <div className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${m.color} opacity-10 group-hover:opacity-25 blur-2xl transition`} />
+                  <div className={`relative inline-flex h-11 w-11 rounded-xl items-center justify-center mb-4 glass-icon`}>
+                    <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${m.color} opacity-15`} />
+                    <m.icon className="relative h-5 w-5 text-primary" />
                   </div>
                   <h3 className="font-bold text-base mb-1">
                     {m.name}
@@ -449,10 +465,17 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
         </div>
       </section>
 
+      {/* Wave divider above footer */}
+      <div className="relative -mb-1">
+        <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" preserveAspectRatio="none">
+          <path d="M0 30C240 60 480 0 720 30C960 60 1200 0 1440 30V60H0V30Z" className="fill-card/50" />
+        </svg>
+      </div>
+
       {/* Footer */}
-      <footer className="mt-auto border-t border-border/60 bg-card/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div>
+      <footer className="bg-card/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-3">
               <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/80 grid place-items-center">
                 <GraduationCap className="h-5 w-5 text-white" />
@@ -462,9 +485,16 @@ function LandingPageInner({ setView, menuOpen, setMenuOpen, activeGroup, setActi
                 <div className="text-[10px] text-muted-foreground -mt-0.5">Electronic School Management</div>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Intelligent solutions for a better institution. A modern, multi-tenant school management platform.
             </p>
+            {/* Download App CTA */}
+            <div className="mt-4">
+              <p className="text-xs text-muted-foreground mb-2 font-medium">Get the mobile app</p>
+              <Button size="sm" className="bg-primary text-white hover:bg-primary/90 shadow-sm" onClick={() => window.open('https://esm-rose.vercel.app/download', '_blank')}>
+                <Smartphone className="h-3.5 w-3.5 mr-1.5" /> Download App
+              </Button>
+            </div>
           </div>
           <div>
             <h4 className="font-semibold text-sm mb-3">Modules</h4>

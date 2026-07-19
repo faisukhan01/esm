@@ -575,3 +575,90 @@
 .text-navy-700 { color: oklch(0.28 0.04 260); }
 .text-navy-800 { color: var(--primary); }
 .border-navy-200 { border-color: oklch(0.88 0.02 260); }
+
+/* ===== Landing Page Premium Styles ===== */
+
+/* Smooth scroll */
+html { scroll-behavior: smooth; }
+
+/* Hero animated gradient background */
+@keyframes heroGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.hero-gradient-bg {
+  background: linear-gradient(-45deg,
+    oklch(0.97 0.005 247),
+    oklch(0.94 0.015 257),
+    oklch(0.96 0.008 247),
+    oklch(0.95 0.012 257)
+  );
+  background-size: 400% 400%;
+  animation: heroGradientShift 20s ease infinite;
+}
+
+/* Hero dot grid overlay */
+.hero-dot-grid {
+  background-image: radial-gradient(circle, color-mix(in oklch, var(--primary) 12%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* CTA button glow effect */
+.cta-glow {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cta-glow:hover {
+  box-shadow: 0 0 20px color-mix(in oklch, var(--primary) 25%, transparent),
+              0 0 50px color-mix(in oklch, var(--primary) 10%, transparent);
+  transform: translateY(-1px);
+}
+
+/* Gradient border on hover */
+.gradient-border-hover {
+  position: relative;
+}
+.gradient-border-hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--primary), oklch(0.55 0.12 160), var(--primary));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.gradient-border-hover:hover::before {
+  opacity: 1;
+}
+
+/* Glassmorphism icon container */
+.glass-icon {
+  background: color-mix(in oklch, var(--card) 50%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in oklch, var(--primary) 12%, transparent);
+  box-shadow: 0 4px 16px color-mix(in oklch, var(--primary) 8%, transparent),
+              inset 0 1px 0 color-mix(in oklch, white 20%, transparent);
+}
+
+/* Diagonal line pattern background */
+.diagonal-pattern {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 48px,
+    color-mix(in oklch, var(--primary) 3%, transparent) 48px,
+    color-mix(in oklch, var(--primary) 3%, transparent) 49px
+  );
+}
+
+/* Navbar scrolled gradient overlay */
+.navbar-scrolled {
+  background: linear-gradient(to bottom, white, color-mix(in oklch, white 95%, var(--primary)));
+  box-shadow: 0 1px 3px color-mix(in oklch, var(--primary) 6%, transparent);
+}

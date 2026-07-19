@@ -4,7 +4,7 @@ import {
   LayoutDashboard, PhoneCall, UserPlus, CalendarCheck, GraduationCap, BookOpen,
   DollarSign, Landmark, MessageSquare, MessageCircleWarning, Trophy, Library, Bus,
   Building2, Users, Boxes, Network, Settings, ShieldCheck, Palette, Compass, type LucideProps,
-  Sparkles, Navigation, IdCard, Wallet, Video, HeartPulse,
+  Sparkles, Navigation, IdCard, Wallet, Video, HeartPulse, FileCheck, AlertTriangle,
 } from 'lucide-react';
 
 export type ModuleDef = {
@@ -47,6 +47,13 @@ export const MODULES: ModuleDef[] = [
   { id: 'campus-wallet', name: 'Campus Wallet', short: 'Wallet', icon: Wallet, group: 'Finance', color: 'from-amber-500 to-yellow-600', tagline: 'Cashless campus payments', features: ['Prepaid top-ups', 'Cafeteria & printing', 'Bookshop purchases', 'Auto-reload threshold', 'Spending insights', 'Parent controls'] },
   { id: 'ptm-scheduling', name: 'PTM Scheduling', short: 'PTM', icon: Video, group: 'Communication', color: 'from-cyan-500 to-teal-600', tagline: 'Book parent-teacher meetings', features: ['Video PTM booking', 'Calendar invites', 'Auto reminders', 'Agenda notes', 'Multi-teacher slots', 'Recording archive'] },
   { id: 'health-records', name: 'Health Records', short: 'Health', icon: HeartPulse, group: 'Campus', color: 'from-red-500 to-rose-600', tagline: 'Student health & wellness', features: ['Medical history', 'Allergy alerts', 'Vaccination records', 'Infirmary visits log', 'Emergency contacts', 'BMI tracking'] },
+  { id: 'online-admissions', name: 'Online Admissions', short: 'Online Admissions', icon: UserPlus, group: 'Admissions', color: 'from-emerald-500 to-teal-600', tagline: 'Full online admission portal — PGC parity', features: ['Admission stats dashboard', 'Application pipeline', 'Kanban workflow', 'Form builder', 'Admission calendar', 'Online payment integration'] },
+  // --- PGC parity: E-Learning Hub ---
+  { id: 'e-learning', name: 'E-Learning Hub', short: 'E-Learning', icon: Video, group: 'Academics', color: 'from-violet-500 to-fuchsia-600', tagline: '4,000+ video lectures, past papers & MCQ practice', features: ['Video lecture library', 'Past paper database', 'MCQ practice engine', 'Progress tracking', 'Performance analytics', 'Subject-wise filters'] },
+  // --- PGC parity: Exam Portal ---
+  { id: 'exam-portal', name: 'Exam Portal', short: 'Exams', icon: FileCheck, group: 'Academics', color: 'from-indigo-500 to-blue-600', tagline: 'Practice tests, upcoming exams & performance analytics', features: ['Upcoming exam schedule', 'Create practice tests', 'Past results & trends', 'Performance analytics', 'Answer key review', 'Countdown timer'] },
+  // --- PGC parity: Complaint Portal ---
+  { id: 'complaint-portal', name: 'Complaint Portal', short: 'Complaints', icon: AlertTriangle, group: 'Communication', color: 'from-rose-500 to-orange-600', tagline: 'Bilingual complaint tracking with two-way chat', features: ['Submit complaints', 'Two-way chat', 'Priority routing', 'Resolution timeline', 'Star rating feedback', 'Anonymous option'] },
 ];
 
 export const MODULE_GROUPS = ['Overview', 'Admissions', 'Academics', 'Finance', 'Communication', 'Campus', 'Administration'];

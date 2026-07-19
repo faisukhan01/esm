@@ -17,6 +17,7 @@ const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/li
 const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
 const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
 const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
 
 function ModuleFallback() {
   return (
@@ -59,6 +60,7 @@ export function ParentPortal({ activeModule, user }: { activeModule: string; use
   if (activeModule === 'ward-fees') return <WardFees ward={ward} fees={fees} user={user} />;
   if (activeModule === 'ward-diary') return <WardDiary diary={diary} />;
   if (activeModule === 'complaints') return <ParentComplaints user={user} complaints={complaints} onSaved={refresh} />;
+  if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   if (activeModule === 'live-transport') return <Suspense fallback={<ModuleFallback />}><LiveTransportModule /></Suspense>;
   if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
   if (activeModule === 'ptm-scheduling') return <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;

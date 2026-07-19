@@ -30,6 +30,10 @@ import { InquiriesModule } from './modules/inquiries';
 import { ComplaintsModule } from './modules/complaints';
 import { AcademicsModule } from './modules/academics';
 import { GenericModule } from './modules/generic';
+import { OnlineAdmissions } from './modules/online-admissions';
+import { ELearningHub } from './modules/e-learning-hub';
+import { ExamPortal } from './modules/exam-portal';
+import { ComplaintPortal } from './modules/complaint-portal';
 
 type SidebarProps = {
   collapsed: boolean;
@@ -178,6 +182,10 @@ export function DashboardShell() {
       case 'users': return <GenericModule id="users" name="User & Privileges" icon="ShieldCheck" />;
       case 'branding': return <GenericModule id="branding" name="Institute Branding" icon="Palette" />;
       case 'consultancy': return <GenericModule id="consultancy" name="Student Consultancy" icon="Compass" />;
+      case 'online-admissions': return <OnlineAdmissions user={user} />;
+      case 'e-learning': return <ELearningHub user={user} />;
+      case 'exam-portal': return <ExamPortal user={user} />;
+      case 'complaint-portal': return <ComplaintPortal user={user} />;
       default: return <DashboardOverview stats={stats} />;
     }
   };

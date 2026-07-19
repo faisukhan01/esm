@@ -22,6 +22,9 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, 
 // Lazy-loaded v1.5.0 unique modules
 const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
 const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
 
 function ModuleFallback() {
   return (
@@ -109,6 +112,9 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
   if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
   if (activeModule === 'ptm-scheduling') return <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
+  if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
+  if (activeModule === 'exam-portal') return <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
+  if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   if (activeModule === 'teacher-dashboard') return <TeacherDashboard user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
   return <TeacherOverview user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
 }

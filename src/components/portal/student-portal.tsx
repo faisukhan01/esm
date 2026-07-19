@@ -25,6 +25,9 @@ import { ReportCardDocument, ReportCardActions, type ReportCardData } from './re
 const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
 const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
 const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
 
 function ModuleFallback() {
   return (
@@ -115,6 +118,9 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
   if (activeModule === 'digital-id') return <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
   if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
+  if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
+  if (activeModule === 'exam-portal') return <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
+  if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   return (
     <StudentOverview
       user={user}

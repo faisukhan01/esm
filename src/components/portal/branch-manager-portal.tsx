@@ -28,6 +28,10 @@ const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/li
 const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
 const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
 const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
+const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions'));
+const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub'));
+const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal'));
+const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal'));
 
 function ModuleFallback() {
   return (
@@ -83,6 +87,10 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'digital-id') content = <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
   else if (activeModule === 'ptm-scheduling') content = <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
   else if (activeModule === 'health-records') content = <Suspense fallback={<ModuleFallback />}><HealthRecordsModule /></Suspense>;
+  else if (activeModule === 'online-admissions') content = <Suspense fallback={<ModuleFallback />}><OnlineAdmissionsModule user={user} /></Suspense>;
+  else if (activeModule === 'e-learning') content = <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
+  else if (activeModule === 'exam-portal') content = <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
+  else if (activeModule === 'complaint-portal') content = <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
 
   return (
