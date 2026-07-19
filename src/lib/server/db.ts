@@ -98,28 +98,28 @@ export async function initDB() {
     // 5. Demo Users — 5 roles (all password: demo123)
     // Institute Admin
     await db.execute({
-      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, instituteName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-ADMIN', 'Imran Siddiqui', 'admin@alnoor.edu', 'demo123', 'institute-admin', 'Active', 'Institute Administrator', 0, 0, 'I-DEMO', 'Al-Noor Public School'],
+      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['U-DEMO-ADMIN', 'Imran Siddiqui', 'admin@alnoor.edu', 'demo123', 'institute-admin', 'Active', 'Institute Administrator', 0, 0, 'I-DEMO'],
     });
     // Branch Manager
     await db.execute({
-      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, instituteName, branchId, branchName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-BRANCH', 'Saima Bukhari', 'branch@alnoor.edu', 'demo123', 'branch-manager', 'Active', 'Branch Manager', 0, 0, 'I-DEMO', 'Al-Noor Public School', 'B-DEMO', 'Gulberg Campus'],
+      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['U-DEMO-BRANCH', 'Saima Bukhari', 'branch@alnoor.edu', 'demo123', 'branch-manager', 'Active', 'Branch Manager', 0, 0, 'I-DEMO', 'B-DEMO'],
     });
     // Teacher
     await db.execute({
-      sql: `INSERT INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, instituteName, branchId, branchName, subjects, classes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-TEACHER', 'Ayesha Khan', 'ayesha@alnoor.edu', 'T001', 'demo123', 'teacher', 'Active', 'Senior Teacher — Mathematics', 0, 0, 'I-DEMO', 'Al-Noor Public School', 'B-DEMO', 'Gulberg Campus', JSON.stringify(['Mathematics', 'Physics']), JSON.stringify(['C-DEMO-10A', 'C-DEMO-9B'])],
+      sql: `INSERT INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, subjects, classes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['U-DEMO-TEACHER', 'Ayesha Khan', 'ayesha@alnoor.edu', 'T001', 'demo123', 'teacher', 'Active', 'Senior Teacher — Mathematics', 0, 0, 'I-DEMO', 'B-DEMO', JSON.stringify(['Mathematics', 'Physics']), JSON.stringify(['C-DEMO-10A', 'C-DEMO-9B'])],
     });
     // Student
     await db.execute({
-      sql: `INSERT INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, instituteName, branchId, branchName, class, section, guardian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-STUDENT', 'Ali Ahmed', 'ali@alnoor.edu', 'S001', 'demo123', 'student', 'Active', 'Student — Grade 10-A', 0, 0, 'I-DEMO', 'Al-Noor Public School', 'B-DEMO', 'Gulberg Campus', 'Grade 10', 'A', 'Ahmed Raza'],
+      sql: `INSERT INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, class, section, guardian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['U-DEMO-STUDENT', 'Ali Ahmed', 'ali@alnoor.edu', 'S001', 'demo123', 'student', 'Active', 'Student — Grade 10-A', 0, 0, 'I-DEMO', 'B-DEMO', 'Grade 10', 'A', 'Ahmed Raza'],
     });
     // Parent (linked to the student as ward)
     await db.execute({
-      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, instituteName, branchId, branchName, ward, wardId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-PARENT', 'Ahmed Raza', 'parent@alnoor.edu', 'demo123', 'parent', 'Active', 'Parent / Guardian', 0, 0, 'I-DEMO', 'Al-Noor Public School', 'B-DEMO', 'Gulberg Campus', 'Ali Ahmed', 'U-DEMO-STUDENT'],
+      sql: `INSERT INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, ward, wardId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['U-DEMO-PARENT', 'Ahmed Raza', 'parent@alnoor.edu', 'demo123', 'parent', 'Active', 'Parent / Guardian', 0, 0, 'I-DEMO', 'B-DEMO', 'Ali Ahmed', 'U-DEMO-STUDENT'],
     });
 
     // 6. Demo Timetable entries (Mon-Fri, 8 AM - 1 PM, 5 periods)
