@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { ModuleHeader } from './students';
 import {
   Bus, Navigation, MapPin, Phone, Gauge, Users, Clock,
@@ -68,12 +70,64 @@ function randStep(prev: number, range: number, min: number, max: number) {
   return clamp(next, min, max);
 }
 
+// Lahore bounding box used to normalise (lat, lng) into the 0-100% map space.
+const LHR_LAT_MIN = 31.45;
+const LHR_LAT_MAX = 31.55;
+const LHR_LNG_MIN = 74.30;
+const LHR_LNG_MAX = 74.42;
+const MAP_X_MIN = 6;
+const MAP_X_MAX = 92;
+const MAP_Y_MIN = 10;
+const MAP_Y_MAX = 86;
+
+function latLngToPos(lat: number, lng: number): { x: number; y: number } {
+  const x = clamp(((lng - LHR_LNG_MIN) / (LHR_LNG_MAX - LHR_LNG_MIN)) * 100, MAP_X_MIN, MAP_X_MAX);
+  // Higher latitude = further north = lower y on screen, so invert.
+  const y = clamp(((LHR_LAT_MAX - lat) / (LHR_LAT_MAX - LHR_LAT_MIN)) * 100, MAP_Y_MIN, MAP_Y_MAX);
+  return { x, y };
+}
+
 export default function LiveTransportModule() {
   const [routes, setRoutes] = useState<ActiveRoute[]>(INITIAL_ROUTES);
+  const [routesLoading, setRoutesLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('R-A');
   const [live, setLive] = useState(true);
   const moveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const etaTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Fetch live transport routes from the API on mount. Falls back to
+  // INITIAL_ROUTES on error so the map is never empty.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setRoutesLoading(true);
+      try {
+        const resp = await api.getTransportLive();
+        if (cancelled) return;
+        if (resp.routes && resp.routes.length > 0) {
+          const mapped: ActiveRoute[] = resp.routes.map((r) => ({
+            id: r.id,
+            routeName: r.routeName,
+            driverName: r.driver,
+            vehicleNo: r.vehicleNo,
+            etaMin: r.etaMinutes,
+            speed: r.speed,
+            occupancy: r.occupancy,
+            capacity: r.capacity,
+            status: r.status,
+            pos: latLngToPos(r.currentLat, r.currentLng),
+          }));
+          setRoutes(mapped);
+          setSelectedId(mapped[0]?.id ?? 'R-A');
+        }
+      } catch {
+        // keep INITIAL_ROUTES fallback
+      } finally {
+        if (!cancelled) setRoutesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // 2-second interval: nudge bus positions + small speed fluctuation.
   useEffect(() => {
@@ -301,7 +355,27 @@ export default function LiveTransportModule() {
             Active Routes
           </div>
           <div className="space-y-2.5">
-            {routes.map((r) => {
+            {routesLoading ? (
+              <>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="rounded-xl border border-border p-3 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+            routes.map((r) => {
               const meta = statusMeta[r.status];
               const occPct = Math.round((r.occupancy / r.capacity) * 100);
               const isSelected = r.id === selectedId;
@@ -377,7 +451,8 @@ export default function LiveTransportModule() {
                   </div>
                 </motion.button>
               );
-            })}
+            })
+            )}
           </div>
         </Card>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ import {
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ModuleHeader } from './students';
 import {
@@ -193,10 +195,72 @@ export default function HealthRecordsModule() {
   const [vaccinations, setVaccinations] = useState<Record<string, Vaccination[]>>(INITIAL_VACCINATIONS);
   const [infirmary, setInfirmary] = useState<Record<string, InfirmaryVisit[]>>(INITIAL_INFIRMARY);
   const [medications, setMedications] = useState<Record<string, Medication[]>>(INITIAL_MEDICATIONS);
+  const [physical, setPhysical] = useState<Record<string, { bloodGroup: string; heightCm: number; weightKg: number; bmiPrev: number }>>(PHYSICAL);
+  const [emergencyContacts, setEmergencyContacts] = useState<Record<string, EmergencyContact[]>>(EMERGENCY_CONTACTS);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [firstLoadComplete, setFirstLoadComplete] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addType, setAddType] = useState<AddType>('allergy');
   const [confirmRemove, setConfirmRemove] = useState<{ kind: 'allergy'; id: string } | null>(null);
+
+  // Fetch the active student's health record from the API whenever the
+  // student changes. Falls back to the existing INITIAL_* mock data on error
+  // so the UI is never empty.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setHealthLoading(true);
+      try {
+        const resp = await api.getHealthRecords(studentId);
+        if (cancelled) return;
+        setPhysical((p) => ({
+          ...p,
+          [studentId]: {
+            bloodGroup: resp.student.bloodGroup,
+            heightCm: resp.student.height,
+            weightKg: resp.student.weight,
+            bmiPrev: resp.student.bmiPrev,
+          },
+        }));
+        setAllergies((p) => ({
+          ...p,
+          [studentId]: resp.allergies.map((a) => ({ id: a.id, label: a.name, severity: a.severity })),
+        }));
+        setVaccinations((p) => ({
+          ...p,
+          [studentId]: resp.vaccinations.map((v) => ({ id: v.id, name: v.name, date: v.dateGiven, next: v.nextDue })),
+        }));
+        setInfirmary((p) => ({
+          ...p,
+          [studentId]: resp.infirmaryVisits.map((v) => ({
+            id: v.id, date: v.date, reason: v.reason, reasonType: v.reasonType,
+            treatment: v.treatment, staff: v.attendedBy,
+          })),
+        }));
+        setMedications((p) => ({
+          ...p,
+          [studentId]: resp.medications.map((m) => ({
+            id: m.id, name: m.drugName, dose: m.dose, startDate: m.startDate, notes: m.notes,
+          })),
+        }));
+        setEmergencyContacts((p) => ({
+          ...p,
+          [studentId]: resp.emergencyContacts.map((c) => ({
+            id: c.id, name: c.name, relationship: c.relationship, phone: c.phone,
+          })),
+        }));
+      } catch {
+        // keep existing INITIAL_* fallback data for this student
+      } finally {
+        if (!cancelled) {
+          setHealthLoading(false);
+          setFirstLoadComplete(true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [studentId]);
 
   // form fields (reused across types — only the relevant ones are used per type)
   const [form, setForm] = useState<{
@@ -212,7 +276,7 @@ export default function HealthRecordsModule() {
   });
 
   const student = STUDENTS.find((s) => s.id === studentId) ?? STUDENTS[0];
-  const phys = PHYSICAL[studentId];
+  const phys = physical[studentId] ?? { bloodGroup: 'O+', heightCm: 165, weightKg: 58, bmiPrev: 21.0 };
   const bmiVal = bmi(phys.heightCm, phys.weightKg);
   const bmiCat = bmiCategory(bmiVal);
   const bmiDelta = +(bmiVal - phys.bmiPrev).toFixed(1);
@@ -221,7 +285,7 @@ export default function HealthRecordsModule() {
   const myVaccinations = vaccinations[studentId] ?? [];
   const myInfirmary = infirmary[studentId] ?? [];
   const myMedications = medications[studentId] ?? [];
-  const myContacts = EMERGENCY_CONTACTS[studentId] ?? [];
+  const myContacts = emergencyContacts[studentId] ?? [];
 
   // Find the next-due vaccination (earliest upcoming `next` date).
   const dueNext = useMemo(() => {
@@ -361,7 +425,21 @@ export default function HealthRecordsModule() {
 
       {/* Stat cards with gradient backgrounds + hover lift */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {stats.map((c, i) => {
+        {healthLoading && !firstLoadComplete ? (
+          <>
+            {[0, 1, 2, 3].map((i) => (
+              <Card key={i} className="p-4 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-9 w-9 rounded-lg" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+                <Skeleton className="mt-3 h-7 w-20" />
+                <Skeleton className="mt-2 h-3 w-24" />
+              </Card>
+            ))}
+          </>
+        ) : (
+        stats.map((c, i) => {
           const Icon = c.icon;
           return (
             <motion.div key={c.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} whileHover={{ y: -4 }}>
@@ -389,7 +467,8 @@ export default function HealthRecordsModule() {
               </Card>
             </motion.div>
           );
-        })}
+        })
+        )}
       </div>
 
       {/* Due Next + Allergies + Medications */}

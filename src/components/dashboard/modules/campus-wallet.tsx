@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ModuleHeader } from './students';
 import {
@@ -21,7 +23,7 @@ import {
   Printer, BookOpen, Bus, Settings, Shield, Activity, Pencil, Download,
 } from 'lucide-react';
 
-type TxnCategory = 'cafeteria' | 'printing' | 'bookshop' | 'transport' | 'stationery' | 'topup';
+type TxnCategory = 'cafeteria' | 'printing' | 'bookshop' | 'transport' | 'stationery' | 'topup' | 'refund';
 
 type Txn = {
   id: string;
@@ -98,12 +100,50 @@ function buildSegments(total: number, radius = 60) {
 export default function CampusWalletModule() {
   const [balance, setBalance] = useState(2450);
   const [txns, setTxns] = useState<Txn[]>(INITIAL_TXNS);
+  const [walletLoading, setWalletLoading] = useState(true);
   const [autoReload, setAutoReload] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('1000');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('jazzcash');
   const [detailTxn, setDetailTxn] = useState<Txn | null>(null);
   const [hoveredSeg, setHoveredSeg] = useState<string | null>(null);
+
+  // Fetch wallet balance + transactions in parallel on mount. Falls back to
+  // INITIAL_TXNS + the default 2450 balance on error so the UI never breaks.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setWalletLoading(true);
+      try {
+        const [balRes, txnRes] = await Promise.all([
+          api.getWalletBalance(),
+          api.getWalletTransactions(undefined, 20),
+        ]);
+        if (cancelled) return;
+        if (typeof balRes.balance === 'number') setBalance(balRes.balance);
+        if (balRes.autoReload) setAutoReload(balRes.autoReload);
+        if (txnRes.transactions && txnRes.transactions.length > 0) {
+          const mapped: Txn[] = txnRes.transactions.map((t) => ({
+            id: t.id,
+            merchant: t.merchant,
+            category: t.type,
+            amount: t.amount,
+            balanceBefore: t.balanceBefore,
+            balanceAfter: t.balanceAfter,
+            date: t.date,
+            time: t.time,
+            reference: t.referenceNo,
+          }));
+          setTxns(mapped);
+        }
+      } catch {
+        // keep INITIAL_TXNS + default balance fallback
+      } finally {
+        if (!cancelled) setWalletLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const monthlySpend = useMemo(
     () => CATEGORIES.reduce((a, c) => a + c.amount, 0),
@@ -340,7 +380,21 @@ export default function CampusWalletModule() {
           <Button size="sm" variant="ghost" className="text-xs">View all</Button>
         </div>
         <div className="space-y-1.5">
-          {txns.map((t) => {
+          {walletLoading ? (
+            <>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl">
+                  <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              ))}
+            </>
+          ) : (
+          txns.map((t) => {
             const isTopup = t.amount > 0;
             const cat = CATEGORIES.find((c) => c.id === t.category);
             const Icon = cat?.icon ?? Coffee;
@@ -375,7 +429,8 @@ export default function CampusWalletModule() {
                 </div>
               </motion.button>
             );
-          })}
+          })
+          )}
         </div>
       </Card>
 

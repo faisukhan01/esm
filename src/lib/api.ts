@@ -364,4 +364,95 @@ export const api = {
     if (params?.teacherId) q.set('teacherId', params.teacherId);
     return request<any[]>(q.toString() ? `salaries?${q.toString()}` : 'salaries');
   },
+  // === v1.5.0 module APIs ===
+  // AI Tutor — suggested questions keyed by subject.
+  getAiTutorSuggestions: (role?: string) =>
+    request<{ questions: { id: string; subject: string; question: string }[] }>(
+      role ? `ai-tutor/suggestions?role=${encodeURIComponent(role)}` : 'ai-tutor/suggestions',
+    ),
+  // Live transport — active routes with simulated GPS positions.
+  getTransportLive: (branchId?: string) =>
+    request<{
+      routes: {
+        id: string; routeName: string; driver: string; driverPhone: string;
+        vehicleNo: string; capacity: number; occupancy: number; speed: number;
+        etaMinutes: number; status: 'on-time' | 'delayed' | 'en-route';
+        currentLat: number; currentLng: number;
+        stops: { name: string; lat: number; lng: number }[];
+      }[];
+    }>(branchId ? `transport/live?branchId=${encodeURIComponent(branchId)}` : 'transport/live'),
+  // Digital ID cards — list/filter student ID cards.
+  getDigitalIds: (params?: { branchId?: string; classId?: string; status?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.classId) q.set('classId', params.classId);
+    if (params?.status) q.set('status', params.status);
+    if (params?.search) q.set('search', params.search);
+    const qs = q.toString();
+    return request<{ cards: DigitalIdCard[] }>(qs ? `digital-id/list?${qs}` : 'digital-id/list');
+  },
+  // Campus wallet — current balance + auto-reload config.
+  getWalletBalance: (userId?: string) =>
+    request<{ balance: number; currency: string; lastTopUp: string | null; autoReload: boolean; autoReloadThreshold: number }>(
+      userId ? `wallet/balance?userId=${encodeURIComponent(userId)}` : 'wallet/balance',
+    ),
+  // Campus wallet — recent transactions (newest first).
+  getWalletTransactions: (userId?: string, limit?: number) => {
+    const q = new URLSearchParams();
+    if (userId) q.set('userId', userId);
+    if (limit) q.set('limit', String(limit));
+    const qs = q.toString();
+    return request<{ transactions: WalletTransaction[] }>(qs ? `wallet/transactions?${qs}` : 'wallet/transactions');
+  },
+  // PTM scheduling — weekly slot grid + the next upcoming PTM for the current user.
+  getPtmSlots: (params?: { branchId?: string; week?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.branchId) q.set('branchId', params.branchId);
+    if (params?.week) q.set('week', params.week);
+    const qs = q.toString();
+    return request<{ slots: PtmApiSlot[]; upcomingPtm: PtmApiUpcoming | null }>(qs ? `ptm/slots?${qs}` : 'ptm/slots');
+  },
+  // Health records — full medical record for a single student.
+  getHealthRecords: (studentId?: string) =>
+    request<HealthRecordBundle>(studentId ? `health/records?studentId=${encodeURIComponent(studentId)}` : 'health/records'),
+};
+
+// === Shared types for the v1.5.0 module APIs ===
+export type DigitalIdStatus = 'active' | 'expired' | 'revoked';
+export type DigitalIdCard = {
+  id: string; studentId: string; studentName: string; rollNo: string;
+  className: string; section: string; instituteName: string; branchName: string;
+  photoUrl: string; validThru: string; status: DigitalIdStatus;
+  issuedAt: string; bloodGroup: string; contact: string;
+};
+
+export type WalletTxnType = 'topup' | 'cafeteria' | 'printing' | 'bookshop' | 'transport' | 'stationery' | 'refund';
+export type WalletTransaction = {
+  id: string; type: WalletTxnType; merchant: string; amount: number;
+  balanceBefore: number; balanceAfter: number;
+  date: string; time: string; referenceNo: string;
+};
+
+export type PtmDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
+export type PtmApiSlot = {
+  id: string; day: PtmDay; startTime: string; endTime: string;
+  teacherId: string; teacherName: string;
+  booked: boolean; parentName?: string; studentName?: string; agenda?: string;
+  isMine: boolean;
+};
+export type PtmApiUpcoming = {
+  id: string; day: PtmDay; startTime: string;
+  teacherName: string; parentName: string; studentName: string;
+  agenda: string; countdownMinutes: number;
+};
+
+export type HealthSeverity = 'high' | 'medium' | 'low';
+export type HealthInfirmaryReason = 'headache' | 'injury' | 'fever' | 'stomach' | 'other';
+export type HealthRecordBundle = {
+  student: { id: string; name: string; rollNo: string; className: string; bloodGroup: string; height: number; weight: number; bmi: number; bmiPrev: number };
+  allergies: { id: string; name: string; severity: HealthSeverity }[];
+  vaccinations: { id: string; name: string; dateGiven: string; nextDue?: string }[];
+  infirmaryVisits: { id: string; date: string; reason: string; reasonType: HealthInfirmaryReason; treatment: string; attendedBy: string }[];
+  medications: { id: string; drugName: string; dose: string; startDate: string; notes?: string }[];
+  emergencyContacts: { id: string; name: string; relationship: string; phone: string }[];
 };

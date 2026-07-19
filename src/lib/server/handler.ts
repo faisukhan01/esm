@@ -2232,6 +2232,404 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       }
     }
 
+    // ===================== v1.5.0 MODULE APIS =====================
+    // These endpoints back the 6 new dashboard modules (ai-tutor, live-transport,
+    // digital-id, campus-wallet, ptm-scheduling, health-records). Each returns
+    // realistic mock data shaped to match the consuming component so the module
+    // can fetch real data instead of using hardcoded state. Where existing tables
+    // exist (e.g. transport_routes, users), they're queried first and the mock
+    // data is used as a fallback when the tables are empty.
+
+    // ---- 1. AI Tutor suggested questions ----
+    if (method === 'GET' && path === 'ai-tutor/suggestions') {
+      const user = await requireAuth(req);
+      void user; // any authenticated user
+      const role = query.role || 'student';
+      void role;
+      const questions = [
+        { id: 'q-math-1', subject: 'math', question: 'Solve: 3x² + 7x − 6 = 0' },
+        { id: 'q-math-2', subject: 'math', question: 'Derivative of x²' },
+        { id: 'q-phys-1', subject: 'physics', question: "What is Ohm's law?" },
+        { id: 'q-phys-2', subject: 'physics', question: 'Define velocity vs speed' },
+        { id: 'q-chem-1', subject: 'chemistry', question: 'Balance: H₂ + O₂ → H₂O' },
+        { id: 'q-chem-2', subject: 'chemistry', question: 'Explain pH scale' },
+        { id: 'q-bio-1', subject: 'biology', question: 'Summarize photosynthesis' },
+        { id: 'q-eng-1', subject: 'english', question: 'Difference between their/there' },
+      ];
+      return NextResponse.json({ questions });
+    }
+
+    // ---- 2. Live transport routes with simulated GPS positions ----
+    if (method === 'GET' && path === 'transport/live') {
+      const user = await requireAuth(req);
+      const branchId = query.branchId || user.branchId || '';
+
+      type TransportStop = { name: string; lat: number; lng: number };
+      type LiveRoute = {
+        id: string;
+        routeName: string;
+        driver: string;
+        driverPhone: string;
+        vehicleNo: string;
+        capacity: number;
+        occupancy: number;
+        speed: number;
+        etaMinutes: number;
+        status: 'on-time' | 'delayed' | 'en-route';
+        currentLat: number;
+        currentLng: number;
+        stops: TransportStop[];
+      };
+
+      const LAHORE_LAT = 31.5204;
+      const LAHORE_LNG = 74.3587;
+
+      const buildRoute = (
+        id: string, routeName: string, driver: string, driverPhone: string,
+        vehicleNo: string, capacity: number, occupancy: number, speed: number,
+        etaMinutes: number, status: LiveRoute['status'],
+        latOffset: number, lngOffset: number, stops: TransportStop[]
+      ): LiveRoute => ({
+        id, routeName, driver, driverPhone, vehicleNo,
+        capacity, occupancy, speed, etaMinutes, status,
+        currentLat: +(LAHORE_LAT + latOffset).toFixed(4),
+        currentLng: +(LAHORE_LNG + lngOffset).toFixed(4),
+        stops,
+      });
+
+      // First try the existing transport_routes table.
+      let routes: LiveRoute[] = [];
+      try {
+        if (branchId) {
+          const r = await db.execute({
+            sql: 'SELECT id, routeName, driver, vehicleNo, capacity FROM transport_routes WHERE branchId = ?',
+            args: [branchId],
+          });
+          const statuses: LiveRoute['status'][] = ['on-time', 'delayed', 'en-route'];
+          for (let i = 0; i < r.rows.length; i++) {
+            const row = r.rows[i] as Record<string, unknown>;
+            const cap = Number(row.capacity ?? 30) || 30;
+            const occ = Math.max(0, Math.min(cap, Math.floor(cap * 0.75)));
+            routes.push(buildRoute(
+              String(row.id ?? `R-${i}`),
+              String(row.routeName ?? `Route ${i + 1}`),
+              String(row.driver ?? 'Driver'),
+              '+92 300 0000000',
+              String(row.vehicleNo ?? `LHR-${1000 + i * 111}`),
+              cap, occ,
+              20 + i * 5, 5 + i * 3, statuses[i % 3],
+              0.01 * (i - 1), 0.01 * (i - 1), []
+            ));
+          }
+        }
+      } catch { /* table may not exist yet — fall through to mock data */ }
+
+      // Fallback to mock routes if no real routes were found.
+      if (routes.length === 0) {
+        routes = [
+          buildRoute('R-A', 'Gulberg Route', 'Imran Yousaf', '+92 300 1234567', 'LHR-1234',
+            36, 28, 38, 4, 'en-route', 0.012, -0.015,
+            [
+              { name: 'Main Boulevard', lat: 31.523, lng: 74.341 },
+              { name: 'Liberty Market', lat: 31.518, lng: 74.350 },
+              { name: 'Campus', lat: 31.520, lng: 74.359 },
+            ]),
+          buildRoute('R-B', 'Model Town Route', 'Bashir Khan', '+92 301 7654321', 'LHR-5678',
+            32, 22, 24, 12, 'delayed', -0.018, 0.011,
+            [
+              { name: 'Model Town Link Road', lat: 31.502, lng: 74.370 },
+              { name: 'Faisal Town', lat: 31.510, lng: 74.364 },
+              { name: 'Campus', lat: 31.520, lng: 74.359 },
+            ]),
+          buildRoute('R-C', 'DHA Route', 'Naveed Ahmed', '+92 302 9876543', 'LHR-9012',
+            30, 30, 32, 8, 'on-time', 0.008, 0.022,
+            [
+              { name: 'DHA Phase 5', lat: 31.528, lng: 74.381 },
+              { name: 'Y-Block', lat: 31.524, lng: 74.370 },
+              { name: 'Campus', lat: 31.520, lng: 74.359 },
+            ]),
+        ];
+      }
+
+      return NextResponse.json({ routes });
+    }
+
+    // ---- 3. Digital ID card list ----
+    if (method === 'GET' && path === 'digital-id/list') {
+      const user = await requireAuth(req);
+      requireRole(user, 'branch-manager', 'institute-admin', 'student');
+
+      const branchId = query.branchId || user.branchId || '';
+      const classId = query.classId || '';
+      const statusFilter = (query.status || '').toLowerCase();
+      const search = (query.search || '').toLowerCase().trim();
+
+      type IdCard = {
+        id: string; studentId: string; studentName: string; rollNo: string;
+        className: string; section: string; instituteName: string; branchName: string;
+        photoUrl: string; validThru: string; status: 'active' | 'expired' | 'revoked';
+        issuedAt: string; bloodGroup: string; contact: string;
+      };
+
+      // Try the existing users table for real students.
+      let cards: IdCard[] = [];
+      try {
+        let sql = `SELECT u.id, u.name, u.rollNo, u.class, u.section, u.status,
+                          i.name as instituteName, b.name as branchName
+                   FROM users u
+                   LEFT JOIN institutes i ON u.instituteId = i.id
+                   LEFT JOIN branches b ON u.branchId = b.id
+                   WHERE u.role = 'student'`;
+        const args: Array<string> = [];
+        if (branchId) { sql += ' AND u.branchId = ?'; args.push(branchId); }
+        if (classId) { sql += ' AND u.class = ?'; args.push(classId); }
+        if (search) {
+          sql += ' AND (LOWER(u.name) LIKE ? OR LOWER(u.rollNo) LIKE ?)';
+          args.push(`%${search}%`, `%${search}%`);
+        }
+        // Students only see their own card.
+        if (user.role === 'student') {
+          sql += ' AND u.id = ?';
+          args.push(user.id);
+        }
+        sql += ' LIMIT 100';
+        const r = await db.execute({ sql, args });
+        for (let i = 0; i < r.rows.length; i++) {
+          const row = r.rows[i] as Record<string, unknown>;
+          const isActive = String(row.status ?? 'Active') === 'Active';
+          cards.push({
+            id: `ESM-${new Date().getFullYear()}-${String(i + 1).padStart(4, '0')}`,
+            studentId: String(row.id ?? ''),
+            studentName: String(row.name ?? ''),
+            rollNo: String(row.rollNo ?? ''),
+            className: String(row.class ?? ''),
+            section: String(row.section ?? 'A'),
+            instituteName: String(row.instituteName ?? ''),
+            branchName: String(row.branchName ?? ''),
+            photoUrl: '',
+            validThru: 'Mar 2026',
+            status: isActive ? 'active' : 'revoked',
+            issuedAt: new Date().toISOString().slice(0, 10),
+            bloodGroup: 'O+',
+            contact: '+92 300 0000000',
+          });
+        }
+      } catch { /* fall through to mock data */ }
+
+      // Fallback to realistic mock cards.
+      if (cards.length === 0) {
+        const mockCards: IdCard[] = [
+          { id: 'ESM-2025-0421', studentId: 'U-S-0421', studentName: 'Ayesha Khan', rollNo: 'AGR-8-A-12', className: 'Grade 8', section: 'A', instituteName: 'Punjab College for Girls', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'active', issuedAt: '2025-03-01', bloodGroup: 'B+', contact: '+92 300 1234567' },
+          { id: 'ESM-2025-0422', studentId: 'U-S-0422', studentName: 'Hamza Tariq', rollNo: 'AGR-9-B-07', className: 'Grade 9', section: 'B', instituteName: 'Punjab College for Boys', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'active', issuedAt: '2025-03-01', bloodGroup: 'O+', contact: '+92 301 7654321' },
+          { id: 'ESM-2025-0423', studentId: 'U-S-0423', studentName: 'Zainab Ali', rollNo: 'AGR-10-A-21', className: 'Grade 10', section: 'A', instituteName: 'Punjab College for Girls', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'expired', issuedAt: '2024-03-01', bloodGroup: 'A+', contact: '+92 302 9876543' },
+          { id: 'ESM-2025-0424', studentId: 'U-S-0424', studentName: 'Bilal Raza', rollNo: 'AGR-7-C-04', className: 'Grade 7', section: 'C', instituteName: 'Punjab College for Boys', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'active', issuedAt: '2025-03-01', bloodGroup: 'AB+', contact: '+92 303 5550100' },
+          { id: 'ESM-2025-0425', studentId: 'U-S-0425', studentName: 'Fatima Noor', rollNo: 'AGR-9-A-15', className: 'Grade 9', section: 'A', instituteName: 'Punjab College for Girls', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'revoked', issuedAt: '2025-03-01', bloodGroup: 'O−', contact: '+92 311 4442020' },
+          { id: 'ESM-2025-0426', studentId: 'U-S-0426', studentName: 'Usman Sheikh', rollNo: 'AGR-11-B-09', className: 'Grade 11', section: 'B', instituteName: 'Punjab College for Boys', branchName: 'Lahore Main', photoUrl: '', validThru: 'Mar 2026', status: 'active', issuedAt: '2025-03-01', bloodGroup: 'B−', contact: '+92 321 8883030' },
+        ];
+        // Filter mock cards by search/status for consistency with SQL path.
+        cards = mockCards.filter((c) => {
+          if (statusFilter && c.status !== statusFilter) return false;
+          if (search && !(c.studentName.toLowerCase().includes(search) || c.rollNo.toLowerCase().includes(search))) return false;
+          return true;
+        });
+      }
+
+      return NextResponse.json({ cards });
+    }
+
+    // ---- 4a. Campus wallet balance ----
+    if (method === 'GET' && path === 'wallet/balance') {
+      const user = await requireAuth(req);
+      const userId = query.userId || user.id;
+      void userId;
+      return NextResponse.json({
+        balance: 2450.00,
+        currency: 'PKR',
+        lastTopUp: '2025-10-19T09:15:00.000Z',
+        autoReload: false,
+        autoReloadThreshold: 500,
+      });
+    }
+
+    // ---- 4b. Campus wallet transactions ----
+    if (method === 'GET' && path === 'wallet/transactions') {
+      const user = await requireAuth(req);
+      const userId = query.userId || user.id;
+      void userId;
+      const limitRaw = parseInt(query.limit || '20', 10);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 20;
+
+      type WalletTxnType = 'topup' | 'cafeteria' | 'printing' | 'bookshop' | 'transport' | 'stationery' | 'refund';
+      type WalletTxn = {
+        id: string; type: WalletTxnType; merchant: string; amount: number;
+        balanceBefore: number; balanceAfter: number;
+        date: string; time: string; referenceNo: string;
+      };
+      const all: WalletTxn[] = [
+        { id: 't1', type: 'cafeteria', merchant: 'Cafeteria — Lunch Combo', amount: -240, balanceBefore: 2690, balanceAfter: 2450, date: 'Today', time: '12:35 PM', referenceNo: 'ESM-W-2410-T1' },
+        { id: 't2', type: 'printing', merchant: 'Print Job — 14 pages', amount: -70, balanceBefore: 2760, balanceAfter: 2690, date: 'Today', time: '10:12 AM', referenceNo: 'ESM-W-2410-T2' },
+        { id: 't3', type: 'bookshop', merchant: 'Bookshop — Physics Notebook', amount: -350, balanceBefore: 3110, balanceAfter: 2760, date: 'Yesterday', time: '04:48 PM', referenceNo: 'ESM-W-2409-T3' },
+        { id: 't4', type: 'topup', merchant: 'Top Up — JazzCash', amount: 2000, balanceBefore: 1110, balanceAfter: 3110, date: 'Yesterday', time: '09:15 AM', referenceNo: 'ESM-W-2409-T4' },
+        { id: 't5', type: 'transport', merchant: 'Transport — Monthly Pass', amount: -660, balanceBefore: 1770, balanceAfter: 1110, date: 'Oct 12', time: '08:00 AM', referenceNo: 'ESM-W-2412-T5' },
+        { id: 't6', type: 'stationery', merchant: 'Stationery — Geometry Box', amount: -180, balanceBefore: 1950, balanceAfter: 1770, date: 'Oct 11', time: '01:22 PM', referenceNo: 'ESM-W-2411-T6' },
+        { id: 't7', type: 'cafeteria', merchant: 'Cafeteria — Tea & Samosa', amount: -90, balanceBefore: 2040, balanceAfter: 1950, date: 'Oct 10', time: '11:10 AM', referenceNo: 'ESM-W-2410-T7' },
+        { id: 't8', type: 'refund', merchant: 'Refund — Cancelled Order', amount: 70, balanceBefore: 1970, balanceAfter: 2040, date: 'Oct 09', time: '03:30 PM', referenceNo: 'ESM-W-2409-T8' },
+        { id: 't9', type: 'printing', merchant: 'Print Job — 8 pages', amount: -40, balanceBefore: 2010, balanceAfter: 1970, date: 'Oct 08', time: '10:00 AM', referenceNo: 'ESM-W-2408-T9' },
+        { id: 't10', type: 'bookshop', merchant: 'Bookshop — Urdu Novel', amount: -250, balanceBefore: 2260, balanceAfter: 2010, date: 'Oct 05', time: '02:15 PM', referenceNo: 'ESM-W-2405-T10' },
+      ];
+      return NextResponse.json({ transactions: all.slice(0, limit) });
+    }
+
+    // ---- 5. PTM scheduling slots ----
+    if (method === 'GET' && path === 'ptm/slots') {
+      const user = await requireAuth(req);
+      requireRole(user, 'parent', 'teacher', 'branch-manager');
+
+      const branchId = query.branchId || user.branchId || '';
+      void branchId;
+      const week = query.week || '';
+      void week;
+
+      type PtmDay = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
+      type PtmSlot = {
+        id: string; day: PtmDay; startTime: string; endTime: string;
+        teacherId: string; teacherName: string;
+        booked: boolean; parentName?: string; studentName?: string; agenda?: string;
+        isMine: boolean;
+      };
+
+      const teachers = [
+        { id: 'TCH-001', name: 'Ms. Saima Khan' },
+        { id: 'TCH-002', name: 'Mr. Ali Raza' },
+        { id: 'TCH-003', name: 'Mr. Imran Yousaf' },
+        { id: 'TCH-004', name: 'Mr. Naveed Ahmed' },
+        { id: 'TCH-005', name: 'Ms. Sana Tariq' },
+      ];
+
+      const days: PtmDay[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const times = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00'];
+
+      const bookedMap: Record<string, { teacher: number; parent: string; student: string; agenda: string; isMine: boolean }> = {
+        'mon-09:00': { teacher: 0, parent: 'Mr. Yousaf Khan', student: 'Ayesha Khan', agenda: 'Discuss Q2 performance.', isMine: true },
+        'mon-11:00': { teacher: 1, parent: 'Mrs. Iqbal', student: 'Hamza Tariq', agenda: 'Physics lab work.', isMine: false },
+        'tue-10:00': { teacher: 4, parent: 'Mrs. Tariq', student: 'Zainab Ali', agenda: 'English essay feedback.', isMine: true },
+        'wed-14:00': { teacher: 2, parent: 'Mr. Yousaf', student: 'Bilal Raza', agenda: 'Reviewed lab reports.', isMine: false },
+        'thu-15:00': { teacher: 3, parent: 'Mr. Ahmed', student: 'Usman Sheikh', agenda: 'Biology project review.', isMine: false },
+        'fri-09:00': { teacher: 0, parent: 'Mrs. Bilal', student: 'Sara Bilal', agenda: 'Monthly progress check.', isMine: false },
+        'sat-12:00': { teacher: 4, parent: 'Mr. Raza', student: 'Fatima Noor', agenda: 'Urdu recitation practice.', isMine: false },
+      };
+
+      const slots: PtmSlot[] = [];
+      for (const day of days) {
+        for (const startTime of times) {
+          const key = `${day}-${startTime}`;
+          const booked = bookedMap[key];
+          const teacherIdx = booked
+            ? booked.teacher
+            : (days.indexOf(day) + times.indexOf(startTime)) % teachers.length;
+          const teacher = teachers[teacherIdx];
+          const [h, m] = startTime.split(':').map(Number);
+          const endMin = (h * 60 + (m ?? 0) + 15) % (24 * 60);
+          const endTime = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+          slots.push({
+            id: `PTM-${key}`,
+            day, startTime, endTime,
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            booked: !!booked,
+            parentName: booked?.parent,
+            studentName: booked?.student,
+            agenda: booked?.agenda,
+            isMine: booked?.isMine ?? false,
+          });
+        }
+      }
+
+      // Upcoming PTM: first booked-and-isMine slot.
+      const mine = slots.find((s) => s.booked && s.isMine);
+      const upcomingPtm = mine
+        ? {
+            id: mine.id,
+            day: mine.day,
+            startTime: mine.startTime,
+            teacherName: mine.teacherName,
+            parentName: mine.parentName ?? '',
+            studentName: mine.studentName ?? '',
+            agenda: mine.agenda ?? '',
+            countdownMinutes: 135,
+          }
+        : null;
+
+      return NextResponse.json({ slots, upcomingPtm });
+    }
+
+    // ---- 6. Health records for a student ----
+    if (method === 'GET' && path === 'health/records') {
+      const user = await requireAuth(req);
+      requireRole(user, 'parent', 'branch-manager', 'student');
+
+      const studentId = query.studentId || user.id;
+
+      // Per-student mock data keyed by the demo student IDs the component uses.
+      type StudentMeta = { id: string; name: string; rollNo: string; className: string };
+      const students: Record<string, StudentMeta> = {
+        's1': { id: 's1', name: 'Ayesha Khan', rollNo: 'AGR-8-A-12', className: 'Grade 8 · A' },
+        's2': { id: 's2', name: 'Hamza Tariq', rollNo: 'AGR-9-B-07', className: 'Grade 9 · B' },
+        's3': { id: 's3', name: 'Zainab Ali', rollNo: 'AGR-10-A-21', className: 'Grade 10 · A' },
+        's4': { id: 's4', name: 'Bilal Raza', rollNo: 'AGR-7-C-04', className: 'Grade 7 · C' },
+      };
+      const student = students[studentId]
+        ?? { id: studentId, name: 'Ayesha Khan', rollNo: 'AGR-8-A-12', className: 'Grade 8 · A' };
+
+      type Severity = 'high' | 'medium' | 'low';
+      type InfirmaryReason = 'headache' | 'injury' | 'fever' | 'stomach' | 'other';
+
+      type HealthResp = {
+        student: { id: string; name: string; rollNo: string; className: string; bloodGroup: string; height: number; weight: number; bmi: number; bmiPrev: number };
+        allergies: { id: string; name: string; severity: Severity }[];
+        vaccinations: { id: string; name: string; dateGiven: string; nextDue?: string }[];
+        infirmaryVisits: { id: string; date: string; reason: string; reasonType: InfirmaryReason; treatment: string; attendedBy: string }[];
+        medications: { id: string; drugName: string; dose: string; startDate: string; notes?: string }[];
+        emergencyContacts: { id: string; name: string; relationship: string; phone: string }[];
+      };
+
+      // Realistic Pakistani mock data (per spec: blood O+, 165 cm / 58 kg / BMI 21.3, etc.)
+      const data: HealthResp = {
+        student: {
+          ...student,
+          bloodGroup: 'O+',
+          height: 165,
+          weight: 58,
+          bmi: 21.3,
+          bmiPrev: 21.0,
+        },
+        allergies: [
+          { id: 'a1', name: 'Penicillin', severity: 'high' },
+          { id: 'a2', name: 'Peanuts', severity: 'high' },
+        ],
+        vaccinations: [
+          { id: 'v1', name: 'COVID-19 (2 doses)', dateGiven: '2022-06-15' },
+          { id: 'v2', name: 'Tetanus', dateGiven: '2024-03-10', nextDue: '2034-03-10' },
+          { id: 'v3', name: 'MMR', dateGiven: '2017-09-20', nextDue: '2027-04-20' },
+        ],
+        infirmaryVisits: [
+          { id: 'i1', date: 'Oct 12, 2025', reason: 'Headache', reasonType: 'headache', treatment: 'Paracetamol + rest 30 min', attendedBy: 'Nurse Saima' },
+          { id: 'i2', date: 'Sep 28, 2025', reason: 'Minor scrape (playground)', reasonType: 'injury', treatment: 'Antiseptic + bandage', attendedBy: 'Nurse Saima' },
+          { id: 'i3', date: 'Aug 14, 2025', reason: 'Fever (38.1°C)', reasonType: 'fever', treatment: 'Sent home · Parent notified', attendedBy: 'Nurse Rabia' },
+        ],
+        medications: [
+          { id: 'm1', drugName: 'Paracetamol', dose: '500 mg · as needed', startDate: 'Oct 12, 2025', notes: 'For headache' },
+          { id: 'm2', drugName: 'Antihistamine (Cetirizine)', dose: '10 mg · daily', startDate: 'Sep 01, 2025', notes: 'For seasonal allergies' },
+        ],
+        emergencyContacts: [
+          { id: 'e1', name: 'Mrs. Saima Khan', relationship: 'Mother', phone: '+92 300 1234567' },
+          { id: 'e2', name: 'Mr. Yousaf Khan', relationship: 'Father', phone: '+92 301 7654321' },
+        ],
+      };
+
+      return NextResponse.json(data);
+    }
+
     // ===================== FALLBACK =====================
     return NextResponse.json({ error: 'Not found', method, path }, { status: 404 });
   } catch (err: any) {

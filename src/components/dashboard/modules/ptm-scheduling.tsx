@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api, type PtmApiSlot } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ModuleHeader } from './students';
 import {
@@ -74,12 +76,82 @@ function initialsOf(name?: string) {
   return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
+function formatCountdown(mins: number): string {
+  if (mins <= 0) return 'now';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h <= 0) return `in ${m} min`;
+  if (h < 24) return `in ${h}h${m > 0 ? ` ${m}m` : ''}`;
+  const days = Math.round(h / 24);
+  return `in ${days} day${days === 1 ? '' : 's'}`;
+}
+
+const DAY_LABELS: Record<string, string> = {
+  mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat',
+};
+
+// Convert the flat API slots array into the Record<string, SlotInfo> the
+// component uses (keyed by `${Day}-${time}`).
+function apiSlotsToMap(slots: PtmApiSlot[]): Record<string, SlotInfo> {
+  const out: Record<string, SlotInfo> = {};
+  for (const s of slots) {
+    const day = DAY_LABELS[s.day] ?? s.day;
+    const key = `${day}-${s.startTime}`;
+    out[key] = {
+      state: s.booked ? 'booked' : 'open',
+      teacher: s.teacherName,
+      parent: s.parentName,
+      student: s.studentName,
+      agenda: s.agenda,
+      isMine: s.isMine,
+    };
+  }
+  return out;
+}
+
 export default function PtmSchedulingModule() {
   const [slots, setSlots] = useState<Record<string, SlotInfo>>(INITIAL_SLOTS);
+  const [upcomingItems, setUpcomingItems] = useState<UpcomingItem[]>(UPCOMING);
+  const [slotsLoading, setSlotsLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [bookingSlot, setBookingSlot] = useState<string | null>(null);
   const [detailSlot, setDetailSlot] = useState<string | null>(null);
   const [form, setForm] = useState({ parent: '', student: '', agenda: '' });
+
+  // Fetch the weekly PTM slot grid from the API on mount. Falls back to
+  // INITIAL_SLOTS + UPCOMING on error so the calendar is never empty.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setSlotsLoading(true);
+      try {
+        const resp = await api.getPtmSlots();
+        if (cancelled) return;
+        if (resp.slots && resp.slots.length > 0) {
+          setSlots(apiSlotsToMap(resp.slots));
+        }
+        if (resp.upcomingPtm) {
+          const u = resp.upcomingPtm;
+          const dayLabel = DAY_LABELS[u.day] ?? u.day;
+          const upcomingItem: UpcomingItem = {
+            id: u.id,
+            teacher: u.teacherName,
+            subject: u.agenda || 'Meeting',
+            date: dayLabel,
+            time: `${u.startTime}`,
+            countdown: formatCountdown(u.countdownMinutes),
+            status: 'confirmed',
+          };
+          setUpcomingItems((prev) => [upcomingItem, ...prev.filter((p) => p.id !== upcomingItem.id)].slice(0, 5));
+        }
+      } catch {
+        // keep INITIAL_SLOTS + UPCOMING fallback
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const visible = useMemo(() => {
     return (key: string, info: SlotInfo | undefined) => {
@@ -220,7 +292,19 @@ export default function PtmSchedulingModule() {
               ))}
 
               {/* Slot rows */}
-              {SLOTS.map((slot) => (
+              {slotsLoading ? (
+                <>
+                  {SLOTS.map((slot) => (
+                    <div key={slot} className="contents">
+                      <div className="text-xs text-muted-foreground font-medium flex items-center pr-2 justify-end tabular-nums">{slot}</div>
+                      {DAYS.map((d) => (
+                        <Skeleton key={`${d}-${slot}`} className="min-h-[58px] rounded-lg" />
+                      ))}
+                    </div>
+                  ))}
+                </>
+              ) : (
+              SLOTS.map((slot) => (
                 <SlotRow
                   key={slot}
                   slot={slot}
@@ -228,7 +312,8 @@ export default function PtmSchedulingModule() {
                   visible={visible}
                   onSelect={openBooking}
                 />
-              ))}
+              ))
+              )}
             </div>
           </div>
 
@@ -246,10 +331,10 @@ export default function PtmSchedulingModule() {
             <h3 className="font-bold text-sm flex items-center gap-2">
               <Bell className="h-4 w-4 text-amber-500" /> Upcoming PTMs
             </h3>
-            <Badge variant="outline" className="text-xs">{UPCOMING.length}</Badge>
+            <Badge variant="outline" className="text-xs">{upcomingItems.length}</Badge>
           </div>
           <div className="space-y-2.5">
-            {UPCOMING.map((u, i) => (
+            {upcomingItems.map((u, i) => (
               <motion.div
                 key={u.id}
                 initial={{ opacity: 0, y: 8 }}

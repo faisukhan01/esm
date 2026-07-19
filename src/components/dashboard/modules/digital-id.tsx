@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { ModuleHeader } from './students';
 import {
@@ -81,11 +83,45 @@ const CLASS_OPTIONS = ['Class 7-A', 'Class 8-A', 'Class 8-B', 'Class 9-A', 'Clas
 
 export default function DigitalIdModule() {
   const [cards, setCards] = useState<StudentIdCard[]>(INITIAL_CARDS);
+  const [cardsLoading, setCardsLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | IdStatus>('all');
   const [qrOpen, setQrOpen] = useState<StudentIdCard | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkClass, setBulkClass] = useState<string>('Class 10-A');
+
+  // Fetch digital ID cards from the API on mount. Falls back to the
+  // INITIAL_CARDS mock list on error so the grid is never empty.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCardsLoading(true);
+      try {
+        const resp = await api.getDigitalIds();
+        if (cancelled) return;
+        if (resp.cards && resp.cards.length > 0) {
+          const mapped: StudentIdCard[] = resp.cards.map((c) => ({
+            id: c.id,
+            name: c.studentName,
+            rollNo: c.rollNo,
+            className: c.className,
+            section: c.section,
+            institute: c.instituteName || c.branchName,
+            validThru: c.validThru,
+            status: c.status,
+            bloodGroup: c.bloodGroup,
+            contact: c.contact,
+          }));
+          setCards(mapped);
+        }
+      } catch {
+        // keep INITIAL_CARDS fallback
+      } finally {
+        if (!cancelled) setCardsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const counts = useMemo(() => {
     const c: Record<IdStatus, number> = { active: 0, expired: 0, revoked: 0 };
@@ -213,7 +249,29 @@ export default function DigitalIdModule() {
           <span className="text-xs text-muted-foreground">{filtered.length} showing · 1,284 total</span>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((c, i) => {
+          {cardsLoading ? (
+            <>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Card key={i} className="p-0 overflow-hidden">
+                  <div className="p-5 bg-muted/40 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-14 w-14 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-16 w-16 rounded-lg ml-auto" />
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <Skeleton className="h-3 w-2/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </Card>
+              ))}
+            </>
+          ) : (
+          filtered.map((c, i) => {
             const isRevoked = c.status === 'revoked';
             const initials = c.name.split(' ').map((n) => n[0]).join('').slice(0, 2);
             return (
@@ -346,7 +404,8 @@ export default function DigitalIdModule() {
                 </Card>
               </motion.div>
             );
-          })}
+          })
+          )}
         </div>
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">

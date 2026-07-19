@@ -12,6 +12,7 @@ export const ROLE_LABELS: Record<string, string> = {
   'branch-manager': 'Branch Manager',
   'teacher': 'Teacher',
   'student': 'Student',
+  'parent': 'Parent / Guardian',
 };
 
 export function nextId(prefix: string) {
@@ -28,6 +29,7 @@ export async function createSession(user: any) {
 }
 
 export function buildUserProfile(u: any) {
+  const campus = u.branchName || u.instituteName || u.instituteShort || 'ESM Portal';
   return {
     id: u.id, name: u.name, email: u.email, rollNo: u.rollNo, role: u.role,
     roleLabel: ROLE_LABELS[u.role] || u.role, title: u.title || '',
@@ -38,6 +40,7 @@ export function buildUserProfile(u: any) {
     guardian: u.guardian || null, ward: u.ward, wardId: u.wardId,
     subjects: u.subjects ? JSON.parse(u.subjects) : [],
     classes: u.classes ? JSON.parse(u.classes) : [],
+    campus,
   };
 }
 

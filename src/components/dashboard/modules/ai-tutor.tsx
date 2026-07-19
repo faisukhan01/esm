@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
 import { ModuleHeader } from './students';
 import {
   Sparkles, Send, Mic, Bot, User, Calculator, Atom, FlaskConical,
@@ -345,8 +347,41 @@ export default function AiTutorModule() {
   const [thread, setThread] = useState<ChatMsg[]>(INITIAL_THREAD);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [suggestedBySubject, setSuggestedBySubject] = useState<Record<string, string[]>>(SUGGESTED_BY_SUBJECT);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch suggested questions from the API on mount. Falls back to the
+  // hardcoded SUGGESTED_BY_SUBJECT map on error so the UI never breaks.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setSuggestionsLoading(true);
+      try {
+        const resp = await api.getAiTutorSuggestions();
+        if (cancelled) return;
+        const grouped: Record<string, string[]> = {};
+        for (const q of resp.questions) {
+          (grouped[q.subject] ??= []).push(q.question);
+        }
+        // Merge with the fallback so every subject still has suggestions
+        // even if the API returned nothing for it.
+        setSuggestedBySubject((prev) => {
+          const merged: Record<string, string[]> = { ...prev };
+          for (const [subj, list] of Object.entries(grouped)) {
+            merged[subj] = list.length > 0 ? list : prev[subj] ?? [];
+          }
+          return merged;
+        });
+      } catch {
+        // keep existing SUGGESTED_BY_SUBJECT fallback
+      } finally {
+        if (!cancelled) setSuggestionsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto-scroll the thread to the newest message whenever it grows.
   useEffect(() => {
@@ -375,7 +410,7 @@ export default function AiTutorModule() {
     }, 1200);
   };
 
-  const suggested = SUGGESTED_BY_SUBJECT[activeSubject.id] ?? SUGGESTED_BY_SUBJECT.math;
+  const suggested = suggestedBySubject[activeSubject.id] ?? SUGGESTED_BY_SUBJECT.math;
 
   return (
     <div className="space-y-6">
@@ -522,16 +557,24 @@ export default function AiTutorModule() {
           {/* Suggested + input */}
           <div className="border-t border-border p-3 space-y-3 bg-card">
             <div className="flex flex-wrap gap-2">
-              {suggested.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setDraft(s)}
-                  className="text-xs px-2.5 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-700 dark:text-violet-300 hover:bg-violet-500/10 transition"
-                >
-                  <Lightbulb className="h-3 w-3 inline mr-1" />
-                  {s}
-                </button>
-              ))}
+              {suggestionsLoading ? (
+                <>
+                  <Skeleton className="h-7 w-40 rounded-full" />
+                  <Skeleton className="h-7 w-32 rounded-full" />
+                  <Skeleton className="h-7 w-36 rounded-full" />
+                </>
+              ) : (
+                suggested.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setDraft(s)}
+                    className="text-xs px-2.5 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-violet-700 dark:text-violet-300 hover:bg-violet-500/10 transition"
+                  >
+                    <Lightbulb className="h-3 w-3 inline mr-1" />
+                    {s}
+                  </button>
+                ))
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Input
