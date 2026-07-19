@@ -6,6 +6,7 @@ import 'student_portal/student_home.dart';
 import 'teacher_portal/teacher_home.dart';
 import 'branch_portal/branch_home.dart';
 import 'institute_portal/institute_home.dart';
+import 'parent_portal/parent_home.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -49,6 +50,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         break;
       case 'institute-admin':
         portal = InstituteHome(user: widget.user);
+        break;
+      case 'parent':
+        portal = ParentHome(user: widget.user);
         break;
       default:
         portal = _UnknownRole(user: widget.user);

@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'teacher_dashboard.dart';
 import 'teacher_class_detail.dart';
+import 'teacher_mark_attendance.dart';
 
 class TeacherHome extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -25,6 +26,7 @@ class _TeacherHomeState extends State<TeacherHome> {
     _screens = [
       TeacherDashboard(user: widget.user),
       _TeacherClassesTab(user: widget.user),
+      _TeacherAttendanceTab(user: widget.user),
       _TeacherDiaryTab(user: widget.user),
       _TeacherTimetableTab(user: widget.user),
     ];
@@ -40,6 +42,7 @@ class _TeacherHomeState extends State<TeacherHome> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book), label: 'Classes'),
+          BottomNavigationBarItem(icon: Icon(Icons.fact_check_outlined), activeIcon: Icon(Icons.fact_check), label: 'Attendance'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), activeIcon: Icon(Icons.assignment), label: 'Diary'),
           BottomNavigationBarItem(icon: Icon(Icons.event_outlined), activeIcon: Icon(Icons.event), label: 'Timetable'),
         ],
@@ -48,7 +51,17 @@ class _TeacherHomeState extends State<TeacherHome> {
   }
 }
 
-// =============================== CLASSES TAB ===============================
+// =============================== ATTENDANCE TAB ===============================
+
+class _TeacherAttendanceTab extends StatelessWidget {
+  const _TeacherAttendanceTab({required this.user});
+  final Map<String, dynamic> user;
+
+  @override
+  Widget build(BuildContext context) {
+    return TeacherMarkAttendance(user: user);
+  }
+}
 
 class _TeacherClassesTab extends StatefulWidget {
   final Map<String, dynamic> user;

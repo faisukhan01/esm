@@ -23,6 +23,7 @@ import { StudentPortal } from './student-portal';
 import { ParentPortal } from './parent-portal';
 import { SettingsPage } from './settings-page';
 import { CommandPalette } from './command-palette';
+import { OnboardingTips } from '@/components/onboarding/onboarding-tooltips';
 import { api, setOnBlocked } from '@/lib/api';
 
 const roleIcon: Record<string, any> = {
@@ -456,6 +457,8 @@ export function RolePortal() {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">
+          {/* Onboarding tips banner — dismissible, remembered via localStorage */}
+          <OnboardingTips />
           {/* Must change password banner */}
           {user?.mustChangePassword && activeModule !== 'settings' && (
             <motion.div

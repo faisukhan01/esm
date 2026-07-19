@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useApp } from '@/lib/store';
@@ -18,6 +18,18 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
+
+// Lazy-loaded v1.5.0 unique modules
+const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
+const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
+
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 type ClassInfo = {
   id: string;
@@ -95,6 +107,8 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-students') return <MyStudents students={students} />;
   if (activeModule === 'sms') return <MessageParents user={user} students={students} />;
   if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
+  if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
+  if (activeModule === 'ptm-scheduling') return <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
   if (activeModule === 'teacher-dashboard') return <TeacherDashboard user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
   return <TeacherOverview user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
 }

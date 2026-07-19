@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -9,8 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarCheck, GraduationCap, CreditCard, ClipboardList, CheckCircle2, XCircle, Clock, BookOpen, Award, Heart, MessageCircleWarning, Inbox } from 'lucide-react';
+import { CalendarCheck, GraduationCap, CreditCard, ClipboardList, CheckCircle2, XCircle, Clock, BookOpen, Award, Heart, MessageCircleWarning, Inbox, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// Lazy-loaded v1.5.0 unique modules
+const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/live-transport'));
+const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
+const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
+const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
+
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const fmtMoney = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
 
@@ -45,6 +59,10 @@ export function ParentPortal({ activeModule, user }: { activeModule: string; use
   if (activeModule === 'ward-fees') return <WardFees ward={ward} fees={fees} user={user} />;
   if (activeModule === 'ward-diary') return <WardDiary diary={diary} />;
   if (activeModule === 'complaints') return <ParentComplaints user={user} complaints={complaints} onSaved={refresh} />;
+  if (activeModule === 'live-transport') return <Suspense fallback={<ModuleFallback />}><LiveTransportModule /></Suspense>;
+  if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
+  if (activeModule === 'ptm-scheduling') return <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
+  if (activeModule === 'health-records') return <Suspense fallback={<ModuleFallback />}><HealthRecordsModule /></Suspense>;
   return <ParentOverview user={user} ward={ward} attendance={attendance} results={results} fees={fees} />;
 }
 

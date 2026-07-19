@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _RoleOption(id: 'branch-manager', label: 'Branch', icon: Icons.store_outlined),
     _RoleOption(id: 'teacher', label: 'Teacher', icon: Icons.menu_book_outlined),
     _RoleOption(id: 'student', label: 'Student', icon: Icons.person_outline),
+    _RoleOption(id: 'parent', label: 'Parent', icon: Icons.family_restroom_outlined),
   ];
 
   bool get _needsName => _selectedRole == 'teacher' || _selectedRole == 'student';
@@ -116,6 +117,18 @@ class _LoginScreenState extends State<LoginScreen> {
       ApiClient.getList('student/courses');
       ApiClient.getObject('attendance', query: {'studentId': userId});
       ApiClient.get('results', query: {'studentId': userId});
+    } else if (role == 'parent') {
+      // Parent sees their ward's data — preload analytics + fees + attendance.
+      final wardId = (user['wardId'] ?? user['studentId'] ?? userId)?.toString();
+      if (wardId != null) {
+        ApiClient.getObject('student/analytics', query: {'studentId': wardId});
+        ApiClient.getList('fee-invoices', query: {'studentId': wardId});
+        ApiClient.getObject('attendance', query: {'studentId': wardId});
+        ApiClient.getList('results', query: {'studentId': wardId});
+      }
+      if (instituteId != null) {
+        ApiClient.getList('announcements', query: {'instituteId': instituteId});
+      }
     }
   }
 
@@ -188,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 children: _roles.map((r) => Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: r != _roles[3] ? 6 : 0),
+                    padding: EdgeInsets.only(right: r != _roles.last ? 6 : 0),
                     child: _RoleChip(
                       role: r,
                       isSelected: _selectedRole == r.id,
@@ -216,10 +229,18 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: _selectedRole == 'teacher' ? 'Teacher ID' : _selectedRole == 'student' ? 'Roll Number' : 'Email',
+                  labelText: _selectedRole == 'teacher'
+                      ? 'Teacher ID'
+                      : _selectedRole == 'student'
+                          ? 'Roll Number'
+                          : _selectedRole == 'parent'
+                              ? "Ward's Roll Number"
+                              : 'Email',
                   prefixIcon: const Icon(Icons.alternate_email, size: 20),
                 ),
-                keyboardType: _selectedRole == 'teacher' || _selectedRole == 'student' ? TextInputType.text : TextInputType.emailAddress,
+                keyboardType: _selectedRole == 'teacher' || _selectedRole == 'student' || _selectedRole == 'parent'
+                    ? TextInputType.text
+                    : TextInputType.emailAddress,
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),

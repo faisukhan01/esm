@@ -12,6 +12,129 @@ import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 
+// =============================== PREMIUM LIST CARD (file-scoped) ===============================
+
+/// Standardised premium list-row card used across the branch admin tables.
+/// Card with elevation 0, BorderRadius 14, symmetric margin (h:16, v:6), padding 14.
+/// Leading 40×40 circular avatar with the entity's initial letter, colored with
+/// `iconColor.withOpacity(0.12)` background and `iconColor` foreground.
+/// Trailing slot for status badges / count chips / chevron.
+class _PremiumListCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Widget? extra;
+  final Widget? leadingOverride;
+
+  const _PremiumListCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.extra,
+    this.leadingOverride,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = title.trim();
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final initial = parts.isNotEmpty && parts.first.isNotEmpty
+        ? parts.first[0].toUpperCase()
+        : '?';
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  leadingOverride ??
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: iconColor.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: trimmed.isEmpty
+                              ? Icon(icon, size: 18, color: iconColor)
+                              : Text(
+                                  initial,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: iconColor,
+                                  ),
+                                ),
+                        ),
+                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (subtitle != null && subtitle!.trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitle!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 8),
+                    trailing!,
+                  ],
+                  if (onTap != null) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+                  ],
+                ],
+              ),
+              if (extra != null) ...[
+                const SizedBox(height: 10),
+                extra!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class BranchHome extends StatefulWidget {
   final Map<String, dynamic> user;
   const BranchHome({super.key, required this.user});
@@ -733,7 +856,7 @@ class _TeachersTabState extends State<_TeachersTab> with AutomaticKeepAliveClien
                         : RefreshIndicator(
                             onRefresh: _load,
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              padding: const EdgeInsets.only(top: 4, bottom: 24),
                               itemCount: _filtered.length,
                               itemBuilder: (context, i) {
                                 final t = _filtered[i] as Map<String, dynamic>;
@@ -746,12 +869,16 @@ class _TeachersTabState extends State<_TeachersTab> with AutomaticKeepAliveClien
                                 } else {
                                   sub = 'No subjects assigned';
                                 }
-                                return ListRowCard(
+                                final blocked = t['blocked'] == true;
+                                return _PremiumListCard(
+                                  icon: Icons.menu_book,
+                                  iconColor: blocked ? AppTheme.danger : AppTheme.primary,
                                   title: t['name'] ?? 'Teacher',
                                   subtitle: 'ID: ${t['rollNo'] ?? '—'}  ·  ${sub}',
-                                  icon: Icons.menu_book,
-                                  badgeText: t['blocked'] == true ? 'Blocked' : 'Active',
-                                  badgeStatus: t['blocked'] == true ? 'blocked' : 'active',
+                                  trailing: StatusBadge(
+                                    text: blocked ? 'Blocked' : 'Active',
+                                    status: blocked ? 'blocked' : 'active',
+                                  ),
                                   onTap: () {
                                     Navigator.push(context, MaterialPageRoute(
                                       builder: (_) => BranchUserDetail(user: t, role: 'teacher'),
@@ -884,19 +1011,23 @@ class _StudentsTabState extends State<_StudentsTab> with AutomaticKeepAliveClien
                         : RefreshIndicator(
                             onRefresh: _load,
                             child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                              padding: const EdgeInsets.only(top: 4, bottom: 24),
                               itemCount: _filtered.length,
                               itemBuilder: (context, i) {
                                 final s = _filtered[i] as Map<String, dynamic>;
                                 final cls = s['class'] ?? '—';
                                 final section = s['section'] ?? 'A';
                                 final roll = s['rollNo'] ?? '—';
-                                return ListRowCard(
+                                final blocked = s['blocked'] == true;
+                                return _PremiumListCard(
+                                  icon: Icons.person,
+                                  iconColor: blocked ? AppTheme.danger : AppTheme.primary,
                                   title: s['name'] ?? 'Student',
                                   subtitle: 'Class $cls · Section $section · Roll #$roll',
-                                  icon: Icons.person,
-                                  badgeText: s['blocked'] == true ? 'Blocked' : 'Active',
-                                  badgeStatus: s['blocked'] == true ? 'blocked' : 'active',
+                                  trailing: StatusBadge(
+                                    text: blocked ? 'Blocked' : 'Active',
+                                    status: blocked ? 'blocked' : 'active',
+                                  ),
                                   onTap: () {
                                     Navigator.push(context, MaterialPageRoute(
                                       builder: (_) => BranchUserDetail(user: s, role: 'student'),
@@ -1019,23 +1150,32 @@ class _FeesTabState extends State<_FeesTab> with AutomaticKeepAliveClientMixin {
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        padding: const EdgeInsets.only(top: 12, bottom: 24),
                         children: [
                           // Summary row
-                          Row(
-                            children: [
-                              Expanded(child: KpiCard(icon: Icons.receipt, label: 'Total Invoices', value: '${_invoices.length}')),
-                              const SizedBox(width: 8),
-                              Expanded(child: KpiCard(icon: Icons.check_circle, label: 'Paid', value: '$paid', iconColor: AppTheme.success)),
-                              const SizedBox(width: 8),
-                              Expanded(child: KpiCard(icon: Icons.pending, label: 'Unpaid', value: '$unpaid', iconColor: AppTheme.danger)),
-                            ],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(child: KpiCard(icon: Icons.receipt, label: 'Total Invoices', value: '${_invoices.length}')),
+                                const SizedBox(width: 8),
+                                Expanded(child: KpiCard(icon: Icons.check_circle, label: 'Paid', value: '$paid', iconColor: AppTheme.success)),
+                                const SizedBox(width: 8),
+                                Expanded(child: KpiCard(icon: Icons.pending, label: 'Unpaid', value: '$unpaid', iconColor: AppTheme.danger)),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          KpiCard(icon: Icons.account_balance_wallet, label: 'Total Billed', value: 'PKR ${NumberFormat('##,###').format(totalAmount.toInt())}'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: KpiCard(icon: Icons.account_balance_wallet, label: 'Total Billed', value: 'PKR ${NumberFormat('##,###').format(totalAmount.toInt())}'),
+                          ),
                           const SizedBox(height: 16),
-                          const SectionHeader(title: 'All Invoices'),
-                          const SizedBox(height: 8),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: SectionHeader(title: 'All Invoices'),
+                          ),
+                          const SizedBox(height: 4),
                           ..._invoices.map((inv) {
                             final status = (inv['status'] ?? 'Unpaid').toString();
                             final amount = double.tryParse('${inv['amount'] ?? 0}') ?? 0;
@@ -1043,13 +1183,22 @@ class _FeesTabState extends State<_FeesTab> with AutomaticKeepAliveClientMixin {
                             final year = inv['year'] ?? '';
                             final type = inv['type'] ?? 'Tuition';
                             final isUnpaid = status.toLowerCase() != 'paid';
-                            return ListRowCard(
+                            return _PremiumListCard(
+                              icon: Icons.receipt_outlined,
+                              iconColor: isUnpaid ? AppTheme.danger : AppTheme.success,
                               title: _studentName(inv['studentId']),
                               subtitle: '$type · $month $year',
-                              icon: Icons.receipt_outlined,
-                              badgeText: status,
-                              badgeStatus: status.toLowerCase(),
-                              trailing: 'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  StatusBadge(text: status, status: status.toLowerCase()),
+                                ],
+                              ),
                               onTap: isUnpaid ? () => _markInvoicePaid(inv['id']) : null,
                             );
                           }),
@@ -1433,7 +1582,7 @@ class _ClassesTabState extends State<_ClassesTab> with AutomaticKeepAliveClientM
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.only(top: 4, bottom: 24),
                         itemCount: _classes.length,
                         itemBuilder: (context, i) => _buildClassCard(_classes[i] as Map<String, dynamic>),
                       ),
@@ -1443,7 +1592,7 @@ class _ClassesTabState extends State<_ClassesTab> with AutomaticKeepAliveClientM
 
   Widget _buildSkeleton() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       children: List.generate(
         4,
         (_) => const Padding(
@@ -1462,48 +1611,19 @@ class _ClassesTabState extends State<_ClassesTab> with AutomaticKeepAliveClientM
     final room = (c['room'] ?? '').toString();
     final fullName = section.isEmpty ? name : '$name - Section $section';
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showDetail(c),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.class_, color: AppTheme.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(fullName,
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 10, runSpacing: 2,
-                      children: [
-                        _infoChip(Icons.person, teacherName),
-                        _infoChip(Icons.groups, '$studentCount students'),
-                        if (room.isNotEmpty) _infoChip(Icons.meeting_room, room),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
-            ],
-          ),
-        ),
+    return _PremiumListCard(
+      icon: Icons.class_,
+      iconColor: AppTheme.primary,
+      title: fullName,
+      subtitle: 'Teacher: $teacherName',
+      onTap: () => _showDetail(c),
+      extra: Wrap(
+        spacing: 12,
+        runSpacing: 4,
+        children: [
+          _infoChip(Icons.groups, '$studentCount students'),
+          if (room.isNotEmpty) _infoChip(Icons.meeting_room, room),
+        ],
       ),
     );
   }
@@ -1996,7 +2116,7 @@ class _TimetableTabState extends State<_TimetableTab> with AutomaticKeepAliveCli
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      padding: const EdgeInsets.only(top: 4, bottom: 80),
       itemCount: list.length,
       itemBuilder: (context, i) => _buildEntryCard(list[i] as Map<String, dynamic>),
     );
@@ -2011,62 +2131,31 @@ class _TimetableTabState extends State<_TimetableTab> with AutomaticKeepAliveCli
     final room = (e['room'] ?? '').toString();
     final color = _colorForSubject(subject);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _openForm(existing: e),
+    return _PremiumListCard(
+      icon: Icons.book,
+      iconColor: color,
+      title: subject,
+      subtitle: '$className · $teacherName',
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text('$start - $end',
+            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+      ),
+      onTap: () => _openForm(existing: e),
+      extra: InkWell(
         onLongPress: () => _deleteEntry(e),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              Container(
-                width: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(subject,
-                                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text('$start - $end',
-                                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 10, runSpacing: 2,
-                        children: [
-                          _chip(Icons.class_, className),
-                          _chip(Icons.person, teacherName),
-                          if (room.isNotEmpty) _chip(Icons.meeting_room, room),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            _chip(Icons.class_, className),
+            _chip(Icons.person, teacherName),
+            if (room.isNotEmpty) _chip(Icons.meeting_room, room),
+          ],
         ),
       ),
     );

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -22,6 +22,20 @@ import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { ReportCardDocument, ReportCardActions, type ReportCardData } from './report-card-view';
+
+// Lazy-loaded v1.5.0 unique modules
+const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/live-transport'));
+const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
+const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
+const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
+
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const fmtMoney = (n: number) => 'PKR ' + Number(n || 0).toLocaleString('en-PK');
 const NAVY = '#1a365d';
@@ -65,6 +79,10 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'complaints') content = <BMComplaintsView user={user} />;
   else if (activeModule === 'events') content = <BMEventsView user={user} />;
   else if (activeModule === 'sms') content = <BMSmsView user={user} />;
+  else if (activeModule === 'live-transport') content = <Suspense fallback={<ModuleFallback />}><LiveTransportModule /></Suspense>;
+  else if (activeModule === 'digital-id') content = <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
+  else if (activeModule === 'ptm-scheduling') content = <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
+  else if (activeModule === 'health-records') content = <Suspense fallback={<ModuleFallback />}><HealthRecordsModule /></Suspense>;
   else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={() => openAdd('teacher')} onAddStudent={() => openAdd('student')} />;
 
   return (

@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
   ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award, Crown,
+  Sparkles, Navigation, IdCard, Wallet, Video, HeartPulse,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -60,6 +61,8 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'teachers', name: 'Teachers', icon: Users, color: 'from-primary to-primary/80' },
       { id: 'branch-students', name: 'Students', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-primary/80 to-primary' },
+      { id: 'digital-id', name: 'Digital ID Center', icon: IdCard, color: 'from-rose-500 to-pink-600' },
+      { id: 'health-records', name: 'Health Records', icon: HeartPulse, color: 'from-red-500 to-rose-600' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Academics', items: [
@@ -70,6 +73,8 @@ export const ROLE_MODULES: RoleModules = {
     ]},
     { group: 'Operations', items: [
       { id: 'fees', name: 'Fees', icon: DollarSign, color: 'from-primary/80 to-primary' },
+      { id: 'live-transport', name: 'Live Transport', icon: Navigation, color: 'from-emerald-500 to-teal-600' },
+      { id: 'ptm-scheduling', name: 'PTM Scheduling', icon: Video, color: 'from-cyan-500 to-teal-600' },
       { id: 'complaints', name: 'Complaints', icon: MessageCircleWarning, color: 'from-rose-500 to-rose-700' },
       { id: 'events', name: 'Events', icon: Trophy, color: 'from-primary/80 to-primary' },
       { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-primary/80 to-primary' },
@@ -82,11 +87,13 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Teaching', items: [
       { id: 'teacher-dashboard', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'teacher-overview', name: 'My Classes', icon: BookOpen, color: 'from-primary to-primary/80' },
+      { id: 'ai-tutor', name: 'AI Tutor', icon: Sparkles, color: 'from-violet-500 to-fuchsia-600' },
       { id: 'diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-primary/80 to-primary' },
       { id: 'timetable', name: 'My Timetable', icon: Calendar, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Communication', items: [
       { id: 'announcements', name: 'Announcements', icon: Bell, color: 'from-primary/80 to-primary' },
+      { id: 'ptm-scheduling', name: 'PTM Scheduling', icon: Video, color: 'from-cyan-500 to-teal-600' },
       { id: 'sms', name: 'Message Parents', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Account', items: [
@@ -97,6 +104,9 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'My Portal', items: [
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'my-courses', name: 'My Courses', icon: BookOpen, color: 'from-primary to-primary/80' },
+      { id: 'ai-tutor', name: 'AI Tutor', icon: Sparkles, color: 'from-violet-500 to-fuchsia-600' },
+      { id: 'digital-id', name: 'Digital ID', icon: IdCard, color: 'from-rose-500 to-pink-600' },
+      { id: 'campus-wallet', name: 'Campus Wallet', icon: Wallet, color: 'from-amber-500 to-yellow-600' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'my-report-card', name: 'Report Card', icon: Award, color: 'from-primary to-primary/80' },
@@ -115,7 +125,11 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'ward-attendance', name: 'Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'ward-results', name: 'Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'ward-fees', name: 'Pay Fees', icon: CreditCard, color: 'from-primary/80 to-primary' },
+      { id: 'campus-wallet', name: 'Campus Wallet', icon: Wallet, color: 'from-amber-500 to-yellow-600' },
       { id: 'ward-diary', name: 'Diary', icon: ClipboardList, color: 'from-primary/80 to-primary' },
+      { id: 'live-transport', name: 'Live Bus Tracking', icon: Navigation, color: 'from-emerald-500 to-teal-600' },
+      { id: 'ptm-scheduling', name: 'Book PTM', icon: Video, color: 'from-cyan-500 to-teal-600' },
+      { id: 'health-records', name: 'Health Records', icon: HeartPulse, color: 'from-red-500 to-rose-600' },
       { id: 'complaints', name: 'Complaints', icon: MessageCircleWarning, color: 'from-rose-500 to-rose-700' },
     ]},
   ],

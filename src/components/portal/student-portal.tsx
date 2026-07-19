@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,19 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { ReportCardDocument, ReportCardActions, type ReportCardData } from './report-card-view';
+
+// Lazy-loaded v1.5.0 unique modules (code-split per route)
+const AiTutorModule = lazy(() => import('@/components/dashboard/modules/ai-tutor'));
+const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
+const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
+
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 type Course = { id: string; name: string; code?: string };
 
@@ -99,6 +112,9 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
   if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
   if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
+  if (activeModule === 'ai-tutor') return <Suspense fallback={<ModuleFallback />}><AiTutorModule /></Suspense>;
+  if (activeModule === 'digital-id') return <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
+  if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
   return (
     <StudentOverview
       user={user}

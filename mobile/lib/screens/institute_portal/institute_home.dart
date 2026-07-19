@@ -12,6 +12,126 @@ import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 
+// =============================== PREMIUM LIST CARD (file-scoped) ===============================
+
+/// Standardised premium list-row card used across the institute admin tables.
+/// Card with elevation 0, BorderRadius 14, symmetric margin (h:16, v:6), padding 14.
+/// Leading 40×40 circular avatar with the entity's initial letter, colored with
+/// `iconColor.withOpacity(0.12)` background and `iconColor` foreground.
+/// Trailing slot for status badges / count chips / chevron.
+class _PremiumListCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Widget? extra;
+
+  const _PremiumListCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.onTap,
+    this.extra,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = title.trim();
+    final parts = trimmed.split(RegExp(r'\s+'));
+    final initial = parts.isNotEmpty && parts.first.isNotEmpty
+        ? parts.first[0].toUpperCase()
+        : '?';
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: trimmed.isEmpty
+                          ? Icon(icon, size: 18, color: iconColor)
+                          : Text(
+                              initial,
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: iconColor,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (subtitle != null && subtitle!.trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              subtitle!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 8),
+                    trailing!,
+                  ],
+                  if (onTap != null) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+                  ],
+                ],
+              ),
+              if (extra != null) ...[
+                const SizedBox(height: 10),
+                extra!,
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class InstituteHome extends StatefulWidget {
   final Map<String, dynamic> user;
   const InstituteHome({super.key, required this.user});
@@ -624,7 +744,7 @@ class _BranchesTab extends StatelessWidget {
               : RefreshIndicator(
                   onRefresh: () async { onRefresh(); },
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    padding: const EdgeInsets.only(top: 6, bottom: 24),
                     itemCount: branches.length,
                     itemBuilder: (context, i) {
                       final b = branches[i] as Map<String, dynamic>;
@@ -633,73 +753,40 @@ class _BranchesTab extends StatelessWidget {
                       final students = b['students'] ?? 0;
                       final teachers = b['teachers'] ?? 0;
                       final blocked = b['blocked'] == true || b['blocked'] == 1;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: InkWell(
-                          onTap: () => _openDetail(context, b),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                      return _PremiumListCard(
+                        icon: Icons.account_tree,
+                        iconColor: AppTheme.primary,
+                        title: name,
+                        subtitle: city,
+                        trailing: StatusBadge(
+                          text: blocked ? 'Blocked' : 'Active',
+                          status: blocked ? 'blocked' : 'active',
+                        ),
+                        onTap: () => _openDetail(context, b),
+                        extra: Row(
+                          children: [
+                            _MiniStat(icon: Icons.school, label: 'Students', value: '$students'),
+                            const SizedBox(width: 12),
+                            _MiniStat(icon: Icons.group, label: 'Teachers', value: '$teachers'),
+                            if (b['manager'] != null && b['manager'].toString().isNotEmpty) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Row(
                                   children: [
-                                    Container(
-                                      width: 40, height: 40,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primary.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Icons.account_tree, size: 20, color: AppTheme.primary),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                                          Text(city, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                                        ],
-                                      ),
-                                    ),
-                                    StatusBadge(
-                                      text: blocked ? 'Blocked' : 'Active',
-                                      status: blocked ? 'blocked' : 'active',
-                                    ),
+                                    Icon(Icons.person_outline, size: 14, color: AppTheme.textMuted),
                                     const SizedBox(width: 4),
-                                    const Icon(Icons.chevron_right, size: 16, color: AppTheme.textMuted),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    _MiniStat(icon: Icons.school, label: 'Students', value: '$students'),
-                                    const SizedBox(width: 12),
-                                    _MiniStat(icon: Icons.group, label: 'Teachers', value: '$teachers'),
-                                    if (b['manager'] != null && b['manager'].toString().isNotEmpty) ...[
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.person_outline, size: 14, color: AppTheme.textMuted),
-                                            const SizedBox(width: 4),
-                                            Expanded(
-                                              child: Text(
-                                                b['manager'],
-                                                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    Expanded(
+                                      child: Text(
+                                        b['manager'],
+                                        style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textMuted),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ],
+                                    ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            ],
+                          ],
                         ),
                       );
                     },
@@ -827,35 +914,53 @@ class _RoyaltyTabState extends State<_RoyaltyTab> with AutomaticKeepAliveClientM
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        padding: const EdgeInsets.only(top: 12, bottom: 24),
                         children: [
-                          Row(
-                            children: [
-                              Expanded(child: KpiCard(icon: Icons.receipt, label: 'Total', value: '${_invoices.length}')),
-                              const SizedBox(width: 8),
-                              Expanded(child: KpiCard(icon: Icons.check_circle, label: 'Paid', value: '$paid', iconColor: AppTheme.success)),
-                              const SizedBox(width: 8),
-                              Expanded(child: KpiCard(icon: Icons.pending, label: 'Pending', value: '$pending', iconColor: AppTheme.warning)),
-                            ],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                Expanded(child: KpiCard(icon: Icons.receipt, label: 'Total', value: '${_invoices.length}')),
+                                const SizedBox(width: 8),
+                                Expanded(child: KpiCard(icon: Icons.check_circle, label: 'Paid', value: '$paid', iconColor: AppTheme.success)),
+                                const SizedBox(width: 8),
+                                Expanded(child: KpiCard(icon: Icons.pending, label: 'Pending', value: '$pending', iconColor: AppTheme.warning)),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          KpiCard(icon: Icons.account_balance_wallet, label: 'Total Royalty', value: 'PKR ${NumberFormat('##,###').format(totalAmount.toInt())}'),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: KpiCard(icon: Icons.account_balance_wallet, label: 'Total Royalty', value: 'PKR ${NumberFormat('##,###').format(totalAmount.toInt())}'),
+                          ),
                           const SizedBox(height: 16),
-                          const SectionHeader(title: 'All Royalty Invoices'),
-                          const SizedBox(height: 8),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: SectionHeader(title: 'All Royalty Invoices'),
+                          ),
+                          const SizedBox(height: 4),
                           ..._invoices.map((inv) {
                             final status = (inv['status'] ?? 'Pending').toString();
                             final amount = double.tryParse('${inv['amount'] ?? 0}') ?? 0;
                             final month = inv['month'] ?? '—';
                             final year = inv['year'] ?? '';
                             final isPending = status.toLowerCase() != 'paid';
-                            return ListRowCard(
+                            return _PremiumListCard(
+                              icon: Icons.storefront,
+                              iconColor: isPending ? AppTheme.warning : AppTheme.success,
                               title: _branchName(inv['branchId']),
                               subtitle: 'Royalty · $month $year',
-                              icon: Icons.storefront,
-                              badgeText: status,
-                              badgeStatus: status.toLowerCase(),
-                              trailing: 'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'PKR ${NumberFormat('##,###').format(amount.toInt())}',
+                                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  StatusBadge(text: status, status: status.toLowerCase()),
+                                ],
+                              ),
                               onTap: isPending ? () => _markPaid(inv['id']) : null,
                             );
                           }),
@@ -895,26 +1000,32 @@ class _ReportsTab extends StatelessWidget {
               : RefreshIndicator(
                   onRefresh: () async { onRefresh(); },
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    padding: const EdgeInsets.only(top: 12, bottom: 24),
                     children: [
                       // KPI summary cards
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 8,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 1.4,
-                        children: [
-                          KpiCard(icon: Icons.trending_up, label: 'Total Revenue', value: 'PKR ${_fmt(kpi['totalRevenue'])}', iconColor: AppTheme.success),
-                          KpiCard(icon: Icons.error_outline, label: 'Pending Fees', value: 'PKR ${_fmt(kpi['pendingFees'])}', iconColor: AppTheme.danger),
-                          KpiCard(icon: Icons.wallet, label: 'Salary Paid', value: 'PKR ${_fmt(kpi['totalSalaryPaid'])}'),
-                          KpiCard(icon: Icons.balance, label: 'Net Balance', value: 'PKR ${_fmt(kpi['netBalance'])}', iconColor: (int.tryParse('${kpi['netBalance'] ?? 0}') ?? 0) >= 0 ? AppTheme.success : AppTheme.danger),
-                        ],
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: 1.4,
+                          children: [
+                            KpiCard(icon: Icons.trending_up, label: 'Total Revenue', value: 'PKR ${_fmt(kpi['totalRevenue'])}', iconColor: AppTheme.success),
+                            KpiCard(icon: Icons.error_outline, label: 'Pending Fees', value: 'PKR ${_fmt(kpi['pendingFees'])}', iconColor: AppTheme.danger),
+                            KpiCard(icon: Icons.wallet, label: 'Salary Paid', value: 'PKR ${_fmt(kpi['totalSalaryPaid'])}'),
+                            KpiCard(icon: Icons.balance, label: 'Net Balance', value: 'PKR ${_fmt(kpi['netBalance'])}', iconColor: (int.tryParse('${kpi['netBalance'] ?? 0}') ?? 0) >= 0 ? AppTheme.success : AppTheme.danger),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 20),
-                      const SectionHeader(title: 'Branch Performance'),
-                      const SizedBox(height: 8),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: SectionHeader(title: 'Branch Performance'),
+                      ),
+                      const SizedBox(height: 4),
                       if (branchPerf.isEmpty)
                         const EmptyState(icon: Icons.account_tree_outlined, title: 'No branch data', description: 'Branch revenue figures will appear here.')
                       else
@@ -923,50 +1034,34 @@ class _ReportsTab extends StatelessWidget {
                           final revenue = double.tryParse('${bp['revenue'] ?? bp['totalRevenue'] ?? 0}') ?? 0;
                           final net = double.tryParse('${bp['net'] ?? 0}') ?? 0;
                           final status = (bp['status'] ?? 'Active').toString();
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 36, height: 36,
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(Icons.account_tree, size: 18, color: AppTheme.primary),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          bp['name'] ?? 'Branch',
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
-                                        ),
-                                      ),
-                                      StatusBadge(text: status, status: status.toLowerCase()),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _ReportStat(label: 'Revenue', value: 'PKR ${_fmt(revenue)}', color: AppTheme.success),
-                                      ),
-                                      Container(width: 1, height: 28, color: AppTheme.border),
-                                      Expanded(
-                                        child: _ReportStat(label: 'Net', value: 'PKR ${_fmt(net)}', color: net >= 0 ? AppTheme.success : AppTheme.danger),
-                                      ),
-                                      Container(width: 1, height: 28, color: AppTheme.border),
-                                      Expanded(
-                                        child: _ReportStat(label: 'Students', value: '${bp['students'] ?? 0}'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                          return _PremiumListCard(
+                            icon: Icons.account_tree,
+                            iconColor: AppTheme.primary,
+                            title: bp['name'] ?? 'Branch',
+                            subtitle: '${bp['students'] ?? 0} students',
+                            trailing: StatusBadge(text: status, status: status.toLowerCase()),
+                            extra: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.background,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _ReportStat(label: 'Revenue', value: 'PKR ${_fmt(revenue)}', color: AppTheme.success),
+                                    ),
+                                    VerticalDivider(width: 1, thickness: 1, color: AppTheme.border),
+                                    Expanded(
+                                      child: _ReportStat(label: 'Net', value: 'PKR ${_fmt(net)}', color: net >= 0 ? AppTheme.success : AppTheme.danger),
+                                    ),
+                                    VerticalDivider(width: 1, thickness: 1, color: AppTheme.border),
+                                    Expanded(
+                                      child: _ReportStat(label: 'Students', value: '${bp['students'] ?? 0}'),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );

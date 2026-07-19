@@ -4,6 +4,7 @@ import {
   LayoutDashboard, PhoneCall, UserPlus, CalendarCheck, GraduationCap, BookOpen,
   DollarSign, Landmark, MessageSquare, MessageCircleWarning, Trophy, Library, Bus,
   Building2, Users, Boxes, Network, Settings, ShieldCheck, Palette, Compass, type LucideProps,
+  Sparkles, Navigation, IdCard, Wallet, Video, HeartPulse,
 } from 'lucide-react';
 
 export type ModuleDef = {
@@ -39,6 +40,13 @@ export const MODULES: ModuleDef[] = [
   { id: 'users', name: 'User & Privileges', short: 'Users', icon: ShieldCheck, group: 'Administration', color: 'from-primary to-primary/70', tagline: 'Granular control, by design', features: ['Role creation', 'Login management', 'Activation toggle', 'Login audit trail', 'Permission matrix'] },
   { id: 'branding', name: 'Institute Branding', short: 'Branding', icon: Palette, group: 'Administration', color: 'from-primary to-primary/80', tagline: 'Empower, engage, excel', features: ['Branding types', 'Detail management', 'Parent app sync', 'Campaign assets'] },
   { id: 'consultancy', name: 'Student Consultancy', short: 'Consultancy', icon: Compass, group: 'Administration', color: 'from-primary/80 to-primary', tagline: 'Transforming education, together', features: ['University details', 'Program catalog', 'Fee & admission info', 'Program duration'] },
+  // --- v1.5.0 unique high-impact modules ---
+  { id: 'ai-tutor', name: 'AI Tutor', short: 'AI Tutor', icon: Sparkles, group: 'Academics', color: 'from-violet-500 to-fuchsia-600', tagline: '24/7 doubt-solving AI tutor', features: ['RAG over textbook content', 'Step-by-step explanations', 'Practice question generator', 'Subject-aware AI', 'Voice queries', 'Performance insights'] },
+  { id: 'live-transport', name: 'Live Transport Tracking', short: 'Live Transport', icon: Navigation, group: 'Campus', color: 'from-emerald-500 to-teal-600', tagline: 'Real-time bus tracking for parents', features: ['Live GPS map', 'ETA push notifications', 'Route deviation alerts', 'Pickup/drop status', 'Driver contact', 'Historical routes'] },
+  { id: 'digital-id', name: 'Digital ID Center', short: 'Digital ID', icon: IdCard, group: 'Campus', color: 'from-rose-500 to-pink-600', tagline: 'Wallet-style digital student IDs', features: ['QR code check-in', 'Library card integration', 'Cafeteria wallet link', 'Exam hall verification', 'Lost card lock', 'Bulk ID generation'] },
+  { id: 'campus-wallet', name: 'Campus Wallet', short: 'Wallet', icon: Wallet, group: 'Finance', color: 'from-amber-500 to-yellow-600', tagline: 'Cashless campus payments', features: ['Prepaid top-ups', 'Cafeteria & printing', 'Bookshop purchases', 'Auto-reload threshold', 'Spending insights', 'Parent controls'] },
+  { id: 'ptm-scheduling', name: 'PTM Scheduling', short: 'PTM', icon: Video, group: 'Communication', color: 'from-cyan-500 to-teal-600', tagline: 'Book parent-teacher meetings', features: ['Video PTM booking', 'Calendar invites', 'Auto reminders', 'Agenda notes', 'Multi-teacher slots', 'Recording archive'] },
+  { id: 'health-records', name: 'Health Records', short: 'Health', icon: HeartPulse, group: 'Campus', color: 'from-red-500 to-rose-600', tagline: 'Student health & wellness', features: ['Medical history', 'Allergy alerts', 'Vaccination records', 'Infirmary visits log', 'Emergency contacts', 'BMI tracking'] },
 ];
 
 export const MODULE_GROUPS = ['Overview', 'Admissions', 'Academics', 'Finance', 'Communication', 'Campus', 'Administration'];

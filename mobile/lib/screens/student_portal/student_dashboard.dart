@@ -8,6 +8,7 @@ import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'student_attendance.dart';
+import 'student_announcements.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
@@ -340,6 +341,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         label: 'My ID Card',
                         color: const Color(0xFF7C3AED),
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentIdCard(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.campaign_rounded,
+                        label: 'Notices',
+                        color: AppTheme.warning,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnnouncements(user: widget.user))),
                       ),
                     ],
                   ),
