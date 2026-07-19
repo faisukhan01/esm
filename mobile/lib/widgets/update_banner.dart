@@ -13,7 +13,7 @@ class UpdateChecker {
   static const String _directApkUrl = 'https://github.com/faisukhan01/esm/releases/latest/download/app-release.apk';
 
   /// The current app version (must match pubspec.yaml).
-  static const String currentVersion = '1.3.0';
+  static const String currentVersion = '1.3.1';
 
   /// Checks if a newer version is available on GitHub Releases.
   static Future<String?> checkForUpdate() async {
@@ -50,43 +50,50 @@ class UpdateChecker {
     return false;
   }
 
-  /// Opens the download page — tries multiple methods for reliability.
+  /// Opens the download page in the system browser.
+  ///
+  /// NOTE: We intentionally do NOT call `canLaunchUrl()` first.
+  /// On Android 11+ (API 30+) `canLaunchUrl()` returns `false` for any URL
+  /// scheme not declared in a `<queries>` element of AndroidManifest.xml,
+  /// which would cause the launch to be skipped entirely. The official
+  /// `url_launcher` docs recommend calling `launchUrl` directly and relying
+  /// on its boolean return value. The `<queries>` block added to
+  /// AndroidManifest.xml ensures browser apps are resolvable.
   static Future<bool> openDownloadPage() async {
     final uri = Uri.parse(_downloadPage);
 
-    // Method 1: Try external application
+    // Method 1: External browser (preferred — lets user choose browser,
+    // supports download manager, doesn't trap them in a Custom Tab).
     try {
-      if (await canLaunchUrl(uri)) {
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (launched) return true;
-      }
-    } catch (_) {}
-
-    // Method 2: Try in-app browser
-    try {
-      final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (launched) return true;
     } catch (_) {}
 
-    // Method 3: Try platform default
+    // Method 2: Platform default mode.
     try {
       final launched = await launchUrl(uri);
+      if (launched) return true;
+    } catch (_) {}
+
+    // Method 3: In-app browser view (Chrome Custom Tab) as last resort.
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
       if (launched) return true;
     } catch (_) {}
 
     return false;
   }
 
-  /// Opens the direct APK download URL.
+  /// Opens the direct APK download URL (used as a fallback inside the dialog).
   static Future<bool> openDirectDownload() async {
     final uri = Uri.parse(_directApkUrl);
     try {
-      if (await canLaunchUrl(uri)) {
-        return await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (launched) return true;
     } catch (_) {}
     try {
-      return await launchUrl(uri);
+      final launched = await launchUrl(uri);
+      if (launched) return true;
     } catch (_) {}
     return false;
   }
@@ -122,10 +129,32 @@ class _UpdateBannerState extends State<UpdateBanner> {
   }
 
   void _onUpdateTap() async {
-    // Try to open the download page
+    // Show a brief loading snackbar so the user gets immediate feedback.
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Text('Opening download page...', style: GoogleFonts.inter(fontSize: 12)),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.primary,
+      ),
+    );
+
+    // Try to open the download page in the system browser.
     final opened = await UpdateChecker.openDownloadPage();
 
-    // If the browser didn't open, show a dialog with the link + direct APK download
+    // If the browser didn't open, show a fallback dialog with copyable link
+    // and a direct APK download button.
     if (!opened && mounted) {
       showDialog(
         context: context,
@@ -144,7 +173,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
             children: [
               Text('A new version (v$_newVersion) is available.', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary)),
               const SizedBox(height: 12),
-              Text('Tap "Open Download Page" to update:', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+              Text('We couldn\'t auto-open your browser. Tap the button below, or copy this link:', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(10),
@@ -164,11 +193,24 @@ class _UpdateBannerState extends State<UpdateBanner> {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(ctx);
-                // Try direct APK download as fallback
+                // Try opening the download page again.
+                UpdateChecker.openDownloadPage();
+              },
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Open Download Page'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                // Try direct APK download as last resort.
                 UpdateChecker.openDirectDownload();
               },
               icon: const Icon(Icons.download, size: 16),
-              label: const Text('Download APK'),
+              label: const Text('Direct APK'),
             ),
           ],
         ),
