@@ -1,67 +1,136 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ModuleHeader } from './students';
 import {
   Bus, Navigation, MapPin, Phone, Gauge, Users, Clock,
   TrendingUp, AlertTriangle, CheckCircle2, Route as RouteIcon,
+  Play, Pause,
 } from 'lucide-react';
 
-type RouteStatus = 'on-time' | 'delayed' | 'arrived' | 'en-route';
+type RouteStatus = 'on-time' | 'delayed' | 'en-route';
 
 type ActiveRoute = {
   id: string;
   routeName: string;
   driverName: string;
   vehicleNo: string;
-  eta: string;
-  speed: number; // km/h
-  occupancy: number; // out of capacity
+  etaMin: number; // minutes; 0 = arrived
+  speed: number;
+  occupancy: number;
   capacity: number;
   status: RouteStatus;
-  // position on the stylized map (% coords)
   pos: { x: number; y: number };
 };
 
-const ROUTES: ActiveRoute[] = [
+const INITIAL_ROUTES: ActiveRoute[] = [
   {
     id: 'R-A', routeName: 'Route A — Gulberg', driverName: 'Imran Yousaf',
-    vehicleNo: 'LHR-1234', eta: '4 min', speed: 38, occupancy: 28, capacity: 36,
+    vehicleNo: 'LHR-1234', etaMin: 4, speed: 38, occupancy: 28, capacity: 36,
     status: 'en-route', pos: { x: 22, y: 30 },
   },
   {
     id: 'R-B', routeName: 'Route B — Model Town', driverName: 'Bashir Khan',
-    vehicleNo: 'LHR-5678', eta: '12 min', speed: 24, occupancy: 22, capacity: 32,
+    vehicleNo: 'LHR-5678', etaMin: 12, speed: 24, occupancy: 22, capacity: 32,
     status: 'delayed', pos: { x: 58, y: 60 },
   },
   {
     id: 'R-C', routeName: 'Route C — DHA Phase 5', driverName: 'Naveed Ahmed',
-    vehicleNo: 'LHR-9012', eta: 'Arrived', speed: 0, occupancy: 30, capacity: 30,
-    status: 'arrived', pos: { x: 80, y: 24 },
+    vehicleNo: 'LHR-9012', etaMin: 8, speed: 32, occupancy: 30, capacity: 30,
+    status: 'on-time', pos: { x: 80, y: 24 },
   },
 ];
 
-const statusMeta: Record<RouteStatus, { label: string; cls: string; dot: string }> = {
-  'on-time': { label: 'On Time', cls: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-500' },
-  'en-route': { label: 'En Route', cls: 'text-teal-700 bg-teal-500/10 border-teal-500/20', dot: 'bg-teal-500' },
-  'delayed': { label: 'Delayed', cls: 'text-amber-700 bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-500' },
-  'arrived': { label: 'Arrived', cls: 'text-primary bg-primary/10 border-primary/20', dot: 'bg-primary' },
+const statusMeta: Record<RouteStatus, { label: string; cls: string; dot: string; ring: string }> = {
+  'on-time': { label: 'On Time', cls: 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-500', ring: 'from-emerald-500 to-teal-600' },
+  'en-route': { label: 'En Route', cls: 'text-cyan-700 bg-cyan-500/10 border-cyan-500/20', dot: 'bg-cyan-500', ring: 'from-cyan-500 to-teal-600' },
+  'delayed': { label: 'Delayed', cls: 'text-amber-700 bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-500', ring: 'from-amber-500 to-orange-600' },
 };
 
+function etaLabel(min: number) {
+  if (min <= 0) return 'Arrived';
+  if (min === 1) return '1 min';
+  return `${min} min`;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function randStep(prev: number, range: number, min: number, max: number) {
+  const next = prev + (Math.random() * 2 - 1) * range;
+  return clamp(next, min, max);
+}
+
 export default function LiveTransportModule() {
+  const [routes, setRoutes] = useState<ActiveRoute[]>(INITIAL_ROUTES);
   const [selectedId, setSelectedId] = useState<string>('R-A');
-  const selected = ROUTES.find((r) => r.id === selectedId) ?? ROUTES[0];
+  const [live, setLive] = useState(true);
+  const moveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const etaTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 2-second interval: nudge bus positions + small speed fluctuation.
+  useEffect(() => {
+    if (!live) return;
+    moveTimer.current = setInterval(() => {
+      setRoutes((prev) =>
+        prev.map((r) =>
+          r.etaMin <= 0
+            ? r // already arrived — hold position
+            : {
+                ...r,
+                pos: {
+                  x: randStep(r.pos.x, 4, 6, 92),
+                  y: randStep(r.pos.y, 4, 10, 86),
+                },
+                speed: Math.round(randStep(r.speed, 6, 0, 60)),
+              },
+        ),
+      );
+    }, 2000);
+    return () => {
+      if (moveTimer.current) clearInterval(moveTimer.current);
+    };
+  }, [live]);
+
+  // 5-second interval: decrement ETA; when 0 reached, reset to a fresh value
+  // (simulating a new pickup loop).
+  useEffect(() => {
+    if (!live) return;
+    etaTimer.current = setInterval(() => {
+      setRoutes((prev) =>
+        prev.map((r) => {
+          if (r.etaMin <= 0) {
+            const fresh = 4 + Math.floor(Math.random() * 14);
+            return { ...r, etaMin: fresh, status: fresh > 10 ? 'delayed' : 'en-route' as RouteStatus };
+          }
+          const next = r.etaMin - 1;
+          return {
+            ...r,
+            etaMin: next,
+            status: next <= 0 ? 'on-time' : next > 10 ? 'delayed' : r.status,
+          };
+        }),
+      );
+    }, 5000);
+    return () => {
+      if (etaTimer.current) clearInterval(etaTimer.current);
+    };
+  }, [live]);
+
+  const selected = routes.find((r) => r.id === selectedId) ?? routes[0];
 
   const stats = [
-    { label: 'Active Routes', value: ROUTES.length, icon: RouteIcon, tint: 'from-emerald-500 to-teal-600' },
-    { label: 'Students Onboard', value: ROUTES.reduce((a, r) => a + r.occupancy, 0), icon: Users, tint: 'from-amber-500 to-yellow-600' },
+    { label: 'Active Routes', value: routes.length, icon: RouteIcon, tint: 'from-emerald-500 to-teal-600' },
+    { label: 'Students Onboard', value: routes.reduce((a, r) => a + r.occupancy, 0), icon: Users, tint: 'from-amber-500 to-yellow-600' },
     { label: 'On-Time Today', value: '94%', icon: TrendingUp, tint: 'from-emerald-500 to-emerald-700' },
-    { label: 'Alerts', value: 1, icon: AlertTriangle, tint: 'from-rose-500 to-pink-600' },
+    { label: 'Alerts', value: routes.filter((r) => r.status === 'delayed').length, icon: AlertTriangle, tint: 'from-rose-500 to-pink-600' },
   ];
 
   return (
@@ -70,9 +139,20 @@ export default function LiveTransportModule() {
         title="Live Transport Tracking"
         subtitle="Real-time GPS tracking of campus buses — see where your child is, right now"
         actions={
-          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-            <Navigation className="h-4 w-4 mr-1.5" /> Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={live ? 'default' : 'outline'}
+              onClick={() => setLive((v) => !v)}
+              className={live ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+            >
+              {live ? <Pause className="h-4 w-4 mr-1.5" /> : <Play className="h-4 w-4 mr-1.5" />}
+              {live ? 'Pause Live' : 'Resume Live'}
+            </Button>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Navigation className="h-4 w-4 mr-1.5" /> Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -96,15 +176,21 @@ export default function LiveTransportModule() {
       </div>
 
       <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4">
-        {/* Map placeholder */}
+        {/* Map */}
         <Card className="p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-emerald-600" />
               <span className="font-semibold text-sm">Live Map · Lahore Campus</span>
             </div>
-            <Badge variant="outline" className="text-emerald-700 border-emerald-500/30 bg-emerald-500/10">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" /> Live
+            <Badge variant="outline" className="text-rose-700 border-rose-500/30 bg-rose-500/10">
+              <span className="relative mr-1.5 flex h-2 w-2">
+                {live && (
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                )}
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+              </span>
+              Live
             </Badge>
           </div>
           <div className="relative h-[420px] bg-emerald-50 dark:bg-emerald-950/20 overflow-hidden">
@@ -117,32 +203,38 @@ export default function LiveTransportModule() {
                 backgroundSize: '32px 32px',
               }}
             />
-            {/* Stylized route lines */}
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+            {/* Animated dashed route lines */}
+            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
               <polyline
                 points="5,80 22,30 45,50 70,40 90,18"
                 fill="none"
                 stroke="oklch(0.6 0.15 160)"
-                strokeWidth="2.5"
-                strokeDasharray="6 4"
+                strokeWidth="0.6"
+                strokeDasharray="2 1.5"
                 opacity="0.55"
-              />
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-7" dur="1.2s" repeatCount="indefinite" />
+              </polyline>
               <polyline
                 points="10,90 30,75 58,60 75,80 92,55"
                 fill="none"
                 stroke="oklch(0.7 0.18 30)"
-                strokeWidth="2.5"
-                strokeDasharray="6 4"
+                strokeWidth="0.6"
+                strokeDasharray="2 1.5"
                 opacity="0.55"
-              />
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-7" dur="1.5s" repeatCount="indefinite" />
+              </polyline>
               <polyline
                 points="15,15 35,30 60,22 80,24"
                 fill="none"
-                stroke="oklch(0.55 0.20 257)"
-                strokeWidth="2.5"
-                strokeDasharray="6 4"
+                stroke="oklch(0.7 0.15 200)"
+                strokeWidth="0.6"
+                strokeDasharray="2 1.5"
                 opacity="0.55"
-              />
+              >
+                <animate attributeName="stroke-dashoffset" from="0" to="-7" dur="1.8s" repeatCount="indefinite" />
+              </polyline>
             </svg>
             {/* Campus pin */}
             <div className="absolute top-[18%] right-[8%] -translate-y-1/2">
@@ -152,37 +244,48 @@ export default function LiveTransportModule() {
               <div className="mt-1 text-[10px] font-semibold text-primary whitespace-nowrap">Campus</div>
             </div>
             {/* Bus markers */}
-            {ROUTES.map((r) => {
-              const meta = statusMeta[r.status];
-              const isSelected = r.id === selectedId;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedId(r.id)}
-                  style={{ left: `${r.pos.x}%`, top: `${r.pos.y}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-110"
-                  title={`${r.routeName} · ${meta.label}`}
-                >
-                  <div
-                    className={`h-9 w-9 rounded-full grid place-items-center shadow-lg ring-4 transition ${
-                      isSelected
-                        ? 'bg-primary ring-primary/30 scale-110'
-                        : `bg-gradient-to-br from-emerald-500 to-teal-600 ring-emerald-500/20`
-                    }`}
-                  >
-                    <Bus className="h-4 w-4 text-white" />
-                  </div>
-                  <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ring-2 ring-white ${meta.dot}`} />
-                  <div className="mt-1 text-[10px] font-semibold bg-card/90 backdrop-blur px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
-                    {r.id}
-                  </div>
-                </button>
-              );
-            })}
+            <AnimatePresence>
+              {routes.map((r) => {
+                const meta = statusMeta[r.status];
+                const isSelected = r.id === selectedId;
+                return (
+                  <Tooltip key={r.id}>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        layout
+                        onClick={() => setSelectedId(r.id)}
+                        animate={{ left: `${r.pos.x}%`, top: `${r.pos.y}%` }}
+                        transition={{ duration: 1.4, ease: 'easeInOut' }}
+                        className="absolute -translate-x-1/2 -translate-y-1/2"
+                      >
+                        <div
+                          className={`h-9 w-9 rounded-full grid place-items-center shadow-lg ring-4 transition ${
+                            isSelected
+                              ? 'bg-primary ring-primary/30 scale-110'
+                              : `bg-gradient-to-br ${meta.ring} ring-emerald-500/20`
+                          }`}
+                        >
+                          <Bus className="h-4 w-4 text-white" />
+                        </div>
+                        <div className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ring-2 ring-white ${meta.dot}`} />
+                        <div className="mt-1 text-[10px] font-semibold bg-card/90 backdrop-blur px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                          {r.id}
+                        </div>
+                      </motion.button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      <div className="font-semibold">{r.routeName}</div>
+                      <div className="text-primary-foreground/80">{r.driverName} · {r.vehicleNo}</div>
+                      <div className="text-primary-foreground/80">ETA: {etaLabel(r.etaMin)} · {r.speed} km/h</div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </AnimatePresence>
             {/* Legend */}
             <div className="absolute bottom-3 left-3 bg-card/95 backdrop-blur border border-border rounded-lg p-2.5 text-[10px] space-y-1 shadow-sm">
               <div className="font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Legend</div>
-              {(['en-route', 'on-time', 'delayed', 'arrived'] as RouteStatus[]).map((s) => (
+              {(['en-route', 'on-time', 'delayed'] as RouteStatus[]).map((s) => (
                 <div key={s} className="flex items-center gap-1.5">
                   <span className={`h-2 w-2 rounded-full ${statusMeta[s].dot}`} />
                   <span>{statusMeta[s].label}</span>
@@ -198,12 +301,14 @@ export default function LiveTransportModule() {
             Active Routes
           </div>
           <div className="space-y-2.5">
-            {ROUTES.map((r) => {
+            {routes.map((r) => {
               const meta = statusMeta[r.status];
               const occPct = Math.round((r.occupancy / r.capacity) * 100);
               const isSelected = r.id === selectedId;
+              const initials = r.driverName.split(' ').map((n) => n[0]).join('').slice(0, 2);
               return (
-                <button
+                <motion.button
+                  layout
                   key={r.id}
                   onClick={() => setSelectedId(r.id)}
                   className={`w-full text-left rounded-xl border p-3 transition ${
@@ -214,8 +319,8 @@ export default function LiveTransportModule() {
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs">
-                        {r.driverName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                      <AvatarFallback className={`bg-gradient-to-br ${meta.ring} text-white text-xs`}>
+                        {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
@@ -232,15 +337,15 @@ export default function LiveTransportModule() {
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-lg bg-muted/50 p-2">
                       <div className="flex items-center gap-1 text-muted-foreground text-[10px]"><Gauge className="h-3 w-3" /> Speed</div>
-                      <div className="font-semibold mt-0.5">{r.speed} km/h</div>
+                      <div className="font-semibold mt-0.5 tabular-nums">{r.speed} km/h</div>
                     </div>
                     <div className="rounded-lg bg-muted/50 p-2">
                       <div className="flex items-center gap-1 text-muted-foreground text-[10px]"><Clock className="h-3 w-3" /> ETA</div>
-                      <div className="font-semibold mt-0.5">{r.eta}</div>
+                      <div className="font-semibold mt-0.5 tabular-nums">{etaLabel(r.etaMin)}</div>
                     </div>
                     <div className="rounded-lg bg-muted/50 p-2">
                       <div className="flex items-center gap-1 text-muted-foreground text-[10px]"><Users className="h-3 w-3" /> Seats</div>
-                      <div className="font-semibold mt-0.5">{r.occupancy}/{r.capacity}</div>
+                      <div className="font-semibold mt-0.5 tabular-nums">{r.occupancy}/{r.capacity}</div>
                     </div>
                   </div>
 
@@ -251,11 +356,12 @@ export default function LiveTransportModule() {
                       <span>{occPct}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
+                      <motion.div
                         className={`h-full rounded-full ${
                           occPct >= 90 ? 'bg-rose-500' : occPct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'
                         }`}
-                        style={{ width: `${occPct}%` }}
+                        animate={{ width: `${occPct}%` }}
+                        transition={{ duration: 0.4 }}
                       />
                     </div>
                   </div>
@@ -265,11 +371,11 @@ export default function LiveTransportModule() {
                       <Phone className="h-3.5 w-3.5 mr-1.5" /> Call Driver
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 h-8">
-                      {r.status === 'arrived' ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Navigation className="h-3.5 w-3.5 mr-1.5" />}
-                      {r.status === 'arrived' ? 'Drop Done' : 'Track'}
+                      {r.etaMin <= 0 ? <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> : <Navigation className="h-3.5 w-3.5 mr-1.5" />}
+                      {r.etaMin <= 0 ? 'Drop Done' : 'Track'}
                     </Button>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>

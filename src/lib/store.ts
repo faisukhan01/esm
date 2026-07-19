@@ -37,10 +37,13 @@ type AppState = {
   user: AuthUser;
   token: string | null;
   activeModule: string;
+  language: 'en' | 'ur';
   setView: (v: View) => void;
   setUser: (u: AuthUser) => void;
   setToken: (t: string | null) => void;
   setActiveModule: (m: string) => void;
+  setLanguage: (l: 'en' | 'ur') => void;
+  toggleLanguage: () => void;
   logout: () => void;
 };
 
@@ -74,10 +77,13 @@ export const useApp = create<AppState>()(
       user: null,
       token: null,
       activeModule: 'dashboard',
+      language: 'en',
       setView: (v) => set({ view: v }),
       setUser: (u) => set({ user: u, activeModule: 'dashboard' }),
       setToken: (t) => set({ token: t }),
       setActiveModule: (m) => set({ activeModule: m }),
+      setLanguage: (l) => set({ language: l }),
+      toggleLanguage: () => set((s) => ({ language: s.language === 'en' ? 'ur' : 'en' })),
       logout: () => set({ view: 'landing', user: null, token: null, activeModule: 'dashboard' }),
     }),
     {
