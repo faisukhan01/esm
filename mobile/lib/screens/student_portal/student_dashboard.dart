@@ -12,7 +12,8 @@ import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
-import '../calendar_screen.dart';
+import 'student_timetable.dart';
+import 'student_id_card.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';
 import 'student_results.dart';
@@ -332,7 +333,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         icon: Icons.calendar_today_rounded,
                         label: 'Timetable',
                         color: AppTheme.primary,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: widget.user))),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentTimetable(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.badge_rounded,
+                        label: 'My ID Card',
+                        color: const Color(0xFF7C3AED),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentIdCard(user: widget.user))),
                       ),
                     ],
                   ),

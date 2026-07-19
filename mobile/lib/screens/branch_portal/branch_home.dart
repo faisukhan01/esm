@@ -48,8 +48,10 @@ class _BranchHomeState extends State<BranchHome> {
 
     final screens = [
       _BranchDashboard(name: name, branchName: branchName, kpi: kpi, isLoading: _isLoading, onRefresh: _loadData, user: widget.user),
+      _ClassesTab(user: widget.user),
       _TeachersTab(user: widget.user),
       _StudentsTab(user: widget.user),
+      _TimetableTab(user: widget.user),
       _FeesTab(user: widget.user),
     ];
 
@@ -60,8 +62,10 @@ class _BranchHomeState extends State<BranchHome> {
         onTap: (i) => setState(() => _currentIndex = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.class_outlined), activeIcon: Icon(Icons.class_), label: 'Classes'),
           BottomNavigationBarItem(icon: Icon(Icons.group_outlined), activeIcon: Icon(Icons.group), label: 'Teachers'),
           BottomNavigationBarItem(icon: Icon(Icons.school_outlined), activeIcon: Icon(Icons.school), label: 'Students'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month_outlined), activeIcon: Icon(Icons.calendar_month), label: 'Timetable'),
           BottomNavigationBarItem(icon: Icon(Icons.receipt_outlined), activeIcon: Icon(Icons.receipt), label: 'Fees'),
         ],
       ),
@@ -1169,6 +1173,1166 @@ class _AddUserDialogState extends State<_AddUserDialog> {
           child: _isSaving
               ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
               : Text('Add ${isTeacher ? 'Teacher' : 'Student'}'),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================== CLASSES TAB ===============================
+
+class _ClassesTab extends StatefulWidget {
+  final Map<String, dynamic> user;
+  const _ClassesTab({required this.user});
+
+  @override
+  State<_ClassesTab> createState() => _ClassesTabState();
+}
+
+class _ClassesTabState extends State<_ClassesTab> with AutomaticKeepAliveClientMixin {
+  List<dynamic> _classes = [];
+  bool _isLoading = true;
+  String? _error;
+
+  static const List<String> _gradeOptions = [
+    'Nursery', 'Prep',
+    'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5',
+    'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+    'Grade 11', 'Grade 12',
+  ];
+
+  static const List<String> _sectionOptions = ['A', 'B', 'C', 'D'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final list = await ApiClient.getList('branch/classes', query: {
+        'branchId': widget.user['branchId'],
+      });
+      if (mounted) setState(() { _classes = list; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+    }
+  }
+
+  void _snack(String msg, Color bg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: bg, behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<void> _createClass(Map<String, dynamic> body) async {
+    // Generate a temp client-side id so subsequent edits/deletes work optimistically.
+    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final optimistic = {...body, 'id': tempId};
+    setState(() => _classes = [..._classes, optimistic]);
+    try {
+      final result = await ApiClient.post('branch/classes', body: body);
+      // If the server returned a real id, swap the temp entry for the real one.
+      final serverId = result is Map ? result['id']?.toString() : null;
+      if (serverId != null && mounted) {
+        setState(() {
+          _classes = _classes.map((c) => c['id'] == tempId ? {...c, 'id': serverId} : c).toList();
+        });
+      }
+      _snack('Class added', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _updateClass(Map<String, dynamic> existing, Map<String, dynamic> body) async {
+    final id = existing['id']?.toString();
+    setState(() {
+      _classes = _classes.map((c) {
+        if (c['id'] == id) return {...c, ...body};
+        return c;
+      }).toList();
+    });
+    try {
+      await ApiClient.patch('branch/classes/$id', body: body);
+      _snack('Class updated', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _deleteClass(Map<String, dynamic> cls) async {
+    final id = cls['id']?.toString();
+    final label = '${cls['name'] ?? ''} ${cls['section'] ?? ''}'.trim();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Class?'),
+        content: Text('Delete "$label"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _classes = _classes.where((c) => c['id'] != id).toList());
+    try {
+      await ApiClient.delete('branch/classes/$id');
+      _snack('Class deleted', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? existing}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => _ClassFormDialog(
+        branchId: widget.user['branchId'],
+        gradeOptions: _gradeOptions,
+        sectionOptions: _sectionOptions,
+        existing: existing,
+      ),
+    );
+    if (result == null) return;
+    if (existing != null) {
+      await _updateClass(existing, result);
+    } else {
+      await _createClass(result);
+    }
+  }
+
+  void _showDetail(Map<String, dynamic> c) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '${c['name'] ?? ''} ${c['section'] ?? ''}'.trim(),
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 12),
+            _detailRow(Icons.person, 'Teacher', (c['teacherName'] ?? 'Unassigned').toString()),
+            _detailRow(Icons.groups, 'Students', '${c['studentCount'] ?? 0}'),
+            if ((c['room'] ?? '').toString().isNotEmpty)
+              _detailRow(Icons.meeting_room, 'Room', (c['room'] ?? '').toString()),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _openForm(existing: c);
+                    },
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Edit'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.danger,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _deleteClass(c);
+                    },
+                    icon: const Icon(Icons.delete, size: 16),
+                    label: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.textMuted),
+          const SizedBox(width: 10),
+          Text(label, style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+          const Spacer(),
+          Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Classes'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh, size: 20), tooltip: 'Refresh', onPressed: _load),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openForm(),
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
+      ),
+      body: _isLoading
+          ? _buildSkeleton()
+          : _error != null
+              ? _ErrorView(error: _error!, onRetry: _load)
+              : _classes.isEmpty
+                  ? EmptyState(
+                      icon: Icons.class_outlined,
+                      title: 'No classes yet',
+                      description: 'Add a class to start enrolling students and creating timetables.',
+                      actionText: 'Refresh',
+                      onAction: _load,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _classes.length,
+                        itemBuilder: (context, i) => _buildClassCard(_classes[i] as Map<String, dynamic>),
+                      ),
+                    ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(
+        4,
+        (_) => const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: SkeletonBox(width: double.infinity, height: 88),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClassCard(Map<String, dynamic> c) {
+    final name = (c['name'] ?? 'Class').toString();
+    final section = (c['section'] ?? '').toString();
+    final teacherName = (c['teacherName'] ?? 'Unassigned').toString();
+    final studentCount = c['studentCount'] ?? 0;
+    final room = (c['room'] ?? '').toString();
+    final fullName = section.isEmpty ? name : '$name - Section $section';
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showDetail(c),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.class_, color: AppTheme.primary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(fullName,
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 10, runSpacing: 2,
+                      children: [
+                        _infoChip(Icons.person, teacherName),
+                        _infoChip(Icons.groups, '$studentCount students'),
+                        if (room.isNotEmpty) _infoChip(Icons.meeting_room, room),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 18, color: AppTheme.textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: AppTheme.textMuted),
+        const SizedBox(width: 4),
+        Text(text, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textSecondary)),
+      ],
+    );
+  }
+}
+
+// =============================== CLASS FORM DIALOG ===============================
+
+class _ClassFormDialog extends StatefulWidget {
+  final String? branchId;
+  final List<String> gradeOptions;
+  final List<String> sectionOptions;
+  final Map<String, dynamic>? existing;
+
+  const _ClassFormDialog({
+    required this.branchId,
+    required this.gradeOptions,
+    required this.sectionOptions,
+    this.existing,
+  });
+
+  @override
+  State<_ClassFormDialog> createState() => _ClassFormDialogState();
+}
+
+class _ClassFormDialogState extends State<_ClassFormDialog> {
+  String? _grade;
+  String? _section;
+  String? _teacherId;
+  String? _teacherName;
+  late final TextEditingController _roomCtrl;
+  List<dynamic> _teachers = [];
+  bool _loadingTeachers = true;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e != null) {
+      _grade = e['name']?.toString();
+      _section = e['section']?.toString();
+      _teacherId = e['teacherId']?.toString();
+      _teacherName = e['teacherName']?.toString();
+      _roomCtrl = TextEditingController(text: (e['room'] ?? '').toString());
+    } else {
+      _section = 'A';
+      _roomCtrl = TextEditingController();
+    }
+    _loadTeachers();
+  }
+
+  @override
+  void dispose() {
+    _roomCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTeachers() async {
+    try {
+      final list = await ApiClient.getList('platform/users', query: {
+        'role': 'teacher',
+        'branchId': widget.branchId,
+      });
+      if (mounted) setState(() { _teachers = list; _loadingTeachers = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingTeachers = false);
+    }
+  }
+
+  /// Defensive: only return an id if it actually exists in the loaded teachers list
+  /// (otherwise DropdownButtonFormField's "exactly one match" assertion will fire).
+  String? get _effectiveTeacherId {
+    if (_teacherId == null || _teachers.isEmpty) return null;
+    final exists = _teachers.any((t) => t['id']?.toString() == _teacherId);
+    return exists ? _teacherId : null;
+  }
+
+  /// Defensive: only return a grade/section that exists in the preset list.
+  String? get _effectiveGrade =>
+      (_grade == null || widget.gradeOptions.contains(_grade)) ? _grade : null;
+  String? get _effectiveSection =>
+      (_section == null || widget.sectionOptions.contains(_section)) ? _section : null;
+
+  bool get _canSubmit => _grade != null && _section != null && !_saving;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.existing != null;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(isEdit ? Icons.edit : Icons.add_circle, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Text(isEdit ? 'Edit Class' : 'Add Class'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _effectiveGrade,
+              decoration: const InputDecoration(labelText: 'Class Name *', prefixIcon: Icon(Icons.school, size: 18)),
+              items: widget.gradeOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+              onChanged: (v) => setState(() => _grade = v),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _effectiveSection,
+              decoration: const InputDecoration(labelText: 'Section *', prefixIcon: Icon(Icons.bookmark, size: 18)),
+              items: widget.sectionOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              onChanged: (v) => setState(() => _section = v),
+            ),
+            const SizedBox(height: 8),
+            _loadingTeachers
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  )
+                : DropdownButtonFormField<String>(
+                    value: _effectiveTeacherId,
+                    decoration: const InputDecoration(labelText: 'Assigned Teacher', prefixIcon: Icon(Icons.person, size: 18)),
+                    items: [
+                      const DropdownMenuItem<String>(value: null, child: Text('Unassigned')),
+                      ..._teachers.map((t) {
+                        final id = t['id']?.toString();
+                        final name = (t['name'] ?? 'Teacher').toString();
+                        return DropdownMenuItem<String>(value: id, child: Text(name));
+                      }),
+                    ],
+                    onChanged: (v) {
+                      final match = _teachers.where((t) => t['id']?.toString() == v).toList();
+                      setState(() {
+                        _teacherId = v;
+                        _teacherName = match.isEmpty ? '' : (match.first['name'] ?? '').toString();
+                      });
+                    },
+                  ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _roomCtrl,
+              decoration: const InputDecoration(labelText: 'Room (optional)', prefixIcon: Icon(Icons.meeting_room, size: 18)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: _canSubmit
+              ? () {
+                  setState(() => _saving = true);
+                  final body = <String, dynamic>{
+                    'name': _grade,
+                    'section': _section,
+                    'teacherId': _teacherId,
+                    'teacherName': _teacherName ?? '',
+                    'room': _roomCtrl.text.trim(),
+                    'branchId': widget.branchId,
+                    'studentCount': widget.existing?['studentCount'] ?? 0,
+                    if (widget.existing != null) 'id': widget.existing!['id'],
+                  };
+                  Navigator.pop(context, body);
+                }
+              : null,
+          child: _saving
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(isEdit ? 'Save' : 'Add Class'),
+        ),
+      ],
+    );
+  }
+}
+
+// =============================== TIMETABLE TAB ===============================
+
+class _TimetableTab extends StatefulWidget {
+  final Map<String, dynamic> user;
+  const _TimetableTab({required this.user});
+
+  @override
+  State<_TimetableTab> createState() => _TimetableTabState();
+}
+
+class _TimetableTabState extends State<_TimetableTab> with AutomaticKeepAliveClientMixin {
+  List<dynamic> _entries = [];
+  List<dynamic> _classes = [];
+  List<dynamic> _teachers = [];
+  bool _isLoading = true;
+  String? _error;
+  String _selectedDay = 'Monday';
+
+  static const List<String> _days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Deterministic palette for subject color-coding.
+  static const List<Color> _subjectColors = [
+    Color(0xFF0EA5E9), // info blue
+    Color(0xFF16A34A), // success green
+    Color(0xFFD4A437), // gold
+    Color(0xFF8B5CF6), // purple
+    Color(0xFFEC4899), // pink
+    Color(0xFF14B8A6), // teal
+    Color(0xFFF97316), // orange
+    Color(0xFF0B1F3A), // navy primary
+  ];
+
+  Color _colorForSubject(String subject) {
+    if (subject.isEmpty) return AppTheme.textMuted;
+    int hash = 0;
+    for (int i = 0; i < subject.length; i++) {
+      hash = (31 * hash + subject.codeUnitAt(i)) & 0x7FFFFFFF;
+    }
+    return _subjectColors[hash % _subjectColors.length];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final results = await Future.wait([
+        ApiClient.getList('timetable', query: {'branchId': widget.user['branchId']}),
+        ApiClient.getList('branch/classes', query: {'branchId': widget.user['branchId']}),
+        ApiClient.getList('platform/users', query: {'role': 'teacher', 'branchId': widget.user['branchId']}),
+      ]);
+      if (mounted) {
+        setState(() {
+          _entries = results[0];
+          _classes = results[1];
+          _teachers = results[2];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _isLoading = false; });
+    }
+  }
+
+  void _snack(String msg, Color bg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: bg, behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  List<dynamic> _entriesForDay(String day) {
+    final list = _entries.where((e) => (e['day'] ?? '').toString() == day).toList();
+    list.sort((a, b) {
+      final aStart = (a['startTime'] ?? '').toString();
+      final bStart = (b['startTime'] ?? '').toString();
+      return aStart.compareTo(bStart);
+    });
+    return list;
+  }
+
+  Future<void> _createEntry(Map<String, dynamic> body) async {
+    // Generate a temp client-side id so subsequent edits/deletes work optimistically.
+    final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+    final optimistic = {...body, 'id': tempId};
+    setState(() => _entries = [..._entries, optimistic]);
+    try {
+      final result = await ApiClient.post('timetable', body: body);
+      final serverId = result is Map ? result['id']?.toString() : null;
+      if (serverId != null && mounted) {
+        setState(() {
+          _entries = _entries.map((e) => e['id'] == tempId ? {...e, 'id': serverId} : e).toList();
+        });
+      }
+      _snack('Entry added', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _updateEntry(Map<String, dynamic> existing, Map<String, dynamic> body) async {
+    final id = existing['id']?.toString();
+    setState(() {
+      _entries = _entries.map((e) {
+        if (e['id'] == id) return {...e, ...body};
+        return e;
+      }).toList();
+    });
+    try {
+      await ApiClient.patch('timetable/$id', body: body);
+      _snack('Entry updated', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _deleteEntry(Map<String, dynamic> entry) async {
+    final id = entry['id']?.toString();
+    final subject = (entry['subject'] ?? 'this entry').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Entry?'),
+        content: Text('Remove "$subject" from the timetable? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _entries = _entries.where((e) => e['id'] != id).toList());
+    try {
+      await ApiClient.delete('timetable/$id');
+      _snack('Entry deleted', AppTheme.success);
+    } catch (_) {
+      _snack('Saved locally — will sync', AppTheme.gold);
+    }
+  }
+
+  Future<void> _openForm({Map<String, dynamic>? existing}) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) => _TimetableEntryDialog(
+        branchId: widget.user['branchId'],
+        classes: _classes,
+        teachers: _teachers,
+        days: _days,
+        existing: existing,
+      ),
+    );
+    if (result == null) return;
+    if (existing != null) {
+      await _updateEntry(existing, result);
+    } else {
+      await _createEntry(result);
+    }
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Timetable'),
+        actions: [
+          IconButton(icon: const Icon(Icons.add, size: 22), tooltip: 'Add Entry', onPressed: () => _openForm()),
+          IconButton(icon: const Icon(Icons.refresh, size: 20), tooltip: 'Refresh', onPressed: _load),
+        ],
+      ),
+      body: _isLoading
+          ? _buildSkeleton()
+          : _error != null
+              ? _ErrorView(error: _error!, onRetry: _load)
+              : _entries.isEmpty
+                  ? EmptyState(
+                      icon: Icons.event_note_outlined,
+                      title: 'No timetable yet',
+                      description: 'Create weekly class schedules that teachers and students will see in their portals.',
+                      actionText: 'Refresh',
+                      onAction: _load,
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: Column(
+                        children: [
+                          _daySelector(),
+                          Expanded(child: _dayList()),
+                        ],
+                      ),
+                    ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: List.generate(
+        4,
+        (_) => const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: SkeletonBox(width: double.infinity, height: 76),
+        ),
+      ),
+    );
+  }
+
+  Widget _daySelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _days.map((d) {
+            final isSelected = d == _selectedDay;
+            final count = _entriesForDay(d).length;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedDay = d),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.primary : AppTheme.surface,
+                    border: Border.all(color: isSelected ? AppTheme.primary : AppTheme.border),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(d.substring(0, 3),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : AppTheme.textPrimary,
+                          )),
+                      Text('$count',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: isSelected ? Colors.white.withOpacity(0.7) : AppTheme.textMuted,
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _dayList() {
+    final list = _entriesForDay(_selectedDay);
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.event_busy, size: 48, color: AppTheme.textMuted),
+              const SizedBox(height: 12),
+              Text('No entries for $_selectedDay',
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+              const SizedBox(height: 4),
+              Text('Tap + to add a class for this day.',
+                  style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _openForm(),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Entry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+      itemCount: list.length,
+      itemBuilder: (context, i) => _buildEntryCard(list[i] as Map<String, dynamic>),
+    );
+  }
+
+  Widget _buildEntryCard(Map<String, dynamic> e) {
+    final subject = (e['subject'] ?? '—').toString();
+    final start = (e['startTime'] ?? '').toString();
+    final end = (e['endTime'] ?? '').toString();
+    final className = (e['className'] ?? '—').toString();
+    final teacherName = (e['teacherName'] ?? '—').toString();
+    final room = (e['room'] ?? '').toString();
+    final color = _colorForSubject(subject);
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openForm(existing: e),
+        onLongPress: () => _deleteEntry(e),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), bottomLeft: Radius.circular(12)),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(subject,
+                                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text('$start - $end',
+                                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 10, runSpacing: 2,
+                        children: [
+                          _chip(Icons.class_, className),
+                          _chip(Icons.person, teacherName),
+                          if (room.isNotEmpty) _chip(Icons.meeting_room, room),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: AppTheme.textMuted),
+        const SizedBox(width: 4),
+        Text(text, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textSecondary)),
+      ],
+    );
+  }
+}
+
+// =============================== TIMETABLE ENTRY DIALOG ===============================
+
+class _TimetableEntryDialog extends StatefulWidget {
+  final String? branchId;
+  final List<dynamic> classes;
+  final List<dynamic> teachers;
+  final List<String> days;
+  final Map<String, dynamic>? existing;
+
+  const _TimetableEntryDialog({
+    required this.branchId,
+    required this.classes,
+    required this.teachers,
+    required this.days,
+    this.existing,
+  });
+
+  @override
+  State<_TimetableEntryDialog> createState() => _TimetableEntryDialogState();
+}
+
+class _TimetableEntryDialogState extends State<_TimetableEntryDialog> {
+  String? _day;
+  TimeOfDay? _start;
+  TimeOfDay? _end;
+  final _subjectCtrl = TextEditingController();
+  final _roomCtrl = TextEditingController();
+  String? _classId;
+  String? _className;
+  String? _teacherId;
+  String? _teacherName;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    if (e != null) {
+      _day = e['day']?.toString();
+      _subjectCtrl.text = (e['subject'] ?? '').toString();
+      _roomCtrl.text = (e['room'] ?? '').toString();
+      _classId = e['classId']?.toString();
+      _className = e['className']?.toString();
+      _teacherId = e['teacherId']?.toString();
+      _teacherName = e['teacherName']?.toString();
+      _start = _parseTime(e['startTime']?.toString());
+      _end = _parseTime(e['endTime']?.toString());
+    } else {
+      _day = widget.days.isNotEmpty ? widget.days.first : null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _subjectCtrl.dispose();
+    _roomCtrl.dispose();
+    super.dispose();
+  }
+
+  TimeOfDay? _parseTime(String? s) {
+    if (s == null || s.isEmpty) return null;
+    try {
+      final parts = s.split(':');
+      if (parts.length >= 2) {
+        return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String _fmtTime(TimeOfDay? t) {
+    if (t == null) return '—';
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Future<void> _pickTime(bool isStart) async {
+    final initial = isStart ? (_start ?? TimeOfDay.now()) : (_end ?? _start ?? TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _start = picked;
+        } else {
+          _end = picked;
+        }
+      });
+    }
+  }
+
+  /// Defensive: ensure the dropdown value is present in the items list.
+  String? get _effectiveDay =>
+      (_day == null || widget.days.contains(_day)) ? _day : null;
+  String? get _effectiveClassId {
+    if (_classId == null || widget.classes.isEmpty) return null;
+    final exists = widget.classes.any((c) => c['id']?.toString() == _classId);
+    return exists ? _classId : null;
+  }
+
+  String? get _effectiveTeacherId {
+    if (_teacherId == null || widget.teachers.isEmpty) return null;
+    final exists = widget.teachers.any((t) => t['id']?.toString() == _teacherId);
+    return exists ? _teacherId : null;
+  }
+
+  bool get _canSubmit =>
+      _day != null &&
+      _start != null &&
+      _end != null &&
+      _subjectCtrl.text.trim().isNotEmpty &&
+      !_saving;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.existing != null;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          Icon(isEdit ? Icons.edit : Icons.add_circle, color: AppTheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Text(isEdit ? 'Edit Entry' : 'Add Entry'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _effectiveDay,
+              decoration: const InputDecoration(labelText: 'Day *', prefixIcon: Icon(Icons.calendar_today, size: 18)),
+              items: widget.days.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+              onChanged: (v) => setState(() => _day = v),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _pickTime(true),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(labelText: 'Start *', prefixIcon: Icon(Icons.play_arrow, size: 18)),
+                      child: Text(_fmtTime(_start),
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _pickTime(false),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(labelText: 'End *', prefixIcon: Icon(Icons.stop, size: 18)),
+                      child: Text(_fmtTime(_end),
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _subjectCtrl,
+              decoration: const InputDecoration(labelText: 'Subject *', prefixIcon: Icon(Icons.book, size: 18)),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _effectiveClassId,
+              decoration: const InputDecoration(labelText: 'Class', prefixIcon: Icon(Icons.class_, size: 18)),
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text('— None —')),
+                ...widget.classes.map((c) {
+                  final id = c['id']?.toString();
+                  final name = '${c['name'] ?? ''} ${c['section'] ?? ''}'.trim();
+                  return DropdownMenuItem<String>(value: id, child: Text(name));
+                }),
+              ],
+              onChanged: (v) {
+                final match = widget.classes.where((c) => c['id']?.toString() == v).toList();
+                setState(() {
+                  _classId = v;
+                  _className = match.isEmpty
+                      ? ''
+                      : '${match.first['name'] ?? ''} ${match.first['section'] ?? ''}'.trim();
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _effectiveTeacherId,
+              decoration: const InputDecoration(labelText: 'Teacher', prefixIcon: Icon(Icons.person, size: 18)),
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text('— None —')),
+                ...widget.teachers.map((t) {
+                  final id = t['id']?.toString();
+                  final name = (t['name'] ?? 'Teacher').toString();
+                  return DropdownMenuItem<String>(value: id, child: Text(name));
+                }),
+              ],
+              onChanged: (v) {
+                final match = widget.teachers.where((t) => t['id']?.toString() == v).toList();
+                setState(() {
+                  _teacherId = v;
+                  _teacherName = match.isEmpty ? '' : (match.first['name'] ?? '').toString();
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _roomCtrl,
+              decoration: const InputDecoration(labelText: 'Room (optional)', prefixIcon: Icon(Icons.meeting_room, size: 18)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onPressed: _canSubmit
+              ? () {
+                  setState(() => _saving = true);
+                  final body = <String, dynamic>{
+                    'day': _day,
+                    'startTime': _fmtTime(_start),
+                    'endTime': _fmtTime(_end),
+                    'subject': _subjectCtrl.text.trim(),
+                    'classId': _classId,
+                    'className': _className ?? '',
+                    'teacherId': _teacherId,
+                    'teacherName': _teacherName ?? '',
+                    'room': _roomCtrl.text.trim(),
+                    'branchId': widget.branchId,
+                    if (widget.existing != null) 'id': widget.existing!['id'],
+                  };
+                  Navigator.pop(context, body);
+                }
+              : null,
+          child: _saving
+              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(isEdit ? 'Save' : 'Add Entry'),
         ),
       ],
     );
