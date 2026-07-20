@@ -38,11 +38,12 @@ type Applicant = {
   createdAt?: string;
 };
 
+// Semantic status colors only — pipeline stages share the primary navy theme for visual consistency.
 const STAGES: { key: PipelineStage; label: string; color: string; gradient: string }[] = [
-  { key: 'New', label: 'New', color: 'text-blue-600 bg-blue-500/10 border-blue-500/20', gradient: 'from-blue-500 to-blue-600' },
-  { key: 'Under Review', label: 'Under Review', color: 'text-amber-600 bg-amber-500/10 border-amber-500/20', gradient: 'from-amber-500 to-amber-600' },
-  { key: 'Test Scheduled', label: 'Test Scheduled', color: 'text-violet-600 bg-violet-500/10 border-violet-500/20', gradient: 'from-violet-500 to-violet-600' },
-  { key: 'Interview', label: 'Interview', color: 'text-teal-600 bg-teal-500/10 border-teal-500/20', gradient: 'from-teal-500 to-teal-600' },
+  { key: 'New', label: 'New', color: 'text-primary bg-primary/10 border-primary/20', gradient: 'from-primary to-primary/80' },
+  { key: 'Under Review', label: 'Under Review', color: 'text-primary bg-primary/10 border-primary/20', gradient: 'from-primary to-primary/80' },
+  { key: 'Test Scheduled', label: 'Test Scheduled', color: 'text-primary bg-primary/10 border-primary/20', gradient: 'from-primary to-primary/80' },
+  { key: 'Interview', label: 'Interview', color: 'text-primary bg-primary/10 border-primary/20', gradient: 'from-primary to-primary/80' },
   { key: 'Accepted', label: 'Accepted', color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20', gradient: 'from-emerald-500 to-emerald-600' },
   { key: 'Rejected', label: 'Rejected', color: 'text-rose-600 bg-rose-500/10 border-rose-500/20', gradient: 'from-rose-500 to-rose-600' },
 ];
@@ -141,7 +142,7 @@ function NewApplicationDialog({ open, onClose, onCreated }: { open: boolean; onC
                 </div>
                 <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Any extra details…" className="mt-1 resize-none" /></div>
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 flex-1" disabled={saving} onClick={submit}>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-white flex-1" disabled={saving} onClick={submit}>
                     {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : <><UserPlus className="h-4 w-4 mr-1.5" /> Add Application</>}
                   </Button>
                   <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
@@ -211,11 +212,11 @@ export function OnlineAdmissions({ user }: { user: any }) {
   const conversionRate = totalApplications > 0 ? ((accepted / totalApplications) * 100).toFixed(1) : '0.0';
 
   const statsCards = [
-    { label: 'Total Applications', value: totalApplications, icon: FileText, color: 'from-emerald-500 to-teal-600' },
-    { label: 'Pending Review', value: pendingReview, icon: Clock, color: 'from-amber-500 to-yellow-600' },
-    { label: 'Accepted', value: accepted, icon: CheckCircle2, color: 'from-emerald-500 to-emerald-700' },
-    { label: 'Rejected', value: rejected, icon: XCircle, color: 'from-rose-500 to-red-600' },
-    { label: 'Conversion Rate', value: `${conversionRate}%`, icon: TrendingUp, color: 'from-violet-500 to-purple-600' },
+    { label: 'Total Applications', value: totalApplications, icon: FileText, color: 'from-primary to-primary/80' },
+    { label: 'Pending Review', value: pendingReview, icon: Clock, color: 'from-primary to-primary/80' },
+    { label: 'Accepted', value: accepted, icon: CheckCircle2, color: 'from-emerald-500 to-emerald-600' },
+    { label: 'Rejected', value: rejected, icon: XCircle, color: 'from-rose-500 to-rose-600' },
+    { label: 'Conversion Rate', value: `${conversionRate}%`, icon: TrendingUp, color: 'from-primary to-primary/80' },
   ];
 
   // ── Pipeline data ──
@@ -241,7 +242,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
         title="Online Admissions"
         subtitle="Track every applicant from submission to enrollment"
         actions={
-          <Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700" onClick={() => setShowNew(true)}>
+          <Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowNew(true)}>
             <UserPlus className="h-4 w-4 mr-1.5" /> New Application
           </Button>
         }
@@ -269,7 +270,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ChevronRight className="h-4 w-4 text-emerald-500" />
+                <ChevronRight className="h-4 w-4 text-primary" />
                 Application Pipeline
               </CardTitle>
               <div className="flex gap-1.5 flex-wrap">
@@ -352,7 +353,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
                 <div className="col-span-full">
                   <EmptyState icon={Inbox} title="No applications in this stage"
                     description="Add a new application or change the pipeline filter. Applications move here as they progress through the admission process."
-                    action={<Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white" onClick={() => setShowNew(true)}><UserPlus className="h-4 w-4 mr-1.5" /> New Application</Button>} />
+                    action={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowNew(true)}><UserPlus className="h-4 w-4 mr-1.5" /> New Application</Button>} />
                 </div>
               )}
             </div>
@@ -366,7 +367,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">
-                <FileText className="h-4 w-4 text-emerald-500" />
+                <FileText className="h-4 w-4 text-primary" />
                 All Applications
               </CardTitle>
               <div className="relative w-full sm:w-64">
@@ -399,7 +400,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
                         <TableRow key={app.id} className="hover:bg-muted/30">
                           <TableCell>
                             <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 grid place-items-center text-white text-[10px] font-bold shrink-0">
+                              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 grid place-items-center text-white text-[10px] font-bold shrink-0">
                                 {app.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                               </div>
                               <div className="min-w-0">
@@ -442,7 +443,7 @@ export function OnlineAdmissions({ user }: { user: any }) {
                       <TableCell colSpan={7} className="p-0">
                         <EmptyState icon={Inbox} title="No applications yet"
                           description="Add your first application to start tracking applicants through the admission pipeline."
-                          action={<Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white" onClick={() => setShowNew(true)}><UserPlus className="h-4 w-4 mr-1.5" /> New Application</Button>} />
+                          action={<Button size="sm" className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowNew(true)}><UserPlus className="h-4 w-4 mr-1.5" /> New Application</Button>} />
                       </TableCell>
                     </TableRow>
                   )}

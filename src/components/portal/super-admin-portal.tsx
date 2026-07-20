@@ -1141,10 +1141,11 @@ function EditInstituteModal({ inst, onClose, onSaved }: any) {
               <Label>Plan</Label>
               <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Starter">Starter</SelectItem>
-                  <SelectItem value="Premium">Premium</SelectItem>
-                  <SelectItem value="Enterprise">Enterprise</SelectItem>
+                <SelectContent className="z-[70]">
+                  <SelectItem value="Single">Single Branch — all modules, 1 branch only</SelectItem>
+                  <SelectItem value="Starter">Starter — 1 branch, basic modules</SelectItem>
+                  <SelectItem value="Premium">Premium — multi-branch, all modules</SelectItem>
+                  <SelectItem value="Enterprise">Enterprise — unlimited, white-label</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1285,7 +1286,7 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
                   <Label>Plan</Label>
                   <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[70]">
                       <SelectItem value="Single">Single Branch — all modules, 1 branch only</SelectItem>
                       <SelectItem value="Starter">Starter — 1 branch, basic modules</SelectItem>
                       <SelectItem value="Premium">Premium — multi-branch, all modules</SelectItem>

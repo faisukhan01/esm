@@ -20,7 +20,6 @@ import 'student_results.dart';
 import 'student_report_card.dart';
 import 'student_diary.dart';
 import '../shared/complaint_portal.dart';
-import '../shared/live_transport.dart';
 
 class StudentDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
@@ -366,12 +365,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         label: 'Notices',
                         color: AppTheme.warning,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnnouncements(user: widget.user))),
-                      ),
-                      QuickActionTile(
-                        icon: Icons.directions_bus_rounded,
-                        label: 'Live Transport',
-                        color: AppTheme.info,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LiveTransport(user: widget.user))),
                       ),
                       QuickActionTile(
                         icon: Icons.feedback_rounded,
