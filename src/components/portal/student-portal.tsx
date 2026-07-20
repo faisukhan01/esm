@@ -23,10 +23,6 @@ import { ReportCardDocument, ReportCardActions, type ReportCardData } from './re
 
 // Lazy-loaded v1.5.0 unique modules (code-split per route)
 // Lazy-loaded modules — named-export modules use .then() to satisfy React.lazy's default-export requirement
-const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
-const CampusWalletModule = lazy(() => import('@/components/dashboard/modules/campus-wallet'));
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
 const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
@@ -115,10 +111,6 @@ export function StudentPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-diary') return <MyDiary diary={diary} />;
   if (activeModule === 'my-announcements') return <MyAnnouncements announcements={announcements} loading={false} />;
   if (activeModule === 'my-invoices') return <MyInvoices user={user} />;
-  if (activeModule === 'digital-id') return <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
-  if (activeModule === 'campus-wallet') return <Suspense fallback={<ModuleFallback />}><CampusWalletModule /></Suspense>;
-  if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
-  if (activeModule === 'exam-portal') return <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
   if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   return (
     <StudentOverview

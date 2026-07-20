@@ -10,8 +10,6 @@ import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../shared/complaint_portal.dart';
-import 'teacher_e_learning.dart';
-import 'teacher_exam_portal.dart';
 import 'teacher_mark_attendance.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
@@ -299,18 +297,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                           // CalendarScreen events page (which is institute-wide).
                           if (widget.onNavigate != null) widget.onNavigate!(4);
                         },
-                      ),
-                      QuickActionTile(
-                        icon: Icons.video_library,
-                        label: 'E-Learning Hub',
-                        color: AppTheme.primaryLight,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherELearning(user: widget.user))),
-                      ),
-                      QuickActionTile(
-                        icon: Icons.assignment,
-                        label: 'Exam Portal',
-                        color: AppTheme.goldDark,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherExamPortal(user: widget.user))),
                       ),
                       QuickActionTile(
                         icon: Icons.feedback_rounded,

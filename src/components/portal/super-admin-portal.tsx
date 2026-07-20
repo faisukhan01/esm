@@ -1286,11 +1286,17 @@ function ProvisionInstituteModal({ onClose, onSaved }: { onClose: () => void; on
                   <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Single">Single Branch — all modules, 1 branch only</SelectItem>
                       <SelectItem value="Starter">Starter — 1 branch, basic modules</SelectItem>
                       <SelectItem value="Premium">Premium — multi-branch, all modules</SelectItem>
                       <SelectItem value="Enterprise">Enterprise — unlimited, white-label</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    {form.plan === 'Single' || form.plan === 'Starter'
+                      ? 'This institute can only add 1 branch. To add more, upgrade to Premium.'
+                      : 'This institute can add multiple branches.'}
+                  </p>
                 </div>
                 <div className="pt-2 border-t border-border/40">
                   <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">

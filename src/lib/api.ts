@@ -259,6 +259,11 @@ export const api = {
   getAnnouncements: () => cachedGet<any[]>('announcements'),
   createAnnouncement: async (body: any) => { const r = await request<any>('announcements', { method: 'POST', body: JSON.stringify(body) }); invalidateCache(); return r; },
   deleteAnnouncement: async (id: string) => { const r = await request<any>(`announcements/${id}`, { method: 'DELETE' }); invalidateCache(); return r; },
+  // admissions (Online Admissions portal)
+  getAdmissions: () => request<any[]>('admissions'),
+  createAdmission: async (body: any) => { const r = await request<any>('admissions', { method: 'POST', body: JSON.stringify(body) }); return r; },
+  updateAdmission: async (id: string, body: any) => { const r = await request<any>(`admissions/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); return r; },
+  deleteAdmission: async (id: string) => { const r = await request<any>(`admissions/${id}`, { method: 'DELETE' }); return r; },
   // course materials
   getCourseMaterials: (params?: { classId?: string; courseId?: string; teacherId?: string }) => {
     const q = new URLSearchParams();

@@ -8,8 +8,6 @@ import '../../widgets/shared_widgets.dart';
 import 'branch_user_detail.dart';
 import 'branch_attendance.dart';
 import 'branch_results.dart';
-import 'branch_exam_portal.dart';
-import 'branch_e_learning.dart';
 import 'branch_events.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
@@ -17,7 +15,6 @@ import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 import '../shared/complaint_portal.dart';
-import '../shared/live_transport.dart';
 
 // =============================== PREMIUM LIST CARD (file-scoped) ===============================
 
@@ -656,20 +653,6 @@ class _BranchDashboardState extends State<_BranchDashboard> {
               builder: (_) => BranchAttendance(user: widget.user))),
         ),
         QuickActionTile(
-          icon: Icons.assignment,
-          label: 'Exam Portal',
-          color: AppTheme.goldDark,
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => BranchExamPortal(user: widget.user))),
-        ),
-        QuickActionTile(
-          icon: Icons.video_library,
-          label: 'E-Learning',
-          color: AppTheme.warning,
-          onTap: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => BranchELearning(user: widget.user))),
-        ),
-        QuickActionTile(
           icon: Icons.event,
           label: 'Events',
           color: AppTheme.danger,
@@ -677,12 +660,6 @@ class _BranchDashboardState extends State<_BranchDashboard> {
               builder: (_) => BranchEvents(user: widget.user))),
         ),
         // --- Pre-existing deep-links (unchanged).
-        QuickActionTile(
-          icon: Icons.directions_bus_rounded,
-          label: 'Live Transport',
-          color: AppTheme.info,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => LiveTransport(user: widget.user))),
-        ),
         QuickActionTile(
           icon: Icons.feedback_rounded,
           label: 'Complaint Portal',

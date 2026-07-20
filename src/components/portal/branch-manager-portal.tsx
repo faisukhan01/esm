@@ -17,6 +17,7 @@ import {
   FileText, Wallet, Loader2, Banknote, AlertCircle, Scale, Calendar, X,
   CalendarPlus, MessageSquare, Smartphone, ChevronDown, ChevronRight, MapPin, MailCheck,
   Award, Save, Search, Hash, ChevronUp, BookCheck, RefreshCw, AlertTriangle, Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AddUserModal } from './add-user-modal';
@@ -24,12 +25,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ReportCardDocument, ReportCardActions, type ReportCardData } from './report-card-view';
 
 // Lazy-loaded v1.5.0 unique modules
-const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/live-transport'));
-const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
-const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
 const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions').then(m => ({ default: m.OnlineAdmissions })));
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
 const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
@@ -106,12 +102,7 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'complaints') content = <BMComplaintsView user={user} />;
   else if (activeModule === 'events') content = <BMEventsView user={user} />;
   else if (activeModule === 'sms') content = <BMSmsView user={user} />;
-  else if (activeModule === 'live-transport') content = <Suspense fallback={<ModuleFallback />}><LiveTransportModule /></Suspense>;
-  else if (activeModule === 'digital-id') content = <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
-  else if (activeModule === 'health-records') content = <Suspense fallback={<ModuleFallback />}><HealthRecordsModule /></Suspense>;
   else if (activeModule === 'online-admissions') content = <Suspense fallback={<ModuleFallback />}><OnlineAdmissionsModule user={user} /></Suspense>;
-  else if (activeModule === 'e-learning') content = <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
-  else if (activeModule === 'exam-portal') content = <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
   else if (activeModule === 'complaint-portal') content = <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   else content = <BranchOverview user={user} stats={stats} teachers={teachers} students={students} finance={finance} financeLoading={financeLoading} onAddTeacher={openAddTeacher} onAddStudent={() => openAdd('student')} />;
 
@@ -1601,6 +1592,14 @@ function AnnouncementsView({ user }: { user: any }) {
   };
   useEffect(() => { refresh(); }, [user.branchId]);
 
+  const del = async (id: string) => {
+    try {
+      await api.deleteAnnouncement(id);
+      toast({ title: 'Announcement deleted' });
+      refresh();
+    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+  };
+
   const send = async () => {
     if (!form.title || !form.message) { toast({ title: 'Title and message required', variant: 'destructive' }); return; }
     setSending(true);
@@ -1681,7 +1680,12 @@ function AnnouncementsView({ user }: { user: any }) {
                   <Megaphone className="h-4 w-4 text-rose-500" />
                   <div className="font-medium text-sm">{a.title}</div>
                 </div>
-                <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
+                  <button onClick={() => del(a.id)} title="Delete" className="h-7 w-7 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-muted-foreground ml-6">{a.message}</p>
               <div className="text-[11px] text-muted-foreground mt-2 ml-6">

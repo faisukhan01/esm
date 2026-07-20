@@ -236,6 +236,21 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       const existing = await db.execute({ sql: 'SELECT id FROM users WHERE LOWER(email) = ?', args: [managerEmail.toLowerCase()] });
       if (existing.rows.length > 0) return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
 
+      // Enforce single-branch plans (Single / Starter): the institute may only
+      // have ONE branch. Trying to add a second returns a 403 so the institute
+      // admin sees the "upgrade your portal package" message in their UI.
+      const instR = await db.execute({ sql: 'SELECT plan FROM institutes WHERE id = ?', args: [instId] });
+      if (instR.rows.length > 0) {
+        const plan = (instR.rows[0] as any).plan;
+        if (plan === 'Single' || plan === 'Starter') {
+          const countR = await db.execute({ sql: 'SELECT COUNT(*) as count FROM branches WHERE instituteId = ?', args: [instId] });
+          const count = Number((countR.rows[0] as any).count) || 0;
+          if (count >= 1) {
+            return NextResponse.json({ error: 'Please upgrade your portal package to add more branches — contact admin' }, { status: 403 });
+          }
+        }
+      }
+
       const brId = nextId('BR');
       await db.execute({
         sql: `INSERT INTO branches (id, instituteId, name, city, manager, managerEmail, status, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -817,6 +832,18 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       let sql = 'SELECT * FROM announcements WHERE 1=1';
       let args: any[] = [];
 
+      // Temporal scoping: a newly-added institute must NOT inherit announcements
+      // that were created BEFORE the institute existed. We fetch the institute's
+      // createdAt and filter every non-super-admin query by it so only
+      // announcements made at-or-after the institute's creation are visible.
+      let instituteCreatedAt: string | null = null;
+      if (user.role !== 'super-admin' && user.instituteId) {
+        try {
+          const instR = await db.execute({ sql: 'SELECT createdAt FROM institutes WHERE id = ?', args: [user.instituteId] });
+          if (instR.rows.length > 0) instituteCreatedAt = (instR.rows[0] as any).createdAt;
+        } catch { /* ignore — fall back to no temporal filter */ }
+      }
+
       if (user.role === 'super-admin') {
         sql += ' AND senderRole = ?';
         args = ['super-admin'];
@@ -846,6 +873,12 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
         }
       }
 
+      // Apply temporal scoping for non-super-admin users (see note above).
+      if (instituteCreatedAt) {
+        sql += ' AND createdAt >= ?';
+        args.push(instituteCreatedAt);
+      }
+
       sql += ' ORDER BY createdAt DESC LIMIT 50';
       const r = await db.execute({ sql, args });
       return NextResponse.json(r.rows);
@@ -865,18 +898,102 @@ export async function handleApiRequest(method: string, pathSegments: string[], r
       return NextResponse.json({ id, success: true }, { status: 201 });
     }
 
-    // Delete an announcement — only the sender or super-admin can delete
+    // Delete an announcement — sender, super-admin, or scope-owning admin can delete
     if (method === 'DELETE' && pathSegments[0] === 'announcements' && pathSegments.length === 2) {
       const user = await requireAuth(req);
       const id = pathSegments[1];
       const r = await db.execute({ sql: 'SELECT * FROM announcements WHERE id = ?', args: [id] });
       if (r.rows.length === 0) return NextResponse.json({ error: 'Announcement not found' }, { status: 404 });
       const ann = r.rows[0] as any;
-      // Only the sender or super-admin can delete
-      if (ann.senderId !== user.id && user.role !== 'super-admin') {
+      // Authorization: super-admin can delete anything. Institute-admin can
+      // delete anything scoped to their institute (incl. super-admin globals
+      // visible to them). Branch-manager can delete anything scoped to their
+      // branch or institute. Teachers/students can delete only their own.
+      const isOwner = ann.senderId === user.id;
+      let authorized = isOwner || user.role === 'super-admin';
+      if (!authorized && user.role === 'institute-admin') {
+        authorized = ann.instituteId === user.instituteId || ann.senderRole === 'super-admin';
+      }
+      if (!authorized && user.role === 'branch-manager') {
+        authorized = ann.branchId === user.branchId || ann.instituteId === user.instituteId || ann.senderRole === 'super-admin';
+      }
+      if (!authorized) {
         return NextResponse.json({ error: 'Not authorized to delete this announcement' }, { status: 403 });
       }
       await db.execute({ sql: 'DELETE FROM announcements WHERE id = ?', args: [id] });
+      return NextResponse.json({ success: true });
+    }
+
+    // ===================== ADMISSIONS (Online Admissions portal) =====================
+    if (method === 'GET' && path === 'admissions') {
+      const user = await requireAuth(req);
+      let sql = 'SELECT * FROM admissions WHERE 1=1';
+      let args: any[] = [];
+      if (user.role === 'institute-admin') {
+        sql += ' AND instituteId = ?'; args.push(user.instituteId);
+      } else if (user.role === 'branch-manager') {
+        sql += ' AND (branchId = ? OR instituteId = ?)'; args.push(user.branchId, user.instituteId);
+      } else if (user.role === 'super-admin') {
+        if (query.instituteId) { sql += ' AND instituteId = ?'; args.push(query.instituteId); }
+      } else {
+        return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      }
+      sql += ' ORDER BY createdAt DESC LIMIT 200';
+      const r = await db.execute({ sql, args });
+      return NextResponse.json(r.rows);
+    }
+
+    if (method === 'POST' && path === 'admissions') {
+      const user = await requireAuth(req);
+      requireRole(user, 'institute-admin', 'branch-manager', 'super-admin');
+      const { name, fatherName, program, className, email, phone, stage, notes, branchId } = body || {};
+      if (!name) return NextResponse.json({ error: 'Applicant name is required' }, { status: 400 });
+      const id = nextId('APP');
+      const finalStage = ['New', 'Under Review', 'Test Scheduled', 'Interview', 'Accepted', 'Rejected'].includes(stage) ? stage : 'New';
+      await db.execute({
+        sql: `INSERT INTO admissions (id, instituteId, branchId, name, fatherName, program, className, email, phone, stage, notes, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, user.instituteId || null, user.role === 'branch-manager' ? user.branchId : (branchId || null), name, fatherName || '', program || '', className || '', email || '', phone || '', finalStage, notes || '', user.id],
+      });
+      return NextResponse.json({ id, success: true }, { status: 201 });
+    }
+
+    if (method === 'PATCH' && pathSegments[0] === 'admissions' && pathSegments.length === 2) {
+      const user = await requireAuth(req);
+      requireRole(user, 'institute-admin', 'branch-manager', 'super-admin');
+      const id = pathSegments[1];
+      const r = await db.execute({ sql: 'SELECT * FROM admissions WHERE id = ?', args: [id] });
+      if (r.rows.length === 0) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+      const app = r.rows[0] as any;
+      // Scope check: institute-admin owns their institute's apps; branch-manager owns their branch/institute apps.
+      if (user.role === 'institute-admin' && app.instituteId !== user.instituteId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      if (user.role === 'branch-manager' && app.branchId !== user.branchId && app.instituteId !== user.instituteId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      const { stage, notes, name, fatherName, program, className, email, phone } = body || {};
+      const fields: string[] = [];
+      const vals: any[] = [];
+      if (stage && ['New', 'Under Review', 'Test Scheduled', 'Interview', 'Accepted', 'Rejected'].includes(stage)) { fields.push('stage = ?'); vals.push(stage); }
+      if (notes !== undefined) { fields.push('notes = ?'); vals.push(notes); }
+      if (name) { fields.push('name = ?'); vals.push(name); }
+      if (fatherName !== undefined) { fields.push('fatherName = ?'); vals.push(fatherName); }
+      if (program !== undefined) { fields.push('program = ?'); vals.push(program); }
+      if (className !== undefined) { fields.push('className = ?'); vals.push(className); }
+      if (email !== undefined) { fields.push('email = ?'); vals.push(email); }
+      if (phone !== undefined) { fields.push('phone = ?'); vals.push(phone); }
+      if (fields.length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
+      vals.push(id);
+      await db.execute({ sql: `UPDATE admissions SET ${fields.join(', ')} WHERE id = ?`, args: vals });
+      return NextResponse.json({ success: true });
+    }
+
+    if (method === 'DELETE' && pathSegments[0] === 'admissions' && pathSegments.length === 2) {
+      const user = await requireAuth(req);
+      requireRole(user, 'institute-admin', 'branch-manager', 'super-admin');
+      const id = pathSegments[1];
+      const r = await db.execute({ sql: 'SELECT * FROM admissions WHERE id = ?', args: [id] });
+      if (r.rows.length === 0) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
+      const app = r.rows[0] as any;
+      if (user.role === 'institute-admin' && app.instituteId !== user.instituteId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      if (user.role === 'branch-manager' && app.branchId !== user.branchId && app.instituteId !== user.instituteId) return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+      await db.execute({ sql: 'DELETE FROM admissions WHERE id = ?', args: [id] });
       return NextResponse.json({ success: true });
     }
 

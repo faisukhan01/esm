@@ -15,6 +15,17 @@ if (localPropertiesFile.exists()) {
 def flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
 def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
 
+// ── Release signing config ──────────────────────────────────────────────
+// A fixed release keystore (committed at android/key.properties +
+// android/app/esm-release.keystore) is used so every CI build produces an
+// APK signed with the SAME key. This lets Android update the installed app
+// in place instead of forcing a reinstall on every update.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.esm.esm_app"
     compileSdk = flutter.compileSdkVersion
@@ -29,6 +40,15 @@ android {
         jvmTarget = "17"
     }
 
+    signingConfigs {
+        release {
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
+            storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword = keystoreProperties['storePassword']
+        }
+    }
+
     defaultConfig {
         applicationId = "com.esm.esm_app"
         minSdk = flutter.minSdkVersion
@@ -39,9 +59,8 @@ android {
 
     buildTypes {
         release {
-            // Sign release with the debug key so CI can produce an installable
-            // APK without a keystore. Replace with a real signing config later.
-            signingConfig = signingConfigs.debug
+            // Sign with the fixed release keystore for consistent in-place updates.
+            signingConfig = keystoreProperties['storeFile'] ? signingConfigs.release : signingConfigs.debug
             // IMPORTANT: keep minify/shrink OFF for Flutter release builds.
             // R8 strips Flutter engine classes and breaks the release APK.
             minifyEnabled = false

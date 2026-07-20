@@ -14,14 +14,12 @@ import {
   BookOpen, CalendarCheck, GraduationCap, ClipboardList, Calendar, Users,
   CheckCircle2, XCircle, Clock, Plus, MessageSquare, Inbox, ArrowLeft,
   FileText, Link2, Download, Megaphone, Paperclip, Loader2,
-  LayoutDashboard, ArrowRight,
+  LayoutDashboard, ArrowRight, Trash2,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
 
 // Lazy-loaded modules — use .then() to map named exports to default (React.lazy requirement)
-const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
-const ExamPortalModule = lazy(() => import('@/components/dashboard/modules/exam-portal').then(m => ({ default: m.ExamPortal })));
 const ComplaintPortalModule = lazy(() => import('@/components/dashboard/modules/complaint-portal').then(m => ({ default: m.ComplaintPortal })));
 
 function ModuleFallback() {
@@ -108,8 +106,6 @@ export function TeacherPortal({ activeModule, user }: { activeModule: string; us
   if (activeModule === 'my-students') return <MyStudents students={students} />;
   if (activeModule === 'sms') return <MessageStudents user={user} students={students} />;
   if (activeModule === 'announcements') return <TeacherAnnouncements user={user} classes={classes} />;
-  if (activeModule === 'e-learning') return <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
-  if (activeModule === 'exam-portal') return <Suspense fallback={<ModuleFallback />}><ExamPortalModule user={user} /></Suspense>;
   if (activeModule === 'complaint-portal') return <Suspense fallback={<ModuleFallback />}><ComplaintPortalModule user={user} /></Suspense>;
   if (activeModule === 'teacher-dashboard') return <TeacherDashboard user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
   return <TeacherOverview user={user} students={students} diary={diary} myResults={myResults} classes={classes} onOpenClass={openClass} />;
@@ -592,6 +588,14 @@ function ClassAnnouncements({ user, cls }: { user: any; cls: ClassInfo }) {
     finally { setSending(false); }
   };
 
+  const del = async (id: string) => {
+    try {
+      await api.deleteAnnouncement(id);
+      toast({ title: 'Announcement deleted' });
+      setReloadKey(k => k + 1);
+    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+  };
+
   return (
     <div className="space-y-4">
       <Card className="p-5 space-y-3">
@@ -612,20 +616,27 @@ function ClassAnnouncements({ user, cls }: { user: any; cls: ClassInfo }) {
         <EmptyState icon={Inbox} title="No announcements yet" desc="Send your first announcement to this class. Students will see it in their portal." />
       ) : (
         <div className="space-y-3">
-          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+          {announcements.map(a => <AnnouncementCard key={a.id} a={a} canDelete={a.senderId === user?.id} onDelete={del} />)}
         </div>
       )}
     </div>
   );
 }
 
-function AnnouncementCard({ a }: { a: Announcement }) {
+function AnnouncementCard({ a, canDelete, onDelete }: { a: Announcement; canDelete?: boolean; onDelete?: (id: string) => void }) {
   const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '';
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-3 mb-1.5">
         <h4 className="font-semibold text-sm">{a.title}</h4>
-        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{a.targetScope || 'all'}</Badge>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="outline" className="text-[10px] capitalize">{a.targetScope || 'all'}</Badge>
+          {canDelete && onDelete && (
+            <button onClick={() => onDelete(a.id)} title="Delete" className="h-7 w-7 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       </div>
       <p className="text-sm text-muted-foreground">{a.message}</p>
       <div className="text-[11px] text-muted-foreground mt-2">{date}{a.senderRole ? ` · from ${a.senderRole}` : ''}</div>
@@ -1338,6 +1349,14 @@ function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo
     finally { setSending(false); }
   };
 
+  const del = async (id: string) => {
+    try {
+      await api.deleteAnnouncement(id);
+      toast({ title: 'Announcement deleted' });
+      setReloadKey(k => k + 1);
+    } catch (e: any) { toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }); }
+  };
+
   return (
     <div className="space-y-6">
       <ModuleHeader title="Announcements" subtitle="Send notices to your students"
@@ -1375,7 +1394,7 @@ function TeacherAnnouncements({ user, classes }: { user: any; classes: ClassInfo
           action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-1.5" /> New Announcement</Button>} />
       ) : (
         <div className="space-y-3">
-          {announcements.map(a => <AnnouncementCard key={a.id} a={a} />)}
+          {announcements.map(a => <AnnouncementCard key={a.id} a={a} canDelete={a.senderId === user?.id} onDelete={del} />)}
         </div>
       )}
     </div>

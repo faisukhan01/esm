@@ -2361,11 +2361,9 @@ function AnnouncementsView({ user }: { user: any }) {
                 <div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /><div className="font-medium text-sm">{a.title}</div></div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-muted-foreground">{new Date(a.createdAt).toLocaleString()}</span>
-                  {(a.senderId === user.id || user.role === 'super-admin') && (
-                    <button onClick={() => del(a.id)} title="Delete" className="h-7 w-7 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                  <button onClick={() => del(a.id)} title="Delete" className="h-7 w-7 grid place-items-center rounded-lg text-rose-500 hover:bg-rose-500/10 transition">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground ml-6">{a.message}</p>

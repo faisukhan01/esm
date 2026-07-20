@@ -47,6 +47,7 @@ export async function initDB() {
     `CREATE TABLE IF NOT EXISTS report_cards (id TEXT PRIMARY KEY, studentId TEXT NOT NULL, studentName TEXT, class TEXT, section TEXT DEFAULT 'A', branchId TEXT, instituteId TEXT, term TEXT NOT NULL, examName TEXT, totalMarks INTEGER DEFAULT 0, obtainedMarks INTEGER DEFAULT 0, percentage REAL DEFAULT 0, grade TEXT, remarks TEXT, generatedBy TEXT, generatedAt TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS royalty_settings (id TEXT PRIMARY KEY, branchId TEXT NOT NULL, instituteId TEXT NOT NULL, method TEXT NOT NULL DEFAULT 'fixed', amount REAL DEFAULT 0, percentage REAL DEFAULT 0, effectiveFrom TEXT, createdAt TEXT DEFAULT (datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS royalty_invoices (id TEXT PRIMARY KEY, branchId TEXT NOT NULL, instituteId TEXT NOT NULL, branchName TEXT, month TEXT NOT NULL, year INTEGER NOT NULL, method TEXT, studentCount INTEGER DEFAULT 0, branchRevenue REAL DEFAULT 0, royaltyAmount REAL NOT NULL DEFAULT 0, status TEXT DEFAULT 'Pending', paidDate TEXT, createdAt TEXT DEFAULT (datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS admissions (id TEXT PRIMARY KEY, instituteId TEXT, branchId TEXT, name TEXT NOT NULL, fatherName TEXT, program TEXT, className TEXT, email TEXT, phone TEXT, stage TEXT NOT NULL DEFAULT 'New', notes TEXT, createdBy TEXT, createdAt TEXT DEFAULT (datetime('now')))`,
   ];
 
   for (const sql of statements) {

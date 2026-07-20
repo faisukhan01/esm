@@ -14,13 +14,9 @@ import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import 'student_timetable.dart';
-import 'student_id_card.dart';
 import 'student_course_detail.dart';
 import 'student_invoices.dart';
 import 'student_results.dart';
-import 'student_e_learning.dart';
-import 'student_exam_portal.dart';
-import 'student_wallet.dart';
 import 'student_report_card.dart';
 import 'student_diary.dart';
 import '../shared/complaint_portal.dart';
@@ -366,34 +362,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         ),
                       ),
                       QuickActionTile(
-                        icon: Icons.badge_rounded,
-                        label: 'My ID Card',
-                        color: const Color(0xFF7C3AED),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentIdCard(user: widget.user))),
-                      ),
-                      QuickActionTile(
                         icon: Icons.campaign_rounded,
                         label: 'Notices',
                         color: AppTheme.warning,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnnouncements(user: widget.user))),
-                      ),
-                      QuickActionTile(
-                        icon: Icons.video_library_rounded,
-                        label: 'E-Learning',
-                        color: const Color(0xFF7C3AED),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentELearning(user: widget.user))),
-                      ),
-                      QuickActionTile(
-                        icon: Icons.fact_check_rounded,
-                        label: 'Exam Portal',
-                        color: AppTheme.warning,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentExamPortal(user: widget.user))),
-                      ),
-                      QuickActionTile(
-                        icon: Icons.account_balance_wallet_rounded,
-                        label: 'Campus Wallet',
-                        color: AppTheme.gold,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentWallet(user: widget.user))),
                       ),
                       QuickActionTile(
                         icon: Icons.directions_bus_rounded,

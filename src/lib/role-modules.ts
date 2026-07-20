@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, Network, Users, DollarSign, TrendingUp, Settings, ShieldCheck,
   CalendarCheck, GraduationCap, BookOpen, MessageSquare, Library, Bus, Trophy, Landmark,
   ClipboardList, FileText, Bell, CreditCard, Calendar, MessageCircleWarning, Award, Crown,
-  Navigation, IdCard, Wallet, Video, HeartPulse, FileCheck, AlertTriangle, UserPlus,
+  AlertTriangle, UserPlus,
 } from 'lucide-react';
 
 export type RoleModule = {
@@ -63,8 +63,6 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'branch-students', name: 'Students', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'class-courses', name: 'Classes & Courses', icon: BookOpen, color: 'from-primary/80 to-primary' },
       { id: 'online-admissions', name: 'Online Admissions', icon: UserPlus, color: 'from-emerald-500 to-teal-600' },
-      { id: 'digital-id', name: 'Digital ID Center', icon: IdCard, color: 'from-rose-500 to-pink-600' },
-      { id: 'health-records', name: 'Health Records', icon: HeartPulse, color: 'from-red-500 to-rose-600' },
       { id: 'announcements', name: 'Announcements', icon: MessageSquare, color: 'from-primary/80 to-primary' },
     ]},
     { group: 'Academics', items: [
@@ -72,12 +70,9 @@ export const ROLE_MODULES: RoleModules = {
       { id: 'results', name: 'Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'report-cards', name: 'Report Cards', icon: Award, color: 'from-primary to-primary/80' },
       { id: 'timetable', name: 'Timetable', icon: Calendar, color: 'from-primary/80 to-primary' },
-      { id: 'exam-portal', name: 'Exam Portal', icon: FileCheck, color: 'from-indigo-500 to-blue-600' },
-      { id: 'e-learning', name: 'E-Learning Hub', icon: Video, color: 'from-violet-500 to-fuchsia-600' },
     ]},
     { group: 'Operations', items: [
       { id: 'fees', name: 'Fees', icon: DollarSign, color: 'from-primary/80 to-primary' },
-      { id: 'live-transport', name: 'Live Transport', icon: Navigation, color: 'from-emerald-500 to-teal-600' },
       { id: 'complaint-portal', name: 'Complaint Portal', icon: AlertTriangle, color: 'from-rose-500 to-orange-600' },
       { id: 'events', name: 'Events', icon: Trophy, color: 'from-primary/80 to-primary' },
       { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-primary/80 to-primary' },
@@ -90,8 +85,6 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Teaching', items: [
       { id: 'teacher-dashboard', name: 'Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'teacher-overview', name: 'My Classes', icon: BookOpen, color: 'from-primary to-primary/80' },
-      { id: 'e-learning', name: 'E-Learning Hub', icon: Video, color: 'from-violet-500 to-fuchsia-600' },
-      { id: 'exam-portal', name: 'Exam Portal', icon: FileCheck, color: 'from-indigo-500 to-blue-600' },
       { id: 'diary', name: 'Diary & Homework', icon: ClipboardList, color: 'from-primary/80 to-primary' },
       { id: 'timetable', name: 'My Timetable', icon: Calendar, color: 'from-primary/80 to-primary' },
     ]},
@@ -108,10 +101,6 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'My Portal', items: [
       { id: 'student-overview', name: 'My Dashboard', icon: LayoutDashboard, color: 'from-primary to-primary/80' },
       { id: 'my-courses', name: 'My Courses', icon: BookOpen, color: 'from-primary to-primary/80' },
-      { id: 'e-learning', name: 'E-Learning Hub', icon: Video, color: 'from-violet-500 to-fuchsia-600' },
-      { id: 'exam-portal', name: 'Exam Portal', icon: FileCheck, color: 'from-indigo-500 to-blue-600' },
-      { id: 'digital-id', name: 'Digital ID', icon: IdCard, color: 'from-rose-500 to-pink-600' },
-      { id: 'campus-wallet', name: 'Campus Wallet', icon: Wallet, color: 'from-amber-500 to-yellow-600' },
       { id: 'my-attendance', name: 'My Attendance', icon: CalendarCheck, color: 'from-primary/80 to-primary' },
       { id: 'my-results', name: 'My Results', icon: GraduationCap, color: 'from-primary to-primary/80' },
       { id: 'my-report-card', name: 'Report Card', icon: Award, color: 'from-primary to-primary/80' },
