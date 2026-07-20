@@ -13,7 +13,7 @@ class UpdateChecker {
   static const String _directApkUrl = 'https://github.com/faisukhan01/esm/releases/latest/download/app-release.apk';
 
   /// The current app version (must match pubspec.yaml).
-  static const String currentVersion = "1.7.2";
+  static const String currentVersion = "1.7.3";
 
   /// Checks if a newer version is available on GitHub Releases.
   static Future<String?> checkForUpdate() async {
@@ -26,11 +26,14 @@ class UpdateChecker {
       if (response.statusCode != 200) return null;
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final tagName = (data['tag_name'] as String?)?.replaceAll('v', '');
-      if (tagName == null) return null;
+      // Tag looks like "v1.7.2+11". Strip the leading "v" and the "+11"
+      // build-number suffix (which breaks int.tryParse) before comparing.
+      final rawTag = (data['tag_name'] as String?)?.replaceAll('v', '');
+      if (rawTag == null) return null;
+      final versionOnly = rawTag.split('+').first.trim();
 
-      if (_isNewer(tagName, currentVersion)) {
-        return tagName;
+      if (_isNewer(versionOnly, currentVersion)) {
+        return rawTag;
       }
       return null;
     } catch (_) {
