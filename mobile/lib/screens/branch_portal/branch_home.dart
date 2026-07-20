@@ -6,6 +6,11 @@ import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/shared_widgets.dart';
 import 'branch_user_detail.dart';
+import 'branch_attendance.dart';
+import 'branch_results.dart';
+import 'branch_exam_portal.dart';
+import 'branch_e_learning.dart';
+import 'branch_events.dart';
 import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
@@ -172,7 +177,7 @@ class _BranchHomeState extends State<BranchHome> {
     final branchName = widget.user['branchName'] ?? '';
 
     final screens = [
-      _BranchDashboard(name: name, branchName: branchName, kpi: kpi, isLoading: _isLoading, onRefresh: _loadData, user: widget.user),
+      _BranchDashboard(name: name, branchName: branchName, kpi: kpi, isLoading: _isLoading, onRefresh: _loadData, user: widget.user, onNavigate: (i) => setState(() => _currentIndex = i)),
       _ClassesTab(user: widget.user),
       _TeachersTab(user: widget.user),
       _StudentsTab(user: widget.user),
@@ -207,6 +212,7 @@ class _BranchDashboard extends StatefulWidget {
   final bool isLoading;
   final VoidCallback onRefresh;
   final Map<String, dynamic> user;
+  final void Function(int tabIndex)? onNavigate;
 
   const _BranchDashboard({
     required this.name,
@@ -215,6 +221,7 @@ class _BranchDashboard extends StatefulWidget {
     required this.isLoading,
     required this.onRefresh,
     required this.user,
+    this.onNavigate,
   });
 
   @override
@@ -609,30 +616,67 @@ class _BranchDashboardState extends State<_BranchDashboard> {
       crossAxisSpacing: 10,
       childAspectRatio: 1.4,
       children: [
+        // --- Fixed: previously _toast stubs; now switch the BottomNav tab.
+        // Tab indices match the BottomNavigationBar items: 0 Dashboard, 1
+        // Classes, 2 Teachers, 3 Students, 4 Timetable, 5 Fees.
         QuickActionTile(
           icon: Icons.group,
           label: 'Teachers',
           color: AppTheme.primary,
-          onTap: () => _toast('Open the Teachers tab to manage staff'),
+          onTap: () => widget.onNavigate?.call(2),
         ),
         QuickActionTile(
           icon: Icons.school,
           label: 'Students',
           color: AppTheme.info,
-          onTap: () => _toast('Open the Students tab to manage enrolment'),
+          onTap: () => widget.onNavigate?.call(3),
         ),
         QuickActionTile(
           icon: Icons.receipt,
           label: 'Fees',
           color: AppTheme.gold,
-          onTap: () => _toast('Open the Fees tab to manage invoices'),
+          onTap: () => widget.onNavigate?.call(5),
+        ),
+        // --- "Reports" stub repurposed: there's no Reports tab on branch
+        // mobile, so this tile now opens the new Branch Results screen
+        // (task C) which IS the branch's academic results overview.
+        QuickActionTile(
+          icon: Icons.bar_chart,
+          label: 'Results',
+          color: AppTheme.success,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BranchResults(user: widget.user))),
+        ),
+        // --- 4 NEW deep-links to screens built in tasks B, D, E, F.
+        QuickActionTile(
+          icon: Icons.how_to_reg,
+          label: 'Attendance',
+          color: AppTheme.primaryLight,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BranchAttendance(user: widget.user))),
         ),
         QuickActionTile(
-          icon: Icons.assessment,
-          label: 'Reports',
-          color: AppTheme.success,
-          onTap: () => _toast('Reports coming soon'),
+          icon: Icons.assignment,
+          label: 'Exam Portal',
+          color: AppTheme.goldDark,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BranchExamPortal(user: widget.user))),
         ),
+        QuickActionTile(
+          icon: Icons.video_library,
+          label: 'E-Learning',
+          color: AppTheme.warning,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BranchELearning(user: widget.user))),
+        ),
+        QuickActionTile(
+          icon: Icons.event,
+          label: 'Events',
+          color: AppTheme.danger,
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => BranchEvents(user: widget.user))),
+        ),
+        // --- Pre-existing deep-links (unchanged).
         QuickActionTile(
           icon: Icons.directions_bus_rounded,
           label: 'Live Transport',
@@ -723,16 +767,6 @@ class _BranchDashboardState extends State<_BranchDashboard> {
       title: title,
       subtitle: subtitle,
       time: time.isEmpty ? null : time,
-    );
-  }
-
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
     );
   }
 }

@@ -26,7 +26,6 @@ import { ReportCardDocument, ReportCardActions, type ReportCardData } from './re
 // Lazy-loaded v1.5.0 unique modules
 const LiveTransportModule = lazy(() => import('@/components/dashboard/modules/live-transport'));
 const DigitalIdModule = lazy(() => import('@/components/dashboard/modules/digital-id'));
-const PtmSchedulingModule = lazy(() => import('@/components/dashboard/modules/ptm-scheduling'));
 const HealthRecordsModule = lazy(() => import('@/components/dashboard/modules/health-records'));
 const OnlineAdmissionsModule = lazy(() => import('@/components/dashboard/modules/online-admissions').then(m => ({ default: m.OnlineAdmissions })));
 const ELearningModule = lazy(() => import('@/components/dashboard/modules/e-learning-hub').then(m => ({ default: m.ELearningHub })));
@@ -109,7 +108,6 @@ export function BranchManagerPortal({ activeModule, user }: { activeModule: stri
   else if (activeModule === 'sms') content = <BMSmsView user={user} />;
   else if (activeModule === 'live-transport') content = <Suspense fallback={<ModuleFallback />}><LiveTransportModule /></Suspense>;
   else if (activeModule === 'digital-id') content = <Suspense fallback={<ModuleFallback />}><DigitalIdModule /></Suspense>;
-  else if (activeModule === 'ptm-scheduling') content = <Suspense fallback={<ModuleFallback />}><PtmSchedulingModule /></Suspense>;
   else if (activeModule === 'health-records') content = <Suspense fallback={<ModuleFallback />}><HealthRecordsModule /></Suspense>;
   else if (activeModule === 'online-admissions') content = <Suspense fallback={<ModuleFallback />}><OnlineAdmissionsModule user={user} /></Suspense>;
   else if (activeModule === 'e-learning') content = <Suspense fallback={<ModuleFallback />}><ELearningModule user={user} /></Suspense>;
@@ -159,22 +157,12 @@ function EmptyState({ icon: Icon, title, desc, action }: any) {
 function BranchOverview({ user, stats, teachers, students, finance, financeLoading, onAddTeacher, onAddStudent }: any) {
   const kpi = finance?.kpi || {};
   const monthly = Array.isArray(finance?.monthlyRevenue) ? finance.monthlyRevenue : [];
-  const recentTx = Array.isArray(finance?.recentTransactions) ? finance.recentTransactions : [];
-  const feeStatus = finance?.feeStatus || { paid: 0, unpaid: 0, paidAmount: 0, unpaidAmount: 0 };
-
-  const feePieData = [
-    { name: 'Paid', value: Number(feeStatus.paid || 0), amount: Number(feeStatus.paidAmount || 0), color: EMERALD },
-    { name: 'Unpaid', value: Number(feeStatus.unpaid || 0), amount: Number(feeStatus.unpaidAmount || 0), color: ROSE },
-  ];
-
   const netPositive = (kpi.netBalance || 0) >= 0;
   const kpiCards = [
     { label: 'Total Revenue', value: fmtMoney(kpi.totalRevenue), icon: DollarSign, tone: 'default' as const, iconTone: 'primary' as const },
     { label: 'Pending Fees', value: fmtMoney(kpi.pendingFees), icon: AlertCircle, tone: 'default' as const, iconTone: 'rose' as const },
     { label: 'Salary Paid', value: fmtMoney(kpi.totalSalaryPaid), icon: Wallet, tone: 'default' as const, iconTone: 'primary' as const },
     { label: 'Net Balance', value: fmtMoney(kpi.netBalance), icon: Scale, tone: (netPositive ? 'positive' : 'negative'), iconTone: (netPositive ? 'emerald' : 'rose') },
-    { label: 'Attendance Rate', value: (kpi.attendanceRate || 0) + '%', icon: CalendarCheck, tone: 'default' as const, iconTone: 'primary' as const },
-    { label: 'Total Invoices', value: String(kpi.totalInvoices || 0), icon: FileText, tone: 'default', iconTone: 'primary' },
   ];
 
   const sCount = kpi.students ?? stats?.students ?? 0;
@@ -210,7 +198,7 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
       ) : (
         <>
           {/* KPI cards — compact: p-4, h-9 w-9 icons, text-lg/xl values */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             {kpiCards.map((c, i) => (
               <motion.div key={c.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                 <Card className="p-2.5 sm:p-3 border border-border rounded-lg shadow-sm hover:shadow-md transition">
@@ -225,8 +213,8 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
             ))}
           </div>
 
-          {/* Charts row */}
-          <div className="grid lg:grid-cols-2 gap-4">
+          {/* Revenue chart */}
+
             <Card className="p-5 border border-border rounded-lg shadow-sm">
               <div className="mb-4">
                 <h3 className="font-bold text-base">Revenue vs Salary (Last 12 Months)</h3>
@@ -248,128 +236,10 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
               </ResponsiveContainer>
             </Card>
 
-            <Card className="p-5 border border-border rounded-lg shadow-sm">
-              <div className="mb-4">
-                <h3 className="font-bold text-base">Fee Status</h3>
-                <p className="text-xs text-muted-foreground">Paid vs unpaid invoices</p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={feePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={2}>
-                      {feePieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12 }} formatter={(v: any, _n: any, p: any) => [`${v} invoices · ${fmtMoney(p?.payload?.amount)}`, p?.payload?.name]} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-2 flex-1 w-full">
-                  {feePieData.map((d) => (
-                    <div key={d.name} className="rounded-lg border border-border p-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
-                        <span className="text-sm font-semibold">{d.name}</span>
-                      </div>
-                      <div className="mt-1 text-lg font-extrabold tabular-nums">{d.value} invoices</div>
-                      <div className="text-xs text-muted-foreground">{fmtMoney(d.amount)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </div>
 
-          {/* Recent Transactions */}
-          <Card className="p-5 border border-border rounded-lg shadow-sm">
-            <div className="mb-4">
-              <h3 className="font-bold text-base">Recent Transactions</h3>
-              <p className="text-xs text-muted-foreground">Latest fee payments and salary payouts</p>
-            </div>
-            {recentTx.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">No transactions yet.</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Date</TableHead>
-                    <TableHead className="text-xs">Type</TableHead>
-                    <TableHead className="text-xs">Party</TableHead>
-                    <TableHead className="text-xs">Method</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentTx.slice(0, 8).map((t: any) => {
-                    const isSalary = t.type === 'Salary Payout';
-                    return (
-                      <TableRow key={t.id}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {t.date ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`text-[10px] ${isSalary ? 'text-rose-600 bg-rose-500/10 border-rose-500/20' : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'}`}>
-                            {t.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm font-medium">{t.party}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{t.method}</TableCell>
-                        <TableCell className={`text-sm font-bold tabular-nums text-right ${isSalary ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {isSalary ? '-' : '+'}{fmtMoney(t.amount)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </Card>
         </>
       )}
 
-      {/* Compact Teachers + Students lists */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-base">Teachers ({teachers.length})</h3>
-            <Button size="sm" variant="outline" onClick={onAddTeacher}><UserPlus className="h-4 w-4 mr-1.5" /> Add</Button>
-          </div>
-          {teachers.length === 0 ? (
-            <div className="text-center py-6 text-sm text-muted-foreground">No teachers yet. Click "Add" to create one.</div>
-          ) : (
-            <div className="space-y-2">
-              {teachers.slice(0, 5).map((t: any) => (
-                <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><Users className="h-4 w-4 text-primary" /></div>
-                  <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{t.name}</div><div className="text-[11px] text-muted-foreground truncate">{t.subjects?.join(', ') || t.email}</div></div>
-                </div>
-              ))}
-              {teachers.length > 5 && (
-                <Button size="sm" variant="ghost" className="w-full text-xs">View all {teachers.length} teachers</Button>
-              )}
-            </div>
-          )}
-        </Card>
-        <Card className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-base">Students ({students.length})</h3>
-            <Button size="sm" variant="outline" onClick={onAddStudent}><Plus className="h-4 w-4 mr-1.5" /> Add</Button>
-          </div>
-          {students.length === 0 ? (
-            <div className="text-center py-6 text-sm text-muted-foreground">No students yet. Click "Add" to create one.</div>
-          ) : (
-            <div className="space-y-2">
-              {students.slice(0, 5).map((s: any) => (
-                <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 grid place-items-center"><GraduationCap className="h-4 w-4 text-primary" /></div>
-                  <div className="flex-1 min-w-0"><div className="font-medium text-sm truncate">{s.name}</div><div className="text-[11px] text-muted-foreground truncate">{s.class} {s.section} · {s.rollNo}</div></div>
-                </div>
-              ))}
-              {students.length > 5 && (
-                <Button size="sm" variant="ghost" className="w-full text-xs">View all {students.length} students</Button>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
     </div>
   );
 }
@@ -377,7 +247,7 @@ function BranchOverview({ user, stats, teachers, students, finance, financeLoadi
 function FinanceSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i} className="p-4 border border-border rounded-lg">
             <div className="h-9 w-9 rounded-lg bg-muted animate-pulse mb-3" />

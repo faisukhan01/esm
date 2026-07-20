@@ -116,13 +116,7 @@ export async function initDB() {
       sql: `INSERT OR IGNORE INTO users (id, name, email, rollNo, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, class, section, guardian) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: ['U-DEMO-STUDENT', 'Ali Ahmed', 'ali@alnoor.edu', 'S001', 'demo123', 'student', 'Active', 'Student — Grade 10-A', 0, 0, 'I-DEMO', 'B-DEMO', 'Grade 10', 'A', 'Ahmed Raza'],
     });
-    // Parent (linked to the student as ward)
-    await db.execute({
-      sql: `INSERT OR IGNORE INTO users (id, name, email, password, role, status, title, mustChangePassword, blocked, instituteId, branchId, ward, wardId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['U-DEMO-PARENT', 'Ahmed Raza', 'parent@alnoor.edu', 'demo123', 'parent', 'Active', 'Parent / Guardian', 0, 0, 'I-DEMO', 'B-DEMO', 'Ali Ahmed', 'U-DEMO-STUDENT'],
-    });
-
-    // 6. Demo Timetable entries (Mon-Fri, 8 AM - 1 PM, 5 periods)
+// 6. Demo Timetable entries (Mon-Fri, 8 AM - 1 PM, 5 periods)
     const timetableEntries = [
       ['Monday', 1, '08:00', '08:45', 'Mathematics', 'U-DEMO-TEACHER', 'Ayesha Khan', 'Room 101'],
       ['Monday', 2, '08:50', '09:35', 'Physics', 'U-DEMO-TEACHER', 'Ayesha Khan', 'Room 102'],
@@ -147,10 +141,6 @@ export async function initDB() {
     await db.execute({
       sql: `INSERT OR IGNORE INTO announcements (id, senderId, senderRole, title, message, targetRole, targetScope, instituteId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: ['A-DEMO-1', 'U-DEMO-ADMIN', 'institute-admin', 'Annual Sports Day — Register Now!', 'Dear students, our Annual Sports Day will be held on February 15th, 2026 at the main ground. Registration is open until Feb 5th. See your class teacher for sign-up forms.', 'student', 'all', 'I-DEMO', 'B-DEMO'],
-    });
-    await db.execute({
-      sql: `INSERT OR IGNORE INTO announcements (id, senderId, senderRole, title, message, targetRole, targetScope, instituteId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: ['A-DEMO-2', 'U-DEMO-BRANCH', 'branch-manager', 'Parent-Teacher Meeting — Saturday 10 AM', 'PTM for Grade 10-A is scheduled for this Saturday at 10:00 AM. All parents are requested to attend. Agenda: Mid-term result discussion + career counseling.', 'parent', 'all', 'I-DEMO', 'B-DEMO'],
     });
     await db.execute({
       sql: `INSERT OR IGNORE INTO announcements (id, senderId, senderRole, title, message, targetRole, targetScope, instituteId, branchId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,

@@ -24,7 +24,10 @@ class _TeacherHomeState extends State<TeacherHome> {
   void initState() {
     super.initState();
     _screens = [
-      TeacherDashboard(user: widget.user),
+      TeacherDashboard(
+        user: widget.user,
+        onNavigate: (i) => setState(() => _currentIndex = i),
+      ),
       _TeacherClassesTab(user: widget.user),
       _TeacherAttendanceTab(user: widget.user),
       _TeacherDiaryTab(user: widget.user),
@@ -269,7 +272,12 @@ class _TeacherTimetableTabState extends State<_TeacherTimetableTab> with Automat
   Future<void> _load() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final list = await ApiClient.getList('timetable', query: {'branchId': widget.user['branchId']});
+      // Scope to the teacher's own classes only — branch-wide fetch returns the
+      // whole branch schedule (irrelevant to this teacher).
+      final teacherId = widget.user['id']?.toString();
+      final list = await ApiClient.getList('timetable', query: {
+        if (teacherId != null && teacherId.isNotEmpty) 'teacherId': teacherId,
+      });
       if (mounted) setState(() { _entries = list; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _isLoading = false; });

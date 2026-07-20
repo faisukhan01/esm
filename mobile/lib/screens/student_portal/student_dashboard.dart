@@ -21,6 +21,8 @@ import 'student_results.dart';
 import 'student_e_learning.dart';
 import 'student_exam_portal.dart';
 import 'student_wallet.dart';
+import 'student_report_card.dart';
+import 'student_diary.dart';
 import '../shared/complaint_portal.dart';
 import '../shared/live_transport.dart';
 
@@ -325,6 +327,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         ),
                       ),
                       QuickActionTile(
+                        icon: Icons.assignment_rounded,
+                        label: 'Report Card',
+                        color: AppTheme.gold,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StudentReportCard(user: widget.user),
+                          ),
+                        ),
+                      ),
+                      QuickActionTile(
                         icon: Icons.receipt_long_rounded,
                         label: 'Invoices',
                         color: AppTheme.gold,
@@ -340,6 +353,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         label: 'Timetable',
                         color: AppTheme.primary,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentTimetable(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.menu_book_rounded,
+                        label: 'Diary',
+                        color: AppTheme.success,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StudentDiary(user: widget.user),
+                          ),
+                        ),
                       ),
                       QuickActionTile(
                         icon: Icons.badge_rounded,

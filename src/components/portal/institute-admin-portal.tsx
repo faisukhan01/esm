@@ -258,14 +258,6 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
     { label: 'Royalty Collected', value: formatPKR(royaltyCollected), icon: Crown, sub: 'From paid royalty invoices' },
   ];
 
-  // Quick action shortcuts — "Royalty Management" replaces "Fees & Revenue"
-  const quickActions = [
-    { title: 'Royalty Management', sub: 'Set royalty, generate invoices', icon: Crown, target: 'institute-royalty' },
-    { title: 'Teachers & Salaries', sub: 'Manage salaries & payouts', icon: Users, target: 'institute-teachers' },
-    { title: 'Students', sub: 'Student records & analytics', icon: GraduationCap, target: 'institute-students' },
-    { title: 'Reports', sub: 'Analytics & insights', icon: TrendingUp, target: 'institute-reports' },
-  ];
-
   return (
     <>
       {/* Welcome banner — navy gradient */}
@@ -301,62 +293,6 @@ function InstituteDashboard({ finance, branches, loading, user, onRefresh, onAdd
             <KPICard icon={c.icon} label={c.label} value={c.value} sub={c.sub} />
           </motion.div>
         ))}
-      </div>
-
-      {/* Quick Actions — shortcut cards to detailed pages */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-lg font-bold tracking-tight">Quick Actions</h2>
-          <p className="text-xs text-muted-foreground">Jump straight to the detailed management pages</p>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          {quickActions.map((a, i) => (
-            <motion.div
-              key={a.target}
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.04 }}
-              onClick={() => setActiveModule?.(a.target)}
-              className="group border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer p-3 sm:p-4"
-            >
-              <div className="flex items-start justify-between">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center text-primary">
-                  <a.icon className="h-5 w-5" />
-                </div>
-                <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition" />
-              </div>
-              <h3 className="font-bold text-sm mt-2">{a.title}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Branches overview — compact */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight">Branches</h2>
-            <p className="text-xs text-muted-foreground">Quick view of all campuses in your institute</p>
-          </div>
-          {branches?.length > 0 && (
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary" onClick={() => setActiveModule?.('branches')}>
-              View all <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
-        </div>
-        {!branches || branches.length === 0 ? (
-          <EmptyState
-            icon={Network}
-            title="No branches yet"
-            desc="Add your first branch. You'll set the Branch Manager's email and password."
-            action={<Button className="bg-primary hover:bg-primary/90 text-white" onClick={onAddBranch}><Plus className="h-4 w-4 mr-1.5" /> Add Branch</Button>}
-          />
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
-            {branches.slice(0, 6).map((br: any) => (
-              <BranchCard key={br.id} br={br} instituteId={user?.instituteId} onRefresh={onRefresh} onSelectBranch={onSelectBranch} />
-            ))}
-          </div>
-        )}
       </div>
     </>
   );

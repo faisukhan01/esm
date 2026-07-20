@@ -78,7 +78,6 @@ export const ROLE_MODULES: RoleModules = {
     { group: 'Operations', items: [
       { id: 'fees', name: 'Fees', icon: DollarSign, color: 'from-primary/80 to-primary' },
       { id: 'live-transport', name: 'Live Transport', icon: Navigation, color: 'from-emerald-500 to-teal-600' },
-      { id: 'ptm-scheduling', name: 'PTM Scheduling', icon: Video, color: 'from-cyan-500 to-teal-600' },
       { id: 'complaint-portal', name: 'Complaint Portal', icon: AlertTriangle, color: 'from-rose-500 to-orange-600' },
       { id: 'events', name: 'Events', icon: Trophy, color: 'from-primary/80 to-primary' },
       { id: 'sms', name: 'SMS Portal', icon: MessageSquare, color: 'from-primary/80 to-primary' },

@@ -686,9 +686,6 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
   const totalCourses = classes.reduce((acc: number, c: ClassInfo) => acc + c.courses.length, 0);
   const kpi = analytics?.kpi;
   const trend: any[] = analytics?.attendanceTrend || [];
-  const perf: any[] = analytics?.classPerformance || [];
-  const recentDiary: any[] = (analytics?.recentDiary || []).slice(0, 3);
-  const recentResults: any[] = (analytics?.recentResults || []).slice(0, 3);
 
   const cards = [
     { label: 'Total Classes', value: kpi ? kpi.totalClasses : (loading ? '—' : classes.length), icon: GraduationCap, sub: `${kpi?.totalCourses ?? totalCourses} courses assigned` },
@@ -696,21 +693,6 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
     { label: 'Attendance Rate', value: kpi ? `${kpi.attendanceRate}%` : '—', icon: CalendarCheck, sub: `${kpi?.attendanceSessions ?? 0} sessions taken` },
     { label: 'Avg Score', value: kpi ? `${kpi.avgScore}%` : '—', icon: ClipboardList, sub: `${kpi?.resultsPosted ?? 0} results posted` },
   ];
-
-  const quickLinks = [
-    { label: 'My Classes', desc: 'View & manage your classes', icon: BookOpen, module: 'teacher-overview' },
-    { label: 'Take Attendance', desc: 'Mark today\'s attendance', icon: CalendarCheck, module: 'mark-attendance' },
-    { label: 'Post Results', desc: 'Publish exam results', icon: GraduationCap, module: 'post-results' },
-    { label: 'Diary & Homework', desc: 'Post homework & notes', icon: ClipboardList, module: 'diary' },
-    { label: 'My Timetable', desc: 'View weekly schedule', icon: Calendar, module: 'timetable' },
-    { label: 'SMS Portal', desc: 'Send SMS to students', icon: MessageSquare, module: 'sms' },
-  ];
-
-  const scoreTone = (score: number) => {
-    if (score >= 75) return { bar: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' };
-    if (score >= 50) return { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' };
-    return { bar: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' };
-  };
 
   return (
     <div className="space-y-6">
@@ -782,149 +764,6 @@ function TeacherDashboard({ user, students, diary, myResults, classes, onOpenCla
         )}
       </Card>
 
-      {/* 2-col: Class Performance | Recent Activity */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Class Performance */}
-        <Card className="p-4 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <GraduationCap className="h-4 w-4 text-primary" />
-            <h3 className="font-bold text-base">Class Performance</h3>
-          </div>
-          {loading ? (
-            <div className="space-y-2">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-10 rounded-md bg-muted/40 animate-pulse" />)}
-            </div>
-          ) : perf.length === 0 ? (
-            <InlineEmpty icon={BookOpen} title="No class assignments yet" desc="Your Branch Manager will assign classes to you." />
-          ) : (
-            <div className="overflow-x-auto -mx-2">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Class</TableHead>
-                    <TableHead className="text-center">Students</TableHead>
-                    <TableHead className="text-center">Exams</TableHead>
-                    <TableHead className="text-right">Avg Score</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {perf.map((p) => {
-                    const score = Number(p.avgScore ?? 0);
-                    const tone = scoreTone(score);
-                    return (
-                      <TableRow key={p.classId}>
-                        <TableCell>
-                          <div className="font-medium">{p.className}</div>
-                          {p.section ? <div className="text-[10px] text-muted-foreground">Section {p.section}</div> : null}
-                        </TableCell>
-                        <TableCell className="text-center tabular-nums">{p.students ?? 0}</TableCell>
-                        <TableCell className="text-center tabular-nums">{p.examsConducted ?? 0}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-1">
-                            <span className={`font-bold tabular-nums ${tone.text}`}>{score.toFixed(1)}%</span>
-                            <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
-                              <div className={`h-full ${tone.bar}`} style={{ width: `${Math.min(100, Math.max(0, score))}%` }} />
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="p-4 border border-border rounded-lg shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <ClipboardList className="h-4 w-4 text-primary" />
-            <h3 className="font-bold text-base">Recent Activity</h3>
-          </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-14 rounded-md bg-muted/40 animate-pulse" />)}
-            </div>
-          ) : recentDiary.length === 0 && recentResults.length === 0 ? (
-            <InlineEmpty icon={ClipboardList} title="No diary entries or results posted yet" desc="Post homework or publish exam results to see recent activity here." />
-          ) : (
-            <div className="space-y-5">
-              {recentDiary.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Diary</div>
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setActiveModule('diary')}>View all</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {recentDiary.map((d) => (
-                      <div key={d.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-muted/30">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{d.title || d.subject || 'Diary entry'}</div>
-                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">{d.subject || d.className || ''}{d.courseName ? ` · ${d.courseName}` : ''}</div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] shrink-0 tabular-nums">{d.due ? `Due ${formatShortDate(d.due)}` : formatShortDate(d.createdAt)}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {recentResults.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Recent Results</div>
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setActiveModule('post-results')}>View all</Button>
-                  </div>
-                  <div className="space-y-2">
-                    {recentResults.map((r) => (
-                      <div key={r.id} className="flex items-start justify-between gap-2 p-2.5 rounded-lg bg-muted/30">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{r.exam || 'Exam'}</div>
-                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">{r.students ?? 0} students · {r.totalMarks ?? 0} marks{r.date ? ` · ${formatShortDate(r.date)}` : ''}</div>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] shrink-0 tabular-nums">Avg {Number(r.avgMarks ?? 0).toFixed(1)}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Quick Links */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold">Quick Links</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Jump straight to a teaching task.</p>
-          </div>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickLinks.map((q, i) => (
-            <motion.button
-              key={q.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              onClick={() => setActiveModule(q.module)}
-              className="text-left group"
-            >
-              <Card className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition h-full">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center">
-                    <q.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition" />
-                </div>
-                <h3 className="font-bold text-base">{q.label}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{q.desc}</p>
-              </Card>
-            </motion.button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

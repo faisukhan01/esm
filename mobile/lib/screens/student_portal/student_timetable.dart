@@ -66,21 +66,37 @@ class _StudentTimetableState extends State<StudentTimetable> {
       _error = null;
     });
     try {
-      // Prefer filtering by studentId; fall back to branchId so siblings
-      // at the same branch can still see the published timetable.
-      final studentId = widget.user['id'];
+      // The backend `GET /api/timetable` only honors `teacherId`, `classId`,
+      // or `branchId` — it silently ignores `studentId`. So we fetch the
+      // whole branch timetable (which is typically small — ~30 rows/week)
+      // and client-side filter to rows whose `className` matches the
+      // student's class. This is the most robust path: it works even when
+      // classId isn't directly resolvable from the user object.
+      final branchId = widget.user['branchId']?.toString();
+      final userClassName = widget.user['class']?.toString().trim();
+
       Map<String, dynamic>? query;
-      if (studentId != null) {
-        query = {'studentId': studentId};
-      } else {
-        final branchId = widget.user['branchId'];
-        if (branchId != null) query = {'branchId': branchId};
+      if (branchId != null && branchId.isNotEmpty) {
+        query = {'branchId': branchId};
       }
 
       final list = await ApiClient.getList('timetable', query: query);
+
+      // Client-side filter: keep only entries whose `className` matches the
+      // student's class. Skip the filter if the student has no class set so
+      // we don't accidentally show an empty timetable when the data is there.
+      final filtered = userClassName == null || userClassName.isEmpty
+          ? list
+          : list.where((e) {
+              if (e is! Map) return false;
+              final cn = (e['className'] ?? '').toString().trim();
+              // Case-insensitive match — class names are user-entered.
+              return cn.toLowerCase() == userClassName.toLowerCase();
+            }).toList();
+
       if (!mounted) return;
       setState(() {
-        _entries = list;
+        _entries = filtered;
         _isLoading = false;
       });
     } catch (e) {

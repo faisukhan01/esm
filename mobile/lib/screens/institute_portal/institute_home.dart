@@ -12,6 +12,9 @@ import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
 import '../calendar_screen.dart';
 import 'institute_online_admissions.dart';
+import 'institute_teachers.dart';
+import 'institute_students.dart';
+import '../shared/complaint_portal.dart';
 
 // =============================== PREMIUM LIST CARD (file-scoped) ===============================
 
@@ -386,6 +389,24 @@ class _InstituteDashboardState extends State<_InstituteDashboard> {
           label: 'Online Admissions',
           color: AppTheme.danger,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstituteOnlineAdmissions(user: widget.user))),
+        ),
+        QuickActionTile(
+          icon: Icons.people,
+          label: 'Teachers',
+          color: AppTheme.primary,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstituteTeachers(user: widget.user))),
+        ),
+        QuickActionTile(
+          icon: Icons.school,
+          label: 'Students',
+          color: AppTheme.gold,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => InstituteStudents(user: widget.user))),
+        ),
+        QuickActionTile(
+          icon: Icons.feedback,
+          label: 'Complaint Portal',
+          color: AppTheme.warning,
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ComplaintPortal(user: widget.user))),
         ),
       ],
     );

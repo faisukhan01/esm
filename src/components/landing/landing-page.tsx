@@ -28,7 +28,7 @@ const PLATFORM_FEATURES = [
 const HIGHLIGHT_MODULE_IDS = [
   'online-admissions', 'attendance', 'e-learning', 'exam-portal',
   'fee', 'campus-wallet', 'hr', 'library',
-  'live-transport', 'digital-id', 'ptm-scheduling', 'complaint-portal',
+  'live-transport', 'digital-id', 'complaint-portal',
 ];
 const HIGHLIGHTED_MODULES = MODULES.filter(m => HIGHLIGHT_MODULE_IDS.includes(m.id));
 

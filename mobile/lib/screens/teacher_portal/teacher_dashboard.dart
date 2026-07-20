@@ -9,8 +9,9 @@ import '../notifications_screen.dart';
 import '../profile_screen.dart';
 import '../announcements_screen.dart';
 import '../../widgets/update_banner.dart';
-import '../calendar_screen.dart';
 import '../shared/complaint_portal.dart';
+import 'teacher_e_learning.dart';
+import 'teacher_exam_portal.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
 ///
@@ -20,7 +21,11 @@ import '../shared/complaint_portal.dart';
 /// action grid.
 class TeacherDashboard extends StatefulWidget {
   final Map<String, dynamic> user;
-  const TeacherDashboard({super.key, required this.user});
+  /// Switches the parent [TeacherHome] bottom-nav to the given tab index.
+  /// Wired so quick-action tiles can jump to Attendance / Diary / Timetable /
+  /// Classes without rebuilding their own nested Scaffolds.
+  final void Function(int index)? onNavigate;
+  const TeacherDashboard({super.key, required this.user, this.onNavigate});
 
   @override
   State<TeacherDashboard> createState() => _TeacherDashboardState();
@@ -66,17 +71,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         _isLoading = false;
       });
     }
-  }
-
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppTheme.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   Future<void> _logout() async {
@@ -252,6 +246,8 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                   const SizedBox(height: 16),
 
                   // (f) Quick Actions — 2×2 grid.
+                  //   Index map matches TeacherHome._screens:
+                  //   0=Dashboard, 1=Classes, 2=Attendance, 3=Diary, 4=Timetable.
                   const SectionHeader(title: 'Quick Actions'),
                   const SizedBox(height: 10),
                   GridView.count(
@@ -266,25 +262,54 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         icon: Icons.assignment_turned_in,
                         label: 'Take Attendance',
                         color: AppTheme.success,
-                        onTap: () => _showSnack('Take Attendance — coming soon'),
+                        onTap: () {
+                          if (widget.onNavigate != null) {
+                            widget.onNavigate!(2);
+                          } else {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherMarkAttendance(user: widget.user)));
+                          }
+                        },
                       ),
                       QuickActionTile(
                         icon: Icons.post_add,
                         label: 'Post Results',
                         color: AppTheme.gold,
-                        onTap: () => _showSnack('Post Results — coming soon'),
+                        onTap: () {
+                          // Post-results lives inside the class detail → Results
+                          // tab. Jump to Classes so the teacher can pick the
+                          // class they want to grade.
+                          if (widget.onNavigate != null) widget.onNavigate!(1);
+                        },
                       ),
                       QuickActionTile(
                         icon: Icons.assignment,
                         label: 'Diary',
                         color: AppTheme.info,
-                        onTap: () => _showSnack('Diary — coming soon'),
+                        onTap: () {
+                          if (widget.onNavigate != null) widget.onNavigate!(3);
+                        },
                       ),
                       QuickActionTile(
                         icon: Icons.calendar_today,
                         label: 'Timetable',
                         color: AppTheme.primary,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(user: widget.user))),
+                        onTap: () {
+                          // Switch to the in-app Timetable tab — NOT the
+                          // CalendarScreen events page (which is institute-wide).
+                          if (widget.onNavigate != null) widget.onNavigate!(4);
+                        },
+                      ),
+                      QuickActionTile(
+                        icon: Icons.video_library,
+                        label: 'E-Learning Hub',
+                        color: AppTheme.primaryLight,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherELearning(user: widget.user))),
+                      ),
+                      QuickActionTile(
+                        icon: Icons.assignment,
+                        label: 'Exam Portal',
+                        color: AppTheme.goldDark,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeacherExamPortal(user: widget.user))),
                       ),
                       QuickActionTile(
                         icon: Icons.feedback_rounded,

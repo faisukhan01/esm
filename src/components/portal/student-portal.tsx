@@ -226,15 +226,6 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
     { label: 'Courses', value: courses?.length || 0, sub: 'enrolled this term', icon: BookOpen },
   ];
 
-  const quickActions = [
-    { label: 'My Attendance', icon: CalendarCheck, desc: 'View attendance history', module: 'my-attendance' },
-    { label: 'My Results', icon: GraduationCap, desc: 'Check exam results', module: 'my-results' },
-    { label: 'Invoices', icon: CreditCard, desc: 'Download fee challan', module: 'my-invoices' },
-    { label: 'Report Card', icon: Award, desc: 'View your report card', module: 'my-report-card' },
-  ];
-
-  const setActiveModule = useApp(s => s.setActiveModule);
-
   return (
     <div className="space-y-6">
       {/* 1. Welcome banner */}
@@ -260,60 +251,9 @@ function StudentOverview({ user, attendance, results, courses, announcements, on
           </motion.div>
         ))}
       </div>
-
-      {/* 3. Quick Actions */}
-      <div>
-        <h2 className="font-bold text-base mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          {quickActions.map((a, i) => (
-            <motion.div key={a.module} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <div onClick={() => setActiveModule(a.module)} className="group cursor-pointer border border-border rounded-lg shadow-sm hover:shadow-md transition p-3 sm:p-4 flex items-center gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 grid place-items-center shrink-0"><a.icon className="h-4 w-4 text-primary" /></div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-sm">{a.label}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{a.desc}</div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. My Courses — larger cards on dashboard */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-base">My Courses</h2>
-          <button onClick={() => setActiveModule('my-courses')} className="text-xs text-primary hover:underline font-medium">View all →</button>
-        </div>
-        {courses?.length === 0 ? (
-          <Card className="p-8 text-center">
-            <div className="inline-flex h-12 w-12 rounded-2xl bg-muted/60 items-center justify-center mb-3"><BookOpen className="h-6 w-6 text-muted-foreground" /></div>
-            <p className="text-sm text-muted-foreground">No courses assigned yet. Your Branch Manager will assign courses to your class.</p>
-          </Card>
-        ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
-            {courses?.slice(0, 4).map((c: any) => (
-              <Card key={c.id} className="p-4 border border-border rounded-lg shadow-sm hover:shadow-md transition cursor-pointer group" onClick={() => onOpenCourse?.(c)}>
-                <div className="flex items-center gap-4">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 grid place-items-center shrink-0"><BookOpen className="h-5 w-5 text-primary" /></div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-sm truncate">{c.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.code ? `Code: ${c.code}` : 'Course'}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition shrink-0" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
-
-
-// ============== Course Detail (Materials / Results / Attendance tabs) ==============
 const COURSE_TABS = [
   { id: 'materials', label: 'Materials', icon: FileText },
   { id: 'results', label: 'Results', icon: GraduationCap },
@@ -655,7 +595,7 @@ function MyTimetable({ user, classId }: { user: any; classId: string }) {
     <div className="space-y-6">
       <ModuleHeader title="My Timetable" subtitle={subtitle} />
 
-      {loading ? (
+      {loading && classId ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
           Loading your timetable…
