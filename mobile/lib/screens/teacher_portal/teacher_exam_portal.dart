@@ -119,7 +119,7 @@ class _TeacherExamPortalState extends State<TeacherExamPortal> {
             // ===== Upcoming Exams =====
             _SectionHeader(
               title: 'Upcoming Exams',
-              icon: Icons.event_upcoming,
+              icon: Icons.event,
               subtitle: 'Exams you need to prepare',
             ),
             const SizedBox(height: 10),

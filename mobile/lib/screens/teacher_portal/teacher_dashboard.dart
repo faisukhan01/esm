@@ -12,6 +12,7 @@ import '../../widgets/update_banner.dart';
 import '../shared/complaint_portal.dart';
 import 'teacher_e_learning.dart';
 import 'teacher_exam_portal.dart';
+import 'teacher_mark_attendance.dart';
 
 /// Premium teacher dashboard — Linear/Notion-grade redesign.
 ///

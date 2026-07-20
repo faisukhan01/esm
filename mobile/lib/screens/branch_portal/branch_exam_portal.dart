@@ -136,7 +136,7 @@ class _BranchExamPortalState extends State<BranchExamPortal> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
             const SectionHeader(
-                title: 'Upcoming Exams', icon: Icons.event_upcoming),
+                title: 'Upcoming Exams', icon: Icons.event),
             const SizedBox(height: 10),
             _upcomingSection(),
             const SizedBox(height: 24),
